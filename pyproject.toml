@@ -75,6 +75,7 @@ givenergy-modbus = 'givenergy_modbus.cli:main'
 
 [tool.poetry.dev-dependencies]
 bandit = "^1.7.1"
+ipython = "^7.30.1"
 [tool.black]
 line-length = 120
 skip-string-normalization = true
