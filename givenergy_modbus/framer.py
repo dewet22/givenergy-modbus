@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import Callable, Container, Optional
+from typing import Callable, Container
 
 from pymodbus.client.sync import BaseModbusClient
 from pymodbus.exceptions import InvalidMessageReceivedException, ModbusIOException
@@ -20,7 +20,7 @@ class GivModbusFramer(ModbusFramer):
     A framer abstracts away all the detail about how marshall the wire
     protocol, e.g. to detect if a current message frame exists, decoding
     it, sending it, etc.  This implementation understands the
-    idiosyncracies of GivEnergy's implementation of the Modbus spec.
+    idiosyncrasies of GivEnergy's implementation of the Modbus spec.
 
     It looks very similar to normal Modbus TCP on the wire, with each message still
     starting with a regular 7-byte MBAP header consisting of:
@@ -105,7 +105,7 @@ class GivModbusFramer(ModbusFramer):
     FRAME_HEAD = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
     FRAME_TAIL = ">H"  # crc(w)
 
-    def __init__(self, decoder: IModbusDecoder, client: Optional[BaseModbusClient] = None):
+    def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient | None = None):
         """Constructor.
 
         Args:
@@ -203,7 +203,7 @@ class GivModbusFramer(ModbusFramer):
         result.check = self._check
 
     def processIncomingPacket(
-        self, data: bytes, callback: Callable, unit: Container[int] | int, single: Optional[bool] = False, **kwargs
+        self, data: bytes, callback: Callable, unit: Container[int] | int, single: bool | None = False, **kwargs
     ) -> None:
         """Process an incoming packet.
 
