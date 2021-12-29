@@ -77,11 +77,8 @@ bandit = "^1.7.1"
 ipython = "^7.30.1"
 flake8 = "^4.0.1"
 autopep8 = "^1.6.0"
-autohooks = "^21.7.0"
-autohooks-plugin-pylint = "^21.6.0"
-autohooks-plugin-isort = "^1.0.0"
-autohooks-plugin-autopep8 = "^0.0.4"
-autohooks-plugin-black = "^21.12.0"
+pre-commit = "^2.16.0"
+poetry = "^1.1.12"
 [tool.black]
 line-length = 120
 skip-string-normalization = true
