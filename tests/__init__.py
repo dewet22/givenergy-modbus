@@ -3,12 +3,6 @@
 import importlib
 from typing import Callable
 
-import pytest
-
-from givenergy_modbus.decoder import GivEnergyRequestDecoder, GivEnergyResponseDecoder
-from givenergy_modbus.framer import GivModbusFramer
-from givenergy_modbus.pdu import ReadInputRegistersRequest
-
 REQUEST_PDU_MESSAGES = [
     # [(pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail), (..), ..]
     (  # data0
@@ -34,6 +28,7 @@ REQUEST_PDU_MESSAGES = [
     ),
 ]
 
+
 # RESPONSE_PDU_MESSAGES = [
 #     # [(pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail), (..), ..]
 #     (  # data0
@@ -50,3 +45,9 @@ REQUEST_PDU_MESSAGES = [
 #         b"\x07T",  # 2 bytes
 #     ),
 # ]
+
+
+def _lookup_pdu_class(pdu_fn: str) -> Callable:
+    """Utility to retrieve a PDU function from string representation because pytest can't parametrize class names."""
+    module = importlib.import_module('givenergy_modbus.pdu')
+    return getattr(module, pdu_fn)

@@ -105,14 +105,13 @@ class GivModbusFramer(ModbusFramer):
     FRAME_HEAD = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
     FRAME_TAIL = ">H"  # crc(w)
 
-    def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient | None = None):
+    def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient = None):
         """Constructor.
 
         Args:
             decoder: Frame decoder implementation.
-            client (optional): Synchronous Modbus Client. Defaults to None.
+            client: Synchronous Modbus Client.
         """
-        _logger.debug(f"decoder:{decoder}, client:{client}")
         self._buffer = b""
         self._header = {"tid": 0, "pid": 0, "len": 0, "uid": 0, "fid": 0}
         self._hsize = 0x08

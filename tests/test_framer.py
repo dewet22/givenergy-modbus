@@ -3,11 +3,12 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pymodbus.framer.socket_framer import ModbusSocketFramer
 
 from givenergy_modbus.decoder import GivEnergyRequestDecoder, GivEnergyResponseDecoder
 from givenergy_modbus.framer import GivModbusFramer
 
-from . import REQUEST_PDU_MESSAGES, lookup_class
+from . import REQUEST_PDU_MESSAGES, _lookup_pdu_class
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
     b"\x59\x59\x00\x01\x00\x1c\x01\x02"  # 7-byte MBAP header + function code
@@ -49,6 +50,8 @@ def test_framer_constructor():
     assert framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
     assert framer._hsize == 0x08
     client_decoder.assert_not_called()
+
+    assert not isinstance(framer, ModbusSocketFramer)
 
 
 @pytest.fixture
@@ -147,7 +150,7 @@ def test_client_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], 
     """Ensure Request PDU messages can be encoded to the correct wire format."""
     pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
 
-    pdu = lookup_class(pdu_fn)(**pdu_fn_kwargs)
+    pdu = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
     packet = requests_framer.buildPacket(pdu)
     assert packet == packet_head + encoded_pdu + packet_tail
 

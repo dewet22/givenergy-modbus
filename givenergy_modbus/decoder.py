@@ -1,14 +1,16 @@
-#!/usr/bin/env python
 from __future__ import annotations
 
 import abc
+import logging
 from typing import Callable
 
-from loguru import logger as _logger
 from pymodbus.interfaces import IModbusDecoder
-from pymodbus.pdu import ExceptionResponse, ModbusPDU
+from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 
-from . import pdu
+from .pdu import REQUEST_PDUS, RESPONSE_PDUS, ModbusPDU
+from .util import friendly_class_name
+
+_logger = logging.getLogger(__package__)
 
 
 class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
@@ -36,13 +38,12 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         """Attempts to find the ModbusPDU handler class that can handle a given function code."""
         if fn_code in self._lookup:
             fn = self._lookup[fn_code]
-            fn_name = str(fn).rsplit(".", maxsplit=1)[-1].rstrip("'>")
-            _logger.info(f"Identified incoming PDU as function {fn_code}/{fn_name}")
+            _logger.info(f"Identified incoming PDU as {fn_code}/{friendly_class_name(fn)}")
             return fn()
         return None
 
     def decode(self, data: bytes) -> ModbusPDU | None:
-        """Create an appropriate populated PDU message object from a valid Modbus message.
+        """Create an appropriately populated PDU message object from a valid Modbus message.
 
         Extracts the `function code` from the raw message and looks up the matching ModbusPDU handler class
         that claims that function. This handler is instantiated and passed the raw message, which then proceeds
@@ -54,7 +55,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         fn_code = data[19]
         if fn_code > 0x80:
             code = fn_code & 0x7F  # strip error portion
-            return ExceptionResponse(code, pdu.ModbusExceptions.IllegalFunction)
+            return ExceptionResponse(code, ModbusExceptions.IllegalFunction)
 
         response = self.lookupPduClass(fn_code)
         if response:
@@ -69,16 +70,10 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
 class GivEnergyRequestDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Request PDU messages. Typically used by servers processing inbound requests."""
 
-    _function_table: list[Callable] = [
-        pdu.ReadHoldingRegistersRequest,
-        pdu.ReadInputRegistersRequest,
-    ]
+    _function_table = REQUEST_PDUS
 
 
 class GivEnergyResponseDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Response PDU messages. Typically used by clients to process responses."""
 
-    _function_table: list[Callable] = [
-        pdu.ReadHoldingRegistersResponse,
-        pdu.ReadInputRegistersResponse,
-    ]
+    _function_table = RESPONSE_PDUS
