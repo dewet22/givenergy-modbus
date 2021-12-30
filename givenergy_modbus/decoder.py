@@ -8,7 +8,7 @@ from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 
 from .pdu import REQUEST_PDUS, RESPONSE_PDUS, ModbusPDU
-from .util import friendly_class_name
+from .util import friendly_class_name, hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -50,7 +50,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         to decode its attributes from the bytestream.
         """
         if len(data) <= 19:
-            _logger.error(f"PDU data is too short to find a valid function id: {len(data)} {data!r}")
+            _logger.error(f"PDU data is too short to find a valid function id: {len(data)} [{hexlify(data)}]")
             return None
         fn_code = data[19]
         if fn_code > 0x80:
@@ -59,7 +59,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
 
         response = self.lookupPduClass(fn_code)
         if response:
-            _logger.debug(f"About to decode data {data!r}")
+            _logger.debug(f"About to decode data [{hexlify(data)}]")
             response.decode(data)
             return response
 

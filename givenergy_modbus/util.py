@@ -1,3 +1,4 @@
+import binascii
 import inspect
 import logging
 from typing import Any
@@ -6,7 +7,7 @@ from loguru import logger
 
 
 class InterceptHandler(logging.Handler):
-    """Install loguru by intercepting built-in logging."""
+    """Install loguru by intercepting logging."""
 
     def emit(self, record):
         """Redirect logging emissions to loguru instead."""
@@ -25,16 +26,6 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-# logging.basicConfig(handlers=[InterceptHandler()], level=0)
-#
-# class FriendlyClassName(type):
-#     def __repr__(self):
-#         return f'repr:{self}'
-#
-#     def __str__(self):
-#         return f'str:()'
-
-
 def friendly_class_name(c: Any):
     """Provides an easy way to only show the class name."""
     if inspect.isclass(c):
@@ -42,8 +33,17 @@ def friendly_class_name(c: Any):
     return friendly_class_name(c.__class__)  # + f'({vars(c)})'
 
 
+def hexlify(val) -> str:
+    """Provides an easy way to print long byte strings as hex strings."""
+    if isinstance(val, int):
+        val = val.to_bytes((val.bit_length() + 8) // 8, 'big')
+    if isinstance(val, bytes):
+        return binascii.hexlify(val, sep=' ', bytes_per_sep=2).decode('ascii')
+    return str(val)
+
+
 def hexxed(val):
     """Provides an easy way to print hex values when you might not always have ints."""
-    if isinstance(val, int):
+    if isinstance(val, (int, bytes)):
         return f'0x{val:04x}'
     return val

@@ -1,5 +1,5 @@
 from givenergy_modbus.pdu import ReadInputRegistersRequest
-from givenergy_modbus.util import friendly_class_name, hexxed
+from givenergy_modbus.util import friendly_class_name, hexlify, hexxed
 
 
 def test_friendly_class_name():
@@ -7,6 +7,15 @@ def test_friendly_class_name():
     assert str(ReadInputRegistersRequest) == "<class 'givenergy_modbus.pdu.ReadInputRegistersRequest'>"
     assert friendly_class_name(ReadInputRegistersRequest) == "ReadInputRegistersRequest"
     assert friendly_class_name(ReadInputRegistersRequest(foo=1, bar=2)) == "ReadInputRegistersRequest"
+
+
+def test_hexlify():
+    """Test our hexlify representations."""
+    assert hexlify(0x0) == '00'
+    assert hexlify(4) == '04'
+    assert hexlify(0x438734873847) == '4387 3487 3847'
+    assert hexlify('asdf') == 'asdf'
+    assert hexlify(0.5) == '0.5'
 
 
 def test_hexxed():
