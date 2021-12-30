@@ -6,9 +6,9 @@ from pymodbus.constants import Defaults
 from pymodbus.interfaces import IModbusDecoder, IModbusFramer
 from pymodbus.transaction import ModbusTransactionManager
 
-from givenergy_modbus.decoder import GivEnergyClientDecoder
-from givenergy_modbus.framer import GivModbusFramer
-from givenergy_modbus.transaction import GivTransactionManager
+from .decoder import GivEnergyClientDecoder
+from .framer import GivModbusFramer
+from .transaction import GivTransactionManager
 
 
 class GivEnergyClient(ModbusTcpClient):

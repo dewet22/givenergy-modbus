@@ -8,7 +8,7 @@ from loguru import logger as _logger
 from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ExceptionResponse, ModbusPDU
 
-import givenergy_modbus.pdu as pdu
+from . import pdu
 
 
 class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
