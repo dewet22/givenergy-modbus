@@ -78,8 +78,7 @@ def test_decode_wiring(mocked_decoder):
 IMPLEMENTED_FUNCTIONS = {3, 4}
 
 
-@pytest.mark.skip('TODO implement response decoder at some point')
-def test_client_decoder():
+def test_response_decoder():
     """Ensure GivEnergyResponseDecoder can produce Response decoders for all known/implemented functions."""
     decoder = GivEnergyResponseDecoder()
     assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS
@@ -88,12 +87,14 @@ def test_client_decoder():
             fn = decoder.lookupPduClass(fn_id)
             assert fn is not None
             assert callable(fn.decode)
-            assert fn.decode(b"10101010101010101010101010101010101010") is None
+            with pytest.raises(ValueError) as e:
+                assert fn.decode(b"10101010101010101010101010101010101010")
+            assert e.value.args[0] == f"Expected function code 0x0{fn_id}, found 0x30 instead."
         else:
-            assert (fn_id, decoder.lookupPduClass(fn_id)) == (fn_id, None)
+            assert decoder.lookupPduClass(fn_id) is None, f'fn_id={fn_id} should not return anything'
 
 
-def test_server_decoder():
+def test_request_decoder():
     """Ensure GivEnergyRequestDecoder can produce Request decoders for all known/implemented functions."""
     decoder = GivEnergyRequestDecoder()
     assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS

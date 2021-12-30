@@ -253,7 +253,7 @@ class ReadHoldingRegistersRequest(ReadHoldingRegistersMeta, ReadRegistersRequest
     """Concrete PDU implementation for handling 3/Read Holding Registers request messages."""
 
     def execute(self, context) -> ModbusResponse:
-        """TODO."""
+        """FIXME if we ever implement a server."""
         raise NotImplementedError()
 
 
@@ -275,7 +275,7 @@ class ReadInputRegistersRequest(ReadInputRegistersMeta, ReadRegistersRequest):
     """Concrete PDU implementation for handling 4/Read Input Registers request messages."""
 
     def execute(self, context) -> ModbusResponse:
-        """TODO."""
+        """FIXME if we ever implement a server."""
         raise NotImplementedError()
 
 
