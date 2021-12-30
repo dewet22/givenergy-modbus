@@ -3,7 +3,7 @@ from unittest.mock import NonCallableMock, call
 
 import pytest
 
-from givenergy_modbus.decoder import GivEnergyDecoder
+from givenergy_modbus.decoder import GivEnergyClientDecoder, GivEnergyDecoder, GivEnergyServerDecoder
 
 
 class TestDecoder(GivEnergyDecoder):
@@ -73,3 +73,35 @@ def test_decode_wiring(decoder):
     assert decoder._pdu5.mock_calls == [call.decode(_msg(b'\x05'))]
     decoder._lookup[5].assert_not_called()  # lookup patched out
     assert ret == decoder._pdu5
+
+
+IMPLEMENTED_FUNCTIONS = {3, 4}
+
+
+@pytest.mark.skip('TODO implement client decoder at some point')
+def test_client_decoder():
+    """Ensure GivEnergyClientDecoder can produce Response decoders for all known/implemented functions."""
+    decoder = GivEnergyClientDecoder()
+    assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS
+    for fn_id in range(250):
+        fn = decoder.lookupPduClass(fn_id)
+        if fn_id in IMPLEMENTED_FUNCTIONS:
+            assert fn is not None
+            assert callable(fn.decode)
+            assert fn.decode(b"10101010101010101010101010101010101010") is None
+        else:
+            assert fn is None
+
+
+def test_server_decoder():
+    """Ensure GivEnergyServerDecoder can produce Request decoders for all known/implemented functions."""
+    decoder = GivEnergyServerDecoder()
+    assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS
+    for fn_id in range(250):
+        fn = decoder.lookupPduClass(fn_id)
+        if fn_id in IMPLEMENTED_FUNCTIONS:
+            assert fn is not None
+            assert callable(fn.decode)
+            assert fn.decode(b"10101010101010101010101010101010101010") is None
+        else:
+            assert fn is None
