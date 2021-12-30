@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
-from typing import Callable
+from typing import Any, Callable
 
 from crccheck.crc import CrcModbus
 from pymodbus import pdu as pymodbus_pdu
@@ -21,16 +21,11 @@ class ModbusPDU(ABC):
     """Base of the PDU handler tree. Defines the most common shared attributes and code."""
 
     builder: BinaryPayloadBuilder
-    init_kwargs = {
-        "transaction": 0x5959,
-        "protocol": 0x0001,
-        "unit": 0x01,
-        "skip_encode": True,
-    }
-    data_adapter_serial_number: str = "AB1234G567"
-    padding: int = 0x00000008  # pretty speculative
-    slave_address: int = 0x32
     function_code: int
+    data_adapter_serial_number: str = 'AB1234G567'
+    padding: int = 0x00000008
+    slave_address: int = 0x32
+    check: int = 0x0000
 
     def __init__(self, **kwargs):
         """Constructor."""
@@ -45,8 +40,19 @@ class ModbusPDU(ABC):
                     self,
                 )
             del kwargs['function_code']
-        kwargs.update(self.init_kwargs)
+        kwargs.update(  # ensure these can never get overwritten
+            {
+                "transaction": 0x5959,
+                "protocol": 0x0001,
+                "unit": 0x01,
+                "skip_encode": True,
+            }
+        )
         super().__init__(**kwargs)
+        self._set_attribute_if_present('data_adapter_serial_number', kwargs)
+        self._set_attribute_if_present('padding', kwargs)
+        self._set_attribute_if_present('slave_address', kwargs)
+        self._set_attribute_if_present('check', kwargs)
 
     def __str__(self):
         """Returns a useful string representation of the PDU and its internal state."""
@@ -59,6 +65,10 @@ class ModbusPDU(ABC):
         if len(filtered_vars) > 0:
             filtered_vars = '{' + filtered_vars + '}'
         return f"{fn_code}/{friendly_class_name(self.__class__)}({filtered_vars})"
+
+    def _set_attribute_if_present(self, attr: str, kwargs: dict[str, Any]):
+        if attr in kwargs:
+            setattr(self, attr, kwargs[attr])
 
     def encode(self) -> bytes:
         """Encode PDU message from instance attributes."""
@@ -74,7 +84,7 @@ class ModbusPDU(ABC):
     def decode(self, data: bytes) -> None:
         """Decode PDU message and populate instance attributes."""
         decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
-        self.data_adapter_serial_number = decoder.decode_string(10)
+        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
         self.padding = decoder.decode_64bit_uint()
         self.slave_address = decoder.decode_8bit_uint()
         function_code = decoder.decode_8bit_uint()
@@ -138,7 +148,8 @@ class ModbusResponse(ModbusPDU, pymodbus_pdu.ModbusResponse, ABC):
 
     def _update_check_code(self):
         # Until we know how Responses are checksummed there's nothing we can do here; self.check stays 0x0000
-        _logger.warning('Unable to calculate checksum, unknown algorithm')
+        _logger.warning('Unable to recalculate checksum, using whatever value was set')
+        self.builder.add_16bit_uint(self.check)
 
     def execute(self, context) -> ModbusPDU:
         """There is no automatic Reply following the processing of a Response."""
@@ -167,6 +178,7 @@ class ReadRegistersRequest(ModbusRequest, ABC):
     def _decode_function_data(self, decoder):
         self.base_register = decoder.decode_16bit_uint()
         self.register_count = decoder.decode_16bit_uint()
+        self.check = decoder.decode_16bit_uint()
 
     def _update_check_code(self):
         crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
@@ -174,6 +186,7 @@ class ReadRegistersRequest(ModbusRequest, ABC):
         crc_builder.add_16bit_uint(self.base_register)
         crc_builder.add_16bit_uint(self.register_count)
         self.check = CrcModbus().process(crc_builder.to_string()).final()
+        self.builder.add_16bit_uint(self.check)
 
     def _calculate_function_data_size(self):
         size = 16 + (self.register_count * 2)
@@ -193,26 +206,40 @@ class ReadRegistersResponse(ModbusResponse, ABC):
             register_count: Number of read registers being returned
             registers: Zero-indexed collection of register values.
                 Add `register_count` to the index to calculate the actual register id.
-            check: Checksum (unknown algorithm)
+            # check: Checksum (unknown algorithm)
         """
         super().__init__(**kwargs)
         self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
         self.base_register: int = kwargs.get('base_register', 0x0000)
         self.register_count: int = kwargs.get('register_count', 0x0000)
-        self.registers: list[int] = kwargs.get('registers', [])
-        self.check: int = kwargs.get('check', 0x0000)
+        self.register_values: list[int] = kwargs.get('register_values', [])
+        if self.register_count != len(self.register_values):
+            raise ValueError(
+                f'Expected to receive {self.register_count} register values, '
+                f'instead received {len(self.register_values)}.',
+                self,
+            )
+        # self.check: int = kwargs.get('check', 0x0000)
 
     def _encode_function_data(self):
-        raise NotImplementedError()
+        self.builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
+        self.builder.add_16bit_uint(self.base_register)
+        self.builder.add_16bit_uint(self.register_count)
+        [self.builder.add_16bit_uint(v) for v in self.register_values]
 
     def _decode_function_data(self, decoder):
         """Decode response PDU message and populate instance attributes."""
-        self.inverter_serial_number = decoder.decode_string(10)
+        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
         self.base_register = decoder.decode_16bit_uint()
         self.register_count = decoder.decode_16bit_uint()
-        self.registers = {}
-        for i in range(self.register_count):
-            self.registers[i + self.base_register] = decoder.decode_16bit_uint()
+        self.register_values = [decoder.decode_16bit_uint() for i in range(self.register_count)]
+        if self.register_count != len(self.register_values):
+            raise ValueError(
+                f'Expected to receive {self.register_count} register values, '
+                f'instead received {len(self.register_values)}.',
+                self,
+            )
+        self.check = decoder.decode_16bit_uint()
 
 
 #################################################################################
@@ -232,9 +259,6 @@ class ReadHoldingRegistersRequest(ReadHoldingRegistersMeta, ReadRegistersRequest
 
 class ReadHoldingRegistersResponse(ReadHoldingRegistersMeta, ReadRegistersResponse):
     """Concrete PDU implementation for handling 3/Read Holding Registers request messages."""
-
-    def _encode_function_data(self):
-        raise NotImplementedError()
 
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
@@ -258,15 +282,12 @@ class ReadInputRegistersRequest(ReadInputRegistersMeta, ReadRegistersRequest):
 class ReadInputRegistersResponse(ReadInputRegistersMeta, ReadRegistersResponse):
     """Concrete PDU implementation for handling 4/Read Input Registers response messages."""
 
-    def _encode_function_data(self):
-        raise NotImplementedError()
-
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
 
 
 #################################################################################
-# Authoritative catalogue of Request/Response PDUs the Decover factories will consider.
+# Authoritative catalogue of Request/Response PDUs the Decoder factories will consider.
 REQUEST_PDUS: list[Callable] = [
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,

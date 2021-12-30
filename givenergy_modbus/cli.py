@@ -5,7 +5,7 @@ import logging
 import click
 
 from .client import GivEnergyClient
-from .pdu import ReadInputRegistersRequest
+from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 from .util import InterceptHandler
 
 _logger = logging.getLogger(__package__)
@@ -24,13 +24,18 @@ def main():
     )
 
     with GivEnergyClient(host="192.168.0.241") as client:
-        _logger.info(f"client {client}: {vars(client)}")
-        _logger.info(f"framer {client.framer}: {vars(client.framer)}")
+        # _logger.info(f"client {client}: {vars(client)}")
+        # _logger.info(f"framer {client.framer}: {vars(client.framer)}")
+
         request = ReadInputRegistersRequest(base_register=0x0, register_count=60)
         _logger.info(f"request: {request}")
         result = client.execute(request)
         _logger.info(f"result: {result}")
-        # print(result.values)
+
+        request = ReadHoldingRegistersRequest(base_register=0x0, register_count=60)
+        _logger.info(f"request: {request}")
+        result = client.execute(request)
+        _logger.info(f"result: {result}")
 
 
 if __name__ == "__main__":

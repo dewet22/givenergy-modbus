@@ -103,7 +103,6 @@ class GivModbusFramer(ModbusFramer):
     """
 
     FRAME_HEAD = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
-    FRAME_TAIL = ">H"  # crc(w)
 
     def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient = None):
         """Constructor.
@@ -138,13 +137,13 @@ class GivModbusFramer(ModbusFramer):
             header = dict(tid=tid, pid=pid, len=len_, uid=uid, fid=fid)
             _logger.debug(f"extracted MBAP header: { dict((k, hex(v)) for k,v in header.items()) }")
             if tid != 0x5959:
-                _logger.warning(f"Unexpected Transaction ID {tid} - GivEnergy systems should be using 0x5959")
+                _logger.error(f"Unexpected Transaction ID 0x{tid:04x} != 0x5959; expect frame to be corrupted")
             if pid != 0x1:
-                _logger.warning(f"Unexpected Protocol ID {pid} - GivEnergy systems should be using 0x0001")
+                _logger.error(f"Unexpected Protocol ID 0x{pid:04x} != 0x0001; expect frame to be corrupted")
             if uid != 0x1:
-                _logger.warning(f"Unexpected Unit ID {uid} - GivEnergy systems should be using 0x01")
+                _logger.error(f"Unexpected Unit ID 0x{uid:04x} != 0x01; expect frame to be corrupted")
             if fid != 0x2:
-                _logger.warning(f"Unexpected Function ID {fid} - GivEnergy systems should be using 0x02")
+                _logger.error(f"Unexpected Function ID 0x{fid:04x} != 0x02; expect frame to be corrupted")
             return header
         return dict()
 
@@ -184,20 +183,15 @@ class GivModbusFramer(ModbusFramer):
         return len(self._buffer) >= self._hsize
 
     def getFrame(self):
-        """Extract the frontmost PDU frame from the buffer, separating the encapsulating head and tail."""
-        extracted_length = self._hsize + self._header["len"] - 4
-        return (
-            self._buffer[: self._hsize],  # head
-            self._buffer[self._hsize : extracted_length],  # PDU frame
-            self._buffer[extracted_length : extracted_length + 2],  # tail
-        )
+        """Extract the next PDU frame from the buffer, discarding the leading MBAP header."""
+        extracted_length = self._hsize + self._header["len"] - 2
+        return self._buffer[self._hsize : extracted_length]
 
     def populateResult(self, result: ModbusPDU):
         """Populates the Modbus PDU object's metadata attributes from the decoded MBAP headers."""
         result.transaction_id = self._header["tid"]
         result.protocol_id = self._header["pid"]
         result.unit_id = self._header["uid"]
-        result.check = self._check
 
     def processIncomingPacket(
         self, data: bytes, callback: Callable, unit: Container[int] | int, single: bool | None = False, **kwargs
@@ -259,7 +253,7 @@ class GivModbusFramer(ModbusFramer):
             if result.function_code < 0x80:
                 raise InvalidMessageReceivedException(result)
         else:
-            _, data, self._check = self.getFrame()
+            data = self.getFrame()
             result = self.decoder.decode(data)
             if result is None:
                 raise ModbusIOException("Unable to decode request")
@@ -278,21 +272,15 @@ class GivModbusFramer(ModbusFramer):
         return self._buffer
 
     def buildPacket(self, message: ModbusPDU) -> bytes:
-        """Creates a finalised GivEnergy Modbus packet ready to go on the wire.
-
-        :param message: The populated Modbus PDU to send
-        """
+        """Creates a finalised GivEnergy Modbus packet ready to go on the wire."""
         data = message.encode()
-        return (
-            struct.pack(
-                self.FRAME_HEAD,
-                0x5959,  # hardcode instead of message.transaction_id because the transaction manager is dumb
-                # message.transaction_id,
-                message.protocol_id,
-                len(data) + 4,  # 2 bytes each for frame head (uid+fid) + tail (crc)
-                message.unit_id,
-                0x02,
-            )
-            + data
-            + struct.pack(self.FRAME_TAIL, message.check)  # append CRC
+        mbap_header = struct.pack(
+            self.FRAME_HEAD,
+            0x5959,  # hardcode instead of message.transaction_id because the transaction manager is dumb
+            # message.transaction_id,
+            message.protocol_id,
+            len(data) + 2,  # 2 bytes each for frame head (uid+fid)
+            message.unit_id,
+            0x02,
         )
+        return mbap_header + data

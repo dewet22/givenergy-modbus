@@ -2,9 +2,9 @@ from typing import Any
 
 import pytest
 
-from givenergy_modbus.pdu import ModbusRequest, ReadHoldingRegistersRequest, ReadRegistersRequest
+from givenergy_modbus.pdu import ModbusRequest, ReadHoldingRegistersRequest, ReadRegistersRequest, ReadRegistersResponse
 
-from . import REQUEST_PDU_MESSAGES, _lookup_pdu_class
+from . import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 
 def test_str():
@@ -46,18 +46,18 @@ def test_cannot_change_function_code():
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes]):
     """Ensure we correctly encode unencapsulated Request messages."""
-    pdu_fn, pdu_fn_kwargs, encoded_pdu, _, _ = data
+    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu = data
 
     pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
     assert pdu.encode() == encoded_pdu
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes]):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
-    pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu = data
 
     pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)()
     pdu.decode(encoded_pdu)
@@ -65,6 +65,31 @@ def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes, byt
         i = 0
         for (arg, val) in pdu_fn_kwargs.items():
             i += 1
-            assert getattr(pdu, arg) == val
+            assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
+        assert i == len(pdu_fn_kwargs.keys())
+        assert i > 0
+
+
+@pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
+def test_response_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+    """Ensure we correctly encode unencapsulated Response messages."""
+    pdu_fn, pdu_fn_kwargs, _, encoded_pdu = data
+
+    pdu: ReadRegistersResponse = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
+    assert pdu.encode() == encoded_pdu
+
+
+@pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
+def test_response_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+    """Ensure we correctly decode Response messages to their unencapsulated PDU."""
+    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
+
+    pdu: ReadRegistersResponse = _lookup_pdu_class(pdu_fn)()
+    pdu.decode(encoded_pdu)
+    if pdu_fn_kwargs:
+        i = 0
+        for (arg, val) in pdu_fn_kwargs.items():
+            i += 1
+            assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
         assert i == len(pdu_fn_kwargs.keys())
         assert i > 0

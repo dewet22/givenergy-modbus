@@ -146,22 +146,22 @@ def test_check_frame(requests_framer, data: tuple[bytes, bool, dict[str, int], b
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_client_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+def test_client_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
     """Ensure Request PDU messages can be encoded to the correct wire format."""
-    pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     pdu = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
     packet = requests_framer.buildPacket(pdu)
-    assert packet == packet_head + encoded_pdu + packet_tail
+    assert packet == mbap_header + encoded_pdu
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_client_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+def test_client_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
     """Ensure Request PDU messages can be decoded from raw messages."""
-    pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     callback = MagicMock(return_value=None)
-    requests_framer.processIncomingPacket(packet_head + encoded_pdu + packet_tail, callback, 1)
+    requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback, 1)
     callback.assert_called_once()
     fn_kwargs = vars(callback.mock_calls[0].args[0])
     for (key, val) in pdu_fn_kwargs.items():
@@ -170,8 +170,8 @@ def test_client_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], 
     assert fn_kwargs["protocol_id"] == 0x1
     assert fn_kwargs["unit_id"] == 0x1
     assert fn_kwargs["skip_encode"]
-    assert fn_kwargs["check"] == packet_tail
-    assert fn_kwargs["data_adapter_serial_number"] == b"AB1234G567"
+    assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
+    assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
     assert fn_kwargs["slave_address"] == 0x32
 
 
