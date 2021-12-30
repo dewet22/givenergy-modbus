@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from pymodbus.client.sync import BaseModbusClient, ModbusTcpClient
+from pymodbus.client.sync import ModbusTcpClient
 from pymodbus.constants import Defaults
-from pymodbus.interfaces import IModbusDecoder, IModbusFramer
-from pymodbus.transaction import ModbusTransactionManager
 
 from .decoder import GivEnergyClientDecoder
 from .framer import GivModbusFramer
@@ -24,9 +22,9 @@ class GivEnergyClient(ModbusTcpClient):
         port: int = 8899,
         source_address: tuple[str, int] = ("", 0),
         timeout: int = Defaults.Timeout,
-        framer: IModbusFramer = GivModbusFramer,
-        decoder: IModbusDecoder = GivEnergyClientDecoder,
-        transaction_manager: ModbusTransactionManager = GivTransactionManager,
+        framer=GivModbusFramer,
+        decoder=GivEnergyClientDecoder,
+        transaction_manager=GivTransactionManager,
         **kwargs,
     ):
         """Constructor.
@@ -48,7 +46,7 @@ class GivEnergyClient(ModbusTcpClient):
         self.source_address = source_address
         self.socket = None
         self.timeout = timeout
-        # hacky patches to work around hard-coding of class names inside pymodbus
-        ModbusTcpClient.ClientDecoder = decoder
-        BaseModbusClient.DictTransactionManager = transaction_manager
         super().__init__(host=host, port=port, framer=framer, **kwargs)
+        # FIXME hacky patching to work around hard-coding of class names deep inside pymodbus
+        self.framer = framer(decoder(), client=self)
+        self.transaction = transaction_manager(client=self, **kwargs)

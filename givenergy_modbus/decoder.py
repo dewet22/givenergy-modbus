@@ -49,7 +49,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         to decode its attributes from the bytestream.
         """
         if len(data) <= 19:
-            _logger.error(f"PDU data is too short to find a valid function id: {len(data)} {data.decode('ascii')}")
+            _logger.error(f"PDU data is too short to find a valid function id: {len(data)} {data!r}")
             return None
         fn_code = data[19]
         if fn_code > 0x80:
@@ -58,7 +58,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
 
         response = self.lookupPduClass(fn_code)
         if response:
-            _logger.debug(f"About to decode data {data.decode('ascii')}")
+            _logger.debug(f"About to decode data {data!r}")
             response.decode(data)
             return response
 

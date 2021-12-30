@@ -134,9 +134,7 @@ class GivModbusFramer(ModbusFramer):
               * `fid`: Function ID (should always be `0x0002` for GivEnergy systems)
         """
         if self.isFrameReady():
-            _logger.debug(
-                f"extracting header using {self.FRAME_HEAD} from {self._buffer[:self._hsize].decode('ascii')}"
-            )
+            _logger.debug(f"extracting header using {self.FRAME_HEAD} from {self._buffer[:self._hsize]!r}")
             tid, pid, len_, uid, fid = struct.unpack(self.FRAME_HEAD, self._buffer[: self._hsize])
             header = dict(tid=tid, pid=pid, len=len_, uid=uid, fid=fid)
             _logger.debug(f"extracted MBAP header: { dict((k, hex(v)) for k,v in header.items()) }")
