@@ -1,11 +1,13 @@
 """Tests for GivModbusFramer."""
-
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from givenergy_modbus.decoder import GivEnergyClientDecoder
+from givenergy_modbus.decoder import GivEnergyRequestDecoder, GivEnergyResponseDecoder
 from givenergy_modbus.framer import GivModbusFramer
+
+from . import REQUEST_PDU_MESSAGES, lookup_class
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
     b"\x59\x59\x00\x01\x00\x1c\x01\x02"  # 7-byte MBAP header + function code
@@ -47,6 +49,18 @@ def test_framer_constructor():
     assert framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
     assert framer._hsize == 0x08
     client_decoder.assert_not_called()
+
+
+@pytest.fixture
+def requests_framer():
+    """Yield a real framer for processing Request messages."""
+    yield GivModbusFramer(GivEnergyRequestDecoder())
+
+
+@pytest.fixture
+def responses_framer():
+    """Yield a real framer for processing Response messages."""
+    yield GivModbusFramer(GivEnergyResponseDecoder())
 
 
 @pytest.mark.parametrize(
@@ -109,21 +123,79 @@ def test_framer_constructor():
         ),
     ],
 )
-def test_check_frame(data: tuple[bytes, bool, dict[str, int], bytes]):
+def test_check_frame(requests_framer, data: tuple[bytes, bool, dict[str, int], bytes]):
     """Validate the internal state of the framer as data gets processed."""
-    framer = GivModbusFramer(GivEnergyClientDecoder())
     input_buffer, is_valid_frame, expected_header, expected_remaining_buffer = data
 
-    assert framer.isFrameReady() is False
-    assert framer.checkFrame() is False
-    assert framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
+    assert requests_framer.isFrameReady() is False
+    assert requests_framer.checkFrame() is False
+    assert requests_framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
 
-    framer.addToFrame(input_buffer)
+    requests_framer.addToFrame(input_buffer)
 
-    assert framer.checkFrame() == is_valid_frame
-    assert framer._header == expected_header
+    assert requests_framer.checkFrame() == is_valid_frame
+    assert requests_framer._header == expected_header
 
     if is_valid_frame:
-        framer.advanceFrame()
+        requests_framer.advanceFrame()
 
-    assert expected_remaining_buffer == framer._buffer
+    assert expected_remaining_buffer == requests_framer._buffer
+
+
+@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
+def test_client_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+    """Ensure Request PDU messages can be encoded to the correct wire format."""
+    pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+
+    pdu = lookup_class(pdu_fn)(**pdu_fn_kwargs)
+    packet = requests_framer.buildPacket(pdu)
+    assert packet == packet_head + encoded_pdu + packet_tail
+
+
+@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
+def test_client_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+    """Ensure Request PDU messages can be decoded from raw messages."""
+    pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+
+    callback = MagicMock(return_value=None)
+    requests_framer.processIncomingPacket(packet_head + encoded_pdu + packet_tail, callback, 1)
+    callback.assert_called_once()
+    fn_kwargs = vars(callback.mock_calls[0].args[0])
+    for (key, val) in pdu_fn_kwargs.items():
+        assert fn_kwargs[key] == val
+    assert fn_kwargs["transaction_id"] == 0x5959
+    assert fn_kwargs["protocol_id"] == 0x1
+    assert fn_kwargs["unit_id"] == 0x1
+    assert fn_kwargs["skip_encode"]
+    assert fn_kwargs["check"] == packet_tail
+    assert fn_kwargs["data_adapter_serial_number"] == b"AB1234G567"
+    assert fn_kwargs["slave_address"] == 0x32
+
+
+# TODO fix when Response decoders implemented
+# @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
+# def test_client_wire_encoding(responses_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+#     pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+#
+#     pdu = lookup_class(pdu_fn)(**pdu_fn_kwargs)
+#     packet = requests_framer.buildPacket(pdu)
+#     assert packet == packet_head + encoded_pdu + packet_tail
+#
+#
+# @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
+# def test_client_wire_decoding(responses_framer, data: tuple[str, dict[str, Any], bytes, bytes, bytes]):
+#     pdu_fn, pdu_fn_kwargs, encoded_pdu, packet_head, packet_tail = data
+#
+#     callback = MagicMock(return_value=None)
+#     requests_framer.processIncomingPacket(packet_head + encoded_pdu + packet_tail, callback, 1)
+#     callback.assert_called_once()
+#     fn_kwargs = vars(callback.mock_calls[0].args[0])
+#     for (key, val) in pdu_fn_kwargs.items():
+#         assert fn_kwargs[key] == val
+#     assert fn_kwargs["transaction_id"] == 0x5959
+#     assert fn_kwargs["protocol_id"] == 0x1
+#     assert fn_kwargs["unit_id"] == 0x1
+#     assert fn_kwargs["skip_encode"] == True
+#     assert fn_kwargs["check"] == packet_tail
+#     assert fn_kwargs["data_adapter_serial_number"] == b"AB1234G567"
+#     assert fn_kwargs["slave_address"] == 0x32

@@ -3,7 +3,7 @@ from unittest.mock import NonCallableMock, call
 
 import pytest
 
-from givenergy_modbus.decoder import GivEnergyClientDecoder, GivEnergyDecoder, GivEnergyServerDecoder
+from givenergy_modbus.decoder import GivEnergyDecoder, GivEnergyRequestDecoder, GivEnergyResponseDecoder
 
 
 class TestDecoder(GivEnergyDecoder):
@@ -20,7 +20,7 @@ class TestDecoder(GivEnergyDecoder):
 
 
 @pytest.fixture
-def decoder():
+def mocked_decoder():
     """Generate a safely-mocked decoder consistently."""
     yield TestDecoder()
     TestDecoder._pdu5.reset_mock()
@@ -29,11 +29,11 @@ def decoder():
     TestDecoder._function_table[1].reset_mock()
 
 
-def test_lookup_pdu_class(decoder):
+def test_lookup_pdu_class(mocked_decoder):
     """Ensure the class lookup can translate function codes to handler classes."""
-    assert set(decoder._lookup.keys()) == {5, 9}
-    assert decoder.lookupPduClass(3) is None
-    assert decoder.lookupPduClass(9) is TestDecoder._pdu9
+    assert set(mocked_decoder._lookup.keys()) == {5, 9}
+    assert mocked_decoder.lookupPduClass(3) is None
+    assert mocked_decoder.lookupPduClass(9) is TestDecoder._pdu9
 
 
 def _msg(fn: bytes) -> bytes:
@@ -52,36 +52,36 @@ def test_msg():
     )
 
 
-def test_decode(decoder):
+def test_decode(mocked_decoder):
     """Ensure the decoder works for claimed function codes, and not for unclaimed ones."""
-    assert decoder.decode(_msg(b'\x05')) is not None
-    assert decoder.decode(_msg(b'\x07')) is None
-    assert decoder.decode(_msg(b'\x09')) is not None
+    assert mocked_decoder.decode(_msg(b'\x05')) is not None
+    assert mocked_decoder.decode(_msg(b'\x07')) is None
+    assert mocked_decoder.decode(_msg(b'\x09')) is not None
 
 
-def test_decode_wiring(decoder):
+def test_decode_wiring(mocked_decoder):
     """Ensure the dynamic coding of the Decoder factory is intact."""
     # patch the decoder to bypass the lookup function
-    decoder.lookupPduClass = Mock(return_value=decoder._pdu5)
+    mocked_decoder.lookupPduClass = Mock(return_value=mocked_decoder._pdu5)
 
     # ensure the decoder returns the actual instance
-    ret = decoder.decode(_msg(b'\x05'))
+    ret = mocked_decoder.decode(_msg(b'\x05'))
 
     # verify wiring
-    assert ret is decoder._pdu5
-    decoder.lookupPduClass.assert_called_once_with(5)
-    assert decoder._pdu5.mock_calls == [call.decode(_msg(b'\x05'))]
-    decoder._lookup[5].assert_not_called()  # lookup patched out
-    assert ret == decoder._pdu5
+    assert ret is mocked_decoder._pdu5
+    mocked_decoder.lookupPduClass.assert_called_once_with(5)
+    assert mocked_decoder._pdu5.mock_calls == [call.decode(_msg(b'\x05'))]
+    mocked_decoder._lookup[5].assert_not_called()  # lookup patched out
+    assert ret == mocked_decoder._pdu5
 
 
 IMPLEMENTED_FUNCTIONS = {3, 4}
 
 
-@pytest.mark.skip('TODO implement client decoder at some point')
+@pytest.mark.skip('TODO implement response decoder at some point')
 def test_client_decoder():
-    """Ensure GivEnergyClientDecoder can produce Response decoders for all known/implemented functions."""
-    decoder = GivEnergyClientDecoder()
+    """Ensure GivEnergyResponseDecoder can produce Response decoders for all known/implemented functions."""
+    decoder = GivEnergyResponseDecoder()
     assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS
     for fn_id in range(250):
         fn = decoder.lookupPduClass(fn_id)
@@ -94,8 +94,8 @@ def test_client_decoder():
 
 
 def test_server_decoder():
-    """Ensure GivEnergyServerDecoder can produce Request decoders for all known/implemented functions."""
-    decoder = GivEnergyServerDecoder()
+    """Ensure GivEnergyRequestDecoder can produce Request decoders for all known/implemented functions."""
+    decoder = GivEnergyRequestDecoder()
     assert set(decoder._lookup.keys()) == IMPLEMENTED_FUNCTIONS
     for fn_id in range(250):
         fn = decoder.lookupPduClass(fn_id)

@@ -66,7 +66,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         return None
 
 
-class GivEnergyServerDecoder(GivEnergyDecoder):
+class GivEnergyRequestDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Request PDU messages. Typically used by servers processing inbound requests."""
 
     _function_table: list[Callable] = [
@@ -75,7 +75,7 @@ class GivEnergyServerDecoder(GivEnergyDecoder):
     ]
 
 
-class GivEnergyClientDecoder(GivEnergyDecoder):
+class GivEnergyResponseDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Response PDU messages. Typically used by clients to process responses."""
 
     _function_table: list[Callable] = [

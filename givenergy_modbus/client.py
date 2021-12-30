@@ -4,7 +4,7 @@ from __future__ import annotations
 from pymodbus.client.sync import ModbusTcpClient
 from pymodbus.constants import Defaults
 
-from .decoder import GivEnergyClientDecoder
+from .decoder import GivEnergyResponseDecoder
 from .framer import GivModbusFramer
 from .transaction import GivTransactionManager
 
@@ -23,7 +23,7 @@ class GivEnergyClient(ModbusTcpClient):
         source_address: tuple[str, int] = ("", 0),
         timeout: int = Defaults.Timeout,
         framer=GivModbusFramer,
-        decoder=GivEnergyClientDecoder,
+        decoder=GivEnergyResponseDecoder,
         transaction_manager=GivTransactionManager,
         **kwargs,
     ):
