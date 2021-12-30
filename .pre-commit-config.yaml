@@ -1,19 +1,17 @@
 repos:
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.1.9
+    rev: v1.1.10
     hooks:
       - id: forbid-crlf
       - id: remove-crlf
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.1.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-merge-conflict
       - id: check-yaml
         args: [ --unsafe ]
-      - id: check-executables-have-shebangs
-        stages: [manual]
       - id: check-json
   -   repo: https://github.com/pre-commit/mirrors-autopep8
       rev: v1.5.7
@@ -25,7 +23,7 @@ repos:
       - id: isort
         args: [ "--filter-files" ]
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.29.1
+    rev: v2.30.0
     hooks:
       - id: pyupgrade
         args: [--py39-plus]
@@ -33,13 +31,12 @@ repos:
     rev: v2.1.0
     hooks:
       - id: codespell
-        args:
-          # - --ignore-words-list=hass,alot,datas,dof,dur,farenheit,hist,iff,ines,ist,lightsensor,mut,nd,pres,referer,ser,serie,te,technik,ue,uint,visability,wan,wanna,withing
-          # - --skip="./.*,*.csv,*.json"
-          - --quiet-level=2
-        # exclude_types: [csv, json]
+#        args:
+#          # - --skip="./.*,*.csv,*.json"
+#          - --quiet-level=2
+#        # exclude_types: [csv, json]
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.0
+    rev: 1.7.1
     hooks:
       - id: bandit
         args:
