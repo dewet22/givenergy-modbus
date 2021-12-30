@@ -10,13 +10,13 @@ class TestDecoder(GivEnergyDecoder):
     """Dummy factory implementation for testing factory correctness."""
 
     __test__ = False  # squelch PytestCollectionWarning
-    _pdu5 = NonCallableMock(name='pdu5', **{'method.decode': None})
-    _pdu9 = NonCallableMock(name='pdu9', **{'method.decode': None})
+    _pdu5 = NonCallableMock(name='pdu5', **{'method.decode': None})  # type: ignore
+    _pdu9 = NonCallableMock(name='pdu9', **{'method.decode': None})  # type: ignore
     _function_table = [
         Mock(function_code=5, return_value=_pdu5),
         Mock(function_code=9, return_value=_pdu9),
     ]
-    _lookup: dict[int, Mock]
+    _lookup: dict[int, Mock]  # type: ignore
 
 
 @pytest.fixture
