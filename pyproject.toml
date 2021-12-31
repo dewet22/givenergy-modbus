@@ -46,6 +46,7 @@ bump2version = {version = "^1.0.1", optional = true}
 pymodbus = "^2.5.3"
 loguru = "^0.5.3"
 crccheck = "^1.1"
+pydantic = "^1.8.2"
 
 [tool.poetry.extras]
 test = [

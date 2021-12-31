@@ -5,6 +5,8 @@ from pymodbus.client.sync import ModbusTcpClient
 
 from .decoder import GivEnergyResponseDecoder
 from .framer import GivModbusFramer
+
+# from .pdu import ModbusPDU
 from .transaction import GivTransactionManager
 
 
@@ -23,3 +25,7 @@ class GivEnergyClient(ModbusTcpClient):
         super().__init__(**kwargs)
         self.framer = GivModbusFramer(GivEnergyResponseDecoder(), client=self)
         self.transaction = GivTransactionManager(client=self, **kwargs)
+
+    # def execute(self, request: ModbusPDU = None) -> ModbusPDU:
+    #     """This exists purely for type annotations."""
+    #     return super().execute(request)

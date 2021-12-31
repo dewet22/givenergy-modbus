@@ -24,23 +24,11 @@ def main():
     )
 
     with GivEnergyClient(host="192.168.0.241") as client:
-        # _logger.info(f"client {client}: {vars(client)}")
-        # _logger.info(f"framer {client.framer}: {vars(client.framer)}")
+        ir = client.execute(ReadInputRegistersRequest(base_register=0x0, register_count=60)).register_values
+        hr1 = client.execute(ReadHoldingRegistersRequest(base_register=0x0, register_count=60)).register_values
+        hr2 = client.execute(ReadHoldingRegistersRequest(base_register=60, register_count=60)).register_values
 
-        request = ReadInputRegistersRequest(base_register=0x0, register_count=10)
-        _logger.info(f"request: {request}")
-        result = client.execute(request)
-        _logger.info(f"result: {result}")
-
-        request = ReadInputRegistersRequest(base_register=0x0, register_count=120)
-        _logger.info(f"request: {request}")
-        result = client.execute(request)
-        _logger.info(f"result: {result}")
-
-        request = ReadHoldingRegistersRequest(base_register=0x0, register_count=120)
-        _logger.info(f"request: {request}")
-        result = client.execute(request)
-        _logger.info(f"result: {result}")
+    _logger.info({1: ir, 2: hr1, 3: hr2})
 
 
 if __name__ == "__main__":

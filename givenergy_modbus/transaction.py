@@ -61,10 +61,11 @@ class GivTransactionManager(FifoTransactionManager):
             return False
         return True
 
-    def execute(self, request):
+    def execute(self, request: ModbusPDU) -> ModbusPDU:
         """Main processing loop."""
         res = super().execute(request)
         _logger.info(f'Old implementation returned: execute(request)={res}')
+        return res
 
     def _transact(
         self, request: ModbusPDU, expected_response_length: int, full=False, broadcast=False
