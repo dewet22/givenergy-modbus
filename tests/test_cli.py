@@ -1,8 +1,10 @@
+import pytest
 from click.testing import CliRunner
 
 from givenergy_modbus import cli
 
 
+@pytest.mark.skip()
 def test_command_line_interface():
     """Test the CLI."""
     runner = CliRunner()

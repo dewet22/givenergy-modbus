@@ -47,7 +47,7 @@ def test_framer_constructor():
     assert framer.client is None
     assert framer._buffer == b""
     assert framer.decoder == client_decoder
-    assert framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
+    assert framer._length == 0
     assert framer._hsize == 0x08
     client_decoder.assert_not_called()
 
@@ -67,80 +67,102 @@ def responses_framer():
 
 
 @pytest.mark.parametrize(
-    "data",  # [(input_buffer, is_valid_frame, expected_header, expected_remaining_buffer), (..), ..]
-    [  # list[tuple[bytes, bool, dict[str, int], bytes]]
+    "data",  # [(input_buffer, complete, header_valid, expected_length, expected_remaining_buffer), (..), ..]
+    [  # list[tuple[bytes, bool, int, bytes]]
         (  # data0 - no data
             b"",
             False,
-            {"tid": 0x0, "pid": 0x0, "len": 0x0, "uid": 0x0, "fid": 0x0},
+            True,
+            0,
             b"",
         ),
         (  # data1 - incomplete frame, length=0xcc but not enough data follows
             b"\x02\x01\x01\x00Q\xcc",
             False,
-            {"tid": 0x0, "pid": 0x0, "len": 0x0, "uid": 0x0, "fid": 0x0},
+            True,
+            0,
             b"\x02\x01\x01\x00Q\xcc",
         ),
         (  # data2 - incomplete frame, length=0x9e but not enough data follows
             b"\x59\x59\x00\x01\x00\x9e\x01",
             False,
-            {"tid": 0x0, "pid": 0x0, "len": 0x0, "uid": 0x0, "fid": 0x0},
+            True,
+            0,
             b"\x59\x59\x00\x01\x00\x9e\x01",
         ),
         (  # data3 - invalid frame, length=1 is considered an error and frame will
             # be discarded silently when checkFrame() called
+            b"\x59\x59\x00\x01\x00\x01\x01\x02",
+            False,
+            True,
+            0,
+            b"\x02",
+        ),
+        (  # data4 - invalid frame, wrong fid is considered corruption and buffer will be reset
             b"\x59\x59\x00\x01\x00\x01\x01\xff",
             False,
-            {"tid": 0x0, "pid": 0x0, "len": 0x0, "uid": 0x0, "fid": 0x0},
-            b"\xff",
-        ),
-        (  # data4 - valid frame, length=5 with trailing buffer contents
-            b"YYYY\00\x05YYYYYAB",
-            True,
-            {"tid": 0x5959, "pid": 0x5959, "len": 0x0005, "uid": 0x59, "fid": 0x59},
-            b"AB",
-        ),
-        (  # data5 - valid frame, length=2 with trailing buffer contents
-            b"\x59\x59\x00\x01\x00\x02\x01\xff\xff\x01\x02\x03",
-            True,
-            {"tid": 0x5959, "pid": 0x0001, "len": 0x0002, "uid": 0x01, "fid": 0xFF},
-            b"\xff\x01\x02\x03",
-        ),
-        (  # data6 - valid frame
-            b"\x00\x01\x12\x34\x00\x04\xff\x02\x12\x34",
-            True,
-            {"tid": 0x0001, "pid": 0x1234, "len": 0x0004, "uid": 0xFF, "fid": 0x02},
+            False,
+            0,
             b"",
         ),
-        (  # data7 - VALID_REQUEST_FRAME with trailing data
+        (  # data5 - valid frame, length=5 with trailing buffer contents. invalid MBAP will reset the buffer
+            b"YYYY\00\x05YYYYYAB",
+            True,
+            False,
+            5,
+            b"",
+        ),
+        (  # data6 - valid frame, length=2 with trailing buffer contents
+            b"\x59\x59\x00\x01\x00\x02\x01\x02\xff\x01\x02\x03",
+            True,
+            True,
+            2,
+            b"\xff\x01\x02\x03",
+        ),
+        (  # data7 - invalid MBAP
+            b"\x00\x01\x12\x34\x00\x04\xff\x02\x12\x34",
+            True,
+            False,
+            4,
+            b"",
+        ),
+        (  # data8 - VALID_REQUEST_FRAME with trailing data
             VALID_REQUEST_FRAME + b"\xde\xad\xbe\xef",
             True,
-            {"tid": 0x5959, "pid": 0x0001, "len": 0x001C, "uid": 0x01, "fid": 0x02},
+            True,
+            28,
             b"\xde\xad\xbe\xef",
         ),
-        (  # data8 - VALID_RESPONSE_FRAME with trailing data
+        (  # data9 - VALID_RESPONSE_FRAME with trailing data
             VALID_RESPONSE_FRAME + b"\x01\x02\x03",
             True,
-            {"tid": 0x5959, "pid": 0x0001, "len": 0x0032, "uid": 0x01, "fid": 0x02},
+            True,
+            50,
             b"\x01\x02\x03",
         ),
     ],
 )
-def test_check_frame(requests_framer, data: tuple[bytes, bool, dict[str, int], bytes]):
+def test_check_frame(requests_framer, data: tuple[bytes, bool, bool, dict[str, int], bytes]):
     """Validate the internal state of the framer as data gets processed."""
-    input_buffer, is_valid_frame, expected_header, expected_remaining_buffer = data
+    input_buffer, is_complete_frame, is_valid_frame, expected_length, expected_remaining_buffer = data
 
     assert requests_framer.isFrameReady() is False
     assert requests_framer.checkFrame() is False
-    assert requests_framer._header == {"pid": 0, "tid": 0, "len": 0, "uid": 0, "fid": 0}
+    assert requests_framer._length == 0
 
     requests_framer.addToFrame(input_buffer)
 
-    assert requests_framer.checkFrame() == is_valid_frame
-    assert requests_framer._header == expected_header
-
     if is_valid_frame:
-        requests_framer.advanceFrame()
+        assert requests_framer.checkFrame() == is_complete_frame
+        assert requests_framer._length == expected_length
+
+        if is_complete_frame:
+            requests_framer.advanceFrame()
+
+    else:
+        with pytest.raises(ValueError) as e:
+            requests_framer.checkFrame()
+        assert e.value.args[0].startswith("Unexpected MBAP header")
 
     assert expected_remaining_buffer == requests_framer._buffer
 
@@ -161,7 +183,7 @@ def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any],
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     callback = MagicMock(return_value=None)
-    requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback, 1)
+    requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
     callback.assert_called_once()
     fn_kwargs = vars(callback.mock_calls[0].args[0])
     for (key, val) in pdu_fn_kwargs.items():
@@ -191,7 +213,7 @@ def test_client_wire_decoding(responses_framer, data: tuple[str, dict[str, Any],
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(mbap_header + encoded_pdu, callback, 1)
+    responses_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
     callback.assert_called_once()
     fn_kwargs = vars(callback.mock_calls[0].args[0])
     for (key, val) in pdu_fn_kwargs.items():

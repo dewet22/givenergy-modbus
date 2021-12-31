@@ -1,4 +1,15 @@
+from __future__ import annotations
+
+import logging
+
+from pymodbus.exceptions import InvalidMessageReceivedException, ModbusIOException
 from pymodbus.transaction import FifoTransactionManager
+from pymodbus.utilities import ModbusTransactionState
+
+from .pdu import ModbusPDU
+from .util import hexlify
+
+_logger = logging.getLogger(__package__)
 
 
 class GivTransactionManager(FifoTransactionManager):
@@ -19,4 +30,77 @@ class GivTransactionManager(FifoTransactionManager):
     def __init__(self, **kwargs):
         """Constructor."""
         super().__init__(**kwargs)
-        self.base_adu_size = 8  # frame length calculation shenanigans, see `GivModbusFramer`
+        self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivModbusFramer`
+
+    def _set_adu_size(self):
+        """Essentially the MBAP header size."""
+        self.base_adu_size = 8
+
+    def _calculate_response_length(self, expected_pdu_size: int) -> int:
+        """Expected size of the response frame, if nothing goes wrong."""
+        return self.base_adu_size + expected_pdu_size
+
+    def _calculate_exception_length(self) -> int:
+        """Index in the raw message where we can determine whether / what exception we're dealing with."""
+        return 28
+
+    def _validate_response(self, pdu: ModbusPDU, data: bytes, expected_response_length: int) -> bool:
+        """Try to validate the incoming message using the responsible PDU."""
+        if not data:
+            _logger.info('No response provided, cannot validate request')
+            return False
+
+        header = self.client.framer.decode_data(data)
+        if not header:
+            return False
+        if header['len_'] != expected_response_length:
+            _logger.warning(
+                f'Expected ({expected_response_length}) response length differs from '
+                f'actual ({header["len_"]}) - potential bug?'
+            )
+            return False
+        return True
+
+    def execute(self, request):
+        """Main processing loop."""
+        res = super().execute(request)
+        _logger.info(f'Old implementation returned: execute(request)={res}')
+
+    def _transact(
+        self, request: ModbusPDU, expected_response_length: int, full=False, broadcast=False
+    ) -> tuple[bytes, None | Exception]:
+        """Connects and sends the request, and reads back the response."""
+        if full:
+            raise NotImplementedError('This implementation does not support full messages')
+        if broadcast:
+            raise NotImplementedError('This implementation does not support broadcast messages')
+
+        try:
+            self.client.connect()
+            tx_data = self.client.framer.buildPacket(request)
+            _logger.debug(f"SEND raw frame: {hexlify(tx_data)}")
+            tx_size = self._send(tx_data)
+
+            # need to handle retry logic?
+
+            if tx_size:
+                _logger.debug("Transition from SENDING to WAITING_FOR_REPLY")
+                self.client.state = ModbusTransactionState.WAITING_FOR_REPLY
+
+            rx_data = self._recv(expected_response_length, full)
+            _logger.debug(f"RECV raw frame: {hexlify(rx_data)}")
+            return rx_data, None
+
+        except (OSError, ModbusIOException, InvalidMessageReceivedException) as msg:
+            _logger.exception("Transaction failed", msg)
+            if self.reset_socket:
+                _logger.debug("Transaction failed. (%s) " % msg)
+                self.client.close()
+            return b'', msg
+
+    def _send(self, data: bytes, retrying=False) -> int:
+        return self.client.framer.sendPacket(data)
+
+    # def _recv(self, expected_response_length: int, _) -> bytes:
+    #     exception_length = self._calculate_exception_length()
+    #     min_size = 28  # 8 (hdr) + 20 (fn offset)

@@ -27,12 +27,17 @@ def main():
         # _logger.info(f"client {client}: {vars(client)}")
         # _logger.info(f"framer {client.framer}: {vars(client.framer)}")
 
-        request = ReadInputRegistersRequest(base_register=0x0, register_count=60)
+        request = ReadInputRegistersRequest(base_register=0x0, register_count=10)
         _logger.info(f"request: {request}")
         result = client.execute(request)
         _logger.info(f"result: {result}")
 
-        request = ReadHoldingRegistersRequest(base_register=0x0, register_count=60)
+        request = ReadInputRegistersRequest(base_register=0x0, register_count=120)
+        _logger.info(f"request: {request}")
+        result = client.execute(request)
+        _logger.info(f"result: {result}")
+
+        request = ReadHoldingRegistersRequest(base_register=0x0, register_count=120)
         _logger.info(f"request: {request}")
         result = client.execute(request)
         _logger.info(f"result: {result}")
