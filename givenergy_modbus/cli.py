@@ -5,7 +5,8 @@ import logging
 import click
 
 from .client import GivEnergyClient
-from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
+from .model.register import HoldingRegister, InputRegister
+from .pdu import ReadInputRegistersRequest
 from .util import InterceptHandler
 
 _logger = logging.getLogger(__package__)
@@ -24,11 +25,25 @@ def main():
     )
 
     with GivEnergyClient(host="192.168.0.241") as client:
-        ir = client.execute(ReadInputRegistersRequest(base_register=0x0, register_count=60)).register_values
-        hr1 = client.execute(ReadHoldingRegistersRequest(base_register=0x0, register_count=60)).register_values
-        hr2 = client.execute(ReadHoldingRegistersRequest(base_register=60, register_count=60)).register_values
+        print(client.execute(ReadInputRegistersRequest(base_register=60, register_count=60)).register_values)
 
-    _logger.info({1: ir, 2: hr1, 3: hr2})
+        registers = {'i': client.read_all_input_registers(), 'h': client.read_all_holding_registers()}
+    _logger.info(registers)
+
+    for i, v in enumerate(registers['h']):
+        r = HoldingRegister(i)
+        print(
+            f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
+            f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
+        )
+
+    print('#' * 100)
+    for i, v in enumerate(registers['i']):
+        r = InputRegister(i)
+        print(
+            f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
+            f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
+        )
 
 
 if __name__ == "__main__":

@@ -12,6 +12,27 @@ class Type(Enum):
     ASCII = auto()
     TIME = auto()
 
+    def render(self, value: int, scaling: float):
+        """Convert val to its true representation as determined by the register definition."""
+        if self == self.DWORD_HIGH:
+            # shift MSB half of the word left by 4 bytes
+            return (value << 16) * scaling
+
+        if self == self.SWORD:
+            # Subtract 2^n if bit n-1 is set:
+            if value & (1 << (16 - 1)):
+                value -= 1 << 16
+            return value * scaling
+
+        if self == self.ASCII:
+            return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
+
+        if self == self.BOOL:  # TODO is this the correct assumption?
+            return bool(value & 0x0001)
+
+        # only unsigned WORD left
+        return value * scaling
+
 
 class Scaling(Enum):
     """What scaling factor needs to be applied to a register's value."""
@@ -22,8 +43,8 @@ class Scaling(Enum):
 
 
 @unique
-class Bank(bytes, Enum):
-    """Collection of registers by their location in a bank."""
+class RegisterBank(bytes, Enum):
+    """Mixin to help easier access to register bank structures."""
 
     def __new__(cls, value: int, type_: Type, scaling: Scaling):
         """Allows indexing by register index."""
@@ -33,8 +54,12 @@ class Bank(bytes, Enum):
         obj.scaling = scaling  # type: ignore
         return obj
 
+    def render(self, val):
+        """Convert val to its true representation as determined by the register type."""
+        return self.type.render(val, self.scaling.value)
 
-class HoldingRegisterBank(Bank):
+
+class HoldingRegister(RegisterBank):
     """Definitions of what registers in the Holding Bank represent."""
 
     DEVICE_TYPE_CODE = (0, Type.WORD, Scaling.UNIT)
@@ -160,7 +185,7 @@ class HoldingRegisterBank(Bank):
     DISCHARGE_SOC_STOP = (120, Type.WORD, Scaling.UNIT)
 
 
-class InputRegisterBank(Bank):
+class InputRegister(RegisterBank):
     """Definitions of what registers in the Input Bank represent."""
 
     INV_STATUS = (0, Type.WORD, Scaling.UNIT)
@@ -223,8 +248,125 @@ class InputRegisterBank(Bank):
     CHARGER_WARNING_CODE = (57, Type.WORD, Scaling.UNIT)
     P_GRID_PORT = (58, Type.WORD, Scaling.CENTI)
     BAT_PERCENT = (59, Type.WORD, Scaling.UNIT)
-    REG060 = (60, Type.WORD, Scaling.UNIT)  # actually invalid?
+    REG060 = (60, Type.WORD, Scaling.UNIT)  # cell voltage? spans to reg 75
+    REG061 = (61, Type.WORD, Scaling.UNIT)
+    REG062 = (62, Type.WORD, Scaling.UNIT)
+    REG063 = (63, Type.WORD, Scaling.UNIT)
+    REG064 = (64, Type.WORD, Scaling.UNIT)
+    REG065 = (65, Type.WORD, Scaling.UNIT)
+    REG066 = (66, Type.WORD, Scaling.UNIT)
+    REG067 = (67, Type.WORD, Scaling.UNIT)
+    REG068 = (68, Type.WORD, Scaling.UNIT)
+    REG069 = (69, Type.WORD, Scaling.UNIT)
+    REG070 = (70, Type.WORD, Scaling.UNIT)
+    REG071 = (71, Type.WORD, Scaling.UNIT)
+    REG072 = (72, Type.WORD, Scaling.UNIT)
+    REG073 = (73, Type.WORD, Scaling.UNIT)
+    REG074 = (74, Type.WORD, Scaling.UNIT)
+    REG075 = (75, Type.WORD, Scaling.UNIT)
+    REG076 = (76, Type.WORD, Scaling.UNIT)
+    REG077 = (77, Type.WORD, Scaling.UNIT)
+    REG078 = (78, Type.WORD, Scaling.UNIT)
+    REG079 = (79, Type.WORD, Scaling.UNIT)
+    REG080 = (80, Type.WORD, Scaling.UNIT)
+    REG081 = (81, Type.WORD, Scaling.UNIT)
+    REG082 = (82, Type.WORD, Scaling.UNIT)
+    REG083 = (83, Type.WORD, Scaling.UNIT)
+    REG084 = (84, Type.WORD, Scaling.UNIT)
+    REG085 = (85, Type.WORD, Scaling.UNIT)
+    REG086 = (86, Type.WORD, Scaling.UNIT)
+    REG087 = (87, Type.WORD, Scaling.UNIT)
+    REG088 = (88, Type.WORD, Scaling.UNIT)
+    REG089 = (89, Type.WORD, Scaling.UNIT)
+    REG090 = (90, Type.WORD, Scaling.UNIT)
+    REG091 = (91, Type.WORD, Scaling.UNIT)
+    REG092 = (92, Type.WORD, Scaling.UNIT)
+    REG093 = (93, Type.WORD, Scaling.UNIT)
+    REG094 = (94, Type.WORD, Scaling.UNIT)
+    REG095 = (95, Type.WORD, Scaling.UNIT)
+    REG096 = (96, Type.WORD, Scaling.UNIT)
+    REG097 = (97, Type.WORD, Scaling.UNIT)
+    REG098 = (98, Type.WORD, Scaling.UNIT)
+    REG099 = (99, Type.WORD, Scaling.UNIT)
+    REG100 = (100, Type.WORD, Scaling.UNIT)
+    REG101 = (101, Type.WORD, Scaling.UNIT)
+    REG102 = (102, Type.WORD, Scaling.UNIT)
+    REG103 = (103, Type.WORD, Scaling.UNIT)
+    REG104 = (104, Type.WORD, Scaling.UNIT)
     E_BAT_DISCHARGE_AC_TOTAL = (105, Type.WORD, Scaling.DECI)
     E_BAT_CHARGE_AC_TOTAL = (106, Type.WORD, Scaling.DECI)
+    REG107 = (107, Type.WORD, Scaling.UNIT)
+    REG108 = (108, Type.WORD, Scaling.UNIT)
+    REG109 = (109, Type.WORD, Scaling.UNIT)
+    REG110 = (110, Type.WORD, Scaling.UNIT)
+    REG111 = (111, Type.WORD, Scaling.UNIT)
+    REG112 = (112, Type.WORD, Scaling.UNIT)
+    REG113 = (113, Type.WORD, Scaling.UNIT)
+    REG114 = (114, Type.WORD, Scaling.UNIT)
+    REG115 = (115, Type.WORD, Scaling.UNIT)
+    REG116 = (116, Type.WORD, Scaling.UNIT)
+    REG117 = (117, Type.WORD, Scaling.UNIT)
+    REG118 = (118, Type.WORD, Scaling.UNIT)
+    REG119 = (119, Type.WORD, Scaling.UNIT)
+    REG120 = (120, Type.WORD, Scaling.UNIT)
+    REG121 = (121, Type.WORD, Scaling.UNIT)
+    REG122 = (122, Type.WORD, Scaling.UNIT)
+    REG123 = (123, Type.WORD, Scaling.UNIT)
+    REG124 = (124, Type.WORD, Scaling.UNIT)
+    REG125 = (125, Type.WORD, Scaling.UNIT)
+    REG126 = (126, Type.WORD, Scaling.UNIT)
+    REG127 = (127, Type.WORD, Scaling.UNIT)
+    REG128 = (128, Type.WORD, Scaling.UNIT)
+    REG129 = (129, Type.WORD, Scaling.UNIT)
+    REG130 = (130, Type.WORD, Scaling.UNIT)
+    REG131 = (131, Type.WORD, Scaling.UNIT)
+    REG132 = (132, Type.WORD, Scaling.UNIT)
+    REG133 = (133, Type.WORD, Scaling.UNIT)
+    REG134 = (134, Type.WORD, Scaling.UNIT)
+    REG135 = (135, Type.WORD, Scaling.UNIT)
+    REG136 = (136, Type.WORD, Scaling.UNIT)
+    REG137 = (137, Type.WORD, Scaling.UNIT)
+    REG138 = (138, Type.WORD, Scaling.UNIT)
+    REG139 = (139, Type.WORD, Scaling.UNIT)
+    REG140 = (140, Type.WORD, Scaling.UNIT)
+    REG141 = (141, Type.WORD, Scaling.UNIT)
+    REG142 = (142, Type.WORD, Scaling.UNIT)
+    REG143 = (143, Type.WORD, Scaling.UNIT)
+    REG144 = (144, Type.WORD, Scaling.UNIT)
+    REG145 = (145, Type.WORD, Scaling.UNIT)
+    REG146 = (146, Type.WORD, Scaling.UNIT)
+    REG147 = (147, Type.WORD, Scaling.UNIT)
+    REG148 = (148, Type.WORD, Scaling.UNIT)
+    REG149 = (149, Type.WORD, Scaling.UNIT)
+    REG150 = (150, Type.WORD, Scaling.UNIT)
+    REG151 = (151, Type.WORD, Scaling.UNIT)
+    REG152 = (152, Type.WORD, Scaling.UNIT)
+    REG153 = (153, Type.WORD, Scaling.UNIT)
+    REG154 = (154, Type.WORD, Scaling.UNIT)
+    REG155 = (155, Type.WORD, Scaling.UNIT)
+    REG156 = (156, Type.WORD, Scaling.UNIT)
+    REG157 = (157, Type.WORD, Scaling.UNIT)
+    REG158 = (158, Type.WORD, Scaling.UNIT)
+    REG159 = (159, Type.WORD, Scaling.UNIT)
+    REG160 = (160, Type.WORD, Scaling.UNIT)
+    REG161 = (161, Type.WORD, Scaling.UNIT)
+    REG162 = (162, Type.WORD, Scaling.UNIT)
+    REG163 = (163, Type.WORD, Scaling.UNIT)
+    REG164 = (164, Type.WORD, Scaling.UNIT)
+    REG165 = (165, Type.WORD, Scaling.UNIT)
+    REG166 = (166, Type.WORD, Scaling.UNIT)
+    REG167 = (167, Type.WORD, Scaling.UNIT)
+    REG168 = (168, Type.WORD, Scaling.UNIT)
+    REG169 = (169, Type.WORD, Scaling.UNIT)
+    REG170 = (170, Type.WORD, Scaling.UNIT)
+    REG171 = (171, Type.WORD, Scaling.UNIT)
+    REG172 = (172, Type.WORD, Scaling.UNIT)
+    REG173 = (173, Type.WORD, Scaling.UNIT)
+    REG174 = (174, Type.WORD, Scaling.UNIT)
+    REG175 = (175, Type.WORD, Scaling.UNIT)
+    REG176 = (176, Type.WORD, Scaling.UNIT)
+    REG177 = (177, Type.WORD, Scaling.UNIT)
+    REG178 = (178, Type.WORD, Scaling.UNIT)
+    REG179 = (179, Type.WORD, Scaling.UNIT)
     E_BAT_DISCHARGE_TOTAL = (180, Type.WORD, Scaling.DECI)
     E_BAT_CHARGE_TOTAL = (181, Type.WORD, Scaling.DECI)

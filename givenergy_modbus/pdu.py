@@ -29,10 +29,10 @@ class ModbusPDU(ABC):
 
     def __init__(self, **kwargs):
         """Constructor."""
-        if "function_id" in kwargs:
+        if "function_id" in kwargs:  # TODO can be removed?
             raise ValueError("function_id= is not valid, use function_code= instead.", self)
 
-        if "function_code" in kwargs:
+        if "function_code" in kwargs:  # TODO can be removed?
             if not hasattr(self, 'function_code') or kwargs["function_code"] != self.function_code:
                 raise ValueError(
                     f"Specified function code {kwargs['function_code']} is different "
@@ -40,7 +40,7 @@ class ModbusPDU(ABC):
                     self,
                 )
             del kwargs['function_code']
-        kwargs.update(  # ensure these can never get overwritten
+        kwargs.update(  # ensure these can never get overwritten  TODO can be removed?
             {
                 "transaction": 0x5959,
                 "protocol": 0x0001,
@@ -114,6 +114,8 @@ class ModbusPDU(ABC):
         # 20 = 10 (data adapter serial) + 8 (padding) + 1 (slave addr) + 1 (function code)
         size = 20 + self._calculate_function_data_size()
         _logger.debug(f"Calculated {size} bytes total response PDU size for {self}")
+        if size >= 247:
+            _logger.error('Expected response size {size}b exceeds Modbus protocol spec.')
         return size
 
     def _calculate_function_data_size(self) -> int:
@@ -170,6 +172,9 @@ class ReadRegistersRequest(ModbusRequest, ABC):
         super().__init__(**kwargs)
         self.base_register = kwargs.get('base_register', 0x0000)
         self.register_count = kwargs.get('register_count', 0x0000)
+        if self.register_count > 60:
+            # should we abort instead?
+            _logger.warning('GivEnergy devices do not return more than 60 registers per call, this will likely fail.')
 
     def _encode_function_data(self):
         self.builder.add_16bit_uint(self.base_register)
