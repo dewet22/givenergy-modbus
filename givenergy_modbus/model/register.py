@@ -105,9 +105,9 @@ class HoldingRegister(RegisterBank):
     SYSTEM_TIME_HOUR = (38, Type.WORD, Scaling.UNIT)
     SYSTEM_TIME_MINUTE = (39, Type.WORD, Scaling.UNIT)
     SYSTEM_TIME_SECOND = (40, Type.WORD, Scaling.UNIT)
-    DRM_ENABLE = (41, Type.WORD, Scaling.UNIT)  # bool?
+    DRM_ENABLE = (41, Type.BOOL, Scaling.UNIT)
     CT_ADJUST = (42, Type.WORD, Scaling.UNIT)
-    CHG_AND_DISCHARGE_SOC = (43, Type.WORD, Scaling.UNIT)
+    CHARGE_AND_DISCHARGE_SOC = (43, Type.WORD, Scaling.UNIT)
     DISCHARGE_SLOT_2_START = (44, Type.WORD, Scaling.UNIT)
     DISCHARGE_SLOT_2_END = (45, Type.WORD, Scaling.UNIT)
     BMS_VERSION = (46, Type.WORD, Scaling.UNIT)

@@ -19,6 +19,8 @@ HOLDING_REGISTERS = [
     126, 52, 1, 28, 1755, 2837, 4700, 5200, 2740, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 430, 1, 4320, 5850, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 6, 1, 4, 50, 50, 0, 4, 0, 100, 0, 0, 0, 0,
 ]
+
+
 # fmt: on
 
 
@@ -68,3 +70,41 @@ def test_inverter():
     assert i.battery_percent == 4
     assert i.e_battery_discharge_total == 90.60000000000001
     assert i.e_battery_charge_total == 92.60000000000001
+
+
+def test_as_dict():
+    """Ensure we can return a dict view of inverter data."""
+    i = Inverter(holding_registers=HOLDING_REGISTERS, input_registers=INPUT_REGISTERS)
+
+    assert i.as_dict() == {
+        'inverter_serial_number': 'SA1234G567',
+        'model': 'Hybrid',
+        'device_type_code': 8193,
+        'inverter_module': 198706,
+        'battery_serial_number': 'BG1234G567',
+        'battery_firmware_version': 3005,
+        'dsp_firmware_version': 449,
+        'arm_firmware_version': 449,
+        'winter_mode': True,
+        'wifi_or_u_disk': 2,
+        'select_dsp_or_arm': 0,
+        'grid_port_max_output_power': 6000,
+        'battery_power_mode': True,
+        'fre_mode': 0,
+        'soc_force_adjust': 0,
+        'communicate_address': 17,
+        'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
+        'charge_slot_2': (datetime.time(0, 0), datetime.time(0, 4)),
+        'discharge_slot_1': (datetime.time(0, 0), datetime.time(0, 0)),
+        'discharge_slot_2': (datetime.time(0, 0), datetime.time(0, 0)),
+        'modbus_version': 1.4000000000000001,
+        'system_time': datetime.datetime(2022, 1, 1, 23, 57, 19),
+        'drm_enable': True,
+        'ct_adjust': 2,
+        'charge_and_discharge_soc': 0,
+        'bms_version': 101,
+        'b_meter_type': 1,
+        'inverter_state': 1,
+        'battery_type': 1,
+        'battery_nominal_capacity': 160,
+    }

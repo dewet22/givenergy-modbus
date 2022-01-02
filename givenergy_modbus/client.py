@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+from typing import cast
+
 from pymodbus.client.sync import ModbusTcpClient
 
 from .decoder import GivEnergyResponseDecoder
 from .framer import GivEnergyModbusFramer
+from .model.inverter import Inverter, InverterData
 from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 from .transaction import GivEnergyTransactionManager
 
@@ -44,4 +47,13 @@ class GivEnergyModbusClient(ModbusTcpClient):
             + self.execute(ReadInputRegistersRequest(base_register=60, register_count=60)).register_values
             + self.execute(ReadInputRegistersRequest(base_register=120, register_count=60)).register_values
             + self.execute(ReadInputRegistersRequest(base_register=180, register_count=2)).register_values
+        )
+
+    def refresh(self) -> InverterData:
+        """Return a refreshed view of inverter data."""
+        return cast(
+            InverterData,
+            Inverter(
+                holding_registers=self.read_all_holding_registers(), input_registers=self.read_all_input_registers()
+            ).as_dict(),
         )

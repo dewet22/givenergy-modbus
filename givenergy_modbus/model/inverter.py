@@ -1,5 +1,6 @@
 import datetime
 from enum import Enum
+from typing import TypedDict
 
 from ..util import charge_slot_to_time_range
 from .register import HoldingRegister, InputRegister
@@ -11,6 +12,41 @@ class Model(Enum):
     CE = 'AC'
     ED = "Gen2"
     SA = "Hybrid"
+
+
+class InverterData(TypedDict):
+    """Structured format for all attributes."""
+
+    inverter_serial_number: str
+    model: str
+    device_type_code: int
+    inverter_module: int
+    battery_serial_number: str
+    battery_firmware_version: int
+    dsp_firmware_version: int
+    arm_firmware_version: int
+    winter_mode: bool
+    wifi_or_u_disk: int
+    select_dsp_or_arm: int
+    grid_port_max_output_power: int
+    battery_power_mode: bool
+    fre_mode: int
+    soc_force_adjust: int
+    communicate_address: int
+    charge_slot_1: tuple[datetime.time, datetime.time]
+    charge_slot_2: tuple[datetime.time, datetime.time]
+    discharge_slot_1: tuple[datetime.time, datetime.time]
+    discharge_slot_2: tuple[datetime.time, datetime.time]
+    modbus_version: float
+    system_time: datetime.datetime
+    drm_enable: bool
+    ct_adjust: int
+    charge_and_discharge_soc: int
+    bms_version: int
+    b_meter_type: int
+    inverter_state: int
+    battery_type: int
+    battery_nominal_capacity: int
 
 
 class Inverter:
@@ -69,3 +105,10 @@ class Inverter:
                 )
                 # fmt: on
         raise KeyError(item)
+
+    def as_dict(self) -> dict:
+        """Return inverter attributes as a dict."""
+        ret = {}
+        for k in InverterData.__annotations__.keys():
+            ret[k] = getattr(self, k)
+        return ret
