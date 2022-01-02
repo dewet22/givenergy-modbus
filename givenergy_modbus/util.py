@@ -1,4 +1,5 @@
 import binascii
+import datetime
 import inspect
 import logging
 from typing import Any
@@ -47,3 +48,11 @@ def hexxed(val):
     if isinstance(val, (int, bytes)):
         return f'0x{val:04x}'
     return val
+
+
+def charge_slot_to_time_range(start: int, end: int) -> tuple[datetime.time, datetime.time]:
+    """Convert two BCD-encoded timeslot register values into a time range."""
+    return (
+        datetime.time(hour=int(f'{start:04}'[:2]), minute=int(f'{start:04}'[2:])),
+        datetime.time(hour=int(f'{end:04}'[:2]), minute=int(f'{end:04}'[2:])),
+    )

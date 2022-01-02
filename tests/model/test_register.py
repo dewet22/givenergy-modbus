@@ -5,7 +5,7 @@ from givenergy_modbus.model.register import HoldingRegister, InputRegister, Scal
 
 def test_lookup():
     """Ensure we can look up registers by index, instead of the complex type they're defined as."""
-    assert InputRegister(0) == InputRegister.INV_STATUS
+    assert InputRegister(0) == InputRegister.INVERTER_STATUS
     with pytest.raises(TypeError) as e:
         InputRegister(0, Type.WORD, Scaling.UNIT)
     assert e.value.args[0] == '__call__() takes from 2 to 3 positional arguments but 4 were given'
