@@ -1,4 +1,4 @@
-"""Tests for GivModbusFramer."""
+"""Tests for GivEnergyModbusFramer."""
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -6,7 +6,7 @@ import pytest
 from pymodbus.framer.socket_framer import ModbusSocketFramer
 
 from givenergy_modbus.decoder import GivEnergyRequestDecoder, GivEnergyResponseDecoder
-from givenergy_modbus.framer import GivModbusFramer
+from givenergy_modbus.framer import GivEnergyModbusFramer
 
 from . import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
@@ -43,7 +43,7 @@ VALID_RESPONSE_FRAME = (  # actual recorded response frame, to request above
 def test_framer_constructor():
     """Test constructor."""
     client_decoder = MagicMock()
-    framer = GivModbusFramer(client_decoder)
+    framer = GivEnergyModbusFramer(client_decoder)
     assert framer.client is None
     assert framer._buffer == b""
     assert framer.decoder == client_decoder
@@ -57,13 +57,13 @@ def test_framer_constructor():
 @pytest.fixture
 def requests_framer():
     """Yield a real framer for processing Request messages."""
-    yield GivModbusFramer(GivEnergyRequestDecoder())
+    yield GivEnergyModbusFramer(GivEnergyRequestDecoder())
 
 
 @pytest.fixture
 def responses_framer():
     """Yield a real framer for processing Response messages."""
-    yield GivModbusFramer(GivEnergyResponseDecoder())
+    yield GivEnergyModbusFramer(GivEnergyResponseDecoder())
 
 
 @pytest.mark.parametrize(

@@ -16,7 +16,7 @@ from .util import hexlify
 _logger = logging.getLogger(__package__)
 
 
-class GivModbusFramer(ModbusFramer):
+class GivEnergyModbusFramer(ModbusFramer):
     """GivEnergy Modbus Frame controller.
 
     A framer abstracts away all the detail about how marshall the wire

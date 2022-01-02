@@ -1,12 +1,12 @@
 from unittest.mock import MagicMock as Mock
 
-from givenergy_modbus.client import GivEnergyClient
+from givenergy_modbus.client import GivEnergyModbusClient
 from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 
 def test_read_all_holding_registers():
     """Ensure we read the ranges of known registers."""
-    c = GivEnergyClient()
+    c = GivEnergyModbusClient()
     mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadHoldingRegistersResponse'))
     c.execute = mock_call
     assert c.read_all_holding_registers() == [1, 2, 3, 1, 2, 3, 1, 2, 3]
@@ -28,7 +28,7 @@ def test_read_all_holding_registers():
 
 def test_read_all_input_registers():
     """Ensure we read the ranges of known registers."""
-    c = GivEnergyClient()
+    c = GivEnergyModbusClient()
     mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadInputRegistersResponse'))
     c.execute = mock_call
     assert c.read_all_input_registers() == [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3]

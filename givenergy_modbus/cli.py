@@ -5,7 +5,7 @@ import time
 
 import click
 
-from .client import GivEnergyClient
+from .client import GivEnergyModbusClient
 from .model.register import HoldingRegister, InputRegister
 from .util import InterceptHandler
 
@@ -25,7 +25,7 @@ def main():
     )
 
     start = time.time()
-    with GivEnergyClient(host="192.168.0.241") as client:
+    with GivEnergyModbusClient(host="192.168.0.241") as client:
         registers = {'i': client.read_all_input_registers(), 'h': client.read_all_holding_registers()}
     end = time.time()
     _logger.info(f'Reading all registers took {end-start:.3}s')

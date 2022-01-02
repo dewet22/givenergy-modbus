@@ -4,12 +4,12 @@ from __future__ import annotations
 from pymodbus.client.sync import ModbusTcpClient
 
 from .decoder import GivEnergyResponseDecoder
-from .framer import GivModbusFramer
+from .framer import GivEnergyModbusFramer
 from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
-from .transaction import GivTransactionManager
+from .transaction import GivEnergyTransactionManager
 
 
-class GivEnergyClient(ModbusTcpClient):
+class GivEnergyModbusClient(ModbusTcpClient):
     """GivEnergy Modbus Client implementation.
 
     This class ties together all the pieces to create a functional client that can converse with a
@@ -22,12 +22,12 @@ class GivEnergyClient(ModbusTcpClient):
         """Constructor."""
         kwargs.setdefault("port", 8899)  # GivEnergy default instead of the standard 502
         super().__init__(**kwargs)
-        self.framer = GivModbusFramer(GivEnergyResponseDecoder(), client=self)
-        self.transaction = GivTransactionManager(client=self, **kwargs)
+        self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder(), client=self)
+        self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
 
-    # def execute(self, request: ModbusPDU = None) -> ModbusPDU:
-    #     """This exists purely for type annotations."""
-    #     return super().execute(request)
+    def __repr__(self):
+        """Return a useful representation."""
+        return f"GivEnergyClient({self.host}:{self.port}): timeout={self.timeout})"
 
     def read_all_holding_registers(self) -> list[int]:
         """Read all known holding registers."""

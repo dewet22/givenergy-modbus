@@ -12,7 +12,7 @@ from .util import hexlify
 _logger = logging.getLogger(__package__)
 
 
-class GivTransactionManager(FifoTransactionManager):
+class GivEnergyTransactionManager(FifoTransactionManager):
     """Implements a ModbusTransactionManager.
 
     The only reason this exists is to be able to specify the ADU size for automated response frame processing
@@ -22,15 +22,15 @@ class GivTransactionManager(FifoTransactionManager):
     in `ModbusTransactionManager::_recv` where there's more byte calculations based on the TransactionManager's
     provenance.
 
-    We could've extended `GivModbusFramer` from `ModbusSocketFramer` instead, but that brings a different set
+    We could've extended `GivEnergyModbusFramer` from `ModbusSocketFramer` instead, but that brings a different set
     of problems around implementation divergence in the GivEnergy implementation that would probably have been
-    more work instead. Full novel in the `GivModbusFramer` class description.
+    more work instead. Full novel in the `GivEnergyModbusFramer` class description.
     """
 
     def __init__(self, **kwargs):
         """Constructor."""
         super().__init__(**kwargs)
-        self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivModbusFramer`
+        self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivEnergyModbusFramer`
 
     def _set_adu_size(self):
         """Essentially the MBAP header size."""
