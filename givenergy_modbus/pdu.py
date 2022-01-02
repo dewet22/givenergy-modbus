@@ -163,12 +163,7 @@ class ReadRegistersRequest(ModbusRequest, ABC):
     """Handles all messages that request a range of registers."""
 
     def __init__(self, **kwargs):
-        """Request a range of registers.
-
-        Args:
-            base_register: Zero-indexed register to start reading values from
-            register_count: Number of registers to read and return
-        """
+        """Constructor."""
         super().__init__(**kwargs)
         self.base_register = kwargs.get('base_register', 0x0000)
         self.register_count = kwargs.get('register_count', 0x0000)
@@ -203,16 +198,7 @@ class ReadRegistersResponse(ModbusResponse, ABC):
     """Handles all messages that respond with a range of registers."""
 
     def __init__(self, **kwargs):
-        """Respond with a set of registers.
-
-        Args:
-            inverter_serial_number: Serial number of the queried inverter
-            base_register: Zero-indexed register read values start from
-            register_count: Number of read registers being returned
-            registers: Zero-indexed collection of register values.
-                Add `register_count` to the index to calculate the actual register id.
-            # check: Checksum (unknown algorithm)
-        """
+        """Constructor."""
         super().__init__(**kwargs)
         self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
         self.base_register: int = kwargs.get('base_register', 0x0000)
