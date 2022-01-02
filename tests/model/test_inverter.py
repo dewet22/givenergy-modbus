@@ -59,9 +59,9 @@ def test_inverter():
     assert i.n_bus_inside_voltage == 0.0
     assert i.v_single_phase_grid == 236.70000000000002
 
-    assert i.battery_throughput_h == 0
-    assert i.battery_throughput_l == 183.20000000000002
-    assert i.battery_throughput == 183.20000000000002
+    assert i.e_battery_throughput_h == 0
+    assert i.e_battery_throughput_l == 183.20000000000002
+    assert i.e_battery_throughput == 183.20000000000002
 
     assert i.e_pv1_day == 0.4
     assert i.e_pv2_day == 0.5
