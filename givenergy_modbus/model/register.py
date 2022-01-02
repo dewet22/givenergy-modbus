@@ -91,7 +91,7 @@ class HoldingRegister(RegisterBank):
     SET_VARIABLE_ADDRESS = (24, Type.WORD, Scaling.UNIT)
     SET_VARIABLE_VALUE = (25, Type.WORD, Scaling.UNIT)
     GRID_PORT_MAX_OUTPUT_POWER = (26, Type.WORD, Scaling.UNIT)
-    BATTERY_POWER_MODE = (27, Type.BOOL, Scaling.UNIT)
+    BATTERY_POWER_MODE = (27, Type.BOOL, Scaling.UNIT)  # 1 - grid-tie?
     FRE_MODE = (28, Type.WORD, Scaling.UNIT)  # bool?
     SOC_FORCE_ADJUST = (29, Type.WORD, Scaling.UNIT)
     COMMUNICATE_ADDRESS = (30, Type.WORD, Scaling.UNIT)
@@ -190,14 +190,14 @@ class HoldingRegister(RegisterBank):
 class InputRegister(RegisterBank):
     """Definitions of what registers in the Input Bank represent."""
 
-    INVERTER_STATUS = (0, Type.WORD, Scaling.UNIT)  # 0 normal (no PV, no bat)? 1 charging?
+    INVERTER_STATUS = (0, Type.WORD, Scaling.UNIT)  # 0 waiting (no PV, no bat)? 1 charging?
     V_PV1 = (1, Type.WORD, Scaling.DECI)
     V_PV2 = (2, Type.WORD, Scaling.DECI)
     P_BUS_INSIDE_VOLTAGE = (3, Type.WORD, Scaling.DECI)
     N_BUS_INSIDE_VOLTAGE = (4, Type.WORD, Scaling.DECI)
     V_SINGLE_PHASE_GRID = (5, Type.WORD, Scaling.DECI)
-    BATTERY_THROUGHPUT_H = (6, Type.DWORD_HIGH, Scaling.DECI)
-    BATTERY_THROUGHPUT_L = (7, Type.DWORD_LOW, Scaling.DECI)
+    E_BATTERY_THROUGHPUT_H = (6, Type.DWORD_HIGH, Scaling.DECI)
+    E_BATTERY_THROUGHPUT_L = (7, Type.DWORD_LOW, Scaling.DECI)
     I_PV1_INPUT = (8, Type.WORD, Scaling.CENTI)
     I_PV2_INPUT = (9, Type.WORD, Scaling.CENTI)
     I_GRID_OUTPUT_SINGLE_PHASE = (10, Type.WORD, Scaling.CENTI)
@@ -239,7 +239,7 @@ class InputRegister(RegisterBank):
     E_GENERATED_L = (46, Type.DWORD_LOW, Scaling.DECI)
     WORK_TIME_TOTAL_H = (47, Type.DWORD_HIGH, Scaling.UNIT)
     WORK_TIME_TOTAL_L = (48, Type.DWORD_LOW, Scaling.UNIT)
-    SYSTEM_MODE = (49, Type.WORD, Scaling.UNIT)
+    SYSTEM_MODE = (49, Type.WORD, Scaling.UNIT)  # 1 = grid-tie?
     V_BAT = (50, Type.WORD, Scaling.CENTI)
     I_BAT = (51, Type.SWORD, Scaling.CENTI)
     P_BAT = (52, Type.SWORD, Scaling.UNIT)
