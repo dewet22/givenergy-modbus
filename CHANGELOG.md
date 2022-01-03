@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.2.1 (2022-01-03)
+## 0.3.0 (2022-01-03)
 * Make register definitions a bit more flexible to cater for units and descriptions in future
 
 ## 0.2.0 (2022-01-03)
