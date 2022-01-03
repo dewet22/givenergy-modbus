@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## 0.1.1 (2022-01-02)
+## 0.2.1 (2022-01-03)
+* Make register definitions a bit more flexible to cater for units and descriptions in future
 
+## 0.2.0 (2022-01-03)
+* Fix GitHub actions & codecov
+
+## 0.1.1 (2022-01-02)
 * Update deps
 * Rename a few class names for consistency
 * Add a few more attributes to export
 
 ## 0.1.0 (2022-01-02)
-
 * First release on PyPI
