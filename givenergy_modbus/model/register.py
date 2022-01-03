@@ -42,6 +42,7 @@ class Scaling(Enum):
     UNIT = 1
     DECI = 0.1
     CENTI = 0.01
+    MILLI = 0.001
 
 
 @unique
@@ -250,22 +251,22 @@ class InputRegister(RegisterBank):
     CHARGER_WARNING_CODE = (57, Type.WORD, Scaling.UNIT)
     P_GRID_PORT = (58, Type.WORD, Scaling.CENTI)
     BATTERY_PERCENT = (59, Type.WORD, Scaling.UNIT)
-    REG060 = (60, Type.WORD, Scaling.UNIT)  # cell voltage? spans to reg 75
-    REG061 = (61, Type.WORD, Scaling.UNIT)
-    REG062 = (62, Type.WORD, Scaling.UNIT)
-    REG063 = (63, Type.WORD, Scaling.UNIT)
-    REG064 = (64, Type.WORD, Scaling.UNIT)
-    REG065 = (65, Type.WORD, Scaling.UNIT)
-    REG066 = (66, Type.WORD, Scaling.UNIT)
-    REG067 = (67, Type.WORD, Scaling.UNIT)
-    REG068 = (68, Type.WORD, Scaling.UNIT)
-    REG069 = (69, Type.WORD, Scaling.UNIT)
-    REG070 = (70, Type.WORD, Scaling.UNIT)
-    REG071 = (71, Type.WORD, Scaling.UNIT)
-    REG072 = (72, Type.WORD, Scaling.UNIT)
-    REG073 = (73, Type.WORD, Scaling.UNIT)
-    REG074 = (74, Type.WORD, Scaling.UNIT)
-    REG075 = (75, Type.WORD, Scaling.UNIT)
+    V_BATTERY_CELL01 = (60, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL02 = (61, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL03 = (62, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL04 = (63, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL05 = (64, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL06 = (65, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL07 = (66, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL08 = (67, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL09 = (68, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL10 = (69, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL11 = (70, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL12 = (71, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL13 = (72, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL14 = (73, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL15 = (74, Type.WORD, Scaling.MILLI)
+    V_BATTERY_CELL16 = (75, Type.WORD, Scaling.MILLI)
     REG076 = (76, Type.WORD, Scaling.UNIT)
     REG077 = (77, Type.WORD, Scaling.UNIT)
     REG078 = (78, Type.WORD, Scaling.UNIT)

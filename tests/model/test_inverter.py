@@ -71,6 +71,23 @@ def test_inverter():
     assert i.e_battery_discharge_total == 90.60000000000001
     assert i.e_battery_charge_total == 92.60000000000001
 
+    assert i.v_battery_cell01 == 3.117
+    assert i.v_battery_cell02 == 3.124
+    assert i.v_battery_cell03 == 3.129
+    assert i.v_battery_cell04 == 3.129
+    assert i.v_battery_cell05 == 3.125
+    assert i.v_battery_cell06 == 3.13
+    assert i.v_battery_cell07 == 3.122
+    assert i.v_battery_cell08 == 3.116
+    assert i.v_battery_cell09 == 3.111
+    assert i.v_battery_cell10 == 3.105
+    assert i.v_battery_cell11 == 3.119
+    assert i.v_battery_cell12 == 3.134
+    assert i.v_battery_cell13 == 3.146
+    assert i.v_battery_cell14 == 3.116
+    assert i.v_battery_cell15 == 3.1350000000000002
+    assert i.v_battery_cell16 == 3.119
+
 
 def test_as_dict():
     """Ensure we can return a dict view of inverter data."""
