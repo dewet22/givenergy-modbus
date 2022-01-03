@@ -72,6 +72,7 @@ class ModbusPDU(ABC):
 
     def encode(self) -> bytes:
         """Encode PDU message from instance attributes."""
+        self._ensure_valid_state()
         self.builder = BinaryPayloadBuilder(byteorder=Endian.Big)
         self.builder.add_string(f"{self.data_adapter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
         self.builder.add_64bit_uint(self.padding)
@@ -96,6 +97,7 @@ class ModbusPDU(ABC):
             raise e
 
         self._decode_function_data(decoder)
+        self._ensure_valid_state()
         _logger.debug(f"Successfully decoded {len(data)} bytes")
 
     def _encode_function_data(self) -> None:
@@ -107,6 +109,11 @@ class ModbusPDU(ABC):
         raise NotImplementedError()
 
     def _update_check_code(self) -> None:
+        """Recalculate CRC of the PDU message."""
+        raise NotImplementedError()
+
+    def _ensure_valid_state(self) -> None:
+        """Sanity check our internal state."""
         raise NotImplementedError()
 
     def get_response_pdu_size(self) -> int:
@@ -167,9 +174,6 @@ class ReadRegistersRequest(ModbusRequest, ABC):
         super().__init__(**kwargs)
         self.base_register = kwargs.get('base_register', 0x0000)
         self.register_count = kwargs.get('register_count', 0x0000)
-        if self.register_count > 60:
-            # should we abort instead?
-            _logger.warning('GivEnergy devices do not return more than 60 registers per call, this will likely fail.')
 
     def _encode_function_data(self):
         self.builder.add_16bit_uint(self.base_register)
@@ -192,6 +196,20 @@ class ReadRegistersRequest(ModbusRequest, ABC):
         size = 16 + (self.register_count * 2)
         _logger.debug(f"Calculated {size} bytes partial response size for {self}")
         return size
+
+    def _ensure_valid_state(self):
+        if self.base_register is None:
+            raise ValueError('Base Register must be set explicitly.')
+        elif not 0 <= self.base_register <= 0xFFFF:
+            raise ValueError(f'Base Register {hex(self.base_register)} must be unsigned and fit in 2 bytes')
+        if self.register_count is None:
+            raise ValueError('Register Count must be set explicitly.')
+        elif not 0 <= self.register_count <= 0xFFFF:
+            raise ValueError(f'Register Count {hex(self.register_count)} must be unsigned and fit in 2 bytes')
+
+        if self.register_count > 60:
+            # should we abort instead?
+            _logger.warning('GivEnergy devices do not return more than 60 registers per call, this will likely fail.')
 
 
 class ReadRegistersResponse(ModbusResponse, ABC):
@@ -231,6 +249,10 @@ class ReadRegistersResponse(ModbusResponse, ABC):
                 self,
             )
         self.check = decoder.decode_16bit_uint()
+
+    def _ensure_valid_state(self):
+        # Is there anything to do here?
+        pass
 
 
 #################################################################################
@@ -278,12 +300,92 @@ class ReadInputRegistersResponse(ReadInputRegistersMeta, ReadRegistersResponse):
 
 
 #################################################################################
+class WriteHoldingRegisterMeta:
+    """Request & Response PDUs for function 6/Write Holding Register."""
+
+    function_code = 6
+
+
+class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
+    """Handles all messages that request a range of registers."""
+
+    def __init__(self, **kwargs):
+        """Constructor."""
+        super().__init__(**kwargs)
+        self.register: int = kwargs.get('register', None)
+        self.value: int = kwargs.get('value', None)
+
+    def _encode_function_data(self):
+        self.builder.add_16bit_uint(self.register)
+        self.builder.add_16bit_uint(self.value)
+
+    def _decode_function_data(self, decoder):
+        self.register = decoder.decode_16bit_uint()
+        self.value = decoder.decode_16bit_uint()
+        self.check = decoder.decode_16bit_uint()
+
+    def _update_check_code(self):
+        crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
+        crc_builder.add_8bit_uint(self.function_code)
+        crc_builder.add_16bit_uint(self.register)
+        crc_builder.add_16bit_uint(self.value)
+        self.check = CrcModbus().process(crc_builder.to_string()).final()
+        self.builder.add_16bit_uint(self.check)
+
+    def _calculate_function_data_size(self):
+        size = 16
+        _logger.debug(f"Calculated {size} bytes partial response size for {self}")
+        return size
+
+    def _ensure_valid_state(self):
+        if self.register is None:
+            raise ValueError('Register must be set explicitly.')
+        elif not 0 <= self.register <= 0xFFFF:
+            raise ValueError(f'Register {hex(self.register)} must be unsigned and fit in 2 bytes')
+        if self.value is None:
+            raise ValueError('Value must be set explicitly.')
+        elif not 0 <= self.value <= 0xFFFF:
+            raise ValueError(f'Value {hex(self.value)} must be unsigned and fit in 2 bytes')
+
+
+class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC):
+    """Handles all messages that respond with a range of registers."""
+
+    def __init__(self, **kwargs):
+        """Constructor."""
+        super().__init__(**kwargs)
+        self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
+        self.register: int = kwargs.get('register', None)
+        self.value: int = kwargs.get('value', None)
+
+    def _encode_function_data(self):
+        self.builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
+        self.builder.add_16bit_uint(self.register)
+        self.builder.add_16bit_uint(self.value)
+
+    def _decode_function_data(self, decoder):
+        """Decode response PDU message and populate instance attributes."""
+        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.register = decoder.decode_16bit_uint()
+        self.value = decoder.decode_16bit_uint()
+        self.check = decoder.decode_16bit_uint()
+
+    def _ensure_valid_state(self):
+        if self.register is None:
+            raise ValueError('Register must be set explicitly.')
+        if self.value is None:
+            raise ValueError('Value must be set explicitly.')
+
+
+#################################################################################
 # Authoritative catalogue of Request/Response PDUs the Decoder factories will consider.
 REQUEST_PDUS: list[Callable] = [
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
+    WriteHoldingRegisterRequest,
 ]
 RESPONSE_PDUS: list[Callable] = [
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
+    WriteHoldingRegisterResponse,
 ]

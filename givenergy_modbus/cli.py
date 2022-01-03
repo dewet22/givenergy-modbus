@@ -26,6 +26,7 @@ def main():
 
     start = time.time()
     with GivEnergyModbusClient(host="192.168.0.241") as client:
+        client.write_holding_register(HoldingRegister.WINTER_MODE, 1)
         registers = {'i': client.read_all_input_registers(), 'h': client.read_all_holding_registers()}
     end = time.time()
     _logger.info(f'Reading all registers took {end-start:.3}s')

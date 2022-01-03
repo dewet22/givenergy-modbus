@@ -8,7 +8,8 @@ from pymodbus.client.sync import ModbusTcpClient
 from .decoder import GivEnergyResponseDecoder
 from .framer import GivEnergyModbusFramer
 from .model.inverter import Inverter, InverterData
-from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
+from .model.register_banks import HoldingRegister
+from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest, WriteHoldingRegisterRequest
 from .transaction import GivEnergyTransactionManager
 
 
@@ -48,6 +49,15 @@ class GivEnergyModbusClient(ModbusTcpClient):
             + self.execute(ReadInputRegistersRequest(base_register=120, register_count=60)).register_values
             + self.execute(ReadInputRegistersRequest(base_register=180, register_count=2)).register_values
         )
+
+    def write_holding_register(self, register: HoldingRegister, value: int):
+        """Write a value to a single holding register."""
+        if not register.write_safe:  # type: ignore  # shut up mypy
+            raise ValueError(f'Register {register.name} is not safe to write to.')
+        result = self.execute(WriteHoldingRegisterRequest(register=register.value, value=value))
+        if result.value != value:
+            raise ValueError(f'Returned value {result.value} != written value {value}.')
+        return result
 
     def refresh(self) -> InverterData:
         """Return a refreshed view of inverter data."""

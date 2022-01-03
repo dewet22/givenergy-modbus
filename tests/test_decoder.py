@@ -75,7 +75,7 @@ def test_decode_wiring(mocked_decoder):
     assert ret == mocked_decoder._pdu5
 
 
-IMPLEMENTED_FUNCTIONS = {3, 4}
+IMPLEMENTED_FUNCTIONS = {3, 4, 6}
 
 
 def test_response_decoder():

@@ -2,7 +2,13 @@ from typing import Any
 
 import pytest
 
-from givenergy_modbus.pdu import ModbusRequest, ReadHoldingRegistersRequest, ReadRegistersRequest, ReadRegistersResponse
+from givenergy_modbus.pdu import (
+    ModbusRequest,
+    ReadHoldingRegistersRequest,
+    ReadRegistersRequest,
+    ReadRegistersResponse,
+    WriteHoldingRegisterRequest,
+)
 
 from . import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
@@ -21,6 +27,11 @@ def test_str():
         "3/ReadHoldingRegistersRequest({check: 0x0000, base_register: 0x0000, register_count: 0x0000})"
     )
     assert str(ReadHoldingRegistersRequest) == "<class 'givenergy_modbus.pdu.ReadHoldingRegistersRequest'>"
+
+    assert str(WriteHoldingRegisterRequest(foo=1)) == (
+        "6/WriteHoldingRegisterRequest({check: 0x0000, register: None, value: None})"
+    )
+    assert str(WriteHoldingRegisterRequest) == "<class 'givenergy_modbus.pdu.WriteHoldingRegisterRequest'>"
 
 
 def test_cannot_change_function_code():

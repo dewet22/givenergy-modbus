@@ -24,6 +24,18 @@ REQUEST_PDU_MESSAGES = [
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x03\x51\x51\x07\xd0" b"\x81\x22",
     ),
+    (   # data3
+        "WriteHoldingRegisterRequest",
+        {"register": 0x5151, "value": 2000, "check": 0x81ee, "data_adapter_serial_number": "AB1234G567"},
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x51\x51\x07\xd0" b"\x81\xee",
+    ),
+    (  # data3
+        "WriteHoldingRegisterRequest",
+        {"register": 0x14, "value": 1, "check": 0xc42d, "data_adapter_serial_number": "AB1234G567"},
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\x14\x00\x01" b"\xc4\x2d",
+    ),
 ]
 
 RESPONSE_PDU_MESSAGES = [

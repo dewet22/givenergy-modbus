@@ -17,6 +17,7 @@ class RegisterBank(str, Enum):
         obj.scaling = data.get('scaling', Scaling.UNIT)  # type: ignore  # shut up mypy
         obj.unit = data.get('unit', None)  # type: ignore  # shut up mypy
         obj.description = data.get('description', None)  # type: ignore  # shut up mypy
+        obj.write_safe = data.get('write_safe', False)  # type: ignore  # shut up mypy
         return obj
 
     def render(self, val):
@@ -48,32 +49,32 @@ class HoldingRegister(RegisterBank):
     INVERTER_SERIAL_NUMBER_1 = (17, {'type': Type.ASCII})
     BATTERY_FIRMWARE_VERSION = 18
     DSP_FIRMWARE_VERSION = 19
-    WINTER_MODE = (20, {'type': Type.BOOL})
+    WINTER_MODE = (20, {'type': Type.BOOL, 'write_safe': True})
     ARM_FIRMWARE_VERSION = 21
     WIFI_OR_U_DISK = 22  # 2 = wifi?
     SELECT_DSP_OR_ARM = 23
     SET_VARIABLE_ADDRESS = 24
     SET_VARIABLE_VALUE = 25
     GRID_PORT_MAX_OUTPUT_POWER = 26
-    BATTERY_POWER_MODE = 27  # 1 - grid-tie?
+    BATTERY_POWER_MODE = (27, {'write_safe': True})  # 1 - grid-tie?
     FRE_MODE = 28  # bool?
     SOC_FORCE_ADJUST = 29
     COMMUNICATE_ADDRESS = 30
-    CHARGE_SLOT_2_START = 31
-    CHARGE_SLOT_2_END = 32
+    CHARGE_SLOT_2_START = (31, {'write_safe': True})
+    CHARGE_SLOT_2_END = (32, {'write_safe': True})
     USER_CODE = 33
     MODBUS_VERSION = (34, {'scaling': Scaling.CENTI})
-    SYSTEM_TIME_YEAR = 35
-    SYSTEM_TIME_MONTH = 36
-    SYSTEM_TIME_DAY = 37
-    SYSTEM_TIME_HOUR = 38
-    SYSTEM_TIME_MINUTE = 39
-    SYSTEM_TIME_SECOND = 40
+    SYSTEM_TIME_YEAR = (35, {'write_safe': True})
+    SYSTEM_TIME_MONTH = (36, {'write_safe': True})
+    SYSTEM_TIME_DAY = (37, {'write_safe': True})
+    SYSTEM_TIME_HOUR = (38, {'write_safe': True})
+    SYSTEM_TIME_MINUTE = (39, {'write_safe': True})
+    SYSTEM_TIME_SECOND = (40, {'write_safe': True})
     DRM_ENABLE = (41, {'type': Type.BOOL})
     CT_ADJUST = 42
     CHARGE_AND_DISCHARGE_SOC = 43
-    DISCHARGE_SLOT_2_START = 44
-    DISCHARGE_SLOT_2_END = 45
+    DISCHARGE_SLOT_2_START = (44, {'write_safe': True})
+    DISCHARGE_SLOT_2_END = (45, {'write_safe': True})
     BMS_VERSION = 46
     B_METER_TYPE = 47
     B_115_METER_DIRECT = 48
@@ -84,10 +85,10 @@ class HoldingRegister(RegisterBank):
     INVERTER_STATE = 53  # 1 = normal?
     BATTERY_TYPE = 54  # 1 = lithium?
     BATTERY_NOMINAL_CAPACITY = 55
-    DISCHARGE_SLOT_1_START = 56
-    DISCHARGE_SLOT_1_END = 57
+    DISCHARGE_SLOT_1_START = (56, {'write_safe': True})
+    DISCHARGE_SLOT_1_END = (57, {'write_safe': True})
     AUTO_JUDGE_BATTERY_TYPE_ENABLE = 58  # bool?
-    DISCHARGE_ENABLE = (59, {'type': Type.BOOL})
+    DISCHARGE_ENABLE = (59, {'type': Type.BOOL, 'write_safe': True})
     INPUT_START_VOLTAGE = 60
     START_TIME = 61
     RESTART_DELAY_TIME = 62
@@ -122,9 +123,9 @@ class HoldingRegister(RegisterBank):
     DCI_TIME_1 = 91
     DCI_I_2 = 92
     DCI_TIME_2 = 93
-    CHARGE_SLOT_1_START = 94
-    CHARGE_SLOT_1_END = 95
-    BATTERY_SMART_CHARGE = (96, {'type': Type.BOOL})
+    CHARGE_SLOT_1_START = (94, {'write_safe': True})
+    CHARGE_SLOT_1_END = (95, {'write_safe': True})
+    BATTERY_SMART_CHARGE = (96, {'type': Type.BOOL, 'write_safe': True})
     DISCHARGE_LOW_LIMIT = 97
     CHARGER_HIGH_LIMIT = 98
     PV1_VOLT_ADJUST = 99
@@ -138,13 +139,13 @@ class HoldingRegister(RegisterBank):
     PV2_POWER_ADJUST = 107
     BATTERY_LOW_FORCE_CHARGE_TIME = 108
     BMS_TYPE = 109
-    SHALLOW_CHARGE = 110
-    BATTERY_CHARGE_LIMIT = 111
-    BATTERY_DISCHARGE_LIMIT = 112
+    SHALLOW_CHARGE = (110, {'write_safe': True})
+    BATTERY_CHARGE_LIMIT = (111, {'write_safe': True})
+    BATTERY_DISCHARGE_LIMIT = (112, {'write_safe': True})
     BUZZER_SW = 113
-    BATTERY_POWER_RESERVE = 114
+    BATTERY_POWER_RESERVE = (114, {'write_safe': True})
     ISLAND_CHECK_CONTINUE = 115
-    TARGET_SOC = 116
+    TARGET_SOC = (116, {'write_safe': True})
     CHG_SOC_STOP2 = 117
     DISCHARGE_SOC_STOP2 = 118
     CHG_SOC_STOP = 119

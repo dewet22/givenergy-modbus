@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock as Mock
 
+import pytest
+
 from givenergy_modbus.client import GivEnergyModbusClient
+from givenergy_modbus.model.register_banks import HoldingRegister
 from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 
@@ -50,3 +53,25 @@ def test_read_all_input_registers():
     assert req4.__class__ == ReadInputRegistersRequest
     assert req4.base_register == 180
     assert req4.register_count == 2
+
+
+def test_write_holding_register():
+    """Ensure we can write to holding registers."""
+    c = GivEnergyModbusClient()
+    mock_call = Mock(name='execute', return_value=Mock(value=5, name='WriteHoldingRegisterResponse'))
+    c.execute = mock_call
+    c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
+    assert mock_call.call_count == 1
+
+    mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
+    c.execute = mock_call
+    with pytest.raises(ValueError) as e:
+        c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
+    assert mock_call.call_count == 1
+    assert e.value.args[0] == 'Returned value 2 != written value 5.'
+
+    mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
+    with pytest.raises(ValueError) as e:
+        c.write_holding_register(HoldingRegister.INVERTER_STATE, 5)
+    assert mock_call.call_count == 0
+    assert e.value.args[0] == 'Register INVERTER_STATE is not safe to write to.'
