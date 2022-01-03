@@ -6,7 +6,7 @@ import time
 import click
 
 from .client import GivEnergyModbusClient
-from .model.register import HoldingRegister, InputRegister
+from .model.register_banks import HoldingRegister, InputRegister
 from .util import InterceptHandler
 
 _logger = logging.getLogger(__package__)

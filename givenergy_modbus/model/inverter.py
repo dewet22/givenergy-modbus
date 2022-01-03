@@ -3,7 +3,7 @@ from enum import Enum
 from typing import TypedDict
 
 from ..util import charge_slot_to_time_range
-from .register import HoldingRegister, InputRegister
+from .register_banks import HoldingRegister, InputRegister
 
 
 class Model(Enum):
