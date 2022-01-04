@@ -41,6 +41,7 @@ jobs:
           validation_depth: 10
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
+          fail_ci_if_error: false
 
       - uses: actions/setup-python@v2
         with:
@@ -61,6 +62,7 @@ jobs:
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
           publish_dir: ./site
+          fail_ci_if_error: false
 
       - name: Build wheels and source tarball
         run: >-
@@ -80,6 +82,7 @@ jobs:
           files: dist/*.whl
           draft: false
           prerelease: false
+          fail_ci_if_error: false
 
       - name: publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
