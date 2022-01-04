@@ -10,7 +10,6 @@ license =  "Apache-2.0"
 classifiers=[
     'Development Status :: 3 - Alpha',
     'Framework :: Flake8',
-    'Framework :: Poetry',
     'Framework :: Pytest',
     'Framework :: tox',
     'Intended Audience :: Developers',
