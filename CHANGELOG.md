@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.6.1 (2022-01-04)
+* Fix stupid pypi classifier strictness
+
 ## 0.6.0 (2022-01-04)
 * BREAKING: registers have been widely renamed for consistency and clarity. The joys of a pre-release API.
 * Checked all the registers and their values to make sense. Added units for most that are self-evident. The
