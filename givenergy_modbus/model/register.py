@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum, auto
 
 
@@ -10,6 +11,7 @@ class Type(Enum):
     DWORD_LOW = auto()  # unsigned double word, lower (LSB) address half
     SWORD = auto()  # signed single word
     ASCII = auto()
+    TIME = auto()
 
     def render(self, value: int, scaling: float):
         """Convert val to its true representation as determined by the register definition."""
@@ -27,7 +29,11 @@ class Type(Enum):
             return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
 
         if self == self.BOOL:  # TODO is this the correct assumption?
-            return bool(value & 0x0001)
+            return bool(value)
+
+        if self == self.TIME:
+            # Convert a BCD-encoded int into datetime.time."""
+            return datetime.time(hour=int(f'{value:04}'[:2]), minute=int(f'{value:04}'[2:]))
 
         # only unsigned WORD left
         return value * scaling
@@ -50,6 +56,10 @@ class Unit(Enum):
 
     ENERGY_KWH = auto()
     POWER_W = auto()
+    POWER_KW = auto()
+    POWER_VA = auto()
     FREQUENCY_HZ = auto()
     VOLTAGE_V = auto()
     CURRENT_A = auto()
+    TEMPERATURE_C = auto()
+    CHARGE_AH = auto()

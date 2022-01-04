@@ -2,12 +2,14 @@
 """Console script for interacting with GivEnergy inverters."""
 
 import logging
-import time
 
 import click
 
 from .client import GivEnergyModbusClient
-from .model.register_banks import HoldingRegister, InputRegister
+
+# from .model.inverter import Inverter
+# from .model.register_banks import HoldingRegister, InputRegister
+# from .pdu import ReadInputRegistersRequest
 from .util import InterceptHandler
 
 _logger = logging.getLogger(__package__)
@@ -25,28 +27,11 @@ def main():
         "A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."
     )
 
-    start = time.time()
     with GivEnergyModbusClient(host="192.168.0.241") as client:
-        client.write_holding_register(HoldingRegister.WINTER_MODE, 1)
-        registers = {'i': client.read_all_input_registers(), 'h': client.read_all_holding_registers()}
-    end = time.time()
-    _logger.info(f'Reading all registers took {end-start:.3}s')
-
-    for i, v in enumerate(registers['h']):
-        r = HoldingRegister(i)
-        print(
-            f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
-            f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
-        )
-
-    print('#' * 100)
-    for i, v in enumerate(registers['i']):
-        r = InputRegister(i)
-        print(
-            f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
-            f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
-        )
-    print(registers)
+        # print(client.execute(ReadInputRegistersRequest(slave_address=0x37, base_register=60, register_count=16)))
+        i = client.get_inverter()
+        i.debug()
+        # print(client.refresh())
 
 
 if __name__ == "__main__":

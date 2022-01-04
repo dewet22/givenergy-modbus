@@ -8,13 +8,21 @@ authors = ["Dewet Diener <givenergy-modbus@dewet.org>"]
 readme = "README.md"
 license =  "Apache-2.0"
 classifiers=[
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 3 - Alpha',
+    'Framework :: Flake8',
+    'Framework :: Poetry',
+    'Framework :: Pytest',
+    'Framework :: tox',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: Apache Software License',
     'Natural Language :: English',
+    'Operating System :: OS Independent',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
+    'Topic :: Home Automation',
+    'Topic :: Scientific/Engineering',
+    'Topic :: System :: Networking :: Monitoring',
 ]
 packages = [
     { include = "givenergy_modbus" },

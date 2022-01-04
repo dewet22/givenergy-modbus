@@ -4,7 +4,7 @@ from pymodbus.client.sync import ModbusTcpClient
 
 from .decoder import GivEnergyResponseDecoder
 from .framer import GivEnergyModbusFramer
-from .model.inverter import Inverter, InverterData
+from .model.inverter import Inverter
 from .model.register_banks import HoldingRegister
 from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest, WriteHoldingRegisterRequest
 from .transaction import GivEnergyTransactionManager
@@ -43,7 +43,9 @@ class GivEnergyModbusClient(ModbusTcpClient):
         return (
             self.execute(ReadInputRegistersRequest(base_register=0, register_count=60)).register_values
             + self.execute(ReadInputRegistersRequest(base_register=60, register_count=60)).register_values
-            + self.execute(ReadInputRegistersRequest(base_register=120, register_count=60)).register_values
+            # Nothing useful lives here apparently, so just fill with zeroes
+            # + self.execute(ReadInputRegistersRequest(base_register=120, register_count=60)).register_values
+            + [0] * 60
             + self.execute(ReadInputRegistersRequest(base_register=180, register_count=2)).register_values
         )
 
@@ -56,8 +58,8 @@ class GivEnergyModbusClient(ModbusTcpClient):
             raise ValueError(f'Returned value {result.value} != written value {value}.')
         return result
 
-    def refresh(self) -> InverterData:
+    def get_inverter(self) -> Inverter:
         """Return a current view of inverter data."""
         return Inverter(
             holding_registers=self.read_all_holding_registers(), input_registers=self.read_all_input_registers()
-        ).as_dict()
+        )
