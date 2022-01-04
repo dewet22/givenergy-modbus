@@ -168,33 +168,44 @@ def test_check_frame(requests_framer, data: tuple[bytes, bool, bool, dict[str, i
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_request_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
     """Ensure Request PDU messages can be encoded to the correct wire format."""
-    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
+    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu, ex = data
 
     pdu = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
-    packet = requests_framer.buildPacket(pdu)
-    assert packet == mbap_header + encoded_pdu
+    if ex:
+        with pytest.raises(ex.__class__) as e:
+            requests_framer.buildPacket(pdu)
+        assert e.value.args == ex.args
+    else:
+        packet = requests_framer.buildPacket(pdu)
+        assert packet == mbap_header + encoded_pdu
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
     """Ensure Request PDU messages can be decoded from raw messages."""
-    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
+    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu, ex = data
 
     callback = MagicMock(return_value=None)
-    requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
-    callback.assert_called_once()
-    fn_kwargs = vars(callback.mock_calls[0].args[0])
-    for (key, val) in pdu_fn_kwargs.items():
-        assert fn_kwargs[key] == val
-    assert fn_kwargs["transaction_id"] == 0x5959
-    assert fn_kwargs["protocol_id"] == 0x1
-    assert fn_kwargs["unit_id"] == 0x1
-    assert fn_kwargs["skip_encode"]
-    assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
-    assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
-    assert fn_kwargs["slave_address"] == 0x32
+    if ex:
+        with pytest.raises(ex.__class__) as e:
+            requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
+        callback.assert_not_called()
+        assert e.value.args == ex.args
+    else:
+        requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
+        callback.assert_called_once()
+        fn_kwargs = vars(callback.mock_calls[0].args[0])
+        for (key, val) in pdu_fn_kwargs.items():
+            assert fn_kwargs[key] == val
+        assert fn_kwargs["transaction_id"] == 0x5959
+        assert fn_kwargs["protocol_id"] == 0x1
+        assert fn_kwargs["unit_id"] == 0x1
+        assert fn_kwargs["skip_encode"]
+        assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
+        assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
+        assert fn_kwargs["slave_address"] == 0x32
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Another register whitelist and check in the `WriteHoldingRegisterRequest` PDU as another layer of checks
+  to not inadvertently write to unsafe registers. Add a test to ensure the allow list stays in sync with
+  the register definitions from `model.register_banks.HoldingRegister`.
 
 ## [0.6.2] - 2022-01-04
 ### Fixed
