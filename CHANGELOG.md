@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.6.0 (2022-01-04)
+* BREAKING: registers have been widely renamed for consistency and clarity. The joys of a pre-release API.
+* Checked all the registers and their values to make sense. Added units for most that are self-evident. The
+  `Inverter` object is shaping up nicely as a user-friendly representation of the inverter dataset – TODO is
+  likely splitting out a `Battery` representation too, to account for systems with multiple battery units (and
+  those without batteries at all!). The same might make sense for the PV aspect as well.
+* Avoid loading a whole batch of input registers that seem completely unused and save a network call.
+* Match prod release workflow to preview to use py3.9
+* Update PyPI classifiers to specify Alpha quality :)
+
 ## 0.5.0 (2022-01-04)
 * Simplify the client contract so you only work with structured data instead of register banks.
 * Add example use to README

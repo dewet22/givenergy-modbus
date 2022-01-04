@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 
 from givenergy_modbus.model.register import Type
@@ -46,5 +48,21 @@ def test_render(val: int, scaling: float):
         assert e.value.args[0] == 'ascii'
         assert e.value.args[4] == 'ordinal not in range(128)'
 
-    # the assumption is that booleans are simply the LSB being set
-    assert Type.BOOL.render(val, scaling) is bool(val & 0x1)
+    # the assumption is that booleans are simply true if the value is non-0
+    assert Type.BOOL.render(val, scaling) is (val != 0)
+
+
+@pytest.mark.parametrize("scaling", [1000, 10, 1, 0.1, 0.01])
+def test_render_time(scaling: float):
+    """Ensure we can convert BCD-encoded time slots."""
+    assert Type.TIME.render(0, scaling) == datetime.time(hour=0, minute=0)
+    assert Type.TIME.render(30, scaling) == datetime.time(hour=0, minute=30)
+    assert Type.TIME.render(430, scaling) == datetime.time(hour=4, minute=30)
+    assert Type.TIME.render(123, scaling) == datetime.time(hour=1, minute=23)
+    assert Type.TIME.render(234, scaling) == datetime.time(hour=2, minute=34)
+    with pytest.raises(ValueError) as e:
+        Type.TIME.render(678, scaling)
+    assert e.value.args[0] == 'minute must be in 0..59'
+    with pytest.raises(ValueError) as e:
+        Type.TIME.render(9999, scaling)
+    assert e.value.args[0] == 'hour must be in 0..23'
