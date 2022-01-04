@@ -1,4 +1,3 @@
-# noqa: E222
 from enum import Enum, auto
 
 

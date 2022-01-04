@@ -1,6 +1,8 @@
 import datetime
 
-from givenergy_modbus.model.inverter import Inverter
+import pytest
+
+from givenergy_modbus.model.inverter import Inverter, charge_slot_to_time_range
 
 # fmt: off
 INPUT_REGISTERS = [
@@ -88,6 +90,10 @@ def test_inverter():
     assert i.v_battery_cell15 == 3.1350000000000002
     assert i.v_battery_cell16 == 3.119
 
+    assert i.e_grid_out_total_h == 0
+    assert i.e_grid_out_total_l == 0.6000000000000001
+    assert i.e_grid_out_total == 0.6000000000000001
+
 
 def test_as_dict():
     """Ensure we can return a dict view of inverter data."""
@@ -125,3 +131,16 @@ def test_as_dict():
         'battery_type': 1,
         'battery_nominal_capacity': 160,
     }
+
+
+def test_charge_slot_to_time_range():
+    """Ensure we can convert BCD-encoded time slots."""
+    assert charge_slot_to_time_range(0, 0) == (datetime.time(hour=0, minute=0), datetime.time(hour=0, minute=0))
+    assert charge_slot_to_time_range(30, 430) == (datetime.time(hour=0, minute=30), datetime.time(hour=4, minute=30))
+    assert charge_slot_to_time_range(123, 234) == (datetime.time(hour=1, minute=23), datetime.time(hour=2, minute=34))
+    with pytest.raises(ValueError) as e:
+        charge_slot_to_time_range(678, 789)
+    assert e.value.args[0] == 'minute must be in 0..59'
+    with pytest.raises(ValueError) as e:
+        charge_slot_to_time_range(9999, 9999)
+    assert e.value.args[0] == 'hour must be in 0..23'

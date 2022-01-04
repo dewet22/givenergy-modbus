@@ -1,7 +1,4 @@
-#!/usr/bin/env python
 from __future__ import annotations
-
-from typing import cast
 
 from pymodbus.client.sync import ModbusTcpClient
 
@@ -60,10 +57,7 @@ class GivEnergyModbusClient(ModbusTcpClient):
         return result
 
     def refresh(self) -> InverterData:
-        """Return a refreshed view of inverter data."""
-        return cast(
-            InverterData,
-            Inverter(
-                holding_registers=self.read_all_holding_registers(), input_registers=self.read_all_input_registers()
-            ).as_dict(),
-        )
+        """Return a current view of inverter data."""
+        return Inverter(
+            holding_registers=self.read_all_holding_registers(), input_registers=self.read_all_input_registers()
+        ).as_dict()

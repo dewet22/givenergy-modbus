@@ -1,8 +1,7 @@
 import datetime
 from enum import Enum
-from typing import TypedDict
+from typing import TypedDict, cast
 
-from ..util import charge_slot_to_time_range
 from .register_banks import HoldingRegister, InputRegister
 
 
@@ -106,9 +105,17 @@ class Inverter:
                 # fmt: on
         raise KeyError(item)
 
-    def as_dict(self) -> dict:
-        """Return inverter attributes as a dict."""
+    def as_dict(self) -> InverterData:
+        """Return inverter attributes as a typed dict specified by InverterData."""
         ret = {}
         for k in InverterData.__annotations__.keys():
             ret[k] = getattr(self, k)
-        return ret
+        return cast(InverterData, ret)
+
+
+def charge_slot_to_time_range(start: int, end: int) -> tuple[datetime.time, datetime.time]:
+    """Convert two BCD-encoded timeslot register values into a time range."""
+    return (
+        datetime.time(hour=int(f'{start:04}'[:2]), minute=int(f'{start:04}'[2:])),
+        datetime.time(hour=int(f'{end:04}'[:2]), minute=int(f'{end:04}'[2:])),
+    )

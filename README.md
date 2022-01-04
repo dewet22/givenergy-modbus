@@ -23,6 +23,27 @@ that are specific to the GivEnergy implementation.
 * Reading all registers and decoding them into their representative datatypes
 * TODO Writing registers
 
+## How to use
+
+Use the provided client to interact with the device over the network:
+
+```python
+from givenergy_modbus.client import GivEnergyModbusClient
+from givenergy_modbus.model.register_banks import HoldingRegister
+
+with GivEnergyModbusClient(host="192.168.99.99") as client:
+    data = client.refresh()
+    client.write_holding_register(HoldingRegister.WINTER_MODE, 1)
+
+# Data is returned as an instance of `model.Inverter` which allows indexing and attribute access
+assert data.serial_number == 'SA1234G567'
+assert data['model'] == 'Hybrid'
+assert data.v_pv1 == 1.4000000000000001
+assert data.v_battery_cell01 == 3.117
+assert data.e_grid_out_total == 0.6000000000000001
+assert data.winter_mode
+```
+
 ## Credits
 
 This package was created with [Cookiecutter](https://github.com/audreyr/cookiecutter) and the [waynerv/cookiecutter-pypackage](https://github.com/waynerv/cookiecutter-pypackage) project template.

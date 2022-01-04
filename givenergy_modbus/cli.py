@@ -1,4 +1,5 @@
-"""Console script for givenergy_modbus."""
+#!/usr/bin/env python
+"""Console script for interacting with GivEnergy inverters."""
 
 import logging
 import time
