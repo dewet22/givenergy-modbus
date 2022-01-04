@@ -21,7 +21,7 @@ that are specific to the GivEnergy implementation.
 ## Features
 
 * Reading all registers and decoding them into their representative datatypes
-* TODO Writing registers
+* Writing data to individual holding registers that are deemed to be safe
 
 ## How to use
 

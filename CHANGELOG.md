@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.5.0 (2022-01-04)
+* Simplify the client contract so you only work with structured data instead of register banks.
+* Add example use to README
+
 ## 0.4.0 (2022-01-03)
 * Implement writing values to single holding registers
 
