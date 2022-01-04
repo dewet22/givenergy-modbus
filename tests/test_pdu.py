@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from givenergy_modbus.model.register_banks import HoldingRegister
 from givenergy_modbus.pdu import (
     ModbusRequest,
     ReadHoldingRegistersRequest,
@@ -57,28 +58,38 @@ def test_cannot_change_function_code():
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
     """Ensure we correctly encode unencapsulated Request messages."""
-    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu = data
+    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
 
     pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
-    assert pdu.encode() == encoded_pdu
+    if ex:
+        with pytest.raises(ex.__class__) as e:
+            pdu.encode()
+        assert e.value.args == ex.args
+    else:
+        assert pdu.encode() == encoded_pdu
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
-    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu = data
+    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
 
     pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)()
-    pdu.decode(encoded_pdu)
-    if pdu_fn_kwargs:
-        i = 0
-        for (arg, val) in pdu_fn_kwargs.items():
-            i += 1
-            assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
-        assert i == len(pdu_fn_kwargs.keys())
-        assert i > 0
+    if ex:
+        with pytest.raises(ex.__class__) as e:
+            pdu.decode(encoded_pdu)
+        assert e.value.args == ex.args
+    else:
+        pdu.decode(encoded_pdu)
+        if pdu_fn_kwargs:
+            i = 0
+            for (arg, val) in pdu_fn_kwargs.items():
+                i += 1
+                assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
+            assert i == len(pdu_fn_kwargs.keys())
+            assert i > 0
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
@@ -104,3 +115,13 @@ def test_response_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes]):
             assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
         assert i == len(pdu_fn_kwargs.keys())
         assert i > 0
+
+
+def test_writable_registers_match():
+    """Ensure HoldingRegisters declared write-safe match the WriteHoldingRegisterRequest allow list."""
+    write_safe_holding_registers = set()
+    for r in HoldingRegister.__members__.values():
+        if r.write_safe:
+            write_safe_holding_registers.add(r.value)
+
+    assert WriteHoldingRegisterRequest.writable_registers == write_safe_holding_registers

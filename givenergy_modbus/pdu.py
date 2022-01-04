@@ -309,6 +309,32 @@ class WriteHoldingRegisterMeta:
 class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
     """Handles all messages that request a range of registers."""
 
+    writable_registers = {
+        20,  # WINTER_MODE
+        27,  # BATTERY_POWER_MODE
+        31,  # CHARGE_SLOT_2_START
+        32,  # CHARGE_SLOT_2_END
+        35,  # SYSTEM_TIME_YEAR
+        36,  # SYSTEM_TIME_MONTH
+        37,  # SYSTEM_TIME_DAY
+        38,  # SYSTEM_TIME_HOUR
+        39,  # SYSTEM_TIME_MINUTE
+        40,  # SYSTEM_TIME_SECOND
+        44,  # DISCHARGE_SLOT_2_START
+        45,  # DISCHARGE_SLOT_2_END
+        56,  # DISCHARGE_SLOT_1_START
+        57,  # DISCHARGE_SLOT_1_END
+        59,  # DISCHARGE_ENABLE
+        94,  # CHARGE_SLOT_1_START
+        95,  # CHARGE_SLOT_1_END
+        96,  # BATTERY_SMART_CHARGE
+        110,  # SHALLOW_CHARGE
+        111,  # BATTERY_CHARGE_LIMIT
+        112,  # BATTERY_DISCHARGE_LIMIT
+        114,  # BATTERY_POWER_RESERVE
+        116,  # TARGET_SOC
+    }
+
     def __init__(self, **kwargs):
         """Constructor."""
         super().__init__(**kwargs)
@@ -338,10 +364,8 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         return size
 
     def _ensure_valid_state(self):
-        if self.register is None:
-            raise ValueError('Register must be set explicitly.')
-        elif not 0 <= self.register <= 0xFFFF:
-            raise ValueError(f'Register {hex(self.register)} must be unsigned and fit in 2 bytes')
+        if self.register not in self.writable_registers:
+            raise ValueError(f'Register {self.register} is not safe to write to.')
         if self.value is None:
             raise ValueError('Value must be set explicitly.')
         elif not 0 <= self.value <= 0xFFFF:
