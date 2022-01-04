@@ -1,7 +1,7 @@
 [tool]
 [tool.poetry]
 name = "givenergy-modbus"
-version = "0.6.0"
+version = "0.6.1"
 homepage = "https://github.com/dewet22/givenergy-modbus"
 description = "A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."
 authors = ["Dewet Diener <givenergy-modbus@dewet.org>"]
