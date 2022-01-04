@@ -41,7 +41,6 @@ jobs:
           validation_depth: 10
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
-          fail_ci_if_error: false
 
       - uses: actions/setup-python@v2
         with:
@@ -57,12 +56,12 @@ jobs:
           poetry install -E doc
           poetry run mkdocs build
 
-      - name: publish documentation
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          publish_dir: ./site
-          fail_ci_if_error: false
+# enable when public
+#      - name: publish documentation
+#        uses: peaceiris/actions-gh-pages@v3
+#        with:
+#          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+#          publish_dir: ./site
 
       - name: Build wheels and source tarball
         run: >-
