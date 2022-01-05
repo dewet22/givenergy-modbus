@@ -146,7 +146,7 @@ class HoldingRegister(RegisterBank):
     BUZZER_SW = 113
     BATTERY_POWER_RESERVE = (114, {'write_safe': True})
     ISLAND_CHECK_CONTINUE = 115
-    TARGET_SOC = (116, {'write_safe': True})
+    BATTERY_TARGET_SOC = (116, {'write_safe': True})
     CHG_SOC_STOP2 = 117
     DISCHARGE_SOC_STOP2 = 118
     CHG_SOC_STOP = 119

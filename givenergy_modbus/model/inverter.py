@@ -106,7 +106,7 @@ class InverterData(TypedDict):
     buzzer_sw: int
     battery_power_reserve: int
     island_check_continue: int
-    target_soc: int
+    battery_target_soc: int
     chg_soc_stop2: int
     discharge_soc_stop2: int
     chg_soc_stop: int

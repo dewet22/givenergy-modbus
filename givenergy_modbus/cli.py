@@ -5,7 +5,7 @@ import logging
 
 import click
 
-from .client import GivEnergyModbusClient
+from .client import GivEnergyClient
 
 # from .model.inverter import Inverter
 # from .model.register_banks import HoldingRegister, InputRegister
@@ -27,11 +27,9 @@ def main():
         "A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."
     )
 
-    with GivEnergyModbusClient(host="192.168.0.241") as client:
-        # print(client.execute(ReadInputRegistersRequest(slave_address=0x37, base_register=60, register_count=16)))
-        i = client.get_inverter()
-        i.debug()
-        # print(client.refresh())
+    client = GivEnergyClient(host="192.168.0.241")
+    client.refresh()
+    client.inverter.debug()
 
 
 if __name__ == "__main__":

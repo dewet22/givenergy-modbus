@@ -6,10 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.7.0] - 2022-01-05
 ### Added
 - Another register whitelist and check in the `WriteHoldingRegisterRequest` PDU as another layer of checks
   to not inadvertently write to unsafe registers. Add a test to ensure the allow list stays in sync with
   the register definitions from `model.register_banks.HoldingRegister`.
+- A bunch of convenience methods to write data to the inverter without needing any knowledge of registers.
+  See `client.GivEnergyClient` which has a number of `set_*` methods.
+
+### Changed
+- Split out the end-user client functionality from the Modbus client - they were getting too entangled
+  unnecessarily. Updated example code in README for reference.
+- Renamed `target_soc` to `battery_target_soc` instead.
 
 ## [0.6.2] - 2022-01-04
 ### Fixed
@@ -53,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.1.0 (2022-01-02)
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.5.0...v0.6.0

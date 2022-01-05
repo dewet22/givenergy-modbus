@@ -132,7 +132,7 @@ EXPECTED_INVERTER_DICT = {
     'buzzer_sw': 0,
     'battery_power_reserve': 4,
     'island_check_continue': 0,
-    'target_soc': 100,
+    'battery_target_soc': 100,
     'chg_soc_stop2': 0,
     'discharge_soc_stop2': 0,
     'chg_soc_stop': 0,
