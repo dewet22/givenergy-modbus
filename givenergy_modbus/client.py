@@ -1,65 +1,100 @@
-from __future__ import annotations
+from datetime import datetime, time
 
-from pymodbus.client.sync import ModbusTcpClient
-
-from .decoder import GivEnergyResponseDecoder
-from .framer import GivEnergyModbusFramer
+from .modbus import GivEnergyModbusTcpClient
 from .model.inverter import Inverter
 from .model.register_banks import HoldingRegister
-from .pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest, WriteHoldingRegisterRequest
-from .transaction import GivEnergyTransactionManager
 
 
-class GivEnergyModbusClient(ModbusTcpClient):
-    """GivEnergy Modbus Client implementation.
+class GivEnergyClient:
+    """Client for end users to conveniently access GivEnergy inverters."""
 
-    This class ties together all the pieces to create a functional client that can converse with a
-    GivEnergy Modbus implementation over TCP. It only needs to exist as a thin wrapper around the
-    ModbusTcpClient to hot patch in our own Framer and TransactionManager since there are hardcoded
-    classes for Decoder and TransactionManager throughout constructors up the call chain.
-    """
+    inverter: Inverter
 
-    def __init__(self, **kwargs):
+    def __init__(self, host: str, port: int = 8899, batteries=(1,)):
         """Constructor."""
-        kwargs.setdefault("port", 8899)  # GivEnergy default instead of the standard 502
-        super().__init__(**kwargs)
-        self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder(), client=self)
-        self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
+        self.host = host
+        self.port = port
+        self.batteries = batteries
+        self.modbus_client = GivEnergyModbusTcpClient(host=self.host, port=self.port)
 
     def __repr__(self):
         """Return a useful representation."""
-        return f"GivEnergyClient({self.host}:{self.port}): timeout={self.timeout})"
+        return f"GivEnergyClient({self.host}:{self.port}))"
 
-    def read_all_holding_registers(self) -> list[int]:
-        """Read all known holding registers."""
-        return (
-            self.execute(ReadHoldingRegistersRequest(base_register=0, register_count=60)).register_values
-            + self.execute(ReadHoldingRegistersRequest(base_register=60, register_count=60)).register_values
-            + self.execute(ReadHoldingRegistersRequest(base_register=120, register_count=1)).register_values
+    def refresh(self):
+        """Reload all data from the inverter."""
+        self.inverter = Inverter(
+            holding_registers=self.modbus_client.read_all_holding_registers(),
+            input_registers=self.modbus_client.read_all_input_registers(),
         )
 
-    def read_all_input_registers(self) -> list[int]:
-        """Read all known input registers."""
-        return (
-            self.execute(ReadInputRegistersRequest(base_register=0, register_count=60)).register_values
-            + self.execute(ReadInputRegistersRequest(base_register=60, register_count=60)).register_values
-            # Nothing useful lives here apparently, so just fill with zeroes
-            # + self.execute(ReadInputRegistersRequest(base_register=120, register_count=60)).register_values
-            + [0] * 60
-            + self.execute(ReadInputRegistersRequest(base_register=180, register_count=2)).register_values
-        )
+    def set_winter_mode(self, mode: bool):
+        """Set winter mode."""
+        self.modbus_client.write_holding_register(HoldingRegister.WINTER_MODE, int(mode))
 
-    def write_holding_register(self, register: HoldingRegister, value: int):
-        """Write a value to a single holding register."""
-        if not register.write_safe:  # type: ignore  # shut up mypy
-            raise ValueError(f'Register {register.name} is not safe to write to.')
-        result = self.execute(WriteHoldingRegisterRequest(register=register.value, value=value))
-        if result.value != value:
-            raise ValueError(f'Returned value {result.value} != written value {value}.')
-        return result
+    def set_battery_power_mode(self, mode: int):
+        """Set the battery power mode."""
+        # TODO what are valid modes?
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_POWER_MODE, mode)
 
-    def get_inverter(self) -> Inverter:
-        """Return a current view of inverter data."""
-        return Inverter(
-            holding_registers=self.read_all_holding_registers(), input_registers=self.read_all_input_registers()
-        )
+    def set_charge_slot_1(self, start: time, end: time):
+        """Set first charge slot times."""
+        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_SLOT_1_START, int(start.strftime('%H%M')))
+        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_SLOT_1_END, int(end.strftime('%H%M')))
+
+    def set_charge_slot_2(self, start: time, end: time):
+        """Set second charge slot times."""
+        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_SLOT_2_START, int(start.strftime('%H%M')))
+        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_SLOT_2_END, int(end.strftime('%H%M')))
+
+    def set_discharge_slot_1(self, start: time, end: time):
+        """Set first discharge slot times."""
+        self.modbus_client.write_holding_register(HoldingRegister.DISCHARGE_SLOT_1_START, int(start.strftime('%H%M')))
+        self.modbus_client.write_holding_register(HoldingRegister.DISCHARGE_SLOT_1_END, int(end.strftime('%H%M')))
+
+    def set_discharge_slot_2(self, start: time, end: time):
+        """Set second discharge slot times."""
+        self.modbus_client.write_holding_register(HoldingRegister.DISCHARGE_SLOT_2_START, int(start.strftime('%H%M')))
+        self.modbus_client.write_holding_register(HoldingRegister.DISCHARGE_SLOT_2_END, int(end.strftime('%H%M')))
+
+    def set_system_time(self, dt: datetime):
+        """Set the system time of the inverter."""
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_YEAR, dt.year)
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_MONTH, dt.month)
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_DAY, dt.day)
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_HOUR, dt.hour)
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_MINUTE, dt.minute)
+        self.modbus_client.write_holding_register(HoldingRegister.SYSTEM_TIME_SECOND, dt.second)
+
+    def set_discharge_enable(self, mode: bool):
+        """Set the battery to discharge."""
+        self.modbus_client.write_holding_register(HoldingRegister.DISCHARGE_ENABLE, int(mode))
+
+    def set_battery_smart_charge(self, mode: bool):
+        """Set the smart charge mode to manage the battery."""
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_SMART_CHARGE, int(mode))
+
+    def set_shallow_charge(self, val: int):
+        """Set the minimum level of charge to keep."""
+        # TODO what are valid values? 4-100?
+        self.modbus_client.write_holding_register(HoldingRegister.SHALLOW_CHARGE, val)
+
+    def set_battery_charge_limit(self, val: int):
+        """Set the battery charge limit."""
+        # TODO what are valid values?
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_CHARGE_LIMIT, val)
+
+    def set_battery_discharge_limit(self, val: int):
+        """Set the battery discharge limit."""
+        # TODO what are valid values?
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)
+
+    def set_battery_power_reserve(self, val: int):
+        """Set the battery power reserve to maintain."""
+        # TODO what are valid values?
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_POWER_RESERVE, val)
+
+    def set_battery_target_soc(self, val: int):
+        """Set the target SOC when the battery charges."""
+        # TODO what are valid values?
+        self.modbus_client.write_holding_register(HoldingRegister.BATTERY_TARGET_SOC, val)

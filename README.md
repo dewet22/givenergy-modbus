@@ -28,20 +28,24 @@ that are specific to the GivEnergy implementation.
 Use the provided client to interact with the device over the network:
 
 ```python
-from givenergy_modbus.client import GivEnergyModbusClient
-from givenergy_modbus.model.register_banks import HoldingRegister
+from datetime import time
+from givenergy_modbus.client import GivEnergyClient
 
-with GivEnergyModbusClient(host="192.168.99.99") as client:
-    data = client.refresh()
-    client.write_holding_register(HoldingRegister.WINTER_MODE, 1)
+client = GivEnergyClient(host="192.168.99.99")
+client.refresh()
+client.set_winter_mode(True)
+# set a charging slot from 00:30 to 04:30
+client.set_charge_slot_1(time(hour=0, minute=30), time(hour=4, minute=30))
 
-# Data is returned as an instance of `model.Inverter` which allows indexing and attribute access
-assert data.serial_number == 'SA1234G567'
-assert data['model'] == 'Hybrid'
-assert data.v_pv1 == 1.4000000000000001
-assert data.v_battery_cell01 == 3.117
-assert data.e_grid_out_total == 0.6000000000000001
-assert data.winter_mode
+# Data is returned as an instance of `model.Inverter` which
+# allows indexing and direct attribute access
+client.refresh()
+assert client.inverter.serial_number == 'SA1234G567'
+assert client.inverter['model'] == 'Hybrid'
+assert client.inverter.v_pv1 == 1.4000000000000001
+assert client.inverter.v_battery_cell01 == 3.117
+assert client.inverter.e_grid_out_total == 0.6000000000000001
+assert client.inverter.winter_mode
 ```
 
 ## Credits

@@ -1,87 +1,89 @@
+from datetime import datetime, time
 from unittest.mock import MagicMock as Mock
+from unittest.mock import call
 
 import pytest
 
-from givenergy_modbus.client import GivEnergyModbusClient
+from givenergy_modbus.client import GivEnergyClient
 from givenergy_modbus.model.register_banks import HoldingRegister
-from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 from .model.test_inverter import EXPECTED_INVERTER_DICT, HOLDING_REGISTERS, INPUT_REGISTERS
 
 
-def test_read_all_holding_registers():
-    """Ensure we read the ranges of known registers."""
-    c = GivEnergyModbusClient()
-    mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadHoldingRegistersResponse'))
-    c.execute = mock_call
-    assert c.read_all_holding_registers() == [1, 2, 3, 1, 2, 3, 1, 2, 3]
-    assert mock_call.call_count == 3
-    req1 = mock_call.call_args_list[0].args[0]
-    req2 = mock_call.call_args_list[1].args[0]
-    req3 = mock_call.call_args_list[2].args[0]
-
-    assert req1.__class__ == ReadHoldingRegistersRequest
-    assert req1.base_register == 0
-    assert req1.register_count == 60
-    assert req2.__class__ == ReadHoldingRegistersRequest
-    assert req2.base_register == 60
-    assert req2.register_count == 60
-    assert req3.__class__ == ReadHoldingRegistersRequest
-    assert req3.base_register == 120
-    assert req3.register_count == 1
-
-
-def test_read_all_input_registers():
-    """Ensure we read the ranges of known registers."""
-    c = GivEnergyModbusClient()
-    mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadInputRegistersResponse'))
-    c.execute = mock_call
-    assert c.read_all_input_registers() == [1, 2, 3, 1, 2, 3] + [0] * 60 + [1, 2, 3]
-    assert mock_call.call_count == 3
-    req1 = mock_call.call_args_list[0].args[0]
-    req2 = mock_call.call_args_list[1].args[0]
-    req3 = mock_call.call_args_list[2].args[0]
-
-    assert req1.__class__ == ReadInputRegistersRequest
-    assert req1.base_register == 0
-    assert req1.register_count == 60
-    assert req2.__class__ == ReadInputRegistersRequest
-    assert req2.base_register == 60
-    assert req2.register_count == 60
-    # we skip loading registers 120-179, there's nothing there.
-    assert req3.__class__ == ReadInputRegistersRequest
-    assert req3.base_register == 180
-    assert req3.register_count == 2
-
-
-def test_write_holding_register():
-    """Ensure we can write to holding registers."""
-    c = GivEnergyModbusClient()
-    mock_call = Mock(name='execute', return_value=Mock(value=5, name='WriteHoldingRegisterResponse'))
-    c.execute = mock_call
-    c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
-    assert mock_call.call_count == 1
-
-    mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
-    c.execute = mock_call
-    with pytest.raises(ValueError) as e:
-        c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
-    assert mock_call.call_count == 1
-    assert e.value.args[0] == 'Returned value 2 != written value 5.'
-
-    mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
-    with pytest.raises(ValueError) as e:
-        c.write_holding_register(HoldingRegister.INVERTER_STATE, 5)
-    assert mock_call.call_count == 0
-    assert e.value.args[0] == 'Register INVERTER_STATE is not safe to write to.'
-
-
 def test_refresh():
     """Ensure we can retrieve current data in a well-structured format."""
-    c = GivEnergyModbusClient()
-    c.read_all_holding_registers = Mock('read_all_holding_registers', return_value=HOLDING_REGISTERS)
-    c.read_all_input_registers = Mock('read_all_input_registers', return_value=INPUT_REGISTERS)
-    data = c.get_inverter()
-    assert c.read_all_holding_registers.call_count == 1
-    assert c.read_all_input_registers.call_count == 1
-    assert data.to_dict() == EXPECTED_INVERTER_DICT
+    c = GivEnergyClient(host='foo')
+    c.modbus_client.read_all_holding_registers = Mock(return_value=HOLDING_REGISTERS)
+    c.modbus_client.read_all_input_registers = Mock(return_value=INPUT_REGISTERS)
+    c.refresh()
+    assert c.modbus_client.read_all_holding_registers.call_count == 1
+    assert c.modbus_client.read_all_input_registers.call_count == 1
+    assert c.inverter.to_dict() == EXPECTED_INVERTER_DICT
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        ('set_winter_mode', HoldingRegister.WINTER_MODE),
+        ('set_battery_power_mode', HoldingRegister.BATTERY_POWER_MODE),
+        ('set_discharge_enable', HoldingRegister.DISCHARGE_ENABLE),
+        ('set_battery_smart_charge', HoldingRegister.BATTERY_SMART_CHARGE),
+        ('set_shallow_charge', HoldingRegister.SHALLOW_CHARGE),
+        ('set_battery_charge_limit', HoldingRegister.BATTERY_CHARGE_LIMIT),
+        ('set_battery_discharge_limit', HoldingRegister.BATTERY_DISCHARGE_LIMIT),
+        ('set_battery_power_reserve', HoldingRegister.BATTERY_POWER_RESERVE),
+        ('set_battery_target_soc', HoldingRegister.BATTERY_TARGET_SOC),
+    ),
+)
+def test_write_holding_register_helper_functions(data: tuple[str, HoldingRegister]):
+    """Test wiring for the basic register writer functions is correct."""
+    fn, register = data
+    c = GivEnergyClient(host='foo')
+    mock = Mock(return_value=True)
+    c.modbus_client.write_holding_register = mock
+
+    getattr(c, fn)(33)
+    getattr(c, fn)(True)
+
+    assert mock.call_args_list == [
+        call(register, 33),
+        call(register, 1),
+    ]
+
+
+@pytest.mark.parametrize("action", ("charge", "discharge"))
+@pytest.mark.parametrize("slot", (1, 2))
+@pytest.mark.parametrize("hour1", (0, 23))
+@pytest.mark.parametrize("min1", (0, 59))
+@pytest.mark.parametrize("hour2", (0, 23))
+@pytest.mark.parametrize("min2", (0, 59))
+def test_set_charge_slots(action, slot, hour1, min1, hour2, min2):
+    """Ensure we can set charge time slots correctly."""
+    c = GivEnergyClient(host='foo')
+    mock = Mock(return_value=True)
+    c.modbus_client.write_holding_register = mock
+
+    getattr(c, f'set_{action}_slot_{slot}')(time(hour=hour1, minute=min1), time(hour=hour2, minute=min2))
+
+    assert mock.call_args_list == [
+        call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_START'], hour1 * 100 + min1),
+        call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_END'], hour2 * 100 + min2),
+    ]
+
+
+def test_set_system_time():
+    """Ensure we can set the system time correctly."""
+    c = GivEnergyClient(host='foo')
+    mock = Mock(return_value=True)
+    c.modbus_client.write_holding_register = mock
+
+    c.set_system_time(datetime(year=2022, month=11, day=23, hour=4, minute=34, second=59))
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.SYSTEM_TIME_YEAR, 2022),
+        call(HoldingRegister.SYSTEM_TIME_MONTH, 11),
+        call(HoldingRegister.SYSTEM_TIME_DAY, 23),
+        call(HoldingRegister.SYSTEM_TIME_HOUR, 4),
+        call(HoldingRegister.SYSTEM_TIME_MINUTE, 34),
+        call(HoldingRegister.SYSTEM_TIME_SECOND, 59),
+    ]
