@@ -39,13 +39,12 @@ def test_write_holding_register_helper_functions(data: tuple[str, HoldingRegiste
     """Test wiring for the basic register writer functions is correct."""
     fn, register = data
     c = GivEnergyClient(host='foo')
-    mock = Mock(return_value=True)
-    c.modbus_client.write_holding_register = mock
+    c.modbus_client.write_holding_register = Mock(return_value=True)  # type: ignore  # shut up mypy
 
     getattr(c, fn)(33)
     getattr(c, fn)(True)
 
-    assert mock.call_args_list == [
+    assert c.modbus_client.write_holding_register.call_args_list == [
         call(register, 33),
         call(register, 1),
     ]
