@@ -2,10 +2,11 @@ from typing import Any
 
 import pytest
 
-from givenergy_modbus.model.register_banks import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import (
     ModbusRequest,
     ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
     ReadRegistersRequest,
     ReadRegistersResponse,
     WriteHoldingRegisterRequest,
@@ -125,3 +126,23 @@ def test_writable_registers_match():
             write_safe_holding_registers.add(r.value)
 
     assert WriteHoldingRegisterRequest.writable_registers == write_safe_holding_registers
+
+
+def test_read_registers_response_as_dict():
+    """Ensure a ReadRegistersResponse can be turned into a dict representation."""
+    r = ReadHoldingRegistersResponse(base_register=100, register_count=10, register_values=list(range(10))[::-1])
+    assert r.to_dict() == {100: 9, 101: 8, 102: 7, 103: 6, 104: 5, 105: 4, 106: 3, 107: 2, 108: 1, 109: 0}
+
+    r = ReadHoldingRegistersResponse(base_register=1000, register_count=10, register_values=['a'] * 10)
+    assert r.to_dict() == {
+        1000: 'a',
+        1001: 'a',
+        1002: 'a',
+        1003: 'a',
+        1004: 'a',
+        1005: 'a',
+        1006: 'a',
+        1007: 'a',
+        1008: 'a',
+        1009: 'a',
+    }

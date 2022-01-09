@@ -251,8 +251,12 @@ class ReadRegistersResponse(ModbusResponse, ABC):
         self.check = decoder.decode_16bit_uint()
 
     def _ensure_valid_state(self):
-        # Is there anything to do here?
-        pass
+        if self.register_count == 60 and set(self.register_values) == {0}:
+            raise AssertionError('Read back 60 zero-valued registers which is suspicious.')
+
+    def to_dict(self):
+        """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
+        return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
 
 
 #################################################################################
@@ -310,7 +314,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
     """Handles all messages that request a range of registers."""
 
     writable_registers = {
-        20,  # WINTER_MODE
+        20,  # ENABLE_CHARGE_TARGET
         27,  # BATTERY_POWER_MODE
         31,  # CHARGE_SLOT_2_START
         32,  # CHARGE_SLOT_2_END
@@ -324,14 +328,14 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         45,  # DISCHARGE_SLOT_2_END
         56,  # DISCHARGE_SLOT_1_START
         57,  # DISCHARGE_SLOT_1_END
-        59,  # DISCHARGE_ENABLE
+        59,  # ENABLE_DISCHARGE
         94,  # CHARGE_SLOT_1_START
         95,  # CHARGE_SLOT_1_END
-        96,  # BATTERY_SMART_CHARGE
-        110,  # SHALLOW_CHARGE
+        96,  # CHARGE_ENABLE
+        110,  # BATTERY_SOC_RESERVE
         111,  # BATTERY_CHARGE_LIMIT
         112,  # BATTERY_DISCHARGE_LIMIT
-        114,  # BATTERY_POWER_RESERVE
+        114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
         116,  # TARGET_SOC
     }
 

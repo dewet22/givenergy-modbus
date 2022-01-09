@@ -5,48 +5,109 @@ from unittest.mock import call
 import pytest
 
 from givenergy_modbus.client import GivEnergyClient
-from givenergy_modbus.model.register_banks import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister
 
-from .model.test_inverter import EXPECTED_INVERTER_DICT, HOLDING_REGISTERS, INPUT_REGISTERS
+
+@pytest.fixture()
+def client_with_mocked_modbus_client() -> tuple[GivEnergyClient, Mock]:
+    """Supply a client with a mocked modbus client."""
+    c = GivEnergyClient(host='foo')
+    mock = Mock()
+    c.modbus_client = mock
+    return c, mock
+
+
+@pytest.fixture()
+def client_with_mocked_write_holding_register() -> tuple[GivEnergyClient, Mock]:
+    """Supply a client with a mocked write_holding_register() function."""
+    c = GivEnergyClient(host='foo')
+    mock = Mock()
+    c.modbus_client.write_holding_register = mock
+    return c, mock
 
 
 def test_refresh():
     """Ensure we can retrieve current data in a well-structured format."""
     c = GivEnergyClient(host='foo')
-    c.modbus_client.read_all_holding_registers = Mock(return_value=HOLDING_REGISTERS)
-    c.modbus_client.read_all_input_registers = Mock(return_value=INPUT_REGISTERS)
+    c.modbus_client.read_holding_registers = Mock()
+    c.modbus_client.read_input_registers = Mock()
+    c.register_cache = Mock()
+
     c.refresh()
-    assert c.modbus_client.read_all_holding_registers.call_count == 1
-    assert c.modbus_client.read_all_input_registers.call_count == 1
-    assert c.inverter.to_dict() == EXPECTED_INVERTER_DICT
+
+    assert c.modbus_client.read_holding_registers.call_args_list == [call(0, 60), call(60, 60), call(120, 60)]
+    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(60, 60)]
+    # it really is a lot of work to test the detailed wiring of these deep method calls
+    assert len(c.register_cache.update_holding_registers.call_args_list) == 3
+    assert len(c.register_cache.update_input_registers.call_args_list) == 2
 
 
-@pytest.mark.parametrize(
-    "data",
-    (
-        ('set_winter_mode', HoldingRegister.WINTER_MODE),
-        ('set_battery_power_mode', HoldingRegister.BATTERY_POWER_MODE),
-        ('set_discharge_enable', HoldingRegister.DISCHARGE_ENABLE),
-        ('set_battery_smart_charge', HoldingRegister.BATTERY_SMART_CHARGE),
-        ('set_shallow_charge', HoldingRegister.SHALLOW_CHARGE),
-        ('set_battery_charge_limit', HoldingRegister.BATTERY_CHARGE_LIMIT),
-        ('set_battery_discharge_limit', HoldingRegister.BATTERY_DISCHARGE_LIMIT),
-        ('set_battery_power_reserve', HoldingRegister.BATTERY_POWER_RESERVE),
-        ('set_battery_target_soc', HoldingRegister.BATTERY_TARGET_SOC),
-    ),
-)
-def test_write_holding_register_helper_functions(data: tuple[str, HoldingRegister]):
-    """Test wiring for the basic register writer functions is correct."""
-    fn, register = data
-    c = GivEnergyClient(host='foo')
-    c.modbus_client.write_holding_register = Mock(return_value=True)  # type: ignore  # shut up mypy
+def test_set_charge_target(client_with_mocked_write_holding_register):
+    """Ensure we can set a charge target."""
+    c, mock = client_with_mocked_write_holding_register
 
-    getattr(c, fn)(33)
-    getattr(c, fn)(True)
+    c.enable_charge_target(45)
+    c.enable_charge_target(100)
 
-    assert c.modbus_client.write_holding_register.call_args_list == [
-        call(register, 33),
-        call(register, 1),
+    assert mock.call_args_list == [
+        call(HoldingRegister.ENABLE_CHARGE_TARGET, True),
+        call(HoldingRegister.CHARGE_TARGET_SOC, 45),
+        call(HoldingRegister.ENABLE_CHARGE_TARGET, False),
+        call(HoldingRegister.CHARGE_TARGET_SOC, 100),
+    ]
+    with pytest.raises(ValueError) as e:
+        c.enable_charge_target(1)
+    assert e.value.args[0] == 'Specified Charge Target SOC (1) is not in [4-100].'
+
+
+def test_disable_charge_target(client_with_mocked_write_holding_register):
+    """Ensure we can remove a charge target."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.disable_charge_target()
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.ENABLE_CHARGE_TARGET, False),
+        call(HoldingRegister.CHARGE_TARGET_SOC, 100),
+    ]
+
+
+def test_set_charge(client_with_mocked_write_holding_register):
+    """Ensure we can toggle charging."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.enable_charge()
+    c.disable_charge()
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.CHARGE_ENABLE, True),
+        call(HoldingRegister.CHARGE_ENABLE, False),
+    ]
+
+
+def test_set_discharge(client_with_mocked_write_holding_register):
+    """Ensure we can toggle discharging."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.enable_discharge()
+    c.disable_discharge()
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.ENABLE_DISCHARGE, True),
+        call(HoldingRegister.ENABLE_DISCHARGE, False),
+    ]
+
+
+def test_set_battery_discharge_mode(client_with_mocked_write_holding_register):
+    """Ensure we can set a discharge mode."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.set_battery_discharge_mode_max_power()
+    c.set_battery_discharge_mode_demand()
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.BATTERY_POWER_MODE, 0),
+        call(HoldingRegister.BATTERY_POWER_MODE, 1),
     ]
 
 
@@ -56,27 +117,73 @@ def test_write_holding_register_helper_functions(data: tuple[str, HoldingRegiste
 @pytest.mark.parametrize("min1", (0, 59))
 @pytest.mark.parametrize("hour2", (0, 23))
 @pytest.mark.parametrize("min2", (0, 59))
-def test_set_charge_slots(action, slot, hour1, min1, hour2, min2):
+def test_set_charge_slots(client_with_mocked_write_holding_register, action, slot, hour1, min1, hour2, min2):
     """Ensure we can set charge time slots correctly."""
-    c = GivEnergyClient(host='foo')
-    mock = Mock(return_value=True)
-    c.modbus_client.write_holding_register = mock
+    c, mock = client_with_mocked_write_holding_register
 
-    getattr(c, f'set_{action}_slot_{slot}')(time(hour=hour1, minute=min1), time(hour=hour2, minute=min2))
+    # test set and reset functions for the relevant {action} and {slot}
+    getattr(c, f'set_{action}_slot_{slot}')((time(hour1, min1), time(hour2, min2)))
+    getattr(c, f'reset_{action}_slot_{slot}')()
 
     assert mock.call_args_list == [
         call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_START'], hour1 * 100 + min1),
         call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_END'], hour2 * 100 + min2),
+        call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_START'], 0),
+        call(HoldingRegister[f'{action.upper()}_SLOT_{slot}_END'], 0),
     ]
 
 
-def test_set_system_time():
-    """Ensure we can set the system time correctly."""
-    c = GivEnergyClient(host='foo')
-    mock = Mock(return_value=True)
-    c.modbus_client.write_holding_register = mock
+def test_set_mode_dynamic(client_with_mocked_write_holding_register):
+    """Ensure we can set the inverter to dynamic mode."""
+    c, mock = client_with_mocked_write_holding_register
 
-    c.set_system_time(datetime(year=2022, month=11, day=23, hour=4, minute=34, second=59))
+    c.set_mode_dynamic()
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.BATTERY_POWER_MODE, 1),
+        call(HoldingRegister.BATTERY_SOC_RESERVE, 4),
+        call(HoldingRegister.ENABLE_DISCHARGE, False),
+    ]
+
+
+def test_set_mode_storage(client_with_mocked_write_holding_register):
+    """Ensure we can set the inverter to a storage mode with discharge slots."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.set_mode_storage((time(1, 2), time(3, 4)))
+    c.set_mode_storage((time(5, 6), time(7, 8)), (time(9, 10), time(11, 12)))
+    c.set_mode_storage((time(13, 14), time(15, 16)), export=True)
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.BATTERY_POWER_MODE, 1),
+        call(HoldingRegister.BATTERY_SOC_RESERVE, 100),
+        call(HoldingRegister.ENABLE_DISCHARGE, True),
+        call(HoldingRegister.DISCHARGE_SLOT_1_START, 102),
+        call(HoldingRegister.DISCHARGE_SLOT_1_END, 304),
+        call(HoldingRegister.DISCHARGE_SLOT_2_START, 0),
+        call(HoldingRegister.DISCHARGE_SLOT_2_END, 0),
+        call(HoldingRegister.BATTERY_POWER_MODE, 1),
+        call(HoldingRegister.BATTERY_SOC_RESERVE, 100),
+        call(HoldingRegister.ENABLE_DISCHARGE, True),
+        call(HoldingRegister.DISCHARGE_SLOT_1_START, 506),
+        call(HoldingRegister.DISCHARGE_SLOT_1_END, 708),
+        call(HoldingRegister.DISCHARGE_SLOT_1_START, 910),
+        call(HoldingRegister.DISCHARGE_SLOT_1_END, 1112),
+        call(HoldingRegister.BATTERY_POWER_MODE, 0),
+        call(HoldingRegister.BATTERY_SOC_RESERVE, 100),
+        call(HoldingRegister.ENABLE_DISCHARGE, True),
+        call(HoldingRegister.DISCHARGE_SLOT_1_START, 1314),
+        call(HoldingRegister.DISCHARGE_SLOT_1_END, 1516),
+        call(HoldingRegister.DISCHARGE_SLOT_2_START, 0),
+        call(HoldingRegister.DISCHARGE_SLOT_2_END, 0),
+    ]
+
+
+def test_set_system_time(client_with_mocked_write_holding_register):
+    """Ensure we can set the system time correctly."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.set_datetime(datetime(year=2022, month=11, day=23, hour=4, minute=34, second=59))
 
     assert mock.call_args_list == [
         call(HoldingRegister.SYSTEM_TIME_YEAR, 2022),
@@ -85,4 +192,31 @@ def test_set_system_time():
         call(HoldingRegister.SYSTEM_TIME_HOUR, 4),
         call(HoldingRegister.SYSTEM_TIME_MINUTE, 34),
         call(HoldingRegister.SYSTEM_TIME_SECOND, 59),
+    ]
+
+
+@pytest.mark.parametrize(
+    "data",
+    (
+        ('set_discharge_enable', HoldingRegister.ENABLE_DISCHARGE),
+        ('set_shallow_charge', HoldingRegister.BATTERY_SOC_RESERVE),
+        ('set_battery_charge_limit', HoldingRegister.BATTERY_CHARGE_LIMIT),
+        ('set_battery_discharge_limit', HoldingRegister.BATTERY_DISCHARGE_LIMIT),
+        ('set_battery_power_reserve', HoldingRegister.BATTERY_DISCHARGE_MIN_POWER_RESERVE),
+        ('set_battery_target_soc', HoldingRegister.CHARGE_TARGET_SOC),
+    ),
+)
+def test_write_holding_register_helper_functions(
+    data: tuple[str, HoldingRegister], client_with_mocked_write_holding_register: tuple[GivEnergyClient, Mock]
+):
+    """Test wiring for the basic register writer functions is correct."""
+    fn, register = data
+    c, mock = client_with_mocked_write_holding_register
+
+    getattr(c, fn)(33)
+    getattr(c, fn)(True)
+
+    assert mock.call_args_list == [
+        call(register, 33),
+        call(register, 1),
     ]
