@@ -1,3 +1,4 @@
+# type: ignore  # shut up mypy, this whole file is just a minefield
 import datetime
 
 import pytest

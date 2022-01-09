@@ -3,7 +3,7 @@ from unittest.mock import MagicMock as Mock
 import pytest
 
 from givenergy_modbus.modbus import GivEnergyModbusTcpClient
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 
