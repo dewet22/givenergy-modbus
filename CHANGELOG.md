@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Ensure we check charge and discharge limits: current hardware cannot support >50% (i.e. >2.6kW) rates.
+- Make sure we query the 180+ block of input registers too, since it contains (amongst others) battery energy counters.
 
 ## [0.8.0] - 2022-01-09
 ### Added
