@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import (
     ModbusRequest,
     ReadHoldingRegistersRequest,

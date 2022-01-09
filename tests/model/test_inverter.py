@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.register import RegisterCache
+from givenergy_modbus.model.register import RegisterCache  # type: ignore  # shut up mypy
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([

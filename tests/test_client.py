@@ -5,7 +5,7 @@ from unittest.mock import call
 import pytest
 
 from givenergy_modbus.client import GivEnergyClient
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 
 
 @pytest.fixture()
@@ -22,7 +22,7 @@ def client_with_mocked_write_holding_register() -> tuple[GivEnergyClient, Mock]:
     """Supply a client with a mocked write_holding_register() function."""
     c = GivEnergyClient(host='foo')
     mock = Mock()
-    c.modbus_client.write_holding_register = mock
+    c.modbus_client.write_holding_register = mock  # type: ignore  # shut up mypy
     return c, mock
 
 
