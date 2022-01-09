@@ -36,10 +36,10 @@ def test_refresh():
     c.refresh()
 
     assert c.modbus_client.read_holding_registers.call_args_list == [call(0, 60), call(60, 60), call(120, 60)]
-    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(60, 60)]
+    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(60, 60), call(180, 60)]
     # it really is a lot of work to test the detailed wiring of these deep method calls
     assert len(c.register_cache.update_holding_registers.call_args_list) == 3
-    assert len(c.register_cache.update_input_registers.call_args_list) == 2
+    assert len(c.register_cache.update_input_registers.call_args_list) == 3
 
 
 def test_set_charge_target(client_with_mocked_write_holding_register):
@@ -193,6 +193,38 @@ def test_set_system_time(client_with_mocked_write_holding_register):
         call(HoldingRegister.SYSTEM_TIME_MINUTE, 34),
         call(HoldingRegister.SYSTEM_TIME_SECOND, 59),
     ]
+
+
+def test_set_charge_limit(client_with_mocked_write_holding_register):
+    """Ensure we can set a charge limit."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.set_battery_charge_limit(1)
+    c.set_battery_charge_limit(50)
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.BATTERY_CHARGE_LIMIT, 1),
+        call(HoldingRegister.BATTERY_CHARGE_LIMIT, 50),
+    ]
+    with pytest.raises(ValueError) as e:
+        c.set_battery_charge_limit(51)
+    assert e.value.args[0] == 'Specified Charge Limit (51%) is not in [0-50]%.'
+
+
+def test_set_discharge_limit(client_with_mocked_write_holding_register):
+    """Ensure we can set a discharge limit."""
+    c, mock = client_with_mocked_write_holding_register
+
+    c.set_battery_discharge_limit(1)
+    c.set_battery_discharge_limit(50)
+
+    assert mock.call_args_list == [
+        call(HoldingRegister.BATTERY_DISCHARGE_LIMIT, 1),
+        call(HoldingRegister.BATTERY_DISCHARGE_LIMIT, 50),
+    ]
+    with pytest.raises(ValueError) as e:
+        c.set_battery_discharge_limit(51)
+    assert e.value.args[0] == 'Specified Discharge Limit (51%) is not in [0-50]%.'
 
 
 @pytest.mark.parametrize(

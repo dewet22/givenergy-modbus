@@ -27,8 +27,11 @@ class GivEnergyClient:
         self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(0, 60).to_dict())
         self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(60, 60).to_dict())
         self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(120, 60).to_dict())
+        # self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(180, 60).to_dict())
         self.register_cache.update_input_registers(self.modbus_client.read_input_registers(0, 60).to_dict())
         self.register_cache.update_input_registers(self.modbus_client.read_input_registers(60, 60).to_dict())
+        # self.register_cache.update_input_registers(self.modbus_client.read_input_registers(120, 60).to_dict())
+        self.register_cache.update_input_registers(self.modbus_client.read_input_registers(180, 60).to_dict())
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
@@ -174,11 +177,14 @@ class GivEnergyClient:
     def set_battery_charge_limit(self, val: int):
         """Set the battery charge limit."""
         # TODO what are valid values?
+        if not 0 <= val <= 50:
+            raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%.')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_CHARGE_LIMIT, val)
 
     def set_battery_discharge_limit(self, val: int):
         """Set the battery discharge limit."""
-        # TODO what are valid values?
+        if not 0 <= val <= 50:
+            raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%.')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)
 
     def set_battery_power_reserve(self, val: int):
