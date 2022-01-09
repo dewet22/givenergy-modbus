@@ -1,39 +1,39 @@
+# type: ignore  # shut up mypy, it seems to struggle with this file
 import datetime
 from enum import Enum
-from typing import TypedDict, cast
-
-from .register_banks import HoldingRegister, InputRegister
+from typing import TypedDict
 
 
 class Model(Enum):
-    """Inverter models, as determined from their serial number prefix."""
+    """Registers models, as determined from their serial number prefix."""
 
     CE = 'AC'
     ED = "Gen2"
     SA = "Hybrid"
 
 
-class InverterData(TypedDict):
-    """Structured format for all attributes."""
+class Inverter(TypedDict):
+    """Structured format for all inverter attributes."""
 
-    inverter_serial_number: str
-    model: str
+    serial_number: str
     device_type_code: int
     inverter_module: int
-    input_tracker_num: int
-    output_phase_num: int
+    num_mppt: int
+    num_phases: int
+    enable_ammeter: bool
     battery_serial_number: str
-    battery_firmware_version: int
+    inverter_serial_number: str
+    bms_firmware_version: int
     dsp_firmware_version: int
+    enable_charge_target: bool
     arm_firmware_version: int
-    winter_mode: bool
-    wifi_or_u_disk: int
-    select_dsp_or_arm: int
-    grid_port_max_output_power: int
+    usb_device_inserted: int
+    select_arm_chip: int
+    p_grid_port_max_output: int
     battery_power_mode: int
-    fre_mode: int
+    enable_60hz_freq_mode: bool
     soc_force_adjust: int
-    communicate_address: int
+    inverter_modbus_address: int
     charge_slot_1: tuple[datetime.time, datetime.time]
     charge_slot_2: tuple[datetime.time, datetime.time]
     discharge_slot_1: tuple[datetime.time, datetime.time]
@@ -106,7 +106,7 @@ class InverterData(TypedDict):
     buzzer_sw: int
     battery_power_reserve: int
     island_check_continue: int
-    battery_target_soc: int
+    charge_target_soc: int
     chg_soc_stop2: int
     discharge_soc_stop2: int
     chg_soc_stop: int
@@ -197,7 +197,7 @@ class InverterData(TypedDict):
     battery_warning_1_2: int
     battery_cycles: int
     battery_no_of_cells: int
-    bms_firmware_version: int
+    bms_firmware_version_2: int
     battery_soc: int
     battery_design_capacity_2: float
     e_battery_discharge_ac_total: float
@@ -207,96 +207,29 @@ class InverterData(TypedDict):
     e_battery_discharge_total: float
     e_battery_charge_total: float
 
-
-class Inverter:
-    """Models an inverter device."""
-
-    holding_registers: list[int]  # raw register values cache
-    input_registers: list[int]  # raw register values cache
-
-    def __init__(self, holding_registers, input_registers):
+    def __init__(self, **kwargs):  # type: ignore  # shut up mypy
         """Constructor."""
-        self.holding_registers = holding_registers
-        self.input_registers = input_registers
-
-        self.inverter_serial_number = (
-            self.inverter_serial_number_5
-            + self.inverter_serial_number_4
-            + self.inverter_serial_number_3
-            + self.inverter_serial_number_2
-            + self.inverter_serial_number_1
+        kwargs['inverter_serial_number'] = (
+            kwargs['inverter_serial_number_1_2']
+            + kwargs['inverter_serial_number_3_4']
+            + kwargs['inverter_serial_number_5_6']
+            + kwargs['inverter_serial_number_7_8']
+            + kwargs['inverter_serial_number_9_10']
         )
-        self.serial_number = self.inverter_serial_number
-        self.model = Model[self.serial_number[0:2]].value
-        self.inverter_firmware_version = f'D0.{self.dsp_firmware_version}-A0.{self.arm_firmware_version}'
-        self.input_tracker_num = self.input_tracker_num_and_output_phase_num >> 8
-        self.output_phase_num = self.input_tracker_num_and_output_phase_num & 0xFF
-        self.modbus_version = f'{self.modbus_version:0.2f}'
-        self.battery_serial_number = (
-            self.battery_serial_number_5
-            + self.battery_serial_number_4
-            + self.battery_serial_number_3
-            + self.battery_serial_number_2
-            + self.battery_serial_number_1
-        )
-        self.battery_serial_number_2 = (
-            self.battery_serial_number_2_5
-            + self.battery_serial_number_2_4
-            + self.battery_serial_number_2_3
-            + self.battery_serial_number_2_2
-            + self.battery_serial_number_2_1
-        )
-        self.system_time = datetime.datetime(
-            year=self.system_time_year + 2000,
-            month=self.system_time_month,
-            day=self.system_time_day,
-            hour=self.system_time_hour,
-            minute=self.system_time_minute,
-            second=self.system_time_second,
-        )
-        self.charge_slot_1 = (self.charge_slot_1_start, self.charge_slot_1_end)
-        self.charge_slot_2 = (self.charge_slot_2_start, self.charge_slot_2_end)
-        self.discharge_slot_1 = (self.discharge_slot_1_start, self.discharge_slot_1_end)
-        self.discharge_slot_2 = (self.discharge_slot_2_start, self.discharge_slot_2_end)
 
-    def __getattr__(self, item: str):
-        """Magic attributes that look up and render register values."""
-        item = item.upper()
+        super().__init__()
 
-        for bank, values in {HoldingRegister: self.holding_registers, InputRegister: self.input_registers}.items():
-            if item in bank.__members__:
-                return bank[item].render(values[bank[item].value])
-            if item + '_H' in bank.__members__:
-                # double-word composite registers
-                # fmt: off
-                return (
-                    bank[(item + '_H')].render(values[bank[(item + '_H')].value])
-                    + bank[(item + '_L')].render(values[bank[(item + '_L')].value])
-                )
-                # fmt: on
-        raise KeyError(item)
+    @property
+    def model(self) -> str:  # type: ignore  # shut up mypy
+        """Return the inverter model name as calculated from the serial number."""
+        if self.inverter_serial_number_1_2 == 'CE':
+            return 'AC'
+        # ED = "Gen2"
+        # SA = "Hybrid"
 
-    def to_dict(self) -> InverterData:
-        """Return inverter attributes as a typed dict specified by InverterData."""
-        ret = {}
-        for k in InverterData.__annotations__.keys():
-            ret[k] = getattr(self, k)
-        return cast(InverterData, ret)
+        return Model[self.inverter_serial_number[0:2]].value
 
-    def debug(self):
-        """Dump the internal state of registers and their value representations."""
-        print('#' * 140)
-        for i, v in enumerate(self.holding_registers):
-            r = HoldingRegister(i)
-            print(
-                f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
-                f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
-            )
-
-        print('#' * 140)
-        for i, v in enumerate(self.input_registers):
-            r = InputRegister(i)
-            print(
-                f'{i:3} {r.name:40} {r.type.name:15} {r.scaling.name:5} '
-                f'{r.scaling.value:5} 0x{v:04x} {v:10} {r.render(v):>20}'
-            )
+    @property
+    def inverter_firmware_version(self) -> str:  # type: ignore  # shut up mypy
+        """Return the firmware version in the same format the portal uses."""
+        return f'D0.{self.dsp_chip_version}-A0.{self.arm_chip_version}'

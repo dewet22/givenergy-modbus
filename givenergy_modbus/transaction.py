@@ -64,7 +64,7 @@ class GivEnergyTransactionManager(FifoTransactionManager):
     def execute(self, request: ModbusPDU) -> ModbusPDU:
         """Main processing loop."""
         res = super().execute(request)
-        _logger.info(f'Old implementation returned: execute(request)={res}')
+        _logger.debug(f'Old implementation returned: execute(request)={res}')
         return res
 
     def _transact(

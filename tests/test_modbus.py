@@ -3,53 +3,32 @@ from unittest.mock import MagicMock as Mock
 import pytest
 
 from givenergy_modbus.modbus import GivEnergyModbusTcpClient
-from givenergy_modbus.model.register_banks import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 
-def test_read_all_holding_registers():
+def test_read_holding_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
-    mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadHoldingRegistersResponse'))
+    mock_call = Mock(name='execute', return_value=Mock(name='ReadHoldingRegistersResponse'))
     c.execute = mock_call
-    assert c.read_all_holding_registers() == [1, 2, 3, 1, 2, 3, 1, 2, 3]
-    assert mock_call.call_count == 3
-    req1 = mock_call.call_args_list[0].args[0]
-    req2 = mock_call.call_args_list[1].args[0]
-    req3 = mock_call.call_args_list[2].args[0]
-
-    assert req1.__class__ == ReadHoldingRegistersRequest
-    assert req1.base_register == 0
-    assert req1.register_count == 60
-    assert req2.__class__ == ReadHoldingRegistersRequest
-    assert req2.base_register == 60
-    assert req2.register_count == 60
-    assert req3.__class__ == ReadHoldingRegistersRequest
-    assert req3.base_register == 120
-    assert req3.register_count == 1
+    c.read_holding_registers(2, 22)
+    assert mock_call.call_count == 1
+    assert mock_call.call_args_list[0].args[0].__class__ == ReadHoldingRegistersRequest
+    assert mock_call.call_args_list[0].args[0].base_register == 2
+    assert mock_call.call_args_list[0].args[0].register_count == 22
 
 
-def test_read_all_input_registers():
+def test_read_input_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
-    mock_call = Mock(name='execute', return_value=Mock(register_values=[1, 2, 3], name='ReadInputRegistersResponse'))
+    mock_call = Mock(name='execute', return_value=Mock(name='ReadInputRegistersResponse'))
     c.execute = mock_call
-    assert c.read_all_input_registers() == [1, 2, 3, 1, 2, 3] + [0] * 60 + [1, 2, 3]
-    assert mock_call.call_count == 3
-    req1 = mock_call.call_args_list[0].args[0]
-    req2 = mock_call.call_args_list[1].args[0]
-    req3 = mock_call.call_args_list[2].args[0]
-
-    assert req1.__class__ == ReadInputRegistersRequest
-    assert req1.base_register == 0
-    assert req1.register_count == 60
-    assert req2.__class__ == ReadInputRegistersRequest
-    assert req2.base_register == 60
-    assert req2.register_count == 60
-    # we skip loading registers 120-179, there's nothing there.
-    assert req3.__class__ == ReadInputRegistersRequest
-    assert req3.base_register == 180
-    assert req3.register_count == 2
+    c.read_input_registers(3, 33)
+    assert mock_call.call_count == 1
+    assert mock_call.call_args_list[0].args[0].__class__ == ReadInputRegistersRequest
+    assert mock_call.call_args_list[0].args[0].base_register == 3
+    assert mock_call.call_args_list[0].args[0].register_count == 33
 
 
 def test_write_holding_register():
@@ -57,15 +36,15 @@ def test_write_holding_register():
     c = GivEnergyModbusTcpClient()
     mock_call = Mock(name='execute', return_value=Mock(value=5, name='WriteHoldingRegisterResponse'))
     c.execute = mock_call
-    c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
+    c.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert mock_call.call_count == 1
 
     mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
     c.execute = mock_call
-    with pytest.raises(ValueError) as e:
-        c.write_holding_register(HoldingRegister.WINTER_MODE, 5)
+    with pytest.raises(AssertionError) as e:
+        c.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert mock_call.call_count == 1
-    assert e.value.args[0] == 'Returned value 2 != written value 5.'
+    assert e.value.args[0] == 'Register read-back value 0x0002 != written value 0x0005.'
 
     mock_call = Mock(name='execute', return_value=Mock(value=2, name='WriteHoldingRegisterResponse'))
     with pytest.raises(ValueError) as e:

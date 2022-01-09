@@ -6,10 +6,6 @@ import logging
 import click
 
 from .client import GivEnergyClient
-
-# from .model.inverter import Inverter
-# from .model.register_banks import HoldingRegister, InputRegister
-# from .pdu import ReadInputRegistersRequest
 from .util import InterceptHandler
 
 _logger = logging.getLogger(__package__)
@@ -29,7 +25,9 @@ def main():
 
     client = GivEnergyClient(host="192.168.0.241")
     client.refresh()
-    client.inverter.debug()
+    client.register_cache.debug()
+    # print(client.inverter.to_dict())
+    # print({k: v for k, v in client.inverter.to_dict().items() if k.find('charge') >= 0})
 
 
 if __name__ == "__main__":
