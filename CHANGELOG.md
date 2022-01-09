@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2022-01-06
+## [0.8.0] - 2022-01-09
 ### Added
 - A large number of convenience methods in the client to alter the state of the inverter:
   - `enable_charge_target(target_soc: int)` & `disable_charge_target()`
