@@ -22,24 +22,29 @@ class GivEnergyModbusFramer(ModbusFramer):
     A framer abstracts away all the detail about how marshall the wire
     protocol, e.g. to detect if a current message frame exists, decoding
     it, sending it, etc.  This implementation understands the
-    idiosyncrasies of GivEnergy's implementation of the Modbus spec.
+    idiosyncrasies of GivEnergy's implementation of the Modbus spec. **Note that
+    the understanding below comes from observing the wire format and analysing the
+    data interchanges – no GivEnergy proprietary knowledge was needed or referred to.**
 
-    It looks very similar to normal Modbus TCP on the wire, with each message still
-    starting with a regular 7-byte MBAP header consisting of:
+    Packet exchange looks very similar to normal Modbus TCP on the wire, with each
+    message still having a regular 7-byte MBAP header consisting of:
+
       * `tid`, the transaction id
       * `pid`, the protocol id
       * `len`, the byte count / length of the remaining data following the header
       * `uid`, the unit id for addressing devices on the Modbus network
+
     This is followed by `fid` / a function code to specify how the message should be
     decoded into a PDU:
 
     ```
-        [_________MBAP Header______] [_fid_] [_______________data________________]
-        [_tid_][_pid_][_len_][_uid_]
-          2b     2b     2b     1b      1b                  (len-1)b
+    [_________MBAP Header______] [_fid_] [_______________data________________]
+    [_tid_][_pid_][_len_][_uid_]
+      2b     2b     2b     1b      1b                  (len-1)b
     ```
 
     GivEnergy's implementation quicks can be summarised as:
+
       * `tid` is always `0x5959/'YY'`, so the assumption/interpretation is that clients
          have to poll continually instead of maintaining long-lived connections and
          using varying `tid`s to pair requests with responses
@@ -58,9 +63,9 @@ class GivEnergyModbusFramer(ModbusFramer):
     simpler to just reconsider the entire header:
 
     ```
-        [___"MBAP+" Header____] [_______________GivEnergy Frame_______________]
-        [___h1___][_len_][_h2_]
-            4b      2b     2b                      (len+2)b
+    [___"MBAP+" Header____] [_______________GivEnergy Frame_______________]
+    [___h1___][_len_][_h2_]
+        4b      2b     2b                      (len+2)b
     ```
 
       * `h1` is always `0x59590001`, so can be used as a sanity check during decoding
@@ -74,8 +79,8 @@ class GivEnergyModbusFramer(ModbusFramer):
     The GivEnergy frame itself has a consistent format:
 
     ```
-        [____serial____] [___pad___] [_addr_] [_func_] [______data______] [_crc_]
-              10b            8b         1b       1b            Nb           2b
+    [____serial____] [___pad___] [_addr_] [_func_] [______data______] [_crc_]
+          10b            8b         1b       1b            Nb           2b
     ```
 
      * `serial` of the responding data adapter (wifi/GPRS?/ethernet?) plugged into
@@ -92,12 +97,15 @@ class GivEnergyModbusFramer(ModbusFramer):
         step count, but it is not clear how those for responses are calculated (or
         should be checked)
 
-    In pseudocode, the message unframing algorithm looks like:
-        while len(buffer) > 8:
-          tid, pid, len, uid, fid = struct.unpack(">HHHBB", buffer)
-          data = buffer[8:6+len]
-          process_message(tid, pid, len, uid, fid, data)
-          buffer = buffer[6+len:]  # skip buffer over frame
+    In short, the message unframing algorithm is simply:
+
+    ```python
+    while len(buffer) > 8:
+      tid, pid, len, uid, fid = struct.unpack(">HHHBB", buffer)
+      data = buffer[8:6+len]
+      process_message(tid, pid, len, uid, fid, data)
+      buffer = buffer[6+len:]  # skip buffer over frame
+    ```
 
     Raises:
         InvalidMessageReceivedException: When unable to decode an incoming message.
