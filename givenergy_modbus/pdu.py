@@ -1,4 +1,4 @@
-"""Concrete ModbusPDU implementations for GivEnergy-specific requests and responses."""
+"""`pymodbus.pdu.ModbusPDU` implementations for GivEnergy-specific PDU messages."""
 
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ class ModbusPDU(ABC):
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
 
-    def execute(self, context) -> ModbusPDU:
+    def execute(self, context: IModbusSlaveContext) -> ModbusPDU:
         """Called to create the Response PDU after an incoming message has been completely processed."""
         raise NotImplementedError()
 
@@ -201,11 +201,16 @@ class ReadRegistersRequest(ModbusRequest, ABC):
         if self.base_register is None:
             raise ValueError('Base Register must be set explicitly.')
         elif not 0 <= self.base_register <= 0xFFFF:
-            raise ValueError(f'Base Register {hex(self.base_register)} must be unsigned and fit in 2 bytes')
+            raise ValueError(f'Base Register {hex(self.base_register)} must be an unsigned 16-bit int')
+        elif self.base_register % 60 != 0:
+            _logger.warning(
+                f'Base Register {hex(self.base_register)} not aligned on 60-byte offset, this will likely fail'
+            )
+
         if self.register_count is None:
             raise ValueError('Register Count must be set explicitly.')
         elif not 0 <= self.register_count <= 0xFFFF:
-            raise ValueError(f'Register Count {hex(self.register_count)} must be unsigned and fit in 2 bytes')
+            raise ValueError(f'Register Count {hex(self.register_count)} must be unsigned 16-bit int')
 
         if self.register_count > 60:
             # should we abort instead?
@@ -261,13 +266,13 @@ class ReadRegistersResponse(ModbusResponse, ABC):
 
 #################################################################################
 class ReadHoldingRegistersMeta:
-    """Request & Response PDUs for function 3/Read Holding Registers."""
+    """Request & Response PDUs for function #3/Read Holding Registers."""
 
     function_code = 3
 
 
 class ReadHoldingRegistersRequest(ReadHoldingRegistersMeta, ReadRegistersRequest):
-    """Concrete PDU implementation for handling 3/Read Holding Registers request messages."""
+    """Concrete PDU implementation for handling function #3/Read Holding Registers request messages."""
 
     def execute(self, context) -> ModbusResponse:
         """FIXME if we ever implement a server."""
@@ -275,7 +280,7 @@ class ReadHoldingRegistersRequest(ReadHoldingRegistersMeta, ReadRegistersRequest
 
 
 class ReadHoldingRegistersResponse(ReadHoldingRegistersMeta, ReadRegistersResponse):
-    """Concrete PDU implementation for handling 3/Read Holding Registers request messages."""
+    """Concrete PDU implementation for handling function #3/Read Holding Registers response messages."""
 
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
@@ -283,13 +288,13 @@ class ReadHoldingRegistersResponse(ReadHoldingRegistersMeta, ReadRegistersRespon
 
 #################################################################################
 class ReadInputRegistersMeta:
-    """Request & Response PDUs for function 4/Read Input Registers."""
+    """Request & Response PDUs for function #4/Read Input Registers."""
 
     function_code = 4
 
 
 class ReadInputRegistersRequest(ReadInputRegistersMeta, ReadRegistersRequest):
-    """Concrete PDU implementation for handling 4/Read Input Registers request messages."""
+    """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
 
     def execute(self, context) -> ModbusResponse:
         """FIXME if we ever implement a server."""
@@ -297,7 +302,7 @@ class ReadInputRegistersRequest(ReadInputRegistersMeta, ReadRegistersRequest):
 
 
 class ReadInputRegistersResponse(ReadInputRegistersMeta, ReadRegistersResponse):
-    """Concrete PDU implementation for handling 4/Read Input Registers response messages."""
+    """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
 
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
@@ -305,13 +310,13 @@ class ReadInputRegistersResponse(ReadInputRegistersMeta, ReadRegistersResponse):
 
 #################################################################################
 class WriteHoldingRegisterMeta:
-    """Request & Response PDUs for function 6/Write Holding Register."""
+    """Request & Response PDUs for function #6/Write Holding Register."""
 
     function_code = 6
 
 
 class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
-    """Handles all messages that request a range of registers."""
+    """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
     writable_registers = {
         20,  # ENABLE_CHARGE_TARGET
@@ -373,11 +378,11 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         if self.value is None:
             raise ValueError('Value must be set explicitly.')
         elif not 0 <= self.value <= 0xFFFF:
-            raise ValueError(f'Value {hex(self.value)} must be unsigned and fit in 2 bytes')
+            raise ValueError(f'Value {hex(self.value)} must be an unsigned 16-bit int')
 
 
 class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC):
-    """Handles all messages that respond with a range of registers."""
+    """Concrete PDU implementation for handling function #6/Write Holding Register response messages."""
 
     def __init__(self, **kwargs):
         """Constructor."""
