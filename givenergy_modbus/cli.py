@@ -25,8 +25,10 @@ def main():
 
     client = GivEnergyClient(host="192.168.0.241")
     # client.load_inverter_registers().debug()
-    client.load_battery_registers(0).debug()
+    # client.load_battery_registers(0).debug()
     # client.load_battery_registers(1).debug()
+    print(client.fetch_inverter())
+    print(client.fetch_battery())
 
 
 if __name__ == "__main__":

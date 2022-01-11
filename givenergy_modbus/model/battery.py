@@ -36,8 +36,8 @@ class Battery(BaseModel):
     temp_bms_mos: float
     v_out: float = Field(alias='v_battery_out')
     full_capacity: float = Field(alias='battery_full_capacity')
-    design_capacity: float = Field(alias='battery_full_capacity')
-    remaining_capacity: float = Field(alias='battery_full_capacity')
+    design_capacity: float = Field(alias='battery_design_capacity')
+    remaining_capacity: float = Field(alias='battery_remaining_capacity')
     status_1_2: tuple[int, int] = Field(alias='battery_status_1_2')
     status_3_4: tuple[int, int] = Field(alias='battery_status_3_4')
     status_5_6: tuple[int, int] = Field(alias='battery_status_5_6')

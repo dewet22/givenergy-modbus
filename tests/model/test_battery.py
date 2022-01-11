@@ -4,12 +4,12 @@ from .test_register_cache import register_cache  # noqa: F401
 
 EXPECTED_BATTERY_DICT = {
     'bms_firmware_version': 3005,
-    'design_capacity': 190.97,
+    'design_capacity': 160.0,
     'design_capacity_2': 160.0,
     'full_capacity': 190.97,
     'num_cells': 16,
     'num_cycles': 12,
-    'remaining_capacity': 190.97,
+    'remaining_capacity': 18.04,
     'serial_number': 'BG1234G567',
     'soc': 9,
     'status_1_2': (0, 0),

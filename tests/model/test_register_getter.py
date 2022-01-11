@@ -15,6 +15,7 @@ class TestModel(BaseModel):
         getter_dict = RegisterGetter
         allow_mutation = False
 
+    __test__ = False  # squelch PytestCollectionWarning
     inverter_serial_number: str
     battery_serial_number: str
     system_time: datetime.datetime
