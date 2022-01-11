@@ -30,7 +30,6 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
     _lookup: dict[int, Callable]  # lookup table mapping function code to decoder type
 
     def __init__(self):
-        """Constructor."""
         # build the lookup table at instantiation time
         self._lookup = {f.function_code: f for f in self._function_table}
 

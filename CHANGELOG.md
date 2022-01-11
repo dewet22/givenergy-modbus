@@ -6,9 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Create `RegisterCache` and `RegisterGetter` to contain the custom register data structures in one place.
+
 ### Changed
 - Ensure we check charge and discharge limits: current hardware cannot support >50% (i.e. >2.6kW) rates.
 - Make sure we query the 180+ block of input registers too, since it contains (amongst others) battery energy counters.
+- Split out querying the battery/BMS registers since this will vary depending on how many batteries the user has. The
+  slave address of the request determines which battery unit is targeted.
+  - Also start modeling the Battery as separate from the Inverter.
+- Collapse the register cache to a single dict since we can use the `HoldingRegister`/`InputRegister` identity to
+  discern between the types. It makes the data structures a lot simpler.
+- Squelch flake8 warnings about missing constructor and magic method docstrings.
+- Update python deps.
 
 ## [0.8.0] - 2022-01-09
 ### Added
@@ -24,13 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `set_mode_storage(slot_1, [slot_2], [export])` which keeps the battery charge topped-up and discharges
     during specified periods. This mirrors modes 2-4 in the portal.
   - `set_datetime(datetime)` to set the inverter date & time.
-- Ensure we _always_ close the socket after every network socket. Sometimes the inverter turns orange/grey
-  in the portal after executing queries via this library, and this seems to mitigate against it.
+- Ensure we _always_ close the network socket after every request. Sometimes the inverter turns orange/grey
+  in the portal after executing queries via this library, and this seems to mitigate against it – possible
+  the inverter TCP stack isn't closing half-closed sockets aggressively enough?
 
 ### Changed
-- **Potentially breaking:** Wholesale renaming of registers to more official designations, and standardising
-  naming somewhat. Part of the motivation for adding more convenience functions is so clients never have to deal
-  with register names directly, so this should hopefully make future renaming easier.
+- **Potentially breaking:** Once again, pretty wholesale renaming of registers to more official designations,
+  and standardising naming somewhat. Part of the motivation for adding more convenience functions is so clients
+  never have to deal with register names directly, so this should hopefully make future renaming easier.
 
 ## [0.7.0] - 2022-01-05
 ### Added

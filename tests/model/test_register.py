@@ -3,7 +3,7 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, RegisterCache, Type
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Type
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -42,6 +42,8 @@ HOLDING_REGISTERS: dict[int, int] = dict(enumerate([
     4, 50, 50, 0, 4, 0, 100, 0, 0, 0,  # 11x
     0,  # 12x
 ]))
+
+
 # fmt: on
 
 
@@ -60,7 +62,17 @@ def test_lookup():
 
 def test_comparison():
     """Ensure registers from different banks aren't comparable."""
+    assert HoldingRegister(0) == HoldingRegister(0)
+    assert InputRegister(0) == InputRegister(0)
     assert HoldingRegister(0) != InputRegister(0)
+
+
+def test_registers_unique_names():
+    """Ensure registers have unique names despite their location."""
+    holding_register_names = set(HoldingRegister.__members__.keys())
+    input_register_names = set(InputRegister.__members__.keys())
+
+    assert holding_register_names.intersection(input_register_names) == set()
 
 
 def _gen_binary(x) -> str:
@@ -141,7 +153,7 @@ def test_convert(val: int, scaling: float):
 
     assert Type.BITFIELD.convert(val, scaling) == val
 
-    assert Type.HEX.convert(val, scaling) == val
+    assert Type.HEX.convert(val, scaling) == f'{hex(val)[2:]:>04}'
 
     # scaling doesn't make sense for ascii types
     # non-ascii values will not decode properly
@@ -181,32 +193,3 @@ def test_render_power_factor(scaling: float):
     assert Type.POWER_FACTOR.convert(10000, scaling) == 0.0
     assert Type.POWER_FACTOR.convert(15000, scaling) == 0.5
     assert Type.POWER_FACTOR.convert(20000, scaling) == 1.0
-
-
-def test_register_cache():
-    """Ensure we can instantiate a RegisterCache and derive correct attributes from it."""
-    i = RegisterCache()
-    i.update_holding_registers(HOLDING_REGISTERS)
-    i.update_input_registers(INPUT_REGISTERS)
-    assert i.holding_registers == HOLDING_REGISTERS
-    assert i.input_registers == INPUT_REGISTERS
-
-    assert i.inverter_module == 198706
-    assert i.bms_firmware_version == 3005
-    assert i.dsp_firmware_version == 449
-    assert i.arm_firmware_version == 449
-    assert i.enable_charge_target
-
-    # time slots are BCD-encoded: 30 == 00:30, 430 == 04:30
-    assert i.charge_slot_1_start == datetime.time(0, 30)
-    assert i.charge_slot_1_end == datetime.time(4, 30)
-    # assert i.charge_slot_1 == (datetime.time(0, 30), datetime.time(4, 30))
-    assert i.charge_slot_2_start == datetime.time(0, 0)
-    assert i.charge_slot_2_end == datetime.time(0, 4)
-    # assert i.charge_slot_2 == (datetime.time(0, 0), datetime.time(0, 4))
-    assert i.discharge_slot_1_start == datetime.time(0, 0)
-    assert i.discharge_slot_1_end == datetime.time(0, 0)
-    # assert i.discharge_slot_1 == (datetime.time(0, 0), datetime.time(0, 0))
-    assert i.discharge_slot_2_start == datetime.time(0, 0)
-    assert i.discharge_slot_2_end == datetime.time(0, 0)
-    # assert i.discharge_slot_2 == (datetime.time(0, 0), datetime.time(0, 0))

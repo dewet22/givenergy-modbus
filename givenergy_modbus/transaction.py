@@ -28,7 +28,6 @@ class GivEnergyTransactionManager(FifoTransactionManager):
     """
 
     def __init__(self, **kwargs):
-        """Constructor."""
         super().__init__(**kwargs)
         self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivEnergyModbusFramer`
 

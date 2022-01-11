@@ -2,7 +2,8 @@ import logging
 from datetime import datetime, time
 
 from .modbus import GivEnergyModbusTcpClient
-from .model.register import HoldingRegister, RegisterCache  # type: ignore  # no idea why this is failing
+from .model.register import HoldingRegister, InputRegister  # type: ignore
+from .model.register_cache import RegisterCache
 
 _logger = logging.getLogger(__package__)
 
@@ -10,28 +11,35 @@ _logger = logging.getLogger(__package__)
 class GivEnergyClient:
     """Client for end users to conveniently access GivEnergy inverters."""
 
-    def __init__(self, host: str, port: int = 8899, batteries=(1,)):
-        """Constructor."""
+    def __init__(self, host: str, port: int = 8899, register_cache_class=RegisterCache):
         self.host = host
         self.port = port
-        self.batteries = batteries
         self.modbus_client = GivEnergyModbusTcpClient(host=self.host, port=self.port)
-        self.register_cache = RegisterCache()
+        self.register_cache_class = register_cache_class
 
     def __repr__(self):
-        """Return a useful representation."""
         return f"GivEnergyClient({self.host}:{self.port}))"
 
-    def refresh(self):
-        """Reload all data from the device."""
-        self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(0, 60).to_dict())
-        self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(60, 60).to_dict())
-        self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(120, 60).to_dict())
-        # self.register_cache.update_holding_registers(self.modbus_client.read_holding_registers(180, 60).to_dict())
-        self.register_cache.update_input_registers(self.modbus_client.read_input_registers(0, 60).to_dict())
-        self.register_cache.update_input_registers(self.modbus_client.read_input_registers(60, 60).to_dict())
-        # self.register_cache.update_input_registers(self.modbus_client.read_input_registers(120, 60).to_dict())
-        self.register_cache.update_input_registers(self.modbus_client.read_input_registers(180, 60).to_dict())
+    def load_inverter_registers(self) -> RegisterCache:
+        """Reload all inverter data from the device."""
+        register_cache = self.register_cache_class()
+        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(0, 60).to_dict())
+        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(60, 60).to_dict())
+        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(120, 60).to_dict())
+        # register_cache.update_registers(HoldingRegister, self.modbus_client.read_holding_registers(180, 60).to_dict())
+        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(0, 60).to_dict())
+        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(120, 60).to_dict())
+        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(180, 60).to_dict())
+        return register_cache
+
+    def load_battery_registers(self, battery_number=0) -> RegisterCache:
+        """Reload all battery data from a given device."""
+        register_cache = self.register_cache_class()
+        register_cache.set_registers(
+            InputRegister,
+            self.modbus_client.read_input_registers(60, 60, slave_address=0x32 + battery_number).to_dict(),
+        )
+        return register_cache
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
@@ -50,11 +58,11 @@ class GivEnergyClient:
 
     def enable_charge(self):
         """Set the battery to charge, depending on the mode and slots set."""
-        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_ENABLE, True)
+        self.modbus_client.write_holding_register(HoldingRegister.ENABLE_CHARGE, True)
 
     def disable_charge(self):
         """Disable the battery from charging."""
-        self.modbus_client.write_holding_register(HoldingRegister.CHARGE_ENABLE, False)
+        self.modbus_client.write_holding_register(HoldingRegister.ENABLE_CHARGE, False)
 
     def enable_discharge(self):
         """Set the battery to discharge, depending on the mode and slots set."""
