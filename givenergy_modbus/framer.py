@@ -119,6 +119,7 @@ class GivEnergyModbusFramer(ModbusFramer):
         self._length = 0
         self._hsize = 0x08
         self._check = 0x0
+        self._fcode = 0x2
         self.decoder = decoder
         self.client = client
 
@@ -129,13 +130,13 @@ class GivEnergyModbusFramer(ModbusFramer):
             tid, pid, len_, uid, fid = struct.unpack(self.FRAME_HEAD, self._buffer[: self._hsize])
             header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
             _logger.debug(f"success: { dict((k, f'0x{v:02x}') for k,v in header.items()) }")
-            if tid != 0x5959 or pid != 0x1 or uid != 0x1 or fid != 0x2:
+            if tid != 0x5959 or pid != 0x1 or uid != 0x1:  # or fid != 0x2:
                 # TODO consider mitigation - if we scan for this header through
                 # the buffer we might be able to recover processing what remains without minimal data loss.
                 self.resetFrame()
                 raise ValueError(
                     f"Unexpected MBAP header; likely corruption so aborting processing. "
-                    f"(0x{tid:04x} 0x{pid:04x} 0x{uid:02x}{fid:02x} != 0x5959 0x0001 0x0102)"
+                    f"(0x{tid:04x} 0x{pid:04x} 0x{uid:02x} != 0x5959 0x0001 0x01)"
                 )
             return header
         return dict()
@@ -143,6 +144,7 @@ class GivEnergyModbusFramer(ModbusFramer):
     def checkFrame(self) -> bool:
         """Check and decode the next frame. Returns operation success."""
         if self.isFrameReady():
+            self._fcode = self.decode_data(self._buffer)["fcode"]
             self._length = self.decode_data(self._buffer)["length"]
 
             # this short a message should not be possible?

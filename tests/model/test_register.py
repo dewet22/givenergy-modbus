@@ -3,14 +3,14 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Type
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, Type
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
     0, 14, 10, 70, 0, 2367, 0, 1832, 0, 0,  # 00x
     0, 0, 159, 4990, 0, 12, 4790, 4, 0, 5,  # 01x
     0, 0, 6, 0, 0, 0, 209, 0, 946, 0,  # 02x
-    65194, 0, 0, 3653, 0, 85, 84, 84, 30, 0,  # 03x
+    65194, 0, 0, 3653, 0, 93, 90, 89, 30, 0,  # 03x
     0, 222, 342, 680, 81, 0, 930, 0, 213, 1,  # 04x
     4991, 0, 0, 2356, 4986, 223, 170, 0, 292, 4,  # 05x
     3117, 3124, 3129, 3129, 3125, 3130, 3122, 3116, 3111, 3105,  # 06x
@@ -25,7 +25,7 @@ INPUT_REGISTERS: dict[int, int] = dict(enumerate([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 15x
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 16x
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 17x
-    906, 926,  # 18x
+    1696, 1744, 89, 90,  # 18x
 ]))
 HOLDING_REGISTERS: dict[int, int] = dict(enumerate([
     8193, 3, 2098, 513, 0, 50000, 3600, 1, 16967, 12594,  # 00x
@@ -58,6 +58,17 @@ def test_lookup():
     with pytest.raises(TypeError) as e:
         HoldingRegister(0, Type.UINT16)
     assert e.value.args[0] == 'Cannot extend enumerations'
+
+
+def test_str_and_repr():
+    """Ensure some behaviour around str and repr handling."""
+    assert isinstance(InputRegister(0), Register)
+    assert isinstance(InputRegister(0), str)
+    assert not isinstance(InputRegister(0), int)
+    assert str(InputRegister(0)) == 'IR:000'
+    assert repr(InputRegister(250)) == 'IR:250'
+    assert str(HoldingRegister(109)) == 'HR:109'
+    assert repr(HoldingRegister(99)) == 'HR:099'
 
 
 def test_comparison():

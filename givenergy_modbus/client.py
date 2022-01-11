@@ -24,14 +24,18 @@ class GivEnergyClient:
 
     def fetch_inverter_registers(self) -> RegisterCache:
         """Reload all inverter data from the device."""
+        _logger.info('Fetching all registers for Inverter...')
         register_cache = self.register_cache_class()
         register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(0, 60).to_dict())
         register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(60, 60).to_dict())
         register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(120, 60).to_dict())
-        # register_cache.update_registers(HoldingRegister, self.modbus_client.read_holding_registers(180, 60).to_dict())
+        # register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(180, 1).to_dict())
         register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(0, 60).to_dict())
         register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(120, 60).to_dict())
         register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(180, 60).to_dict())
+        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(240, 60).to_dict())
+        # register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(300, 1).to_dict())
+        _logger.debug('Fetch complete!')
         return register_cache
 
     def fetch_inverter(self) -> Inverter:
@@ -40,11 +44,13 @@ class GivEnergyClient:
 
     def fetch_battery_registers(self, battery_number=0) -> RegisterCache:
         """Reload all battery data from a given device."""
+        _logger.info(f'Fetching all Input Registers for battery {battery_number}...')
         register_cache = self.register_cache_class()
         register_cache.set_registers(
             InputRegister,
             self.modbus_client.read_input_registers(60, 60, slave_address=0x32 + battery_number).to_dict(),
         )
+        _logger.debug('Fetch complete!')
         return register_cache
 
     def fetch_battery(self, battery_number=0) -> Battery:
