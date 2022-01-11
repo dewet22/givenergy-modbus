@@ -13,6 +13,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add JSON processing for the RegisterCache – mostly to help with testing but also expecting debugging other plants to
   benefit from it.
 - Add some more test cases with actual register data.
+- Added some rudimentary recovery logic to the framer – try to scan ahead for other messages instead of truncating the
+  entire buffer when there's unexpected data incoming. Hopefully this helps when the communication stream seems to get
+  out of sync a bit.
 
 ### Changed
 
@@ -24,6 +27,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Collapse the register cache to a single dict since we can use the `HoldingRegister`/`InputRegister` identity to
   discern between the types. It makes the data structures a lot simpler.
 - Improve the CLI – it is already a useful tool to dump registers for debugging right now.
+- Changed to target slave id 0x11 by default instead of 0x32. 0x32 shadows 0x11 but seems to be the first battery, with
+  subsequent batteries living at the following slave addresses.
 - Squelch flake8 warnings about missing constructor and magic method docstrings.
 - Update README to show usage properly.
 - Update python deps.

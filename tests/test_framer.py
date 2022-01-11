@@ -39,6 +39,18 @@ VALID_RESPONSE_FRAME = (  # actual recorded response frame, to request above
     b"\xb5\xd2"  # crc
 )  # 56 bytes
 
+EXCEPTION_RESPONSE_FRAME = (  # actual recorded response frame, to request above
+    b"\x59\x59\x00\x01\x00\x26\x01\x02"  # 7-byte MBAP header + function code
+    b"\x57\x46\x31\x32\x33\x34\x47\x35\x36\x37"  # 10-byte serial number WF1234G567
+    b"\x00\x00\x00\x00\x00\x00\x00\x12"  # 8-byte padding / crc / check?
+    b"\x32"  # slave address
+    b"\x84"  # sub-function
+    b"\x53\x41\x31\x32\x33\x34\x45\x35\x36\x37"  # 10-byte serial number SA1234G567
+    b"\x00\x00"  # start register: 0
+    b"\x00\x78"  # step: 120 – GivEnergy protocol only supports up to 60.
+    b"\xf1\x33"  # crc
+)  # 44 bytes
+
 
 def test_framer_constructor():
     """Test constructor."""
@@ -98,11 +110,11 @@ def responses_framer():
             0,
             b"\x02",
         ),
-        (  # data4 - invalid frame, wrong fid is considered corruption and buffer will be reset
-            b"\x59\x59\x00\x01\x00\x01\x01\xff",
-            False,
-            False,
-            0,
+        (  # data4 - valid frame, fid=0x1 is usually an error response?
+            b"\x59\x59\x00\x01\x00\x0d\x01\x01\x57\x46\x32\x31\x32\x35\x47\x33\x31\x36\x01",
+            True,
+            True,
+            13,
             b"",
         ),
         (  # data5 - valid frame, length=5 with trailing buffer contents. invalid MBAP will reset the buffer
@@ -139,6 +151,27 @@ def responses_framer():
             True,
             50,
             b"\x01\x02\x03",
+        ),
+        (  # data10 - exception response
+            EXCEPTION_RESPONSE_FRAME,
+            True,
+            True,
+            38,
+            b"",
+        ),
+        (  # data11 - exception response + valid response
+            EXCEPTION_RESPONSE_FRAME + VALID_RESPONSE_FRAME,
+            True,
+            True,
+            38,
+            VALID_RESPONSE_FRAME,
+        ),
+        (  # data12 - junk + valid response
+            b'\x01\x02\x03\x04\x05\x06\x00\x01\x02\x03\x04\x05\x06\x00\x01\x02\x03\x04\x05\x06' + VALID_RESPONSE_FRAME,
+            True,
+            False,
+            38,
+            VALID_RESPONSE_FRAME,
         ),
     ],
 )
@@ -205,7 +238,7 @@ def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any],
         assert fn_kwargs["skip_encode"]
         assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
         assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
-        assert fn_kwargs["slave_address"] == 0x32
+        assert fn_kwargs["slave_address"] == 0x11
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)

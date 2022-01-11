@@ -10,35 +10,35 @@ REQUEST_PDU_MESSAGES = [
         "ReadInputRegistersRequest",
         {"base_register": 0x10, "register_count": 6, "check": 0x0754},
         b"YY\x00\x01\x00\x1c\x01\x02",  # 8 bytes
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x04\x00\x10\x00\x06" b"\x07\x54",  # 26 bytes
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x11\x04\x00\x10\x00\x06" b"\x07\x54",  # 26 bytes
         None,
     ),
     (   # data1
         "ReadHoldingRegistersRequest",
         {"base_register": 0x5151, "register_count": 2000, "check": 0x8122},
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x03\x51\x51\x07\xd0" b"\x81\x22",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x11\x03\x51\x51\x07\xd0" b"\x81\x22",
         None,
     ),
     (   # data2
         "ReadHoldingRegistersRequest",
         {"base_register": 0x5151, "register_count": 2000, "check": 0x8122, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x03\x51\x51\x07\xd0" b"\x81\x22",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x11\x03\x51\x51\x07\xd0" b"\x81\x22",
         None,
     ),
     (   # data3
         "WriteHoldingRegisterRequest",
         {"register": 0x5151, "value": 2000, "check": 0x81ee, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x51\x51\x07\xd0" b"\x81\xee",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x11\x06\x51\x51\x07\xd0" b"\x81\xee",
         ValueError('Register 20817 is not safe to write to.'),
     ),
     (  # data4
         "WriteHoldingRegisterRequest",
         {"register": 0x14, "value": 1, "check": 0xc42d, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\x14\x00\x01" b"\xc4\x2d",
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x11\x06\x00\x14\x00\x01" b"\xc4\x2d",
         None,
     ),
 ]
