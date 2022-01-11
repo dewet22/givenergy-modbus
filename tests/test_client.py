@@ -41,9 +41,14 @@ def test_refresh_inverter_registers():
     rc = c.fetch_inverter_registers()
 
     assert c.modbus_client.read_holding_registers.call_args_list == [call(0, 60), call(60, 60), call(120, 60)]
-    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(120, 60), call(180, 60)]
+    assert c.modbus_client.read_input_registers.call_args_list == [
+        call(0, 60),
+        call(120, 60),
+        call(180, 60),
+        call(240, 60),
+    ]
     # it really is a lot of work to test the detailed wiring of these deep method calls
-    assert len(rc.set_registers.call_args_list) == 6
+    assert len(rc.set_registers.call_args_list) == 7
     assert rc.set_registers.call_args_list[0][0][0] is HoldingRegister
     assert rc.set_registers.call_args_list[0][1] == {}
     assert rc.set_registers.call_args_list[1][0][0] is HoldingRegister
@@ -51,6 +56,7 @@ def test_refresh_inverter_registers():
     assert rc.set_registers.call_args_list[3][0][0] is InputRegister
     assert rc.set_registers.call_args_list[4][0][0] is InputRegister
     assert rc.set_registers.call_args_list[5][0][0] is InputRegister
+    assert rc.set_registers.call_args_list[6][0][0] is InputRegister
 
 
 def test_refresh_inverter(client_with_mocked_modbus_client, register_cache):  # noqa: F811
@@ -61,10 +67,10 @@ def test_refresh_inverter(client_with_mocked_modbus_client, register_cache):  # 
     i = c.fetch_inverter()
 
     assert i.dict() == EXPECTED_INVERTER_DICT
-    assert i.serial_number == 'SA1234G567'
-    assert i.model == Model.Hybrid
+    assert i.inverter_serial_number == 'SA1234G567'
+    assert i.inverter_model == Model.Hybrid
     assert i.v_pv1 == 1.4000000000000001
-    assert i.e_generated_day == 8.1
+    assert i.e_inverter_out_day == 8.1
     assert i.enable_charge_target
 
 
@@ -92,8 +98,8 @@ def test_refresh_battery(client_with_mocked_modbus_client, register_cache):  # n
     b = c.fetch_battery()
 
     assert b.dict() == EXPECTED_BATTERY_DICT
-    assert b.serial_number == 'BG1234G567'
-    assert b.v_cell_01 == 3.117
+    assert b.battery_serial_number == 'BG1234G567'
+    assert b.v_battery_cell_01 == 3.117
 
 
 def test_set_charge_target(client_with_mocked_write_holding_register):

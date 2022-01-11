@@ -37,7 +37,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         """Attempts to find the ModbusPDU handler class that can handle a given function code."""
         if fn_code in self._lookup:
             fn = self._lookup[fn_code]
-            _logger.info(f"Identified incoming PDU as {fn_code}/{friendly_class_name(fn)}")
+            _logger.debug(f"Identified incoming PDU as {fn_code}/{friendly_class_name(fn)}")
             return fn()
         return None
 

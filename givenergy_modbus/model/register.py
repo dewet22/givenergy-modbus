@@ -128,7 +128,7 @@ class Register(str, Enum):
         """Allows indexing by register index."""
         if data is None:
             data = {}
-        obj = str.__new__(cls, f'{cls}:{hex(value)}')
+        obj = str.__new__(cls, f'{cls.__name__[0]}R:{int(value)}')
         obj._value_ = value
         obj.type = data.get('type', Type.UINT16)
         obj.scaling = data.get('scaling', Scaling.UNIT)
@@ -138,7 +138,10 @@ class Register(str, Enum):
         return obj
 
     def __str__(self) -> str:
-        return f'{self.__class__.__name__[0]}R:{self.value:>3}'
+        return f'{self.__class__.__name__[0]}R:{self.value:03}'
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
     def convert(self, val):
         """Convert val to its true representation as determined by the register type."""
@@ -372,8 +375,8 @@ class InputRegister(Register):
     V_P_BUS = (3, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
     V_N_BUS = (4, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
     V_AC1 = (5, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    E_BATTERY_THROUGHPUT_H = (6, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_THROUGHPUT_L = (7, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_TOTAL_2_H = (6, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_TOTAL_2_L = (7, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     I_PV1 = (8, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
     I_PV2 = (9, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
     I_AC1 = (10, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
@@ -382,26 +385,26 @@ class InputRegister(Register):
     F_AC1 = (13, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
     CHARGE_STATUS = 14  # 2?
     V_HIGHBRIGH_BUS = 15  # high voltage bus?
-    PF_INVERTER_OUTPUT = (16, {'type': Type.POWER_FACTOR})  # should be F_? seems to be hovering between 4800-5400
+    PF_INVERTER_OUT = (16, {'type': Type.POWER_FACTOR})  # should be F_? seems to be hovering between 4800-5400
     E_PV1_DAY = (17, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     P_PV1 = (18, {'unit': Unit.POWER_KW})
     E_PV2_DAY = (19, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     P_PV2 = (20, {'unit': Unit.POWER_KW})
-    E_GRID_EXPORT_DAY_H = (21, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GRID_EXPORT_DAY_L = (22, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_OUT_TOTAL_H = (21, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_OUT_TOTAL_L = (22, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_SOLAR_DIVERTER = (23, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    P_INVERTER_OUTPUT = (24, {'type': Type.INT16, 'unit': Unit.POWER_W})
+    P_INVERTER_OUT = (24, {'type': Type.INT16, 'unit': Unit.POWER_W})
     E_GRID_OUT_DAY = (25, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_GRID_IN_DAY = (26, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_INVERTER_IN_TOTAL_H = (27, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_INVERTER_IN_TOTAL_L = (28, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_DISCHARGE_YEAR = (29, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    P_GRID_OUTPUT = (30, {'type': Type.INT16, 'unit': Unit.POWER_W})
-    P_EPS = (31, {'unit': Unit.POWER_W})
-    E_GRID_IMPORT_TOTAL_H = (32, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GRID_IMPORT_TOTAL_L = (33, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    P_GRID_OUT = (30, {'type': Type.INT16, 'unit': Unit.POWER_W})
+    P_EPS_BACKUP = (31, {'unit': Unit.POWER_W})
+    E_GRID_IN_TOTAL_H = (32, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_IN_TOTAL_L = (33, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     INPUT_REG034 = 34
-    E_INVERTER_CHARGE_DAY = (35, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_IN_DAY = (35, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_BATTERY_CHARGE_DAY = (36, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     E_BATTERY_DISCHARGE_DAY = (37, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     INVERTER_COUNTDOWN = (38, {'unit': Unit.TIME_S})
@@ -410,17 +413,17 @@ class InputRegister(Register):
     TEMP_INVERTER_HEATSINK = (41, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     P_LOAD_DEMAND = (42, {'unit': Unit.POWER_W})
     P_GRID_APPARENT = (43, {'unit': Unit.POWER_VA})
-    E_GENERATED_DAY = (44, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GENERATED_TOTAL_H = (45, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GENERATED_TOTAL_L = (46, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_DAY = (44, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_TOTAL_H = (45, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_TOTAL_L = (46, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     WORK_TIME_TOTAL_H = (47, {'type': Type.UINT32_HIGH, 'unit': Unit.TIME_S})
     WORK_TIME_TOTAL_L = (48, {'type': Type.UINT32_LOW, 'unit': Unit.TIME_S})
     SYSTEM_MODE = 49  # 0:offline, 1:grid-tied
     V_BATTERY = (50, {'scaling': Scaling.CENTI, 'unit': Unit.VOLTAGE_V})
     I_BATTERY = (51, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
     P_BATTERY = (52, {'type': Type.INT16, 'unit': Unit.POWER_W})
-    V_EPS = (53, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_EPS = (54, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    V_EPS_BACKUP = (53, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    F_EPS_BACKUP = (54, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
     TEMP_CHARGER = (55, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     TEMP_BATTERY = (56, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     CHARGER_WARNING_CODE = 57
@@ -442,10 +445,10 @@ class InputRegister(Register):
     V_BATTERY_CELL_14 = (73, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
     V_BATTERY_CELL_15 = (74, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
     V_BATTERY_CELL_16 = (75, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    TEMP_BATTERY_BLOCK_1 = (76, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_BLOCK_2 = (77, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_BLOCK_3 = (78, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_BLOCK_4 = (79, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_CELLS_1 = (76, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_CELLS_2 = (77, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_CELLS_3 = (78, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_CELLS_4 = (79, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     V_BATTERY_CELLS_SUM = (80, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
     TEMP_BMS_MOS = (81, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     V_BATTERY_OUT_H = (82, {'type': Type.UINT32_HIGH, 'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
@@ -469,8 +472,8 @@ class InputRegister(Register):
     BATTERY_SOC = 100
     BATTERY_DESIGN_CAPACITY_2_H = (101, {'type': Type.UINT32_HIGH, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
     BATTERY_DESIGN_CAPACITY_2_L = (102, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    TEMP_BATTERY_MAX_NOW = (103, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_MIN_NOW = (104, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_MAX = (103, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY_MIN = (104, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     INPUT_REG105 = (105, {})
     INPUT_REG106 = (106, {})
     INPUT_REG107 = 107

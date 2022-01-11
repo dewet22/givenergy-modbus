@@ -43,7 +43,7 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
 
     def execute(self, request: ModbusPDU = None):
         """Send the given PDU to the remote device and return any PDU returned in response."""
-        _logger.info(f'Sending request {request}')
+        _logger.debug(f'Sending request {request}')
         try:
             return super().execute(request)
         except Exception as e:
@@ -53,9 +53,12 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
 
     def read_holding_registers(self, address, count=1, **kwargs) -> ReadHoldingRegistersResponse:
         """Read specified Holding Registers and return the Response PDU object."""
-        ret: ReadHoldingRegistersResponse = self.execute(
-            ReadHoldingRegistersRequest(base_register=address, register_count=count, **kwargs)
+        request = ReadHoldingRegistersRequest(base_register=address, register_count=count, **kwargs)
+        _logger.debug(
+            f'Attempting to read Holding Registers {request.base_register}-'
+            f'{request.base_register+request.register_count} from device {hex(request.slave_address)}...'
         )
+        ret: ReadHoldingRegistersResponse = self.execute(request)
         if ret.base_register != address:
             raise AssertionError(
                 f'Returned base register ({ret.base_register}) ' f'does not match that from request ({address}).'
@@ -68,9 +71,12 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
 
     def read_input_registers(self, address, count=1, **kwargs) -> ReadInputRegistersResponse:
         """Read specified Input Registers and return the Response PDU object."""
-        ret: ReadInputRegistersResponse = self.execute(
-            ReadInputRegistersRequest(base_register=address, register_count=count, **kwargs)
+        request = ReadInputRegistersRequest(base_register=address, register_count=count, **kwargs)
+        _logger.debug(
+            f'Attempting to read Input Registers {request.base_register}-'
+            f'{request.base_register+request.register_count} from device {hex(request.slave_address)}...'
         )
+        ret: ReadInputRegistersResponse = self.execute(request)
         if ret.base_register != address:
             raise AssertionError(
                 f'Returned base register ({ret.base_register}) ' f'does not match that from request ({address}).'
@@ -87,8 +93,8 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
             raise ValueError(f'Register {register.name} is not safe to write to.')
         if value != value & 0xFFFF:
             raise ValueError(f'Value {value} must fit in 2 bytes.')
-        result: WriteHoldingRegisterResponse = self.execute(
-            WriteHoldingRegisterRequest(register=register.value, value=value)
-        )
+        _logger.info(f'Attempting to write {value}/{hex(value)} to Holding Register {register.value}/{register.name}')
+        request = WriteHoldingRegisterRequest(register=register.value, value=value)
+        result: WriteHoldingRegisterResponse = self.execute(request)
         if result.value != value:
             raise AssertionError(f'Register read-back value 0x{result.value:04x} != written value 0x{value:04x}.')

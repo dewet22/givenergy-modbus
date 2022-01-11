@@ -24,7 +24,7 @@ class ModbusPDU(ABC):
     function_code: int
     data_adapter_serial_number: str = 'AB1234G567'
     padding: int = 0x00000008
-    slave_address: int = 0x32
+    slave_address: int = 0x11  # 0x11 is the inverter, 0x32+ are the batteries
     check: int = 0x0000
 
     def __init__(self, **kwargs):
@@ -83,7 +83,9 @@ class ModbusPDU(ABC):
     def decode(self, data: bytes) -> None:
         """Decode PDU message and populate instance attributes."""
         decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
-        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.data_adapter_serial_number = decoder.decode_string(10).decode(
+            "ascii",
+        )
         self.padding = decoder.decode_64bit_uint()
         self.slave_address = decoder.decode_8bit_uint()
         function_code = decoder.decode_8bit_uint()
@@ -239,21 +241,27 @@ class ReadRegistersResponse(ModbusResponse, ABC):
 
     def _decode_function_data(self, decoder):
         """Decode response PDU message and populate instance attributes."""
-        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.inverter_serial_number = decoder.decode_string(10).decode(
+            "ascii",
+        )
         self.base_register = decoder.decode_16bit_uint()
         self.register_count = decoder.decode_16bit_uint()
         self.register_values = [decoder.decode_16bit_uint() for i in range(self.register_count)]
         if self.register_count != len(self.register_values):
             raise ValueError(
                 f'Expected to receive {self.register_count} register values, '
-                f'instead received {len(self.register_values)}.',
+                f'instead received {len(self.register_values)}',
                 self,
             )
         self.check = decoder.decode_16bit_uint()
 
     def _ensure_valid_state(self):
-        if self.register_count == 60 and set(self.register_values) == {0}:
-            _logger.warning('Read back 60 zero-valued registers which is suspicious.')
+        zeroes_count = sum(1 for i in self.register_values if i == 0)
+        if self.register_count >= 10 and zeroes_count > 0 and zeroes_count / self.register_count > 0.75:
+            _logger.warning(
+                f'Read back {zeroes_count} zeroes out of {self.register_count} total '
+                f'{self.__class__.__name__[4:-8]} from base {self.base_register}'
+            )
 
     def to_dict(self):
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
@@ -392,7 +400,9 @@ class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC
 
     def _decode_function_data(self, decoder):
         """Decode response PDU message and populate instance attributes."""
-        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.inverter_serial_number = decoder.decode_string(10).decode(
+            "ascii",
+        )
         self.register = decoder.decode_16bit_uint()
         self.value = decoder.decode_16bit_uint()
         self.check = decoder.decode_16bit_uint()

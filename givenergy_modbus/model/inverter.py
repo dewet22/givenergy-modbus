@@ -3,9 +3,9 @@ import datetime
 import logging
 from enum import Enum
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import root_validator
 
-from .register_getter import RegisterGetter
+from . import GivEnergyBaseModel
 
 _logger = logging.getLogger(__package__)
 
@@ -18,16 +18,11 @@ class Model(Enum):
     Hybrid = 'SA'
 
 
-class Inverter(BaseModel):
+class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
-    class Config:  # noqa: D106
-        orm_mode = True
-        getter_dict = RegisterGetter
-        allow_mutation = False
-
     # Installation details
-    serial_number: str = Field(alias='inverter_serial_number')
+    inverter_serial_number: str
     device_type_code: str
     inverter_module: int
     dsp_firmware_version: int
@@ -48,6 +43,7 @@ class Inverter(BaseModel):
     enable_60hz_freq_mode: bool
     inverter_modbus_address: int
     modbus_version: float
+
     pv1_voltage_adjust: int
     pv2_voltage_adjust: int
     grid_r_voltage_adjust: int
@@ -67,43 +63,48 @@ class Inverter(BaseModel):
     inverter_restart_delay_time: int
 
     # Fault conditions
-    v_ac_low_out: float
-    v_ac_high_out: float
-    f_ac_low_out: float
-    f_ac_high_out: float
-    v_ac_low_out_time: datetime.time
-    v_ac_high_out_time: datetime.time
-    f_ac_low_out_time: datetime.time
-    f_ac_high_out_time: datetime.time
-    v_ac_low_in: float
-    v_ac_high_in: float
-    f_ac_low_in: float
-    f_ac_high_in: float
-    v_ac_low_in_time: datetime.time
-    v_ac_high_in_time: datetime.time
-    f_ac_low_in_time: datetime.time
-    f_ac_high_in_time: datetime.time
-    v_ac_low_c: float
-    v_ac_high_c: float
-    f_ac_low_c: float
-    f_ac_high_c: float
-    gfci_1_i: float
-    gfci_1_time: datetime.time
-    gfci_2_i: float
-    gfci_2_time: datetime.time
     dci_1_i: float
     dci_1_time: datetime.time
     dci_2_i: float
     dci_2_time: datetime.time
+    f_ac_high_c: float
+    f_ac_high_in: float
+    f_ac_high_in_time: datetime.time
+    f_ac_high_out: float
+    f_ac_high_out_time: datetime.time
+    f_ac_low_c: float
+    f_ac_low_in: float
+    f_ac_low_in_time: datetime.time
+    f_ac_low_out: float
+    f_ac_low_out_time: datetime.time
+    gfci_1_i: float
+    gfci_1_time: datetime.time
+    gfci_2_i: float
+    gfci_2_time: datetime.time
+    v_ac_high_c: float
+    v_ac_high_in: float
+    v_ac_high_in_time: datetime.time
+    v_ac_high_out: float
+    v_ac_high_out_time: datetime.time
+    v_ac_low_c: float
+    v_ac_low_in: float
+    v_ac_low_in_time: datetime.time
+    v_ac_low_out: float
+    v_ac_low_out_time: datetime.time
 
-    # Battery
+    # Battery configuration
     first_battery_serial_number: str
     first_battery_bms_firmware_version: int
     enable_bms_read: bool
     battery_type: int
     battery_nominal_capacity: float
     enable_auto_judge_battery_type: bool
+    v_pv_input_start: float
+    v_battery_under_protection_limit: float
+    v_battery_over_protection_limit: float
 
+    enable_discharge: bool
+    enable_charge: bool
     enable_charge_target: bool
     battery_power_mode: int
     soc_force_adjust: int
@@ -113,12 +114,6 @@ class Inverter(BaseModel):
     discharge_slot_1: tuple[datetime.time, datetime.time]
     discharge_slot_2: tuple[datetime.time, datetime.time]
     charge_and_discharge_soc: tuple[int, int]
-
-    enable_discharge: bool
-    v_pv_input_start: float
-    enable_charge: bool
-    v_battery_under_protection_limit: float
-    v_battery_over_protection_limit: float
 
     battery_low_force_charge_time: int
     battery_soc_reserve: int
@@ -134,63 +129,66 @@ class Inverter(BaseModel):
 
     # InputRegisters
     inverter_status: int
-    v_pv1: float
-    v_pv2: float
-    v_p_bus: float
-    v_n_bus: float
-    v_ac1: float
-    e_battery_throughput: float
-    i_pv1: float
-    i_pv2: float
-    i_ac1: float
-    p_pv_total_generating_capacity: float
-    f_ac1: float
+    system_mode: int
+    inverter_countdown: int
     charge_status: int
-    v_highbrigh_bus: int
-    pf_inverter_output: float
-    e_pv1_day: float
-    p_pv1: int
-    e_pv2_day: float
-    p_pv2: int
-    e_grid_export_day: float
-    e_solar_diverter: float
-    p_inverter_output: int
+    battery_percent: int
+    charger_warning_code: int
+    work_time_total: int
+    fault_code: int
+
+    e_battery_charge_day: float
+    e_battery_charge_day_2: float
+    e_battery_charge_total: float
+    e_battery_discharge_day: float
+    e_battery_discharge_day_2: float
+    e_battery_discharge_total: float
+    e_battery_discharge_total_2: float
+    e_discharge_year: float
+    e_inverter_out_day: float
+    e_inverter_out_total: float
     e_grid_out_day: float
     e_grid_in_day: float
+    e_grid_in_total: float
+    e_grid_out_total: float
+    e_inverter_in_day: float
     e_inverter_in_total: float
-    e_discharge_year: float
-    p_grid_output: int
-    p_eps: int
-    e_grid_import_total: float
-    e_inverter_charge_day: float
-    e_battery_charge_day: float
-    e_battery_discharge_day: float
-    inverter_countdown: int
-    fault_code: int
-    temp_inverter_heatsink: float
-    p_load_demand: int
-    p_grid_apparent: int
-    e_generated_day: float
-    e_generated_total: float
-    work_time_total: int
-    system_mode: int
-    v_battery: float
+    e_pv1_day: float
+    e_pv2_day: float
+    e_solar_diverter: float
+    f_ac1: float
+    f_eps_backup: float
+    i_ac1: float
     i_battery: float
-    p_battery: int
-    v_eps: float
-    f_eps: float
-    temp_charger: float
-    temp_battery: float
-    charger_warning_code: int
     i_grid_port: float
-    battery_percent: int
-    e_battery_discharge_total: float
-    e_battery_charge_total: float
+    i_pv1: float
+    i_pv2: float
+    p_battery: int
+    p_eps_backup: int
+    p_grid_apparent: int
+    p_grid_out: int
+    p_inverter_out: int
+    p_load_demand: int
+    p_pv1: int
+    p_pv2: int
+    p_pv_total_generating_capacity: float
+    pf_inverter_out: float
+    temp_battery: float
+    temp_charger: float
+    temp_inverter_heatsink: float
+    v_ac1: float
+    v_battery: float
+    v_eps_backup: float
+    v_highbrigh_bus: int
+    v_n_bus: float
+    v_p_bus: float
+    v_pv1: float
+    v_pv2: float
 
     @root_validator
     def compute_model(cls, values) -> dict:
         """Computes the inverter model from the serial number prefix."""
-        values['model'] = Model(values['serial_number'][:2])
+        values['inverter_model'] = Model(values['inverter_serial_number'][:2])
         return values
 
     @root_validator

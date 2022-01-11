@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+import json
+
 from .register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
 
 
 class RegisterCache:
     """Holds a cache of Registers populated after querying a device."""
 
-    def __init__(self) -> None:
-        self._registers: dict[Register, int] = {}
+    def __init__(self, registers=None) -> None:
+        if registers is None:
+            registers = {}
+        self._registers: dict[Register, int] = registers
         self._register_lookup_table: dict[str, Register] = {}
         for k, v in InputRegister.__members__.items():
             self._register_lookup_table[k] = v
@@ -31,6 +37,25 @@ class RegisterCache:
         """Update internal holding register cache with given values."""
         for k, v in registers.items():
             self._registers[type_(k)] = v
+
+    def to_json(self) -> str:
+        """Return JSON representation of the register cache, suitable for using with `from_json()`."""
+        return json.dumps(self._registers)
+
+    @classmethod
+    def from_json(cls, data: str) -> RegisterCache:
+        """Instantiate a RegisterCache from its JSON form."""
+
+        def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
+            """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
+            lookup = {'HR': HoldingRegister, 'IR': InputRegister}
+            ret = {}
+            for k, v in object_dict.items():
+                reg, idx = k.split(':', maxsplit=1)
+                ret[lookup[reg](int(idx))] = v
+            return ret
+
+        return cls(registers=json.loads(data, object_hook=register_object_hook))
 
     def debug(self):
         """Dump the internal state of registers and their value representations."""
