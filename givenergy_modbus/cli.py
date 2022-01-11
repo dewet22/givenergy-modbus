@@ -15,7 +15,7 @@ _logger = logging.getLogger(__package__)
 def main():
     """Main entrypoint for the CLI."""
     # Install our improved logging handler.
-    logging.basicConfig(handlers=[InterceptHandler()], level=0)
+    logging.basicConfig(handlers=[InterceptHandler()], level=logging.INFO)
 
     click.echo("givenergy-modbus")
     click.echo("=" * len("givenergy-modbus"))
@@ -24,10 +24,9 @@ def main():
     )
 
     client = GivEnergyClient(host="192.168.0.241")
-    client.refresh()
-    client.register_cache.debug()
-    # print(client.inverter.to_dict())
-    # print({k: v for k, v in client.inverter.to_dict().items() if k.find('charge') >= 0})
+    # client.load_inverter_registers().debug()
+    client.load_battery_registers(0).debug()
+    # client.load_battery_registers(1).debug()
 
 
 if __name__ == "__main__":

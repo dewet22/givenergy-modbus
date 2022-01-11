@@ -10,7 +10,8 @@ from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegisters
 def test_read_holding_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
-    mock_call = Mock(name='execute', return_value=Mock(name='ReadHoldingRegistersResponse'))
+    response = Mock(name='ReadHoldingRegistersResponse', base_register=2, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
     c.execute = mock_call
     c.read_holding_registers(2, 22)
     assert mock_call.call_count == 1
@@ -19,16 +20,61 @@ def test_read_holding_registers():
     assert mock_call.call_args_list[0].args[0].register_count == 22
 
 
+def test_read_holding_registers_validates_response_base_register():
+    """Ensure we read the ranges of known registers."""
+    c = GivEnergyModbusTcpClient()
+    response = Mock(name='ReadHoldingRegistersResponse', base_register=33, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
+    c.execute = mock_call
+    with pytest.raises(AssertionError) as e:
+        c.read_holding_registers(2, 22)
+    assert e.value.args[0] == 'Returned base register (33) does not match that from request (2).'
+
+
+def test_read_holding_registers_validates_response_register_count():
+    """Ensure we read the ranges of known registers."""
+    c = GivEnergyModbusTcpClient()
+    response = Mock(name='ReadHoldingRegistersResponse', base_register=33, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
+    c.execute = mock_call
+    with pytest.raises(AssertionError) as e:
+        c.read_holding_registers(33, 11)
+    assert e.value.args[0] == 'Returned register count (22) does not match that from request (11).'
+
+
 def test_read_input_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
-    mock_call = Mock(name='execute', return_value=Mock(name='ReadInputRegistersResponse'))
+    response = Mock(name='ReadInputRegistersResponse', base_register=33, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
     c.execute = mock_call
-    c.read_input_registers(3, 33)
+    c.read_input_registers(33, 22)
     assert mock_call.call_count == 1
     assert mock_call.call_args_list[0].args[0].__class__ == ReadInputRegistersRequest
-    assert mock_call.call_args_list[0].args[0].base_register == 3
-    assert mock_call.call_args_list[0].args[0].register_count == 33
+    assert mock_call.call_args_list[0].args[0].base_register == 33
+    assert mock_call.call_args_list[0].args[0].register_count == 22
+
+
+def test_read_input_registers_validates_response_base_register():
+    """Ensure we read the ranges of known registers."""
+    c = GivEnergyModbusTcpClient()
+    response = Mock(name='ReadInputRegistersResponse', base_register=33, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
+    c.execute = mock_call
+    with pytest.raises(AssertionError) as e:
+        c.read_input_registers(2, 22)
+    assert e.value.args[0] == 'Returned base register (33) does not match that from request (2).'
+
+
+def test_read_input_registers_validates_response_register_count():
+    """Ensure we read the ranges of known registers."""
+    c = GivEnergyModbusTcpClient()
+    response = Mock(name='ReadInputRegistersResponse', base_register=33, register_count=22)
+    mock_call = Mock(name='execute', return_value=response)
+    c.execute = mock_call
+    with pytest.raises(AssertionError) as e:
+        c.read_input_registers(33, 11)
+    assert e.value.args[0] == 'Returned register count (22) does not match that from request (11).'
 
 
 def test_write_holding_register():

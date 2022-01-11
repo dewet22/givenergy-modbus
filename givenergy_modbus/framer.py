@@ -115,12 +115,6 @@ class GivEnergyModbusFramer(ModbusFramer):
     FRAME_HEAD = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
 
     def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient = None):
-        """Constructor.
-
-        Args:
-            decoder: Frame decoder implementation.
-            client: Synchronous Modbus Client.
-        """
         self._buffer = b""
         self._length = 0
         self._hsize = 0x08

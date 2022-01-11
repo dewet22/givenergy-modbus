@@ -28,7 +28,6 @@ class ModbusPDU(ABC):
     check: int = 0x0000
 
     def __init__(self, **kwargs):
-        """Constructor."""
         if "function_id" in kwargs:  # TODO can be removed?
             raise ValueError("function_id= is not valid, use function_code= instead.", self)
 
@@ -55,7 +54,6 @@ class ModbusPDU(ABC):
         self._set_attribute_if_present('check', kwargs)
 
     def __str__(self):
-        """Returns a useful string representation of the PDU and its internal state."""
         if hasattr(self, 'function_code'):
             fn_code = self.function_code
         else:
@@ -170,7 +168,6 @@ class ReadRegistersRequest(ModbusRequest, ABC):
     """Handles all messages that request a range of registers."""
 
     def __init__(self, **kwargs):
-        """Constructor."""
         super().__init__(**kwargs)
         self.base_register = kwargs.get('base_register', 0x0000)
         self.register_count = kwargs.get('register_count', 0x0000)
@@ -221,7 +218,6 @@ class ReadRegistersResponse(ModbusResponse, ABC):
     """Handles all messages that respond with a range of registers."""
 
     def __init__(self, **kwargs):
-        """Constructor."""
         super().__init__(**kwargs)
         self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
         self.base_register: int = kwargs.get('base_register', 0x0000)
@@ -257,7 +253,7 @@ class ReadRegistersResponse(ModbusResponse, ABC):
 
     def _ensure_valid_state(self):
         if self.register_count == 60 and set(self.register_values) == {0}:
-            raise AssertionError('Read back 60 zero-valued registers which is suspicious.')
+            _logger.warning('Read back 60 zero-valued registers which is suspicious.')
 
     def to_dict(self):
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
@@ -336,7 +332,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         59,  # ENABLE_DISCHARGE
         94,  # CHARGE_SLOT_1_START
         95,  # CHARGE_SLOT_1_END
-        96,  # CHARGE_ENABLE
+        96,  # ENABLE_CHARGE
         110,  # BATTERY_SOC_RESERVE
         111,  # BATTERY_CHARGE_LIMIT
         112,  # BATTERY_DISCHARGE_LIMIT
@@ -345,7 +341,6 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
     }
 
     def __init__(self, **kwargs):
-        """Constructor."""
         super().__init__(**kwargs)
         self.register: int = kwargs.get('register', None)
         self.value: int = kwargs.get('value', None)
@@ -385,7 +380,6 @@ class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC
     """Concrete PDU implementation for handling function #6/Write Holding Register response messages."""
 
     def __init__(self, **kwargs):
-        """Constructor."""
         super().__init__(**kwargs)
         self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
         self.register: int = kwargs.get('register', None)

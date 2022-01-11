@@ -5,7 +5,8 @@ from unittest.mock import call
 import pytest
 
 from givenergy_modbus.client import GivEnergyClient
-from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
+from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
+from givenergy_modbus.pdu import ReadHoldingRegistersResponse, ReadInputRegistersResponse
 
 
 @pytest.fixture()
@@ -26,20 +27,41 @@ def client_with_mocked_write_holding_register() -> tuple[GivEnergyClient, Mock]:
     return c, mock
 
 
-def test_refresh():
+def test_load_inverter_registers():
     """Ensure we can retrieve current data in a well-structured format."""
-    c = GivEnergyClient(host='foo')
-    c.modbus_client.read_holding_registers = Mock()
-    c.modbus_client.read_input_registers = Mock()
-    c.register_cache = Mock()
+    c = GivEnergyClient(host='foo', register_cache_class=Mock)
+    c.modbus_client.read_holding_registers = Mock(return_value=ReadHoldingRegistersResponse())
+    c.modbus_client.read_input_registers = Mock(return_value=ReadInputRegistersResponse())
 
-    c.refresh()
+    register_cache = c.load_inverter_registers()
 
     assert c.modbus_client.read_holding_registers.call_args_list == [call(0, 60), call(60, 60), call(120, 60)]
-    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(60, 60), call(180, 60)]
+    assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(120, 60), call(180, 60)]
     # it really is a lot of work to test the detailed wiring of these deep method calls
-    assert len(c.register_cache.update_holding_registers.call_args_list) == 3
-    assert len(c.register_cache.update_input_registers.call_args_list) == 3
+    assert len(register_cache.set_registers.call_args_list) == 6
+    assert register_cache.set_registers.call_args_list[0][0][0] is HoldingRegister
+    assert register_cache.set_registers.call_args_list[0][1] == {}
+    assert register_cache.set_registers.call_args_list[1][0][0] is HoldingRegister
+    assert register_cache.set_registers.call_args_list[2][0][0] is HoldingRegister
+    assert register_cache.set_registers.call_args_list[3][0][0] is InputRegister
+    assert register_cache.set_registers.call_args_list[4][0][0] is InputRegister
+    assert register_cache.set_registers.call_args_list[5][0][0] is InputRegister
+
+
+def test_load_battery_registers():
+    """Ensure we can retrieve current data in a well-structured format."""
+    c = GivEnergyClient(host='foo', register_cache_class=Mock)
+    c.modbus_client.read_holding_registers = Mock(return_value=ReadHoldingRegistersResponse())
+    c.modbus_client.read_input_registers = Mock(return_value=ReadInputRegistersResponse())
+
+    register_cache = c.load_battery_registers(33)
+
+    assert c.modbus_client.read_holding_registers.call_args_list == []
+    assert c.modbus_client.read_input_registers.call_args_list == [call(60, 60, slave_address=0x32 + 33)]
+    # it really is a lot of work to test the detailed wiring of these deep method calls
+    assert len(register_cache.set_registers.call_args_list) == 1
+    assert register_cache.set_registers.call_args_list[0][0][0] is InputRegister
+    assert register_cache.set_registers.call_args_list[0][1] == {}
 
 
 def test_set_charge_target(client_with_mocked_write_holding_register):
@@ -80,8 +102,8 @@ def test_set_charge(client_with_mocked_write_holding_register):
     c.disable_charge()
 
     assert mock.call_args_list == [
-        call(HoldingRegister.CHARGE_ENABLE, True),
-        call(HoldingRegister.CHARGE_ENABLE, False),
+        call(HoldingRegister.ENABLE_CHARGE, True),
+        call(HoldingRegister.ENABLE_CHARGE, False),
     ]
 
 
