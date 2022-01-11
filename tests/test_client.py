@@ -5,8 +5,13 @@ from unittest.mock import call
 import pytest
 
 from givenergy_modbus.client import GivEnergyClient
+from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import ReadHoldingRegistersResponse, ReadInputRegistersResponse
+
+from .model.test_battery import EXPECTED_BATTERY_DICT
+from .model.test_inverter import EXPECTED_INVERTER_DICT
+from .model.test_register_cache import register_cache  # noqa: F401
 
 
 @pytest.fixture()
@@ -27,25 +32,40 @@ def client_with_mocked_write_holding_register() -> tuple[GivEnergyClient, Mock]:
     return c, mock
 
 
-def test_load_inverter_registers():
+def test_refresh_inverter_registers():
     """Ensure we can retrieve current data in a well-structured format."""
     c = GivEnergyClient(host='foo', register_cache_class=Mock)
     c.modbus_client.read_holding_registers = Mock(return_value=ReadHoldingRegistersResponse())
     c.modbus_client.read_input_registers = Mock(return_value=ReadInputRegistersResponse())
 
-    register_cache = c.load_inverter_registers()
+    rc = c.fetch_inverter_registers()
 
     assert c.modbus_client.read_holding_registers.call_args_list == [call(0, 60), call(60, 60), call(120, 60)]
     assert c.modbus_client.read_input_registers.call_args_list == [call(0, 60), call(120, 60), call(180, 60)]
     # it really is a lot of work to test the detailed wiring of these deep method calls
-    assert len(register_cache.set_registers.call_args_list) == 6
-    assert register_cache.set_registers.call_args_list[0][0][0] is HoldingRegister
-    assert register_cache.set_registers.call_args_list[0][1] == {}
-    assert register_cache.set_registers.call_args_list[1][0][0] is HoldingRegister
-    assert register_cache.set_registers.call_args_list[2][0][0] is HoldingRegister
-    assert register_cache.set_registers.call_args_list[3][0][0] is InputRegister
-    assert register_cache.set_registers.call_args_list[4][0][0] is InputRegister
-    assert register_cache.set_registers.call_args_list[5][0][0] is InputRegister
+    assert len(rc.set_registers.call_args_list) == 6
+    assert rc.set_registers.call_args_list[0][0][0] is HoldingRegister
+    assert rc.set_registers.call_args_list[0][1] == {}
+    assert rc.set_registers.call_args_list[1][0][0] is HoldingRegister
+    assert rc.set_registers.call_args_list[2][0][0] is HoldingRegister
+    assert rc.set_registers.call_args_list[3][0][0] is InputRegister
+    assert rc.set_registers.call_args_list[4][0][0] is InputRegister
+    assert rc.set_registers.call_args_list[5][0][0] is InputRegister
+
+
+def test_refresh_inverter(client_with_mocked_modbus_client, register_cache):  # noqa: F811
+    """Ensure we can refresh data and obtain an Inverter DTO."""
+    c, mock = client_with_mocked_modbus_client
+    c.fetch_inverter_registers = Mock(return_value=register_cache)
+
+    i = c.fetch_inverter()
+
+    assert i.dict() == EXPECTED_INVERTER_DICT
+    assert i.serial_number == 'SA1234G567'
+    assert i.model == Model.Hybrid
+    assert i.v_pv1 == 1.4000000000000001
+    assert i.e_generated_day == 8.1
+    assert i.enable_charge_target
 
 
 def test_load_battery_registers():
@@ -54,14 +74,26 @@ def test_load_battery_registers():
     c.modbus_client.read_holding_registers = Mock(return_value=ReadHoldingRegistersResponse())
     c.modbus_client.read_input_registers = Mock(return_value=ReadInputRegistersResponse())
 
-    register_cache = c.load_battery_registers(33)
+    rc = c.fetch_battery_registers(33)
 
     assert c.modbus_client.read_holding_registers.call_args_list == []
     assert c.modbus_client.read_input_registers.call_args_list == [call(60, 60, slave_address=0x32 + 33)]
     # it really is a lot of work to test the detailed wiring of these deep method calls
-    assert len(register_cache.set_registers.call_args_list) == 1
-    assert register_cache.set_registers.call_args_list[0][0][0] is InputRegister
-    assert register_cache.set_registers.call_args_list[0][1] == {}
+    assert len(rc.set_registers.call_args_list) == 1
+    assert rc.set_registers.call_args_list[0][0][0] is InputRegister
+    assert rc.set_registers.call_args_list[0][1] == {}
+
+
+def test_refresh_battery(client_with_mocked_modbus_client, register_cache):  # noqa: F811
+    """Ensure we can refresh data and obtain a Battery DTO."""
+    c, mock = client_with_mocked_modbus_client
+    c.fetch_battery_registers = Mock(return_value=register_cache)
+
+    b = c.fetch_battery()
+
+    assert b.dict() == EXPECTED_BATTERY_DICT
+    assert b.serial_number == 'BG1234G567'
+    assert b.v_cell_01 == 3.117
 
 
 def test_set_charge_target(client_with_mocked_write_holding_register):

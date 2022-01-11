@@ -2,6 +2,8 @@ import logging
 from datetime import datetime, time
 
 from .modbus import GivEnergyModbusTcpClient
+from .model.battery import Battery
+from .model.inverter import Inverter  # type: ignore
 from .model.register import HoldingRegister, InputRegister  # type: ignore
 from .model.register_cache import RegisterCache
 
@@ -20,7 +22,7 @@ class GivEnergyClient:
     def __repr__(self):
         return f"GivEnergyClient({self.host}:{self.port}))"
 
-    def load_inverter_registers(self) -> RegisterCache:
+    def fetch_inverter_registers(self) -> RegisterCache:
         """Reload all inverter data from the device."""
         register_cache = self.register_cache_class()
         register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(0, 60).to_dict())
@@ -32,7 +34,11 @@ class GivEnergyClient:
         register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(180, 60).to_dict())
         return register_cache
 
-    def load_battery_registers(self, battery_number=0) -> RegisterCache:
+    def fetch_inverter(self) -> Inverter:
+        """Reload inverter data and return an Inverter DTO."""
+        return Inverter.from_orm(self.fetch_inverter_registers())
+
+    def fetch_battery_registers(self, battery_number=0) -> RegisterCache:
         """Reload all battery data from a given device."""
         register_cache = self.register_cache_class()
         register_cache.set_registers(
@@ -40,6 +46,10 @@ class GivEnergyClient:
             self.modbus_client.read_input_registers(60, 60, slave_address=0x32 + battery_number).to_dict(),
         )
         return register_cache
+
+    def fetch_battery(self, battery_number=0) -> Battery:
+        """Reload battery data and return a Battery DTO."""
+        return Battery.from_orm(self.fetch_battery_registers(battery_number=battery_number))
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""

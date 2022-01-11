@@ -30,22 +30,35 @@ Use the provided client to interact with the device over the network:
 ```python
 from datetime import time
 from givenergy_modbus.client import GivEnergyClient
+from givenergy_modbus.model.inverter import Model
 
 client = GivEnergyClient(host="192.168.99.99")
-client.refresh()
-client.set_winter_mode(True)
+client.enable_charge_target(80)
 # set a charging slot from 00:30 to 04:30
-client.set_charge_slot_1(time(hour=0, minute=30), time(hour=4, minute=30))
+client.set_charge_slot_1((time(hour=0, minute=30), time(hour=4, minute=30)))
 
-# Data is returned as an instance of `model.Inverter` which
-# allows indexing and direct attribute access
-client.refresh()
-assert client.inverter.serial_number == 'SA1234G567'
-assert client.inverter['model'] == 'Hybrid'
-assert client.inverter.v_pv1 == 1.4000000000000001
-assert client.inverter.v_battery_cell01 == 3.117
-assert client.inverter.e_grid_out_total == 0.6000000000000001
-assert client.inverter.winter_mode
+inverter = client.fetch_inverter()
+assert inverter.serial_number == 'SA1234G567'
+assert inverter.model == Model.Hybrid
+assert inverter.v_pv1 == 1.4000000000000001
+assert inverter.e_generated_day == 8.1
+assert inverter.enable_charge_target
+assert inverter.dict() == {
+    'active_power_rate': 100,
+    'arm_firmware_version': 449,
+    'battery_charge_limit': 50,
+    ...
+}
+
+battery = client.fetch_battery(battery_number=0)
+
+assert battery.serial_number == 'BG1234G567'
+assert battery.v_cell_01 == 3.117
+assert battery.dict() == {
+    'bms_firmware_version': 3005,
+    'design_capacity': 160.0,
+    ...
+}
 ```
 
 ## Credits
