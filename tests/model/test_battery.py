@@ -1,6 +1,5 @@
 from givenergy_modbus.model.battery import Battery
-
-from .test_register_cache import (  # noqa: F401
+from tests.model.test_register_cache import (  # noqa: F401
     register_cache,
     register_cache_battery_daytime_discharging,
     register_cache_battery_missing,

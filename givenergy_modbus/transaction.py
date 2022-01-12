@@ -6,8 +6,8 @@ from pymodbus.exceptions import InvalidMessageReceivedException, ModbusIOExcepti
 from pymodbus.transaction import FifoTransactionManager
 from pymodbus.utilities import ModbusTransactionState
 
-from .pdu import ModbusPDU
-from .util import hexlify
+from givenergy_modbus.pdu import ModbusPDU
+from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -30,6 +30,9 @@ class GivEnergyTransactionManager(FifoTransactionManager):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivEnergyModbusFramer`
+        # self.retry_on_empty=True
+        # self.retry_on_invalid=True
+        # self.retries = 3
 
     def _set_adu_size(self):
         """Essentially the MBAP header size."""
@@ -41,7 +44,7 @@ class GivEnergyTransactionManager(FifoTransactionManager):
 
     def _calculate_exception_length(self) -> int:
         """Index in the raw message where we can determine whether / what exception we're dealing with."""
-        return 28
+        return 8  # was 28
 
     def _validate_response(self, pdu: ModbusPDU, data: bytes, expected_response_length: int) -> bool:
         """Try to validate the incoming message using the responsible PDU."""
@@ -70,8 +73,8 @@ class GivEnergyTransactionManager(FifoTransactionManager):
         self, request: ModbusPDU, expected_response_length: int, full=False, broadcast=False
     ) -> tuple[bytes, None | Exception]:
         """Connects and sends the request, and reads back the response."""
-        if full:
-            raise NotImplementedError('This implementation does not support full messages')
+        # if full:
+        #     raise NotImplementedError('This implementation does not support full messages')
         if broadcast:
             raise NotImplementedError('This implementation does not support broadcast messages')
 
@@ -92,10 +95,9 @@ class GivEnergyTransactionManager(FifoTransactionManager):
             return rx_data, None
 
         except (OSError, ModbusIOException, InvalidMessageReceivedException) as msg:
-            _logger.exception("Transaction failed", msg)
-            if self.reset_socket:
-                _logger.debug("Transaction failed. (%s) " % msg)
-                self.client.close()
+            _logger.error("Transaction failed")
+            # if self.reset_socket:
+            self.client.close()
             return b'', msg
 
     def _send(self, data: bytes, retrying=False) -> int:

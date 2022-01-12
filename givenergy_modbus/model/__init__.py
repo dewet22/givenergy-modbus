@@ -1,7 +1,7 @@
 """Data model."""
 from pydantic import BaseModel
 
-from .register_getter import RegisterGetter
+from givenergy_modbus.model.register_getter import RegisterGetter
 
 
 class GivEnergyBaseModel(BaseModel):

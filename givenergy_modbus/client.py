@@ -1,66 +1,74 @@
 import logging
+import time as t
 from datetime import datetime, time
+from typing import Mapping, Sequence, Union
 
-from .modbus import GivEnergyModbusTcpClient
-from .model.battery import Battery
-from .model.inverter import Inverter  # type: ignore
-from .model.register import HoldingRegister, InputRegister  # type: ignore
-from .model.register_cache import RegisterCache
+from pymodbus.client.sync import ModbusTcpClient
+
+from givenergy_modbus.modbus import GivEnergyModbusTcpClient
+from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore
+from givenergy_modbus.model.register_cache import RegisterCache
 
 _logger = logging.getLogger(__package__)
+
+INVERTER_REGISTER_PAGES = {
+    HoldingRegister: [0, 60, 120],
+    InputRegister: [0, 180],
+}
+BATTERY_REGISTER_PAGES = {
+    InputRegister: [60],
+}
+DEFAULT_SLEEP = 0.5
 
 
 class GivEnergyClient:
     """Client for end users to conveniently access GivEnergy inverters."""
 
-    def __init__(self, host: str, port: int = 8899, register_cache_class=RegisterCache):
+    def __init__(self, host: str, port: int = 8899, modbus_client: ModbusTcpClient = None):
         self.host = host
         self.port = port
-        self.modbus_client = GivEnergyModbusTcpClient(host=self.host, port=self.port)
-        self.register_cache_class = register_cache_class
+        if modbus_client is None:
+            modbus_client = GivEnergyModbusTcpClient(host=self.host, port=self.port)
+        self.modbus_client = modbus_client
 
     def __repr__(self):
         return f"GivEnergyClient({self.host}:{self.port}))"
 
-    def fetch_inverter_registers(self) -> RegisterCache:
+    def fetch_register_pages(
+        self,
+        pages: Mapping[type[Union[HoldingRegister, InputRegister]], Sequence[int]],
+        register_cache: RegisterCache,
+        slave_address: int = 0x32,
+        sleep_between_queries: float = DEFAULT_SLEEP,
+    ) -> None:
         """Reload all inverter data from the device."""
-        _logger.info('Fetching all registers for Inverter...')
-        register_cache = self.register_cache_class()
-        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(0, 60).to_dict())
-        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(60, 60).to_dict())
-        register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(120, 60).to_dict())
-        # register_cache.set_registers(HoldingRegister, self.modbus_client.read_holding_registers(180, 1).to_dict())
-        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(0, 60).to_dict())
-        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(120, 60).to_dict())
-        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(180, 60).to_dict())
-        register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(240, 60).to_dict())
-        # register_cache.set_registers(InputRegister, self.modbus_client.read_input_registers(300, 1).to_dict())
-        _logger.debug('Fetch complete!')
-        return register_cache
+        for register, base_registers in pages.items():
+            for base_register in base_registers:
+                data = self.modbus_client.read_registers(register, base_register, 60, slave_address=slave_address)
+                register_cache.set_registers(register, data)
+                t.sleep(sleep_between_queries)
 
-    def fetch_inverter(self) -> Inverter:
-        """Reload inverter data and return an Inverter DTO."""
-        return Inverter.from_orm(self.fetch_inverter_registers())
-
-    def fetch_battery_registers(self, battery_number=0) -> RegisterCache:
+    def update_battery_registers(
+        self, register_cache: RegisterCache, sleep_between_queries=DEFAULT_SLEEP, battery_number=0
+    ) -> None:
         """Reload all battery data from a given device."""
-        _logger.info(f'Fetching all Input Registers for battery {battery_number}...')
-        register_cache = self.register_cache_class()
-        register_cache.set_registers(
-            InputRegister,
-            self.modbus_client.read_input_registers(60, 60, slave_address=0x32 + battery_number).to_dict(),
+        self.fetch_register_pages(
+            BATTERY_REGISTER_PAGES,
+            register_cache,
+            slave_address=0x32 + battery_number,
+            sleep_between_queries=sleep_between_queries,
         )
-        _logger.debug('Fetch complete!')
-        return register_cache
 
-    def fetch_battery(self, battery_number=0) -> Battery:
-        """Reload battery data and return a Battery DTO."""
-        return Battery.from_orm(self.fetch_battery_registers(battery_number=battery_number))
+    def update_inverter_registers(self, register_cache: RegisterCache, sleep_between_queries=DEFAULT_SLEEP) -> None:
+        """Reload inverter data and return an Inverter DTO."""
+        self.fetch_register_pages(
+            INVERTER_REGISTER_PAGES, register_cache, slave_address=0x32, sleep_between_queries=sleep_between_queries
+        )
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
         if not 4 <= target_soc <= 100:
-            raise ValueError(f'Specified Charge Target SOC ({target_soc}) is not in [4-100].')
+            raise ValueError(f'Specified Charge Target SOC ({target_soc}) is not in [4-100]')
         if target_soc == 100:
             self.disable_charge_target()
         else:
@@ -202,13 +210,13 @@ class GivEnergyClient:
         """Set the battery charge limit."""
         # TODO what are valid values?
         if not 0 <= val <= 50:
-            raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%.')
+            raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_CHARGE_LIMIT, val)
 
     def set_battery_discharge_limit(self, val: int):
         """Set the battery discharge limit."""
         if not 0 <= val <= 50:
-            raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%.')
+            raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)
 
     def set_battery_power_reserve(self, val: int):

@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import abc
 import logging
-from typing import Callable
+from typing import Mapping, Sequence
 
 from pymodbus.interfaces import IModbusDecoder
-from pymodbus.pdu import ExceptionResponse, ModbusExceptions
 
-from .pdu import REQUEST_PDUS, RESPONSE_PDUS, ModbusPDU
-from .util import friendly_class_name, hexlify
+from givenergy_modbus.pdu import REQUEST_PDUS, RESPONSE_PDUS, ErrorResponse, ModbusPDU
+from givenergy_modbus.util import friendly_class_name, hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -26,43 +25,54 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
     instantiate a concrete PDU handler to decode it, and pass it on.
     """
 
-    _function_table: list[Callable]  # contains all the decoder functions this factory will consider
-    _lookup: dict[int, Callable]  # lookup table mapping function code to decoder type
+    _function_table: Sequence[type[ModbusPDU]]  # contains all the decoder functions this factory will consider
+    _lookup: Mapping[int, type[ModbusPDU]]  # lookup table mapping function code to decoder type
 
     def __init__(self):
         # build the lookup table at instantiation time
         self._lookup = {f.function_code: f for f in self._function_table}
 
-    def lookupPduClass(self, fn_code: int) -> ModbusPDU | None:
+    def lookupPduClass(self, fn_code: int) -> type[ModbusPDU] | None:
         """Attempts to find the ModbusPDU handler class that can handle a given function code."""
+        if fn_code >= 0x80:
+            fn_code &= 0x7F
         if fn_code in self._lookup:
             fn = self._lookup[fn_code]
             _logger.debug(f"Identified incoming PDU as {fn_code}/{friendly_class_name(fn)}")
-            return fn()
+            return fn
         return None
 
-    def decode(self, data: bytes) -> ModbusPDU | None:
+    def decode(self, data: bytes) -> ModbusPDU | ErrorResponse | None:
         """Create an appropriately populated PDU message object from a valid Modbus message.
 
         Extracts the `function code` from the raw message and looks up the matching ModbusPDU handler class
         that claims that function. This handler is instantiated and passed the raw message, which then proceeds
         to decode its attributes from the bytestream.
         """
-        if len(data) <= 19:
-            _logger.error(f"PDU data is too short to find a valid function id: {len(data)} [{hexlify(data)}]")
-            return None
-        fn_code = data[19]
-        if fn_code > 0x80:
-            code = fn_code & 0x7F  # strip error portion
-            return ExceptionResponse(code, ModbusExceptions.IllegalFunction)
-
-        response = self.lookupPduClass(fn_code)
-        if response:
+        main_fn = data[0]
+        data = data[1:]
+        if main_fn == 0x1:
+            # heartbeat / error?
+            err_response = ErrorResponse()
             _logger.debug(f"About to decode data [{hexlify(data)}]")
-            response.decode(data)
-            return response
-
-        _logger.error(f"No decoder for function code {fn_code}")
+            err_response.decode(data)
+            return err_response
+        elif main_fn == 0x2:
+            # most functions
+            if len(data) <= 19:
+                _logger.error(f"PDU data is too short to find a valid function id: len={len(data)} [{hexlify(data)}]")
+                return None
+            fn_code = data[19]
+            response = self.lookupPduClass(fn_code)
+            if response:
+                _logger.debug(f"About to decode data [{hexlify(data)}]")
+                r = response(function_code=fn_code)
+                r.decode(data)
+                return r
+            _logger.error(f"No decoder for function code {fn_code}")
+            return None
+        _logger.error(f"Unknown main function code {hex(main_fn)}")
+        # return ExceptionResponse(main_fn, ModbusExceptions.IllegalFunction)
         return None
 
 

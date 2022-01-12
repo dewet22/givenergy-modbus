@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
-from typing import Any, Callable
+from typing import Any, Sequence
 
 from crccheck.crc import CrcModbus
 from pymodbus import pdu as pymodbus_pdu
@@ -12,7 +12,7 @@ from pymodbus.constants import Endian
 from pymodbus.interfaces import IModbusSlaveContext
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
 
-from .util import friendly_class_name, hexxed
+from givenergy_modbus.util import friendly_class_name, hexxed
 
 _logger = logging.getLogger(__package__)
 
@@ -24,15 +24,26 @@ class ModbusPDU(ABC):
     function_code: int
     data_adapter_serial_number: str = 'AB1234G567'
     padding: int = 0x00000008
-    slave_address: int = 0x11  # 0x11 is the inverter, 0x32+ are the batteries
+    slave_address: int = 0x32  # 0x11 is the inverter but the cloud systems interfere, 0x32+ are the batteries
     check: int = 0x0000
+    error: bool = False
 
     def __init__(self, **kwargs):
         if "function_id" in kwargs:  # TODO can be removed?
             raise ValueError("function_id= is not valid, use function_code= instead.", self)
 
-        if "function_code" in kwargs:  # TODO can be removed?
-            if not hasattr(self, 'function_code') or kwargs["function_code"] != self.function_code:
+        if "function_code" in kwargs:
+            if not hasattr(self, 'function_code'):
+                raise ValueError(
+                    f"Class {self.__class__.__name__} does not have a function code, "
+                    f"trying to override it is not supported",
+                    self,
+                )
+            function_code = kwargs["function_code"]
+            if function_code >= 0x80:
+                self.error = True
+                function_code &= 0x7F
+            if function_code != self.function_code:
                 raise ValueError(
                     f"Specified function code {kwargs['function_code']} is different "
                     f"from what {self} is expecting.",
@@ -58,7 +69,13 @@ class ModbusPDU(ABC):
             fn_code = self.function_code
         else:
             fn_code = '_'
-        filtered_keys = ['transaction_id', 'protocol_id', 'unit_id', 'skip_encode']  # these mean nothing
+        filtered_keys = [
+            'transaction_id',
+            'protocol_id',
+            'unit_id',
+            'skip_encode',
+            'register_values',
+        ]
         filtered_vars = ', '.join([f'{k}: {hexxed(v)}' for k, v in vars(self).items() if k not in filtered_keys])
         if len(filtered_vars) > 0:
             filtered_vars = '{' + filtered_vars + '}'
@@ -83,12 +100,13 @@ class ModbusPDU(ABC):
     def decode(self, data: bytes) -> None:
         """Decode PDU message and populate instance attributes."""
         decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
-        self.data_adapter_serial_number = decoder.decode_string(10).decode(
-            "ascii",
-        )
+        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
         self.padding = decoder.decode_64bit_uint()
         self.slave_address = decoder.decode_8bit_uint()
         function_code = decoder.decode_8bit_uint()
+        if function_code >= 0x80:
+            self.error = True
+            function_code = function_code & 0x7F
         if self.function_code != function_code:
             e = ValueError(
                 f"Expected function code 0x{self.function_code:02x}, found 0x{function_code:02x} instead.", self
@@ -122,7 +140,7 @@ class ModbusPDU(ABC):
         size = 20 + self._calculate_function_data_size()
         _logger.debug(f"Calculated {size} bytes total response PDU size for {self}")
         if size >= 247:
-            _logger.error('Expected response size {size}b exceeds Modbus protocol spec.')
+            _logger.error('Expected response size {size}b exceeds Modbus protocol spec')
         return size
 
     def _calculate_function_data_size(self) -> int:
@@ -155,6 +173,8 @@ class ModbusRequest(ModbusPDU, pymodbus_pdu.ModbusRequest, ABC):
 class ModbusResponse(ModbusPDU, pymodbus_pdu.ModbusResponse, ABC):
     """Root of the hierarchy for Response PDUs."""
 
+    error: bool = False
+
     def _update_check_code(self):
         # Until we know how Responses are checksummed there's nothing we can do here; self.check stays 0x0000
         _logger.warning('Unable to recalculate checksum, using whatever value was set')
@@ -162,7 +182,6 @@ class ModbusResponse(ModbusPDU, pymodbus_pdu.ModbusResponse, ABC):
 
     def execute(self, context) -> ModbusPDU:
         """There is no automatic Reply following the processing of a Response."""
-        pass
 
 
 #################################################################################
@@ -198,7 +217,7 @@ class ReadRegistersRequest(ModbusRequest, ABC):
 
     def _ensure_valid_state(self):
         if self.base_register is None:
-            raise ValueError('Base Register must be set explicitly.')
+            raise ValueError('Base Register must be set explicitly')
         elif not 0 <= self.base_register <= 0xFFFF:
             raise ValueError(f'Base Register {hex(self.base_register)} must be an unsigned 16-bit int')
         elif self.base_register % 60 != 0:
@@ -207,13 +226,13 @@ class ReadRegistersRequest(ModbusRequest, ABC):
             )
 
         if self.register_count is None:
-            raise ValueError('Register Count must be set explicitly.')
+            raise ValueError('Register Count must be set explicitly')
         elif not 0 <= self.register_count <= 0xFFFF:
             raise ValueError(f'Register Count {hex(self.register_count)} must be unsigned 16-bit int')
 
         if self.register_count > 60:
             # should we abort instead?
-            _logger.warning('GivEnergy devices do not return more than 60 registers per call, this will likely fail.')
+            _logger.warning('GivEnergy devices do not return more than 60 registers per call, this will likely fail')
 
 
 class ReadRegistersResponse(ModbusResponse, ABC):
@@ -241,18 +260,17 @@ class ReadRegistersResponse(ModbusResponse, ABC):
 
     def _decode_function_data(self, decoder):
         """Decode response PDU message and populate instance attributes."""
-        self.inverter_serial_number = decoder.decode_string(10).decode(
-            "ascii",
-        )
+        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
         self.base_register = decoder.decode_16bit_uint()
         self.register_count = decoder.decode_16bit_uint()
-        self.register_values = [decoder.decode_16bit_uint() for i in range(self.register_count)]
-        if self.register_count != len(self.register_values):
-            raise ValueError(
-                f'Expected to receive {self.register_count} register values, '
-                f'instead received {len(self.register_values)}',
-                self,
-            )
+        if not self.error:
+            self.register_values = [decoder.decode_16bit_uint() for i in range(self.register_count)]
+            if self.register_count != len(self.register_values):
+                raise ValueError(
+                    f'Expected to receive {self.register_count} register values, '
+                    f'instead received {len(self.register_values)}',
+                    self,
+                )
         self.check = decoder.decode_16bit_uint()
 
     def _ensure_valid_state(self):
@@ -377,9 +395,9 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
 
     def _ensure_valid_state(self):
         if self.register not in self.writable_registers:
-            raise ValueError(f'Register {self.register} is not safe to write to.')
+            raise ValueError(f'Register {self.register} is not safe to write to')
         if self.value is None:
-            raise ValueError('Value must be set explicitly.')
+            raise ValueError('Value must be set explicitly')
         elif not 0 <= self.value <= 0xFFFF:
             raise ValueError(f'Value {hex(self.value)} must be an unsigned 16-bit int')
 
@@ -409,19 +427,63 @@ class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC
 
     def _ensure_valid_state(self):
         if self.register is None:
-            raise ValueError('Register must be set explicitly.')
+            raise ValueError('Register must be set explicitly')
         if self.value is None:
-            raise ValueError('Value must be set explicitly.')
+            raise ValueError('Value must be set explicitly')
+
+
+#################################################################################
+class ErrorResponse(pymodbus_pdu.ModbusResponse, ABC):
+    """Special case PDU that gets returned under some error conditions."""
+
+    function_code = 0
+    builder: BinaryPayloadBuilder
+    data_adapter_serial_number: str
+    error_code: int
+    error: bool = True
+
+    def __init__(self, **kwargs):
+        kwargs.update(  # ensure these can never get overwritten  TODO can be removed?
+            {
+                "transaction": 0x5959,
+                "protocol": 0x0001,
+                "unit": 0x01,
+                "skip_encode": True,
+            }
+        )
+        super().__init__(**kwargs)
+        self.data_adapter_serial_number: str = kwargs.get('data_adapter_serial_number', 'SA1234G567')
+        self.error_code: int = kwargs.get('error_code', 0x00)
+
+    def encode(self) -> bytes:
+        """Encode request PDU message and populate instance attributes."""
+        self.builder = BinaryPayloadBuilder(byteorder=Endian.Big)
+        self.builder.add_string(f"{self.data_adapter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
+        self.builder.add_8bit_uint(self.error_code)
+        return self.builder.to_string()
+
+    def decode(self, data: bytes):
+        """Decode response PDU message and populate instance attributes."""
+        decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
+        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.error_code = decoder.decode_8bit_uint()
+        _logger.debug(f"Successfully decoded {len(data)} bytes")
+
+    @staticmethod
+    def get_response_pdu_size() -> int:
+        """Predict the size of the response PDU."""
+        return 11
 
 
 #################################################################################
 # Authoritative catalogue of Request/Response PDUs the Decoder factories will consider.
-REQUEST_PDUS: list[Callable] = [
+REQUEST_PDUS: Sequence[type[ModbusRequest]] = [
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
     WriteHoldingRegisterRequest,
 ]
-RESPONSE_PDUS: list[Callable] = [
+RESPONSE_PDUS: Sequence[type[ModbusResponse]] = [
+    ErrorResponse,
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
     WriteHoldingRegisterResponse,

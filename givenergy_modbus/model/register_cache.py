@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from .register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
 
 
 class RegisterCache:
