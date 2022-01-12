@@ -1,4 +1,4 @@
-from . import GivEnergyBaseModel
+from givenergy_modbus.model import GivEnergyBaseModel
 
 
 class Battery(GivEnergyBaseModel):

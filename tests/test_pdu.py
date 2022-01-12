@@ -7,12 +7,12 @@ from givenergy_modbus.pdu import (
     ModbusRequest,
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
+    ReadInputRegistersRequest,
     ReadRegistersRequest,
     ReadRegistersResponse,
     WriteHoldingRegisterRequest,
 )
-
-from . import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
+from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 
 def test_str():
@@ -36,6 +36,17 @@ def test_str():
     assert str(WriteHoldingRegisterRequest) == "<class 'givenergy_modbus.pdu.WriteHoldingRegisterRequest'>"
 
 
+def test_class_equivalence():
+    """Confirm some behaviours on subclassing."""
+    assert issubclass(ReadHoldingRegistersRequest, ReadRegistersRequest)
+    assert issubclass(ReadInputRegistersRequest, ReadRegistersRequest)
+    assert not issubclass(ReadHoldingRegistersRequest, ReadInputRegistersRequest)
+    assert isinstance(ReadHoldingRegistersRequest(), ReadRegistersRequest)
+    assert isinstance(ReadInputRegistersRequest(), ReadRegistersRequest)
+    assert not isinstance(ReadInputRegistersRequest(), ReadHoldingRegistersRequest)
+    assert ReadInputRegistersRequest is ReadInputRegistersRequest
+
+
 def test_cannot_change_function_code():
     """Prevent (accidentally) changing the function_code via kwargs in the constructor."""
     assert ModbusRequest()
@@ -43,12 +54,15 @@ def test_cannot_change_function_code():
 
     with pytest.raises(ValueError) as e:
         assert ModbusRequest(function_code=12)
-    assert e.value.args[0] == "Specified function code 12 is different from what _/ModbusRequest() is expecting."
+    assert (
+        e.value.args[0] == "Class ModbusRequest does not have a function code, "
+        "trying to override it is not supported"
+    )
 
     with pytest.raises(ValueError) as e:
         ReadRegistersRequest(function_code=12, base_register=3, register_count=6)
     assert e.value.args[0] == (
-        "Specified function code 12 is different from what _/ReadRegistersRequest() is expecting."
+        "Class ReadRegistersRequest does not have a function code, trying to override it is not supported"
     )
 
     with pytest.raises(ValueError) as e:

@@ -37,7 +37,7 @@ client.enable_charge_target(80)
 # set a charging slot from 00:30 to 04:30
 client.set_charge_slot_1((time(hour=0, minute=30), time(hour=4, minute=30)))
 
-inverter = client.fetch_inverter()
+inverter = client.update_inverter()
 assert inverter.serial_number == 'SA1234G567'
 assert inverter.model == Model.Hybrid
 assert inverter.v_pv1 == 1.4000000000000001
@@ -50,7 +50,7 @@ assert inverter.dict() == {
     ...
 }
 
-battery = client.fetch_battery(battery_number=0)
+battery = client.update_battery(battery_number=0)
 
 assert battery.serial_number == 'BG1234G567'
 assert battery.v_cell_01 == 3.117

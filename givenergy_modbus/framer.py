@@ -5,13 +5,12 @@ import struct
 from typing import Callable
 
 from pymodbus.client.sync import BaseModbusClient
-from pymodbus.exceptions import InvalidMessageReceivedException, ModbusIOException
 from pymodbus.framer import ModbusFramer
 from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ModbusPDU
 from pymodbus.utilities import hexlify_packets
 
-from .util import hexlify
+from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -123,26 +122,34 @@ class GivEnergyModbusFramer(ModbusFramer):
         self.decoder = decoder
         self.client = client
 
-    def decode_data(self, data: bytes) -> dict:
+    def decode_data(self, data: bytes = None) -> dict | None:
         """Tries to extract the MBAP frame header and performs a few sanity checks."""
+        if not data:
+            data = self._buffer[: self._hsize]
+
         if self.isFrameReady():
-            _logger.debug(f"extracting MBAP header from {[hexlify(self._buffer[:self._hsize])]} as {self.FRAME_HEAD}")
-            tid, pid, len_, uid, fid = struct.unpack(self.FRAME_HEAD, self._buffer[: self._hsize])
+            _logger.debug(f"extracting MBAP header from [{hexlify(data)}] as {self.FRAME_HEAD}")
+            tid, pid, len_, uid, fid = struct.unpack(self.FRAME_HEAD, data)
             header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
-            _logger.debug(f"success: { dict((k, f'0x{v:02x}') for k,v in header.items()) }")
+            _logger.debug(f"extracted values: { dict((k, f'0x{v:02x}') for k,v in header.items()) }")
             if tid != 0x5959 or pid != 0x1 or uid != 0x1:  # or fid != 0x2:
-                self.resetFrame()
-                raise ValueError(
-                    f"Unexpected MBAP header; likely corruption so aborting processing. "
+                _logger.error(
+                    f"Invalid MBAP header; corruption likely so cowardly refusing to proceed with this frame. "
                     f"(0x{tid:04x} 0x{pid:04x} 0x{uid:02x} != 0x5959 0x0001 0x01)"
                 )
+                return None
             return header
-        return dict()
+        return None
 
     def checkFrame(self) -> bool:
         """Check and decode the next frame. Returns operation success."""
         if self.isFrameReady():
-            header = self.decode_data(self._buffer)
+            _logger.debug('Frame header should be ready')
+            header = self.decode_data()
+            if not header:
+                _logger.debug('Frame header is corrupt, resetting frame')
+                # self.resetFrame()
+                return False
             self._fcode = header["fcode"]
             self._length = header["length"]
 
@@ -154,7 +161,11 @@ class GivEnergyModbusFramer(ModbusFramer):
             # we have at least a complete message, continue
             if len(self._buffer) >= self._hsize + self._length - 2:
                 return True
+            _logger.debug(
+                f'Incomplete message: len(buffer)={len(self._buffer)} < hsize={self._hsize} + length={self._length} - 2'
+            )
         # we don't have enough of a message yet, try again later
+        _logger.debug('Frame is not complete yet, needs more buffer data')
         return False
 
     def advanceFrame(self):
@@ -175,7 +186,7 @@ class GivEnergyModbusFramer(ModbusFramer):
 
     def getFrame(self):
         """Extract the next PDU frame from the buffer, discarding the leading MBAP header."""
-        return self._buffer[self._hsize : self._hsize + self._length - 2]
+        return self._buffer[self._hsize - 1 : self._hsize + self._length]
 
     def populateResult(self, result: ModbusPDU):
         """Populates the Modbus PDU object's metadata attributes from the decoded MBAP headers."""
@@ -201,33 +212,36 @@ class GivEnergyModbusFramer(ModbusFramer):
             data: Data from underlying transport.
             callback: Processor to receive newly-decoded PDUs.
         """
-        _logger.debug("Processing: " + hexlify_packets(data))
+        _logger.debug(f'Incoming {len(data)} bytes: {hexlify_packets(data)}')
         self.addToFrame(data)
         while True:
             if not self.isFrameReady():
-                # if self._buffer:
-                #     # Possible error ???
-                #     if self._length < 2:
-                #         self._process(callback, error=True)
+                _logger.debug('No more frames waiting, exiting')
                 break
             if not self.checkFrame():
-                _logger.warning("Frame check failed, dropping!!")
+                _logger.debug("Frame check failed, dropping and resetting!!")
                 self.resetFrame()
             else:
+                _logger.debug('Hand off to _process')
                 self._process(callback)
 
     def _process(self, callback, error=False):
         """Process incoming packets irrespective error condition."""
-        if error:
-            data = self.getRawFrame()
-            result = self.decoder.decode(data)
-            if result.function_code < 0x80:
-                raise InvalidMessageReceivedException(result)
+        # if error:
+        #     _logger.error('In error _process')
+        #     data = self.getRawFrame()
+        #     result = self.decoder.decode(data)
+        #     if result.function_code < 0x80:
+        #         raise InvalidMessageReceivedException(result)
+        # else:
+        data = self.getFrame()
+        _logger.debug(f'getFrame() result: {hexlify(data)}')
+        result = self.decoder.decode(data)
+        if result is None:
+            _logger.warning('Unable to decode request')
+            # raise ModbusIOException("Unable to decode request")
         else:
-            data = self.getFrame()
-            result = self.decoder.decode(data)
-            if result is None:
-                raise ModbusIOException("Unable to decode request")
+            _logger.info(f'Decoded message: {result}')
 
         self.populateResult(result)
         self.advanceFrame()
@@ -237,9 +251,9 @@ class GivEnergyModbusFramer(ModbusFramer):
         """Reset the entire message buffer."""
         # try to mitigate corruption: if we can find the start of another MBAP header truncate the buffer
         # only up to that point
-        header_offset = self._buffer.find(b'\x59\x59\x00\x01')
-        if header_offset >= 0:
-            _logger.warning(
+        header_offset = self._buffer.find(b'\x59\x59\x00\x01', 1)
+        if header_offset > 0:
+            _logger.info(
                 f'Found another MBAP header at offset {header_offset} in buffer {hexlify(self._buffer)}, '
                 'attempting recovery.'
             )

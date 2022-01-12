@@ -7,31 +7,36 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] - 2022-01-12
+
 ### Added
 
-- Create `RegisterCache` and `RegisterGetter` to contain the custom register data structures in one place.
-- Add JSON processing for the RegisterCache – mostly to help with testing but also expecting debugging other plants to
+- 💪 Create `RegisterCache` and `RegisterGetter` to contain the custom register data structures in one place.
+- 🛠 Add JSON processing for the RegisterCache – mostly to help with testing but also expecting debugging other plants to
   benefit from it.
-- Add some more test cases with actual register data.
-- Added some rudimentary recovery logic to the framer – try to scan ahead for other messages instead of truncating the
-  entire buffer when there's unexpected data incoming. Hopefully this helps when the communication stream seems to get
-  out of sync a bit.
+- 👷 Add some more test cases with actual register data.
+- 🚨 Added some recovery logic to the framer – try to scan ahead for other messages instead of truncating the entire buffer
+  when there's unexpected data incoming. Hopefully this helps when the communication stream seems to get out of sync a
+  bit.
+- 🙅 Add an `ErrorResponse` PDU so we can try and cope better when the inverter throws error responses.
+- 🧽 Added `absolufy-imports` and `autoflake` to pre-commit checks.
 
 ### Changed
 
-- Ensure we check charge and discharge limits: current hardware cannot support >50% (i.e. >2.6kW) rates.
-- Make sure we query the 180+ block of input registers too, since it contains (amongst others) battery energy counters.
-- Split out querying the battery/BMS registers since this will vary depending on how many batteries the user has. The
+- ⚠️ Ensure we check charge and discharge limits: current hardware cannot support >50% (i.e. >2.6kW) rates.
+- ✅ Make sure we query the 180+ block of input registers too, since it contains (amongst others) battery energy counters.
+- 🤔 Split out querying the battery/BMS registers since this will vary depending on how many batteries the user has. The
   slave address of the request determines which battery unit is targeted.
     - Also start modeling the Battery as separate from the Inverter.
-- Collapse the register cache to a single dict since we can use the `HoldingRegister`/`InputRegister` identity to
+- 🔎 Collapse the register cache to a single dict since we can use the `HoldingRegister`/`InputRegister` identity to
   discern between the types. It makes the data structures a lot simpler.
-- Improve the CLI – it is already a useful tool to dump registers for debugging right now.
-- Changed to target slave id 0x11 by default instead of 0x32. 0x32 shadows 0x11 but seems to be the first battery, with
+- 🛠 Improve the CLI – it is already a useful tool to dump registers for debugging right now.
+- 😳 Changed to target slave id 0x11 by default instead of 0x32. 0x32 shadows 0x11 but seems to be the first battery, with
   subsequent batteries living at the following slave addresses.
-- Squelch flake8 warnings about missing constructor and magic method docstrings.
-- Update README to show usage properly.
-- Update python deps.
+  - ☝️ reverted that change because it seems to affect the cloud metrics quite badly when you query frequently.
+- 🤫 Squelch flake8 warnings about missing constructor and magic method docstrings.
+- 🩹 Update README to show usage properly.
+- 🧹 Update python deps.
 
 ## [0.8.0] - 2022-01-09
 
@@ -130,14 +135,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.8.0...HEAD
-
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.7.0...v0.8.0
-
 [0.7.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.2...v0.7.0
-
 [0.6.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.1...v0.6.2
-
 [0.6.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.0...v0.6.1
-
 [0.6.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.5.0...v0.6.0

@@ -5,7 +5,7 @@ from enum import Enum
 
 from pydantic import root_validator
 
-from . import GivEnergyBaseModel
+from givenergy_modbus.model import GivEnergyBaseModel
 
 _logger = logging.getLogger(__package__)
 
