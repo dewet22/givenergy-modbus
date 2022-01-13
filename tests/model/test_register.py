@@ -185,12 +185,14 @@ def test_render_time(scaling: float):
     """Ensure we can convert BCD-encoded time slots."""
     assert Type.TIME.convert(0, scaling) == datetime.time(hour=0, minute=0)
     assert Type.TIME.convert(30, scaling) == datetime.time(hour=0, minute=30)
+    assert Type.TIME.convert(60, scaling) == datetime.time(hour=0, minute=0)  # what _does_ 60 mean?
     assert Type.TIME.convert(430, scaling) == datetime.time(hour=4, minute=30)
     assert Type.TIME.convert(123, scaling) == datetime.time(hour=1, minute=23)
     assert Type.TIME.convert(234, scaling) == datetime.time(hour=2, minute=34)
-    with pytest.raises(ValueError) as e:
-        Type.TIME.convert(678, scaling)
-    assert e.value.args[0] == 'minute must be in 0..59'
+    assert Type.TIME.convert(678, scaling) == datetime.time(hour=6, minute=18)
+    # with pytest.raises(ValueError) as e:
+    #     Type.TIME.convert(678, scaling)
+    # assert e.value.args[0] == 'minute must be in 0..59'
     with pytest.raises(ValueError) as e:
         Type.TIME.convert(9999, scaling)
     assert e.value.args[0] == 'hour must be in 0..23'

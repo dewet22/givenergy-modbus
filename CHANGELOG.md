@@ -7,7 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.9.0] - 2022-01-12
+## [0.9.1] - 2022-01-13
+
+### Fixed
+
+- 🐛 The `_time` fault registers don't denote a BCD-encoded timestamp, but seems to be a counter of #cycles the fault
+  lasted.
+- Sometimes a time slot timestamp is returned as `60` minutes. Guard by taking the modulo-60 instead.
+
+## [0.9.0] - 2022-01-13
 
 ### Added
 
@@ -137,7 +145,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.1...HEAD
+
+[0.9.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.0...v0.9.1
 
 [0.9.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.8.0...v0.9.0
 
