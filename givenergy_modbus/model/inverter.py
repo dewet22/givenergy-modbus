@@ -64,33 +64,33 @@ class Inverter(GivEnergyBaseModel):
 
     # Fault conditions
     dci_1_i: float
-    dci_1_time: datetime.time
+    dci_1_time: int
     dci_2_i: float
-    dci_2_time: datetime.time
+    dci_2_time: int
     f_ac_high_c: float
     f_ac_high_in: float
-    f_ac_high_in_time: datetime.time
+    f_ac_high_in_time: int
     f_ac_high_out: float
-    f_ac_high_out_time: datetime.time
+    f_ac_high_out_time: int
     f_ac_low_c: float
     f_ac_low_in: float
-    f_ac_low_in_time: datetime.time
+    f_ac_low_in_time: int
     f_ac_low_out: float
-    f_ac_low_out_time: datetime.time
+    f_ac_low_out_time: int
     gfci_1_i: float
-    gfci_1_time: datetime.time
+    gfci_1_time: int
     gfci_2_i: float
-    gfci_2_time: datetime.time
+    gfci_2_time: int
     v_ac_high_c: float
     v_ac_high_in: float
-    v_ac_high_in_time: datetime.time
+    v_ac_high_in_time: int
     v_ac_high_out: float
-    v_ac_high_out_time: datetime.time
+    v_ac_high_out_time: int
     v_ac_low_c: float
     v_ac_low_in: float
-    v_ac_low_in_time: datetime.time
+    v_ac_low_in_time: int
     v_ac_low_out: float
-    v_ac_low_out_time: datetime.time
+    v_ac_low_out_time: int
 
     # Battery configuration
     first_battery_serial_number: str
