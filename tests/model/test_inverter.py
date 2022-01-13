@@ -2,8 +2,8 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.inverter import Inverter, Model
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
+from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_register_cache import register_cache  # noqa: F401
 from tests.model.test_register_cache import (  # noqa: F401

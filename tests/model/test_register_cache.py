@@ -2,9 +2,9 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister
+from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
-from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
+from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS  # type: ignore  # shut up mypy
 
 JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
     '{"HR:0": 8193, "HR:1": 3, "HR:2": 2098, "HR:3": 513, "HR:4": 0, "HR:5": 50000, "HR:6": 3600, "HR:7": 1, '

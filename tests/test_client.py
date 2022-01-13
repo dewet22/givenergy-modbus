@@ -6,12 +6,12 @@ import pytest
 
 from givenergy_modbus.client import GivEnergyClient
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter, Model
+from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_battery import EXPECTED_BATTERY_DICT
 from tests.model.test_inverter import EXPECTED_INVERTER_DICT
-from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
+from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS  # type: ignore  # shut up mypy
 from tests.model.test_register_cache import register_cache  # noqa: F401
 
 
