@@ -101,28 +101,28 @@ def _gen_binary(x) -> str:
 @pytest.mark.parametrize("scaling", [1000, 10, 1, 0.1, 0.01])
 def test_repr(val: int, scaling: float):
     """Ensure we render types correctly."""
-    if isinstance(scaling, float):
-        assert Type.UINT16.repr(val, scaling) == f'{val * scaling:0.02f}'
+    if scaling != 1:
+        assert Type.UINT16.repr(val, scaling) == f'{val / scaling:0.02f}'
     else:
-        assert Type.UINT16.repr(val, scaling) == str(val * scaling)
+        assert Type.UINT16.repr(val, scaling) == str(val)
 
-    if isinstance(scaling, float):
+    if scaling != 1:
         if val > 0x7FFF:  # this should be negative
-            assert Type.INT16.repr(val, scaling) == f'{(val - 2 ** 16) * scaling:0.02f}'
+            assert Type.INT16.repr(val, scaling) == f'{(val - 2 ** 16) / scaling:0.02f}'
         else:
-            assert Type.INT16.repr(val, scaling) == f'{val * scaling:0.02f}'
+            assert Type.INT16.repr(val, scaling) == f'{val / scaling:0.02f}'
     else:
         if val > 0x7FFF:  # this should be negative
-            assert Type.INT16.repr(val, scaling) == str((val - 2 ** 16) * scaling)
+            assert Type.INT16.repr(val, scaling) == str(val - 2 ** 16)
         else:
-            assert Type.INT16.repr(val, scaling) == str(val * scaling)
+            assert Type.INT16.repr(val, scaling) == str(val)
 
-    if isinstance(scaling, float):
-        assert Type.UINT32_LOW.repr(val, scaling) == f'{val * scaling:0.02f}'
-        assert Type.UINT32_HIGH.repr(val, scaling) == f'{(val * 2 ** 16) * scaling:0.02f}'
+    if scaling != 1:
+        assert Type.UINT32_LOW.repr(val, scaling) == f'{val / scaling:0.02f}'
+        assert Type.UINT32_HIGH.repr(val, scaling) == f'{(val * 2 ** 16) / scaling:0.02f}'
     else:
-        assert Type.UINT32_LOW.repr(val, scaling) == str(val * scaling)
-        assert Type.UINT32_HIGH.repr(val, scaling) == str((val * 2 ** 16) * scaling)
+        assert Type.UINT32_LOW.repr(val, scaling) == str(val)
+        assert Type.UINT32_HIGH.repr(val, scaling) == str(val * 2 ** 16)
 
     assert Type.UINT8.repr(val, scaling) == str(val % 256)
     assert Type.DUINT8.repr(val, scaling) == f'{val // 256}, {val % 256}'
@@ -146,18 +146,18 @@ def test_repr(val: int, scaling: float):
 
 
 @pytest.mark.parametrize("val", [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
-@pytest.mark.parametrize("scaling", [1000, 10, 1, 0.1, 0.01])
-def test_convert(val: int, scaling: float):
+@pytest.mark.parametrize("scaling", [1, 10, 100, 1000])
+def test_convert(val: int, scaling: int):
     """Ensure we render types correctly."""
-    assert Type.UINT16.convert(val, scaling) == val * scaling
+    assert Type.UINT16.convert(val, scaling) == val / scaling
 
     if val > 0x7FFF:  # this should be negative
-        assert Type.INT16.convert(val, scaling) == (val - 2 ** 16) * scaling
+        assert Type.INT16.convert(val, scaling) == (val - 2 ** 16) / scaling
     else:
-        assert Type.INT16.convert(val, scaling) == val * scaling
+        assert Type.INT16.convert(val, scaling) == val / scaling
 
-    assert Type.UINT32_LOW.convert(val, scaling) == val * scaling
-    assert Type.UINT32_HIGH.convert(val, scaling) == (val * 2 ** 16) * scaling
+    assert Type.UINT32_LOW.convert(val, scaling) == val / scaling
+    assert Type.UINT32_HIGH.convert(val, scaling) == (val * 2 ** 16) / scaling
 
     assert Type.UINT8.convert(val, scaling) == val % 256
     assert Type.DUINT8.convert(val, scaling) == ((val // 256), (val % 256))

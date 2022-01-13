@@ -171,23 +171,23 @@ def test_attributes(register_cache):
     assert register_cache.discharge_slot_2_end == datetime.time(0, 0)
     # assert register_cache.discharge_slot_2 == (datetime.time(0, 0), datetime.time(0, 0))
 
-    assert register_cache.v_pv1 == 1.4000000000000001
+    assert register_cache.v_pv1 == 1.4
     assert register_cache.v_pv2 == 1.0
     assert register_cache.v_p_bus == 7.0
     assert register_cache.v_n_bus == 0.0
-    assert register_cache.v_ac1 == 236.70000000000002
+    assert register_cache.v_ac1 == 236.7
 
     assert register_cache.e_pv1_day == 0.4
     assert register_cache.e_pv2_day == 0.5
-    assert register_cache.e_grid_out_total_l == 0.6000000000000001
+    assert register_cache.e_grid_out_total_l == 0.6
 
     assert register_cache.battery_percent == 4
-    assert register_cache.e_battery_discharge_total == 169.60000000000002
+    assert register_cache.e_battery_discharge_total == 169.6
     assert register_cache.e_battery_charge_total == 174.4
 
     assert register_cache.e_battery_discharge_total_2_h == 0
-    assert register_cache.e_battery_discharge_total_2_l == 183.20000000000002
-    assert register_cache.e_battery_discharge_total_2 == 183.20000000000002
+    assert register_cache.e_battery_discharge_total_2_l == 183.2
+    assert register_cache.e_battery_discharge_total_2 == 183.2
 
     assert register_cache.v_battery_cell_01 == 3.117
     assert register_cache.v_battery_cell_16 == 3.119

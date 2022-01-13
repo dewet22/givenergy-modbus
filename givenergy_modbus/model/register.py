@@ -24,17 +24,21 @@ class Type(Enum):
     PERCENT = auto()  # same as UINT16, but might be useful for rendering
     POWER_FACTOR = auto()  # zero point at 10^4, scale factor 10^4
 
-    def convert(self, value: int, scaling: float) -> Any:
+    def convert(self, value: int, scaling: int) -> Any:
         """Convert `val` to its true value as determined by the type and scaling definitions."""
         if self == self.UINT32_HIGH:
             # shift MSB half of the 32-bit int left
-            return (value << 16) * scaling
+            if scaling != 1:
+                return (value << 16) / scaling
+            return value << 16
 
         if self == self.INT16:
             # Subtract 2^n if bit n-1 is set:
             if value & (1 << (16 - 1)):
                 value -= 1 << 16
-            return value * scaling
+            if scaling != 1:
+                return value / scaling
+            return value
 
         if self == self.BOOL:  # TODO is this the correct assumption?
             return bool(value)
@@ -61,7 +65,9 @@ class Type(Enum):
         if self == self.HEX:
             return f'{value:04x}'  # scaling makes no sense
 
-        return value * scaling
+        if scaling != 1:
+            return value / scaling
+        return value
 
     def repr(self, value: Any, scaling: float, unit: str = '') -> str:
         """Return user-friendly representation of scaled `val` as appropriate for the data type."""
@@ -90,15 +96,15 @@ class Type(Enum):
 
 
 class Scaling(Enum):
-    """What scaling factor needs to be applied to a register's value."""
+    """What scaling factor needs to be applied to a register's value.
 
-    # KILO = 1000
-    # HECTO = 100
-    # DECA = 10
+    Specified as a divisor instead, because python deals with rounding precision better that way.
+    """
+
     UNIT = 1
-    DECI = 0.1
-    CENTI = 0.01
-    MILLI = 0.001
+    DECI = 10
+    CENTI = 100
+    MILLI = 1000
 
 
 class Unit(Enum):

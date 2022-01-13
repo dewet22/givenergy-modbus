@@ -7,6 +7,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.2] - 2022-01-13
+
+### Fixed
+
+- 🐛 Scaled registers to use division instead of multiplication – prevents rounding errors.
+- 📖 Update README.md to match reality better
+
 ## [0.9.1] - 2022-01-13
 
 ### Fixed
@@ -145,7 +152,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.2...HEAD
+
+[0.9.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.1...v0.9.2
 
 [0.9.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.0...v0.9.1
 
