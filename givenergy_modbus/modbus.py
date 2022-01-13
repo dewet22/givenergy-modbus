@@ -38,6 +38,7 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
         super().__init__(**kwargs)
         self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder(), client=self)
         self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
+        self.timeout = 2
 
     def __repr__(self):
         return f"GivEnergyModbusTcpClient({self.host}:{self.port}): timeout={self.timeout})"
@@ -76,7 +77,7 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
             f'{request.base_register + request.register_count} from device {hex(request.slave_address)}...'
         )
         response = self.execute(request)
-        if isinstance(response, t_res):
+        if response and isinstance(response, t_res):
             if response.base_register != base_address:
                 _logger.error(
                     f'Returned base register ({response.base_register}) '
@@ -90,7 +91,7 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
                 )
                 return {}
             return response.to_dict()
-        _logger.error(f'Did not receive expected response: {response}')
+        _logger.error(f'Did not receive expected response type: {t_res.__name__} != {response.__class__.__name__}')
         # FIXME this contract needs improving
         return {}
 

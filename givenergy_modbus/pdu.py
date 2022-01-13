@@ -64,22 +64,19 @@ class ModbusPDU(ABC):
         self._set_attribute_if_present('slave_address', kwargs)
         self._set_attribute_if_present('check', kwargs)
 
-    def __str__(self):
-        if hasattr(self, 'function_code'):
-            fn_code = self.function_code
-        else:
-            fn_code = '_'
+    def __str__(self) -> str:
         filtered_keys = [
             'transaction_id',
             'protocol_id',
             'unit_id',
             'skip_encode',
             'register_values',
+            'builder',
         ]
         filtered_vars = ', '.join([f'{k}: {hexxed(v)}' for k, v in vars(self).items() if k not in filtered_keys])
         if len(filtered_vars) > 0:
             filtered_vars = '{' + filtered_vars + '}'
-        return f"{fn_code}/{friendly_class_name(self.__class__)}({filtered_vars})"
+        return f"{getattr(self, 'function_code', '_')}/{friendly_class_name(self.__class__)}({filtered_vars})"
 
     def _set_attribute_if_present(self, attr: str, kwargs: dict[str, Any]):
         if attr in kwargs:
@@ -276,7 +273,7 @@ class ReadRegistersResponse(ModbusResponse, ABC):
     def _ensure_valid_state(self):
         zeroes_count = sum(1 for i in self.register_values if i == 0)
         if self.register_count >= 10 and zeroes_count > 0 and zeroes_count / self.register_count > 0.75:
-            _logger.warning(
+            _logger.debug(
                 f'Read back {zeroes_count} zeroes out of {self.register_count} total '
                 f'{self.__class__.__name__[4:-8]} from base {self.base_register}'
             )
