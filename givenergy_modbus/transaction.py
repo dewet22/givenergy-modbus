@@ -30,9 +30,10 @@ class GivEnergyTransactionManager(FifoTransactionManager):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._set_adu_size()  # = 8  # frame length calculation shenanigans, see `GivEnergyModbusFramer`
-        # self.retry_on_empty=True
-        # self.retry_on_invalid=True
-        # self.retries = 3
+        # self.retry_on_empty = True
+        # self.retry_on_invalid = True
+        # self.retries = 1
+        # self.backoff = 0.8
 
     def _set_adu_size(self):
         """Essentially the MBAP header size."""
@@ -82,6 +83,7 @@ class GivEnergyTransactionManager(FifoTransactionManager):
             self.client.connect()
             tx_data = self.client.framer.buildPacket(request)
             _logger.debug(f"SEND raw frame: {hexlify(tx_data)}")
+            _logger.info(f'Sending request {request}')
             tx_size = self._send(tx_data)
 
             # need to handle retry logic?

@@ -133,7 +133,7 @@ class GivEnergyModbusFramer(ModbusFramer):
             header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
             _logger.debug(f"extracted values: { dict((k, f'0x{v:02x}') for k,v in header.items()) }")
             if tid != 0x5959 or pid != 0x1 or uid != 0x1:  # or fid != 0x2:
-                _logger.error(
+                _logger.debug(
                     f"Invalid MBAP header; corruption likely so cowardly refusing to proceed with this frame. "
                     f"(0x{tid:04x} 0x{pid:04x} 0x{uid:02x} != 0x5959 0x0001 0x01)"
                 )
@@ -241,7 +241,7 @@ class GivEnergyModbusFramer(ModbusFramer):
             _logger.warning('Unable to decode request')
             # raise ModbusIOException("Unable to decode request")
         else:
-            _logger.info(f'Decoded message: {result}')
+            _logger.info(f'Decoded response {result}')
 
         self.populateResult(result)
         self.advanceFrame()

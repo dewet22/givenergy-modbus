@@ -15,7 +15,8 @@ from givenergy_modbus.pdu import (
 from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 
-def test_str():
+@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
+def test_str(data):
     """Test we can represent an instance of PDUs nicely."""
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
         "_/ReadRegistersRequest({check: 0x0000, base_register: 0x0003, register_count: 0x0006})"
