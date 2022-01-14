@@ -1,4 +1,5 @@
 """Console script for interacting with GivEnergy inverters."""
+import datetime
 import logging
 
 import click
@@ -99,6 +100,42 @@ def enable_discharge(ctx):  # noqa: D103
 @is_documented_by(GivEnergyClient.disable_discharge)
 def disable_discharge(ctx):  # noqa: D103
     ctx.obj['CLIENT'].disable_discharge()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_battery_discharge_mode_max_power)
+def set_battery_discharge_mode_max_power(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].set_battery_discharge_mode_max_power()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_battery_discharge_mode_demand)
+def set_battery_discharge_mode_demand(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].set_battery_discharge_mode_demand()
+
+
+@main.command()
+@click.option('-s', '--start', type=click.DateTime(formats=['%H:%m']), required=True)
+@click.option('-e', '--end', type=click.DateTime(formats=['%H:%m']), required=True)
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_charge_slot_1)
+def set_charge_slot_1(ctx, start, end):  # noqa: D103
+    _logger.info(start)
+    _logger.info(end)
+    ctx.obj['CLIENT'].set_charge_slot_1((start, end))
+
+
+@main.command()
+@click.option('-s', '--start', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
+@click.option('-e', '--end', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_charge_slot_2)
+def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
+    _logger.info(start.time())
+    _logger.info(end.time())
+    ctx.obj['CLIENT'].set_charge_slot_2((start, end))
 
 
 if __name__ == "__main__":
