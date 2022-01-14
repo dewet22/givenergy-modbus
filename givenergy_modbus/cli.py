@@ -21,7 +21,7 @@ def is_documented_by(original):
 
 
 @click.group()
-@click.argument('host', type=str)
+@click.option('-h', '--host', type=str, required=True, envvar='GIVENERGY_HOST')
 @click.option(
     '--log-level',
     default='INFO',
@@ -31,7 +31,6 @@ def is_documented_by(original):
 def main(ctx, host, log_level):
     """A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."""
     ctx.ensure_object(dict)
-    click.echo(host)
 
     # Install our improved logging handler.
     logging.basicConfig(handlers=[InterceptHandler()], level=getattr(logging, log_level))
@@ -72,6 +71,34 @@ def enable_charge_target(ctx, target_soc):  # noqa: D103
 @is_documented_by(GivEnergyClient.disable_charge_target)
 def disable_charge_target(ctx):  # noqa: D103
     ctx.obj['CLIENT'].disable_charge_target()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.enable_charge)
+def enable_charge(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].enable_charge()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.disable_charge)
+def disable_charge(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].disable_charge()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.enable_discharge)
+def enable_discharge(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].enable_discharge()
+
+
+@main.command()
+@click.pass_context
+@is_documented_by(GivEnergyClient.disable_discharge)
+def disable_discharge(ctx):  # noqa: D103
+    ctx.obj['CLIENT'].disable_discharge()
 
 
 if __name__ == "__main__":
