@@ -171,7 +171,7 @@ class Inverter(GivEnergyBaseModel):
     p_load_demand: int
     p_pv1: int
     p_pv2: int
-    p_pv_total_generating_capacity: float
+    e_pv_total_generating_capacity: float
     pf_inverter_out: float
     temp_battery: float
     temp_charger: float
