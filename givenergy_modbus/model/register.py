@@ -480,8 +480,8 @@ class InputRegister(Register):
     BATTERY_DESIGN_CAPACITY_2_L = (102, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
     TEMP_BATTERY_MAX = (103, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
     TEMP_BATTERY_MIN = (104, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    E_BATTERY_CHARGE_TOTAL_2 = (105, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_DISCHARGE_TOTAL_2 = (106, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_TOTAL_2 = (105, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_CHARGE_TOTAL_2 = (106, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     INPUT_REG107 = 107
     INPUT_REG108 = 108
     INPUT_REG109 = 109
