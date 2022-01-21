@@ -143,7 +143,7 @@ class Inverter(GivEnergyBaseModel):
     e_battery_discharge_day: float
     e_battery_discharge_day_2: float
     e_battery_discharge_total: float
-    e_battery_discharge_total_2: float
+    e_battery_throughput_total: float
     e_discharge_year: float
     e_inverter_out_day: float
     e_inverter_out_total: float
@@ -171,7 +171,7 @@ class Inverter(GivEnergyBaseModel):
     p_load_demand: int
     p_pv1: int
     p_pv2: int
-    e_pv_total_generating_capacity: float
+    e_pv_total: float
     pf_inverter_out: float
     temp_battery: float
     temp_charger: float
