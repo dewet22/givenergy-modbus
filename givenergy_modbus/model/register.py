@@ -386,8 +386,8 @@ class InputRegister(Register):
     I_PV1 = (8, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
     I_PV2 = (9, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
     I_AC1 = (10, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    P_PV_TOTAL_GENERATING_CAPACITY_H = (11, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.POWER_KW})
-    P_PV_TOTAL_GENERATING_CAPACITY_L = (12, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.POWER_KW})
+    E_PV_TOTAL_H = (11, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_PV_TOTAL_L = (12, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
     F_AC1 = (13, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
     CHARGE_STATUS = 14  # 2?
     V_HIGHBRIGH_BUS = 15  # high voltage bus?
