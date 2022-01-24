@@ -7,12 +7,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.9.2] - 2022-01-13
+## [0.9.2] - 2022-01-24
 
 ### Fixed
 
 - 🐛 Scaled registers to use division instead of multiplication – prevents rounding errors.
 - 📖 Update README.md to match reality better
+- 🧽 Update deps
+- 🛠 Try to re-enable GH pages
 
 ## [0.9.1] - 2022-01-13
 
