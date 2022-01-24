@@ -56,12 +56,11 @@ jobs:
           poetry install -E doc
           poetry run mkdocs build
 
-# enable when public
-#      - name: publish documentation
-#        uses: peaceiris/actions-gh-pages@v3
-#        with:
-#          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-#          publish_dir: ./site
+      - name: publish documentation
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          publish_dir: ./site
 
       - name: Build wheels and source tarball
         run: >-
