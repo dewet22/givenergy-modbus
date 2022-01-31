@@ -38,7 +38,7 @@ JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
     '"IR:36": 91, "IR:37": 34, "IR:38": 0, "IR:39": 0, "IR:40": 0, "IR:41": 244, "IR:42": 515, "IR:43": 554, '
     '"IR:44": 38, "IR:45": 0, "IR:46": 1725, "IR:47": 0, "IR:48": 385, "IR:49": 1, "IR:50": 5173, "IR:51": 647, '
     '"IR:52": 360, "IR:53": 2351, "IR:54": 4992, "IR:55": 241, "IR:56": 160, "IR:57": 0, "IR:58": 257, '
-    '"IR:59": 68, "IR:120": 0, "IR:121": 0, "IR:122": 0, "IR:123": 0, "IR:124": 0, "IR:125": 0, "IR:126": 0, '
+    '"IR:59": 68, "IR:105": 34, "IR:106": 91, "IR:120": 0, "IR:121": 0, "IR:122": 0, "IR:123": 0, "IR:124": 0, "IR:125": 0, "IR:126": 0, '
     '"IR:127": 0, "IR:128": 0, "IR:129": 0, "IR:130": 0, "IR:131": 0, "IR:132": 0, "IR:133": 0, "IR:134": 0, '
     '"IR:135": 0, "IR:136": 0, "IR:137": 0, "IR:138": 0, "IR:139": 0, "IR:140": 0, "IR:141": 0, "IR:142": 0, '
     '"IR:143": 0, "IR:144": 0, "IR:145": 0, "IR:146": 0, "IR:147": 0, "IR:148": 0, "IR:149": 0, "IR:150": 0, '
@@ -185,9 +185,9 @@ def test_attributes(register_cache):
     assert register_cache.e_battery_discharge_total == 169.6
     assert register_cache.e_battery_charge_total == 174.4
 
-    assert register_cache.e_battery_discharge_total_2_h == 0
-    assert register_cache.e_battery_discharge_total_2_l == 183.2
-    assert register_cache.e_battery_discharge_total_2 == 183.2
+    assert register_cache.e_battery_throughput_total_h == 0
+    assert register_cache.e_battery_throughput_total_l == 183.2
+    assert register_cache.e_battery_throughput_total == 183.2
 
     assert register_cache.v_battery_cell_01 == 3.117
     assert register_cache.v_battery_cell_16 == 3.119
@@ -206,5 +206,5 @@ def test_to_from_json_quick():
 def test_to_from_json_actual_data():
     """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION)
-    assert len(rc._registers) == 420
+    assert len(rc._registers) == 422
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up

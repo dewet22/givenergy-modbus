@@ -48,7 +48,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'e_battery_discharge_day': 3.4,
     'e_battery_discharge_day_2': 3.4,
     'e_battery_discharge_total': 173.0,
-    'e_battery_discharge_total_2': 356.5,
+    'e_battery_throughput_total': 356.5,
     'e_discharge_year': 0.0,
     'e_grid_in_day': 19.8,
     'e_grid_in_total': 624.2,
@@ -122,7 +122,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'p_load_demand': 515,
     'p_pv1': 117,
     'p_pv2': 128,
-    'p_pv_total_generating_capacity': 26.3,
+    'e_pv_total': 26.3,
     'pf_inverter_out': -0.0469,
     'power_factor': -1,
     'pv1_power_adjust': 0,
@@ -277,7 +277,7 @@ EXPECTED_INVERTER_DICT = {
     'e_battery_discharge_day': 8.9,
     'e_battery_discharge_day_2': 8.9,
     'e_battery_discharge_total': 169.6,
-    'e_battery_discharge_total_2': 183.2,
+    'e_battery_throughput_total': 183.2,
     'e_discharge_year': 0.0,
     'e_grid_in_day': 20.9,
     'e_grid_in_total': 365.3,
@@ -305,7 +305,7 @@ EXPECTED_INVERTER_DICT = {
     'p_load_demand': 342,
     'p_pv1': 0,
     'p_pv2': 0,
-    'p_pv_total_generating_capacity': 15.9,
+    'e_pv_total': 15.9,
     'pf_inverter_out': -0.521,
     'system_mode': 1,
     'temp_battery': 17.0,
@@ -341,5 +341,5 @@ def test_from_orm(register_cache):  # noqa: F811
 def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):  # noqa: F811
     """Ensure we can instantiate an Inverter from actual register data."""
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
-    assert len(i.json()) == 3887
+    assert len(i.json()) == 3866
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
