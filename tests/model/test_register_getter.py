@@ -1,4 +1,5 @@
 import datetime
+from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -18,7 +19,7 @@ class TestModel(BaseModel):
     inverter_serial_number: str
     battery_serial_number: str
     system_time: datetime.datetime
-    discharge_slot_2: tuple[datetime.time, datetime.time]
+    discharge_slot_2: Tuple[datetime.time, datetime.time]
     inverter_firmware_version: str
     num_mppt: int
     num_phases: int

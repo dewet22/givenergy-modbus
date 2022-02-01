@@ -1,4 +1,5 @@
 import datetime
+from typing import Tuple
 from unittest.mock import MagicMock as Mock
 from unittest.mock import call
 
@@ -23,7 +24,7 @@ def client() -> GivEnergyClient:
 
 
 @pytest.fixture()
-def client_with_mocked_write_holding_register() -> tuple[GivEnergyClient, Mock]:
+def client_with_mocked_write_holding_register() -> Tuple[GivEnergyClient, Mock]:
     """Supply a client with a mocked write_holding_register() function."""
     c = GivEnergyClient(host='foo')
     mock = Mock()
@@ -480,7 +481,7 @@ def test_set_discharge_limit(client_with_mocked_write_holding_register):
     ),
 )
 def test_write_holding_register_helper_functions(
-    data: tuple[str, HoldingRegister], client_with_mocked_write_holding_register: tuple[GivEnergyClient, Mock]
+    data: Tuple[str, HoldingRegister], client_with_mocked_write_holding_register: Tuple[GivEnergyClient, Mock]
 ):
     """Test wiring for the basic register writer functions is correct."""
     fn, register = data

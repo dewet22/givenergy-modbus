@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict, Tuple
 
 import pytest
 
@@ -74,7 +74,7 @@ def test_cannot_change_function_code():
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
+def test_request_pdu_encoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
     """Ensure we correctly encode unencapsulated Request messages."""
     pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
 
@@ -88,7 +88,7 @@ def test_request_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes, Exc
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
+def test_request_pdu_decoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
 
@@ -109,7 +109,7 @@ def test_request_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes, Exc
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_response_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_response_pdu_encoding(data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure we correctly encode unencapsulated Response messages."""
     pdu_fn, pdu_fn_kwargs, _, encoded_pdu = data
 
@@ -118,7 +118,7 @@ def test_response_pdu_encoding(data: tuple[str, dict[str, Any], bytes, bytes]):
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_response_pdu_decoding(data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_response_pdu_decoding(data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure we correctly decode Response messages to their unencapsulated PDU."""
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 

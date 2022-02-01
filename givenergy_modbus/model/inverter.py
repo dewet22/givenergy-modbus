@@ -2,6 +2,7 @@
 import datetime
 import logging
 from enum import Enum
+from typing import Tuple
 
 from pydantic import root_validator
 
@@ -58,7 +59,7 @@ class Inverter(GivEnergyBaseModel):
     active_power_rate: int
     reactive_power_rate: int
     power_factor: int
-    inverter_state: tuple[int, int]
+    inverter_state: Tuple[int, int]
     inverter_start_time: int
     inverter_restart_delay_time: int
 
@@ -109,11 +110,11 @@ class Inverter(GivEnergyBaseModel):
     battery_power_mode: int
     soc_force_adjust: int
 
-    charge_slot_1: tuple[datetime.time, datetime.time]
-    charge_slot_2: tuple[datetime.time, datetime.time]
-    discharge_slot_1: tuple[datetime.time, datetime.time]
-    discharge_slot_2: tuple[datetime.time, datetime.time]
-    charge_and_discharge_soc: tuple[int, int]
+    charge_slot_1: Tuple[datetime.time, datetime.time]
+    charge_slot_2: Tuple[datetime.time, datetime.time]
+    discharge_slot_1: Tuple[datetime.time, datetime.time]
+    discharge_slot_2: Tuple[datetime.time, datetime.time]
+    charge_and_discharge_soc: Tuple[int, int]
 
     battery_low_force_charge_time: int
     battery_soc_reserve: int

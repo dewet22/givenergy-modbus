@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 import time as t
 from datetime import datetime, time
-from typing import Mapping, Sequence, Union
+from typing import Mapping, Sequence
 
 from pymodbus.client.sync import ModbusTcpClient
 
@@ -36,7 +38,7 @@ class GivEnergyClient:
 
     def fetch_register_pages(
         self,
-        pages: Mapping[type[Union[HoldingRegister, InputRegister]], Sequence[int]],
+        pages: Mapping[type[HoldingRegister | InputRegister], Sequence[int]],
         register_cache: RegisterCache,
         slave_address: int = 0x32,
         sleep_between_queries: float = DEFAULT_SLEEP,

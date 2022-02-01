@@ -1,12 +1,13 @@
 # type: ignore  # shut up mypy, this whole file is just a minefield
 import datetime
+from typing import Dict
 
 import pytest
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, Type
 
 # fmt: off
-INPUT_REGISTERS: dict[int, int] = dict(enumerate([
+INPUT_REGISTERS: Dict[int, int] = dict(enumerate([
     0, 14, 10, 70, 0, 2367, 0, 1832, 0, 0,  # 00x
     0, 0, 159, 4990, 0, 12, 4790, 4, 0, 5,  # 01x
     0, 0, 6, 0, 0, 0, 209, 0, 946, 0,  # 02x
@@ -27,7 +28,7 @@ INPUT_REGISTERS: dict[int, int] = dict(enumerate([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 17x
     1696, 1744, 89, 90,  # 18x
 ]))
-HOLDING_REGISTERS: dict[int, int] = dict(enumerate([
+HOLDING_REGISTERS: Dict[int, int] = dict(enumerate([
     8193, 3, 2098, 513, 0, 50000, 3600, 1, 16967, 12594,  # 00x
     13108, 18229, 13879, 21313, 12594, 13108, 18229, 13879, 3005, 449,  # 01x
     1, 449, 2, 0, 32768, 30235, 6000, 1, 0, 0,  # 02x
@@ -113,7 +114,7 @@ def test_repr(val: int, scaling: float):
             assert Type.INT16.repr(val, scaling) == f'{val / scaling:0.02f}'
     else:
         if val > 0x7FFF:  # this should be negative
-            assert Type.INT16.repr(val, scaling) == str(val - 2 ** 16)
+            assert Type.INT16.repr(val, scaling) == str(val - 2**16)
         else:
             assert Type.INT16.repr(val, scaling) == str(val)
 
@@ -122,7 +123,7 @@ def test_repr(val: int, scaling: float):
         assert Type.UINT32_HIGH.repr(val, scaling) == f'{(val * 2 ** 16) / scaling:0.02f}'
     else:
         assert Type.UINT32_LOW.repr(val, scaling) == str(val)
-        assert Type.UINT32_HIGH.repr(val, scaling) == str(val * 2 ** 16)
+        assert Type.UINT32_HIGH.repr(val, scaling) == str(val * 2**16)
 
     assert Type.UINT8.repr(val, scaling) == str(val % 256)
     assert Type.DUINT8.repr(val, scaling) == f'{val // 256}, {val % 256}'
@@ -152,12 +153,12 @@ def test_convert(val: int, scaling: int):
     assert Type.UINT16.convert(val, scaling) == val / scaling
 
     if val > 0x7FFF:  # this should be negative
-        assert Type.INT16.convert(val, scaling) == (val - 2 ** 16) / scaling
+        assert Type.INT16.convert(val, scaling) == (val - 2**16) / scaling
     else:
         assert Type.INT16.convert(val, scaling) == val / scaling
 
     assert Type.UINT32_LOW.convert(val, scaling) == val / scaling
-    assert Type.UINT32_HIGH.convert(val, scaling) == (val * 2 ** 16) / scaling
+    assert Type.UINT32_HIGH.convert(val, scaling) == (val * 2**16) / scaling
 
     assert Type.UINT8.convert(val, scaling) == val % 256
     assert Type.DUINT8.convert(val, scaling) == ((val // 256), (val % 256))
