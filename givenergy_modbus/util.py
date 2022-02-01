@@ -1,6 +1,7 @@
 import binascii
 import inspect
 import logging
+import sys
 from typing import Any
 
 from loguru import logger
@@ -38,6 +39,9 @@ def hexlify(val) -> str:
     if isinstance(val, int):
         val = val.to_bytes((val.bit_length() + 8) // 8, 'big')
     if isinstance(val, bytes):
+        if sys.version_info < (3, 8):
+            # TODO remove once 3.7 is unsupported
+            return binascii.hexlify(val).decode('ascii')
         return binascii.hexlify(val, sep=' ', bytes_per_sep=2).decode('ascii')
     return str(val)
 

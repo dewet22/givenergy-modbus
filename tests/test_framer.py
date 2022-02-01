@@ -1,4 +1,5 @@
 """Tests for GivEnergyModbusFramer."""
+import sys
 from typing import Any, Dict, Tuple
 from unittest.mock import MagicMock
 
@@ -213,6 +214,7 @@ def test_request_wire_encoding(requests_framer, data: Tuple[str, Dict[str, Any],
         assert packet == mbap_header + encoded_pdu
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
 def test_request_wire_decoding(requests_framer, data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
     """Ensure Request PDU messages can be decoded from raw messages."""
@@ -249,6 +251,7 @@ def test_response_wire_encoding(responses_framer, data: Tuple[str, Dict[str, Any
     assert packet == mbap_header + encoded_pdu
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
 def test_client_wire_decoding(responses_framer, data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure Response PDU messages can be decoded from raw messages."""

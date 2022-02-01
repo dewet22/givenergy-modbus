@@ -1,3 +1,5 @@
+import sys
+
 from givenergy_modbus.pdu import ReadInputRegistersRequest
 from givenergy_modbus.util import friendly_class_name, hexlify, hexxed
 
@@ -13,7 +15,11 @@ def test_hexlify():
     """Test our hexlify representations."""
     assert hexlify(0x0) == '00'
     assert hexlify(4) == '04'
-    assert hexlify(0x438734873847) == '4387 3487 3847'
+
+    if sys.version_info < (3, 8):
+        assert hexlify(0x438734873847) == '438734873847'
+    else:
+        assert hexlify(0x438734873847) == '4387 3487 3847'
     assert hexlify('asdf') == 'asdf'
     assert hexlify(0.5) == '0.5'
 
