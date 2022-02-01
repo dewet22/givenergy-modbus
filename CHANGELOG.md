@@ -7,6 +7,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.3] - 2022-02-01
+
+### Fixed
+
+- 🧽 Update total energy registers (by @britkat1980)
+- 🛠 Re-enable builds back to python v3.7 to support e.g. Raspberry Pi current version
+- 🧹 Update python and pre-commit deps, including security fix for loguru
+
 ## [0.9.2] - 2022-01-24
 
 ### Fixed
@@ -154,7 +162,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.3...HEAD
+
+[0.9.3]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.2...v0.9.3
 
 [0.9.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.1...v0.9.2
 
