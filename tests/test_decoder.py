@@ -1,3 +1,4 @@
+from typing import Dict
 from unittest.mock import MagicMock as Mock
 from unittest.mock import NonCallableMock, call
 
@@ -18,7 +19,7 @@ class TestDecoder(GivEnergyDecoder):
         _pdu5_class,
         _pdu9_class,
     ]
-    _lookup: dict[int, Mock]  # type: ignore
+    _lookup: Dict[int, Mock]  # type: ignore
 
 
 @pytest.fixture

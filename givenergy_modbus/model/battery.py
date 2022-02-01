@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from givenergy_modbus.model import GivEnergyBaseModel
 
 
@@ -31,11 +33,11 @@ class Battery(GivEnergyBaseModel):
     battery_full_capacity: float
     battery_design_capacity: float
     battery_remaining_capacity: float
-    battery_status_1_2: tuple[int, int]
-    battery_status_3_4: tuple[int, int]
-    battery_status_5_6: tuple[int, int]
-    battery_status_7: tuple[int, int]
-    battery_warning_1_2: tuple[int, int]
+    battery_status_1_2: Tuple[int, int]
+    battery_status_3_4: Tuple[int, int]
+    battery_status_5_6: Tuple[int, int]
+    battery_status_7: Tuple[int, int]
+    battery_warning_1_2: Tuple[int, int]
     battery_num_cycles: int
     battery_num_cells: int
     bms_firmware_version: int

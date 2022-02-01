@@ -1,5 +1,5 @@
 """Tests for GivEnergyModbusFramer."""
-from typing import Any
+from typing import Any, Dict, Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -80,7 +80,7 @@ def responses_framer():
 
 @pytest.mark.parametrize(
     "data",  # [(input_buffer, complete, header_valid, expected_length, expected_remaining_buffer), (..), ..]
-    [  # list[tuple[bytes, bool, int, bytes]]
+    [  # list[Tuple[bytes, bool, int, bytes]]
         (  # data0 - no data
             b"",
             False,
@@ -175,7 +175,7 @@ def responses_framer():
         ),
     ],
 )
-def test_check_frame(requests_framer, data: tuple[bytes, bool, bool, dict[str, int], bytes]):
+def test_check_frame(requests_framer, data: Tuple[bytes, bool, bool, Dict[str, int], bytes]):
     """Validate the internal state of the framer as data gets processed."""
     input_buffer, is_complete_frame, is_valid_frame, expected_length, expected_remaining_buffer = data
 
@@ -199,7 +199,7 @@ def test_check_frame(requests_framer, data: tuple[bytes, bool, bool, dict[str, i
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_wire_encoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
+def test_request_wire_encoding(requests_framer, data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
     """Ensure Request PDU messages can be encoded to the correct wire format."""
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu, ex = data
 
@@ -214,7 +214,7 @@ def test_request_wire_encoding(requests_framer, data: tuple[str, dict[str, Any],
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any], bytes, bytes, Exception]):
+def test_request_wire_decoding(requests_framer, data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
     """Ensure Request PDU messages can be decoded from raw messages."""
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu, ex = data
 
@@ -240,7 +240,7 @@ def test_request_wire_decoding(requests_framer, data: tuple[str, dict[str, Any],
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_response_wire_encoding(responses_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_response_wire_encoding(responses_framer, data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure Response PDU messages can be encoded to the correct wire format."""
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
@@ -250,7 +250,7 @@ def test_response_wire_encoding(responses_framer, data: tuple[str, dict[str, Any
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_client_wire_decoding(responses_framer, data: tuple[str, dict[str, Any], bytes, bytes]):
+def test_client_wire_decoding(responses_framer, data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure Response PDU messages can be decoded from raw messages."""
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
