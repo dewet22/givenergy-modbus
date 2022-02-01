@@ -4,6 +4,7 @@
 [![python](https://img.shields.io/pypi/pyversions/givenergy-modbus.svg)](https://pypi.org/project/givenergy-modbus/)
 [![Build Status](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml/badge.svg)](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml)
 [![codecov](https://codecov.io/gh/dewet22/givenergy-modbus/branch/main/graphs/badge.svg)](https://codecov.io/github/dewet22/givenergy-modbus)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
 Cloud. This extends [pymodbus](https://pymodbus.readthedocs.io/) by providing a custom framer, decoder and PDUs that are
