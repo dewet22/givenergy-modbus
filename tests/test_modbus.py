@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import MagicMock as Mock
 
 import pytest
@@ -25,6 +26,7 @@ class MockedWriteHoldingRegisterResponse(Mock, WriteHoldingRegisterResponse):  #
     __test__ = False  # squelch PytestCollectionWarning
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_read_holding_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
@@ -56,6 +58,7 @@ def test_read_holding_registers_validates_response_register_count():
     assert c.read_holding_registers(33, 11) == {}
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_read_input_registers():
     """Ensure we read the ranges of known registers."""
     c = GivEnergyModbusTcpClient()
@@ -87,6 +90,7 @@ def test_read_input_registers_validates_response_register_count():
     assert c.read_input_registers(33, 11) == {}
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_write_holding_register():
     """Ensure we can write to holding registers."""
     c = GivEnergyModbusTcpClient()
