@@ -11,12 +11,25 @@ from givenergy_modbus.model import GivEnergyBaseModel
 _logger = logging.getLogger(__package__)
 
 
+class ModelUnknownError(Exception):
+    pass
+
+
 class Model(Enum):
     """Known models of inverters."""
 
     AC = 'CE'
     Gen2 = 'ED'
     Hybrid = 'SA'
+
+    @classmethod
+    def from_serial_number(cls, serial_number: str):
+        models = {'CE': cls.AC, 'ED': cls.Gen2, 'SA': cls.Hybrid, 'SD': cls.Hybrid}
+        prefix = serial_number[:2]
+        if prefix in models:
+            return models[prefix]
+        else:
+            raise ModelUnknownError("Model unknown")
 
 
 class Inverter(GivEnergyBaseModel):
@@ -189,7 +202,7 @@ class Inverter(GivEnergyBaseModel):
     @root_validator
     def compute_model(cls, values) -> dict:
         """Computes the inverter model from the serial number prefix."""
-        values['inverter_model'] = Model(values['inverter_serial_number'][:2])
+        values['inverter_model'] = Model.from_serial_number(values['inverter_serial_number'])
         return values
 
     @root_validator
