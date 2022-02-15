@@ -1,7 +1,7 @@
 # type: ignore  # shut up mypy, it seems to struggle with this file
 import datetime
 import logging
-from enum import Enum, auto
+from enum import Enum
 from typing import Tuple
 
 from pydantic import root_validator
@@ -15,27 +15,28 @@ class UnknownModelError(Exception):
     """Raised when encountering an unknown model."""
 
 
-class Model(Enum):
+class Model(str, Enum):
     """Known models of inverters."""
 
-    AC = auto()
-    Gen2 = auto()
-    Hybrid = auto()
+    AC = 'AC'
+    Gen2 = 'Gen2'
+    Hybrid = 'Hybrid'
+
+    __serial_prefix_to_models_lut__ = {
+        'CE': AC,
+        'ED': Gen2,
+        'SA': Hybrid,
+        'SD': Hybrid,
+    }
 
     @classmethod
     def from_serial_number(cls, serial_number: str):
         """Return the appropriate model from a given serial number."""
-        serial_prefix_to_models_lut = {
-            'CE': cls.AC,
-            'ED': cls.Gen2,
-            'SA': cls.Hybrid,
-            'SD': cls.Hybrid,
-        }
         prefix = serial_number[:2]
-        if prefix in serial_prefix_to_models_lut:
-            return serial_prefix_to_models_lut[prefix]
+        if prefix in cls.__serial_prefix_to_models_lut__:
+            return cls.__serial_prefix_to_models_lut__[prefix]
         else:
-            raise UnknownModelError(prefix)
+            raise UnknownModelError(f"Cannot determine model number from serial number {serial_number}")
 
 
 class Inverter(GivEnergyBaseModel):
