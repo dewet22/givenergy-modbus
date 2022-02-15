@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
+from givenergy_modbus.model.inverter import Inverter, Model, UnknownModelError  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_register_cache import register_cache  # noqa: F401
@@ -343,3 +343,13 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert len(i.json()) == 3866
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
+
+
+def test_model_from_serial_number():
+    """Ensure we can determine models correctly."""
+    assert Model.from_serial_number('CEBH2FVR') == Model.AC
+    assert Model.from_serial_number('EDBH2FVR') == Model.Gen2
+    assert Model.from_serial_number('SA23456GG') == Model.Hybrid
+    assert Model.from_serial_number('SDHBGJ786') == Model.Hybrid
+    with pytest.raises(UnknownModelError):
+        Model.from_serial_number('SJJJBH6')
