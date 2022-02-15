@@ -341,7 +341,7 @@ def test_from_orm(register_cache):  # noqa: F811
 def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):  # noqa: F811
     """Ensure we can instantiate an Inverter from actual register data."""
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
-    assert len(i.json()) == 3866
+    assert len(i.json()) == 3870
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
@@ -351,5 +351,6 @@ def test_model_from_serial_number():
     assert Model.from_serial_number('EDBH2FVR') == Model.Gen2
     assert Model.from_serial_number('SA23456GG') == Model.Hybrid
     assert Model.from_serial_number('SDHBGJ786') == Model.Hybrid
-    with pytest.raises(UnknownModelError):
+    with pytest.raises(UnknownModelError) as e:
         Model.from_serial_number('SJJJBH6')
+    assert e.value.args[0] == 'Cannot determine model number from serial number SJJJBH6'
