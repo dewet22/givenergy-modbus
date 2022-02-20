@@ -7,6 +7,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.4] - 2022-02-15
+
+### Added
+
+- 🛠 Enable CodeQL GitHub workflow for automated code quality scans
+
+### Fixed
+
+- 🐛 Allow multiple serial number prefixes to map to the same inverter model name (#6, by @zaheerm)
+
 ## [0.9.3] - 2022-02-01
 
 ### Fixed
@@ -162,7 +172,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...HEAD
+
+[0.9.4]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.3...v0.9.4
 
 [0.9.3]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.2...v0.9.3
 
