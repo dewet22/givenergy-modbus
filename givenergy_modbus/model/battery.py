@@ -46,3 +46,5 @@ class Battery(GivEnergyBaseModel):
     temp_battery_max: float
     temp_battery_min: float
     usb_inserted: bool
+    e_battery_charge_total_2: float
+    e_battery_discharge_total_2: float
