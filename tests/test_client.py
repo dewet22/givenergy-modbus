@@ -277,6 +277,8 @@ def test_update_battery_registers(client):  # noqa: F811
         temp_battery_max=17.4,
         temp_battery_min=16.7,
         usb_inserted=True,
+        e_battery_charge_total_2=174.4,
+        e_battery_discharge_total_2=169.6,
     )
 
     assert battery.dict() == EXPECTED_BATTERY_DICT

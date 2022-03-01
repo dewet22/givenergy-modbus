@@ -47,6 +47,8 @@ EXPECTED_BATTERY_DICT = {
     'v_battery_cells_sum': 49.97,
     'v_battery_out': 50.029,
     'battery_warning_1_2': (0, 0),
+    'e_battery_charge_total_2': 174.4,
+    'e_battery_discharge_total_2': 169.6,
 }
 
 
@@ -98,6 +100,8 @@ def test_from_orm_actual_data(register_cache_battery_daytime_discharging):  # no
         'v_battery_cell_16': 3.238,
         'v_battery_cells_sum': 51.832,
         'v_battery_out': 51.816,
+        'e_battery_charge_total_2': 174.4,
+        'e_battery_discharge_total_2': 169.6,
     }
 
 
@@ -144,6 +148,8 @@ def test_from_orm_unsure_data(register_cache_battery_unsure):  # noqa: F811
         'v_battery_cell_16': 0.0,
         'v_battery_cells_sum': 0.0,
         'v_battery_out': 0.0,
+        'e_battery_charge_total_2': 0.0,
+        'e_battery_discharge_total_2': 0.0,
     }
 
 
@@ -190,4 +196,6 @@ def test_from_orm_missing_data(register_cache_battery_missing):  # noqa: F811
         'v_battery_cell_16': 0.0,
         'v_battery_cells_sum': 0.0,
         'v_battery_out': 0.0,
+        'e_battery_charge_total_2': 0.0,
+        'e_battery_discharge_total_2': 0.0,
     }
