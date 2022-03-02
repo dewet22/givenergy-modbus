@@ -8,18 +8,12 @@ from typing import Mapping, Sequence
 from pymodbus.client.sync import ModbusTcpClient
 
 from givenergy_modbus.modbus import GivEnergyModbusTcpClient
+from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore
 from givenergy_modbus.model.register_cache import RegisterCache
 
 _logger = logging.getLogger(__package__)
 
-INVERTER_REGISTER_PAGES = {
-    HoldingRegister: [0, 60, 120],
-    InputRegister: [0, 180],
-}
-BATTERY_REGISTER_PAGES = {
-    InputRegister: [60],
-}
 DEFAULT_SLEEP = 0.5
 
 
@@ -50,22 +44,26 @@ class GivEnergyClient:
                 register_cache.set_registers(register, data)
                 t.sleep(sleep_between_queries)
 
-    def update_battery_registers(
-        self, register_cache: RegisterCache, sleep_between_queries=DEFAULT_SLEEP, battery_number=0
-    ) -> None:
-        """Reload all battery data from a given device."""
-        self.fetch_register_pages(
-            BATTERY_REGISTER_PAGES,
-            register_cache,
-            slave_address=0x32 + battery_number,
-            sleep_between_queries=sleep_between_queries,
-        )
+    def refresh_plant(self, plant: Plant, full_refresh: bool, sleep_between_queries=DEFAULT_SLEEP):
+        """Refresh the internal caches for a plant. Optionally refresh only data that changes frequently."""
+        inverter_registers = {
+            InputRegister: [0, 180],
+        }
 
-    def update_inverter_registers(self, register_cache: RegisterCache, sleep_between_queries=DEFAULT_SLEEP) -> None:
-        """Reload inverter data and return an Inverter DTO."""
+        if full_refresh:
+            inverter_registers[HoldingRegister] = [0, 60, 120]
+
         self.fetch_register_pages(
-            INVERTER_REGISTER_PAGES, register_cache, slave_address=0x32, sleep_between_queries=sleep_between_queries
+            inverter_registers, plant._inverter_rc, slave_address=0x32, sleep_between_queries=sleep_between_queries
         )
+        for i, battery_rc in enumerate(plant._batteries_rcs):
+            self.fetch_register_pages(
+                {InputRegister: [60]},
+                battery_rc,
+                slave_address=0x32 + i,
+                sleep_between_queries=sleep_between_queries,
+            )
+        plant.refresh()
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
@@ -210,7 +208,6 @@ class GivEnergyClient:
 
     def set_battery_charge_limit(self, val: int):
         """Set the battery charge limit."""
-        # TODO what are valid values?
         if not 0 <= val <= 50:
             raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_CHARGE_LIMIT, val)

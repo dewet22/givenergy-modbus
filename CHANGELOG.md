@@ -7,6 +7,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] - 2022-03-02
+
+### Added
+
+- 💪 Reintroduced the battery energy totals on the `Battery` model. On some firmware versions that is populated instead
+  of the values from the inverter. (#7, via @britkat1980)
+
+### Changed
+
+- ⚠️ Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
+  managing state. `README.md` updated with example implementation.
+
 ## [0.9.4] - 2022-02-15
 
 ### Added
@@ -172,7 +184,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...HEAD
+
+[0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...v0.10.0
 
 [0.9.4]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.3...v0.9.4
 

@@ -8,8 +8,8 @@ import pytest
 from givenergy_modbus.client import GivEnergyClient
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
+from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
-from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_battery import EXPECTED_BATTERY_DICT
 from tests.model.test_inverter import EXPECTED_INVERTER_DICT
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS  # type: ignore  # shut up mypy
@@ -32,34 +32,38 @@ def client_with_mocked_write_holding_register() -> Tuple[GivEnergyClient, Mock]:
     return c, mock
 
 
-def test_update_inverter_registers(client):  # noqa: F811
+def test_refresh_plant_without_batteries(client):  # noqa: F811
     """Ensure we can refresh data and obtain an Inverter DTO."""
-    rc = RegisterCache()
+    p = Plant(batteries=0)
     client.modbus_client.read_registers = Mock(
         name='read_registers',
         side_effect=[
+            # full refresh
+            {k: v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60},
+            {k: v for k, v in INPUT_REGISTERS.items() if 180 <= k < 240},
             {k: v for k, v in HOLDING_REGISTERS.items() if 0 <= k < 60},
             {k: v for k, v in HOLDING_REGISTERS.items() if 60 <= k < 120},
             {k: v for k, v in HOLDING_REGISTERS.items() if 120 <= k < 180},
+            # quick refresh
             {k: v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60},
             {k: v for k, v in INPUT_REGISTERS.items() if 180 <= k < 240},
         ],
     )
 
-    assert rc._registers == {}
-    client.update_inverter_registers(rc, sleep_between_queries=0)
+    assert p._inverter_rc._registers == {}
+    assert p._batteries_rcs == []
+
+    client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
 
     assert client.modbus_client.read_registers.call_args_list == [
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
         call(HoldingRegister, 0, 60, slave_address=50),
         call(HoldingRegister, 60, 60, slave_address=50),
         call(HoldingRegister, 120, 60, slave_address=50),
-        call(InputRegister, 0, 60, slave_address=50),
-        call(InputRegister, 180, 60, slave_address=50),
     ]
 
-    assert len(rc._registers) == 185
-    inverter = Inverter.from_orm(rc)
-    assert inverter == Inverter(
+    assert p.inverter == Inverter(
         inverter_serial_number='SA1234G567',
         device_type_code='2001',
         inverter_module=198706,
@@ -213,30 +217,71 @@ def test_update_inverter_registers(client):  # noqa: F811
         firmware_version='D0.449-A0.449',
     )
 
-    assert inverter.dict() == EXPECTED_INVERTER_DICT
-    assert inverter.inverter_serial_number == 'SA1234G567'
-    assert inverter.inverter_model == Model.Hybrid
-    assert inverter.v_pv1 == 1.4
-    assert inverter.e_inverter_out_day == 8.1
-    assert inverter.enable_charge_target
+    assert p.inverter.dict() == EXPECTED_INVERTER_DICT
+    assert p.inverter.inverter_serial_number == 'SA1234G567'
+    assert p.inverter.inverter_model == Model.Hybrid
+    assert p.inverter.v_pv1 == 1.4
+    assert p.inverter.e_inverter_out_day == 8.1
+    assert p.inverter.enable_charge_target
 
+    assert p.batteries == []
 
-def test_update_battery_registers(client):  # noqa: F811
-    """Ensure we can refresh data and instantiate a Battery DTO."""
-    rc = RegisterCache()
-    client.modbus_client.read_registers = Mock(
-        name='read_registers', side_effect=[{k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120}]
-    )
-
-    assert rc._registers == {}
-    client.update_battery_registers(rc, battery_number=3, sleep_between_queries=0)
+    client.refresh_plant(p, full_refresh=False, sleep_between_queries=0)
 
     assert client.modbus_client.read_registers.call_args_list == [
-        call(InputRegister, 60, 60, slave_address=0x32 + 3),
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
+        call(HoldingRegister, 0, 60, slave_address=50),
+        call(HoldingRegister, 60, 60, slave_address=50),
+        call(HoldingRegister, 120, 60, slave_address=50),
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
     ]
-    assert len(rc._registers) == 60
-    battery = Battery.from_orm(rc)
-    assert battery == Battery(
+    assert p.batteries == []
+
+
+def test_refresh_plant_with_batteries(client):  # noqa: F811
+    """Ensure we can refresh data and instantiate a Battery DTO."""
+    p = Plant(batteries=3)
+    client.modbus_client.read_registers = Mock(
+        name='read_registers',
+        side_effect=[
+            # full refresh
+            {k: v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60},
+            {k: v for k, v in INPUT_REGISTERS.items() if 180 <= k < 240},
+            {k: v for k, v in HOLDING_REGISTERS.items() if 0 <= k < 60},
+            {k: v for k, v in HOLDING_REGISTERS.items() if 60 <= k < 120},
+            {k: v for k, v in HOLDING_REGISTERS.items() if 120 <= k < 180},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+            # quick refresh
+            {k: v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60},
+            {k: v for k, v in INPUT_REGISTERS.items() if 180 <= k < 240},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+            {k: v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120},
+        ],
+    )
+
+    assert p._inverter_rc._registers == {}
+    assert [rc._registers for rc in p._batteries_rcs] == [{}, {}, {}]
+
+    client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
+
+    assert client.modbus_client.read_registers.call_args_list == [
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
+        call(HoldingRegister, 0, 60, slave_address=50),
+        call(HoldingRegister, 60, 60, slave_address=50),
+        call(HoldingRegister, 120, 60, slave_address=50),
+        call(InputRegister, 60, 60, slave_address=0x32),
+        call(InputRegister, 60, 60, slave_address=0x33),
+        call(InputRegister, 60, 60, slave_address=0x34),
+    ]
+
+    assert len(p.batteries) == 3
+    assert p.batteries[0] == Battery(
         battery_serial_number='BG1234G567',
         v_battery_cell_01=3.117,
         v_battery_cell_02=3.124,
@@ -281,9 +326,29 @@ def test_update_battery_registers(client):  # noqa: F811
         e_battery_discharge_total_2=169.6,
     )
 
-    assert battery.dict() == EXPECTED_BATTERY_DICT
-    assert battery.battery_serial_number == 'BG1234G567'
-    assert battery.v_battery_cell_01 == 3.117
+    assert p.batteries[0].dict() == EXPECTED_BATTERY_DICT
+    assert p.batteries[0].battery_serial_number == 'BG1234G567'
+    assert p.batteries[0].v_battery_cell_01 == 3.117
+
+    client.refresh_plant(p, full_refresh=False, sleep_between_queries=0)
+
+    assert client.modbus_client.read_registers.call_args_list == [
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
+        call(HoldingRegister, 0, 60, slave_address=50),
+        call(HoldingRegister, 60, 60, slave_address=50),
+        call(HoldingRegister, 120, 60, slave_address=50),
+        call(InputRegister, 60, 60, slave_address=0x32),
+        call(InputRegister, 60, 60, slave_address=0x33),
+        call(InputRegister, 60, 60, slave_address=0x34),
+        # quick refresh
+        call(InputRegister, 0, 60, slave_address=50),
+        call(InputRegister, 180, 60, slave_address=50),
+        call(InputRegister, 60, 60, slave_address=0x32),
+        call(InputRegister, 60, 60, slave_address=0x33),
+        call(InputRegister, 60, 60, slave_address=0x34),
+    ]
+    assert len(p.batteries) == 3
 
 
 def test_set_charge_target(client_with_mocked_write_holding_register):

@@ -13,18 +13,19 @@ def test_plant(  # noqa: F811
     register_cache_battery_daytime_discharging,  # noqa: F811
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
-    i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
-    b = Battery.from_orm(register_cache_battery_daytime_discharging)
+    p = Plant(batteries=1)
+    p._inverter_rc = register_cache_inverter_daytime_discharging_with_solar_generation
+    p._batteries_rcs = [register_cache_battery_daytime_discharging]
 
-    assert isinstance(i, Inverter)
-    assert isinstance(b, Battery)
+    assert p.inverter is None
+    assert p.batteries == []
 
-    p = Plant(inverter=i, batteries=[b])
+    p.refresh()
 
-    assert p.inverter == i
     assert isinstance(p.inverter, Inverter)
-    assert p.batteries[0] == b
+    assert p.inverter == Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert isinstance(p.batteries[0], Battery)
+    assert p.batteries[0] == Battery.from_orm(register_cache_battery_daytime_discharging)
 
     d = p.dict()
     assert d.keys() == {'inverter', 'batteries'}
