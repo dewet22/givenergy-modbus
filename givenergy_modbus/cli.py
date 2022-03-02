@@ -5,7 +5,9 @@ import logging
 import click
 
 from givenergy_modbus.client import GivEnergyClient
-from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.inverter import Inverter  # type: ignore
+from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.util import InterceptHandler
 
 _logger = logging.getLogger(__package__)
@@ -43,20 +45,22 @@ def main(ctx, host, log_level):
 @click.option('-b', '--batteries', type=int, default=1)
 def dump_registers(ctx, batteries):
     """Dump out raw register data for use in debugging."""
-    rc = RegisterCache()
-    ctx.obj['CLIENT'].update_inverter_registers(register_cache=rc)
-    inverter_json = rc.to_json()
+    plant = Plant(batteries)
+    ctx.obj['CLIENT'].refresh_plant(plant=plant, full_refresh=True)
+    inverter_json = plant.inverter_rc.to_json()
+    inverter = Inverter.from_orm(plant.inverter_rc)
 
     batteries_json = {}
     for i in range(batteries):
-        rc = RegisterCache()
-        ctx.obj['CLIENT'].update_battery_registers(register_cache=rc, battery_number=i)
-        batteries_json[i] = rc.to_json()
+        batteries_json[i] = plant.batteries_rcs[i].to_json()
 
     click.echo('Inverter registers:')
     click.echo(inverter_json)
     click.echo('Batteries registers:')
     click.echo(batteries_json)
+    click.echo(inverter.json())
+    for i in range(batteries):
+        click.echo(Battery.from_orm(plant.batteries_rcs[i]).json())
 
 
 @main.command()
@@ -136,6 +140,22 @@ def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  #
     _logger.info(start.time())
     _logger.info(end.time())
     ctx.obj['CLIENT'].set_charge_slot_2((start, end))
+
+
+@main.command()
+@click.argument('charge_limit', type=int)
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_battery_charge_limit)
+def set_battery_charge_limit(ctx, charge_limit: int):  # noqa: D103
+    ctx.obj['CLIENT'].set_battery_charge_limit(charge_limit)
+
+
+@main.command()
+@click.argument('discharge_limit', type=int)
+@click.pass_context
+@is_documented_by(GivEnergyClient.set_battery_discharge_limit)
+def set_battery_discharge_limit(ctx, discharge_limit: int):  # noqa: D103
+    ctx.obj['CLIENT'].set_battery_discharge_limit(discharge_limit)
 
 
 if __name__ == "__main__":

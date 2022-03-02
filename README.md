@@ -33,9 +33,8 @@ device:
 ```python
 import datetime
 from givenergy_modbus.client import GivEnergyClient
-from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter, Model
-from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.model.inverter import Model
+from givenergy_modbus.model.plant import Plant
 
 client = GivEnergyClient(host="192.168.99.99")
 
@@ -46,36 +45,30 @@ client.set_charge_slot_1((datetime.time(hour=0, minute=30), datetime.time(hour=4
 # set the inverter to charge when there's excess, and discharge otherwise. it will also respect charging slots.
 client.set_mode_dynamic()
 
-rc = RegisterCache()
-client.update_inverter_registers(rc)
-inverter = Inverter.from_orm(rc)
-assert inverter.inverter_serial_number == 'SA1234G567'
-assert inverter.inverter_model == Model.Hybrid
-assert inverter.v_pv1 == 1.4  # V
-assert inverter.e_battery_discharge_day == 8.1  # kWh
-assert inverter.enable_charge_target
-assert inverter.dict() == {
+p = Plant(batteries=1)
+client.refresh_plant(p, full_refresh=True)
+assert p.inverter.inverter_serial_number == 'SA1234G567'
+assert p.inverter.inverter_model == Model.Hybrid
+assert p.inverter.v_pv1 == 1.4  # V
+assert p.inverter.e_battery_discharge_day == 8.1  # kWh
+assert p.inverter.enable_charge_target
+assert p.inverter.dict() == {
     'inverter_serial_number': 'SA1234G567',
     'device_type_code': '3001',
     'charge_slot_1': (datetime.time(0, 30), datetime.time(7, 30)),
     'f_ac1': 49.98,
     ...
 }
-assert inverter.json() == '{"inverter_serial_number": "SA1234G567", "device_type_code": "3001", ...'
+assert p.inverter.json() == '{"inverter_serial_number": "SA1234G567", "device_type_code": "3001", ...'
 
-# it is _probably_ a good idea to not share register caches across devices
-rc = RegisterCache()
-client.update_battery_registers(rc, battery_number=0)
-battery = Battery.from_orm(rc)
-
-assert battery.serial_number == 'BG1234G567'
-assert battery.v_battery_cell_01 == 3.117
-assert battery.dict() == {
+assert p.batteries[0].serial_number == 'BG1234G567'
+assert p.batteries[0].v_battery_cell_01 == 3.117
+assert p.batteries[0].dict() == {
     'bms_firmware_version': 3005,
     'design_capacity': 160.0,
     ...
 }
-assert battery.json() == '{"battery_serial_number": "BG1234G567", "v_battery_cell_01": 3.117, ...'
+assert p.batteries[0].json() == '{"battery_serial_number": "BG1234G567", "v_battery_cell_01": 3.117, ...'
 ```
 
 ## Credits
