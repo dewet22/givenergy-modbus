@@ -16,7 +16,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- ⚠️ Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
+- ⚠️  Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
   managing state. `README.md` updated with example implementation.
 
 ## [0.9.4] - 2022-02-15
