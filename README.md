@@ -45,7 +45,7 @@ client.set_charge_slot_1((datetime.time(hour=0, minute=30), datetime.time(hour=4
 # set the inverter to charge when there's excess, and discharge otherwise. it will also respect charging slots.
 client.set_mode_dynamic()
 
-p = Plant(batteries=1)
+p = Plant(number_batteries=1)
 client.refresh_plant(p, full_refresh=True)
 assert p.inverter.inverter_serial_number == 'SA1234G567'
 assert p.inverter.inverter_model == Model.Hybrid

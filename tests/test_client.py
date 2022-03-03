@@ -34,7 +34,7 @@ def client_with_mocked_write_holding_register() -> Tuple[GivEnergyClient, Mock]:
 
 def test_refresh_plant_without_batteries(client):  # noqa: F811
     """Ensure we can refresh data and obtain an Inverter DTO."""
-    p = Plant(batteries=0)
+    p = Plant(number_batteries=0)
     client.modbus_client.read_registers = Mock(
         name='read_registers',
         side_effect=[
@@ -50,8 +50,8 @@ def test_refresh_plant_without_batteries(client):  # noqa: F811
         ],
     )
 
-    assert p._inverter_rc._registers == {}
-    assert p._batteries_rcs == []
+    assert p.inverter_rc == {}
+    assert p.batteries_rcs == []
 
     client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
 
@@ -242,7 +242,7 @@ def test_refresh_plant_without_batteries(client):  # noqa: F811
 
 def test_refresh_plant_with_batteries(client):  # noqa: F811
     """Ensure we can refresh data and instantiate a Battery DTO."""
-    p = Plant(batteries=3)
+    p = Plant(number_batteries=3)
     client.modbus_client.read_registers = Mock(
         name='read_registers',
         side_effect=[
@@ -264,8 +264,8 @@ def test_refresh_plant_with_batteries(client):  # noqa: F811
         ],
     )
 
-    assert p._inverter_rc._registers == {}
-    assert [rc._registers for rc in p._batteries_rcs] == [{}, {}, {}]
+    assert p.inverter_rc == {}
+    assert p.batteries_rcs == [{}, {}, {}]
 
     client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
 

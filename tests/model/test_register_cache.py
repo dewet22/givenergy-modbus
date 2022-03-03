@@ -131,7 +131,7 @@ def test_register_cache(register_cache):
     """Ensure we can instantiate a RegisterCache and set registers in it."""
     expected = {HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()}
     expected.update({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
-    assert register_cache._registers == expected
+    assert register_cache == expected
 
 
 def test_attributes(register_cache):
@@ -200,12 +200,12 @@ def test_to_from_json_quick():
     json = RegisterCache(registers=registers).to_json()
     assert json == '{"HR:1": 2, "IR:3": 4}'
     rc = RegisterCache.from_json(json)
-    assert rc._registers == registers
+    assert rc == registers
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
 
 
 def test_to_from_json_actual_data():
     """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION)
-    assert len(rc._registers) == 422
+    assert len(rc) == 422
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up

@@ -5,13 +5,13 @@ import json
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
 
 
-class RegisterCache:
+class RegisterCache(dict):
     """Holds a cache of Registers populated after querying a device."""
 
     def __init__(self, registers=None) -> None:
         if registers is None:
             registers = {}
-        self._registers: dict[Register, int] = registers
+        super().__init__(registers)
         self._register_lookup_table: dict[str, Register] = {}
         for k, v in InputRegister.__members__.items():
             self._register_lookup_table[k] = v
@@ -23,24 +23,24 @@ class RegisterCache:
         item_upper = item.upper()
         if item_upper in self._register_lookup_table:
             register = self._register_lookup_table[item_upper]
-            val = self._registers[register]
+            val = self[register]
             return register.convert(val)
         elif item_upper + '_H' in self._register_lookup_table and item_upper + '_L' in self._register_lookup_table:
             register_h = self._register_lookup_table[item_upper + '_H']
             register_l = self._register_lookup_table[item_upper + '_L']
-            val_h = self._registers[register_h] << 16
-            val_l = self._registers[register_l]
+            val_h = self[register_h] << 16
+            val_l = self[register_l]
             return register_l.convert(val_h + val_l)
         raise KeyError(item)
 
     def set_registers(self, type_: type[Register], registers: dict[int, int]):
         """Update internal holding register cache with given values."""
         for k, v in registers.items():
-            self._registers[type_(k)] = v
+            self[type_(k)] = v
 
     def to_json(self) -> str:
         """Return JSON representation of the register cache, suitable for using with `from_json()`."""
-        return json.dumps(self._registers)
+        return json.dumps(self)
 
     @classmethod
     def from_json(cls, data: str) -> RegisterCache:
@@ -61,7 +61,7 @@ class RegisterCache:
         """Dump the internal state of registers and their value representations."""
         class_name = ''
 
-        for r, v in self._registers.items():
+        for r, v in self.items():
             if class_name != r.__class__.__name__:
                 class_name = r.__class__.__name__
                 print('### ' + class_name + ' ' + '#' * 100)

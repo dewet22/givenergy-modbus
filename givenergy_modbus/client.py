@@ -54,16 +54,15 @@ class GivEnergyClient:
             inverter_registers[HoldingRegister] = [0, 60, 120]
 
         self.fetch_register_pages(
-            inverter_registers, plant._inverter_rc, slave_address=0x32, sleep_between_queries=sleep_between_queries
+            inverter_registers, plant.inverter_rc, slave_address=0x32, sleep_between_queries=sleep_between_queries
         )
-        for i, battery_rc in enumerate(plant._batteries_rcs):
+        for i, battery_rc in enumerate(plant.batteries_rcs):
             self.fetch_register_pages(
                 {InputRegister: [60]},
                 battery_rc,
                 slave_address=0x32 + i,
                 sleep_between_queries=sleep_between_queries,
             )
-        plant.refresh()
 
     def enable_charge_target(self, target_soc: int):
         """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
@@ -207,13 +206,13 @@ class GivEnergyClient:
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_SOC_RESERVE, val)
 
     def set_battery_charge_limit(self, val: int):
-        """Set the battery charge limit."""
+        """Set the battery charge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
         if not 0 <= val <= 50:
             raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_CHARGE_LIMIT, val)
 
     def set_battery_discharge_limit(self, val: int):
-        """Set the battery discharge limit."""
+        """Set the battery discharge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
         if not 0 <= val <= 50:
             raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%')
         self.modbus_client.write_holding_register(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)
