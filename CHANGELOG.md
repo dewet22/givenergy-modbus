@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.1] - 2022-03-03
+
+### Fixed
+
+- 🛠 Make `Plant` serializable.
+
 ## [0.10.0] - 2022-03-02
 
 ### Added
@@ -16,7 +22,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- ⚠️  Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
+- ⚠️ Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
   managing state. `README.md` updated with example implementation.
 
 ## [0.9.4] - 2022-02-15
@@ -184,7 +190,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...HEAD
+
+[0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
 
 [0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...v0.10.0
 

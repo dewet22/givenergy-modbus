@@ -45,7 +45,7 @@ def main(ctx, host, log_level):
 @click.option('-b', '--batteries', type=int, default=1)
 def dump_registers(ctx, batteries):
     """Dump out raw register data for use in debugging."""
-    plant = Plant(batteries)
+    plant = Plant(number_batteries=batteries)
     ctx.obj['CLIENT'].refresh_plant(plant=plant, full_refresh=True)
     inverter_json = plant.inverter_rc.to_json()
     inverter = Inverter.from_orm(plant.inverter_rc)
