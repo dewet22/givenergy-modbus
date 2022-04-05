@@ -36,7 +36,7 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
     def __init__(self, **kwargs):
         kwargs.setdefault("port", 8899)  # GivEnergy default instead of the standard 502
         super().__init__(**kwargs)
-        self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder(), client=self)
+        self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder())
         self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
         self.timeout = 2
 

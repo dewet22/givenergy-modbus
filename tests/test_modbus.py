@@ -99,7 +99,7 @@ def test_write_holding_register():
     c.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert mock_call.call_count == 1
     assert str(mock_call.call_args_list[0].args[0]) == (
-        '6/WriteHoldingRegisterRequest({check: 0x0000, register: 0x0014, value: 0x0005})'
+        '6/WriteHoldingRegisterRequest({register: 0x0014, value: 0x0005})'
     )
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))
@@ -109,7 +109,7 @@ def test_write_holding_register():
     assert e.value.args[0] == 'Register read-back value 0x0002 != written value 0x0005'
     assert mock_call.call_count == 1
     assert str(mock_call.call_args_list[0].args[0]) == (
-        '6/WriteHoldingRegisterRequest({check: 0x0000, register: 0x0014, value: 0x0005})'
+        '6/WriteHoldingRegisterRequest({register: 0x0014, value: 0x0005})'
     )
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))

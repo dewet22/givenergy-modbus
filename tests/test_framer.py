@@ -8,7 +8,7 @@ from pymodbus.framer.socket_framer import ModbusSocketFramer
 
 from givenergy_modbus.decoder import GivEnergyRequestDecoder, GivEnergyResponseDecoder
 from givenergy_modbus.framer import GivEnergyModbusFramer
-from givenergy_modbus.pdu import ErrorResponse, ReadInputRegistersResponse
+from givenergy_modbus.pdu import HeartbeatRequest, ReadInputRegistersResponse
 from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
@@ -57,11 +57,11 @@ def test_framer_constructor():
     """Test constructor."""
     client_decoder = MagicMock()
     framer = GivEnergyModbusFramer(client_decoder)
-    assert framer.client is None
+    assert framer.FRAME_HEAD == ">HHHBB"
+    assert framer.FRAME_HEAD_SIZE == 0x08
     assert framer._buffer == b""
+    assert not hasattr(framer, '_length')
     assert framer.decoder == client_decoder
-    assert framer._length == 0
-    assert framer._hsize == 0x08
     client_decoder.assert_not_called()
 
     assert not isinstance(framer, ModbusSocketFramer)
@@ -81,49 +81,48 @@ def responses_framer():
 
 @pytest.mark.parametrize(
     "data",  # [(input_buffer, complete, header_valid, expected_length, expected_remaining_buffer), (..), ..]
-    [  # list[Tuple[bytes, bool, int, bytes]]
+    [  # list[Tuple[bytes, bool, bool, int, bytes]]
         (  # data0 - no data
             b"",
             False,
             True,
-            0,
+            -1,
             b"",
         ),
         (  # data1 - incomplete frame, length=0xcc but not enough data follows
             b"\x02\x01\x01\x00Q\xcc",
             False,
             True,
-            0,
+            -1,
             b"\x02\x01\x01\x00Q\xcc",
         ),
         (  # data2 - incomplete frame, length=0x9e but not enough data follows
             b"\x59\x59\x00\x01\x00\x9e\x01",
             False,
             True,
-            0,
+            -1,
             b"\x59\x59\x00\x01\x00\x9e\x01",
         ),
-        (  # data3 - invalid frame, length=1 is considered an error and frame will
-            # be discarded silently when checkFrame() called
+        (  # data3 - valid frame, length=1
             b"\x59\x59\x00\x01\x00\x01\x01\x02",
-            False,
             True,
-            0,
+            True,
+            1,
             b"\x02",
         ),
-        (  # data4 - valid frame, fid=0x1 is usually an error response?
+        (  # data4 - valid frame, fn_id 0x01 is Transparent
             b"\x59\x59\x00\x01\x00\x0d\x01\x01\x57\x46\x32\x31\x32\x35\x47\x33\x31\x36\x01",
             True,
             True,
             13,
             b"",
         ),
-        (  # data5 - invalid frame with leading & trailing trash, length=5. invalid MBAP, so reset the buffer
-            b"YYYY\00\x05YYYYYAB",
+        (  # data5 - no valid frame, don't strip leading trash until next frame visible
+            b"\x59\x59\x59\x59\x00\x05\x59\x59\x59\x59\x59\x41\x42",
             False,
             False,
-            0,
-            b"",
+            -1,
+            b"\x59\x59\x59\x59\x00\x05\x59\x59\x59\x59\x59\x41\x42",
         ),
         (  # data6 - valid frame, length=2 with trailing buffer contents
             b"\x59\x59\x00\x01\x00\x02\x01\x02\xff\x01\x02\x03",
@@ -132,12 +131,12 @@ def responses_framer():
             2,
             b"\xff\x01\x02\x03",
         ),
-        (  # data7 - invalid MBAP
+        (  # data7 - invalid MBAP, don't strip leading trash until next frame visible
             b"\x00\x01\x12\x34\x00\x04\xff\x02\x12\x34",
             True,
             False,
             4,
-            b"",
+            b"\x00\x01\x12\x34\x00\x04\xff\x02\x12\x34",
         ),
         (  # data8 - VALID_REQUEST_FRAME with trailing data
             VALID_REQUEST_FRAME + b"\xde\xad\xbe\xef",
@@ -176,27 +175,30 @@ def responses_framer():
         ),
     ],
 )
-def test_check_frame(requests_framer, data: Tuple[bytes, bool, bool, Dict[str, int], bytes]):
+def test_check_frame(requests_framer, data: Tuple[bytes, bool, bool, int, bytes]):
     """Validate the internal state of the framer as data gets processed."""
     input_buffer, is_complete_frame, is_valid_frame, expected_length, expected_remaining_buffer = data
 
-    assert requests_framer.isFrameReady() is False
-    assert requests_framer.checkFrame() is False
-    assert requests_framer._length == 0
+    assert requests_framer.is_frame_ready() is False
+    assert requests_framer.check_frame() is False
+    assert not hasattr(requests_framer, '_length')
 
-    requests_framer.addToFrame(input_buffer)
+    requests_framer.add_to_frame(input_buffer)
 
     if is_valid_frame:
-        assert requests_framer.checkFrame() == is_complete_frame
-        assert requests_framer._length == expected_length
+        assert requests_framer.check_frame() == is_complete_frame
+        if expected_length >= 0:
+            assert requests_framer._length == expected_length
+        else:
+            assert not hasattr(requests_framer, '_length')
 
         if is_complete_frame:
-            requests_framer.advanceFrame()
+            requests_framer.advance_frame()
     else:
-        assert not requests_framer.checkFrame()
+        assert not requests_framer.check_frame()
+        assert not hasattr(requests_framer, '_length')
 
-    # TODO do we need to care about this?
-    # assert requests_framer._buffer == expected_remaining_buffer
+    assert requests_framer._buffer == expected_remaining_buffer
 
 
 @pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
@@ -207,10 +209,11 @@ def test_request_wire_encoding(requests_framer, data: Tuple[str, Dict[str, Any],
     pdu = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
     if ex:
         with pytest.raises(ex.__class__) as e:
-            requests_framer.buildPacket(pdu)
-        assert e.value.args == ex.args
+            requests_framer.build_packet(pdu)
+        assert e.value.args[0] == ex.args[0]
+        assert e.value.args[1] == pdu
     else:
-        packet = requests_framer.buildPacket(pdu)
+        packet = requests_framer.build_packet(pdu)
         assert packet == mbap_header + encoded_pdu
 
 
@@ -221,24 +224,18 @@ def test_request_wire_decoding(requests_framer, data: Tuple[str, Dict[str, Any],
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu, ex = data
 
     callback = MagicMock(return_value=None)
+    requests_framer.process_incoming_packet(mbap_header + encoded_pdu, callback)
     if ex:
-        with pytest.raises(ex.__class__) as e:
-            requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
         callback.assert_not_called()
-        assert e.value.args == ex.args
     else:
-        requests_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
         callback.assert_called_once()
         fn_kwargs = vars(callback.mock_calls[0].args[0])
         for (key, val) in pdu_fn_kwargs.items():
             assert fn_kwargs[key] == val
-        assert fn_kwargs["transaction_id"] == 0x5959
-        assert fn_kwargs["protocol_id"] == 0x1
-        assert fn_kwargs["unit_id"] == 0x1
-        assert fn_kwargs["skip_encode"]
-        assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
         assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
-        assert fn_kwargs["slave_address"] == 0x32
+        if hasattr(fn_kwargs, 'slave_address'):
+            assert fn_kwargs["slave_address"] == 0x32
+            assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
@@ -247,7 +244,7 @@ def test_response_wire_encoding(responses_framer, data: Tuple[str, Dict[str, Any
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     pdu = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
-    packet = responses_framer.buildPacket(pdu)
+    packet = responses_framer.build_packet(pdu)
     assert packet == mbap_header + encoded_pdu
 
 
@@ -258,33 +255,30 @@ def test_client_wire_decoding(responses_framer, data: Tuple[str, Dict[str, Any],
     pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(mbap_header + encoded_pdu, callback)
+    responses_framer.process_incoming_packet(mbap_header + encoded_pdu, callback)
     callback.assert_called_once()
     fn_kwargs = vars(callback.mock_calls[0].args[0])
     for (key, val) in pdu_fn_kwargs.items():
         assert fn_kwargs[key] == val
-    assert fn_kwargs["transaction_id"] == 0x5959
-    assert fn_kwargs["protocol_id"] == 0x1
-    assert fn_kwargs["unit_id"] == 0x1
-    assert fn_kwargs["skip_encode"]
-    assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
     assert fn_kwargs["data_adapter_serial_number"] == "WF1234G567"
-    assert fn_kwargs["slave_address"] == 0x32
+    if hasattr(fn_kwargs, 'slave_address'):
+        assert fn_kwargs["slave_address"] == 0x32
+        assert fn_kwargs["check"] == int.from_bytes(encoded_pdu[-2:], "big")
 
 
-def test_process_error_response(responses_framer):
+def test_process_heartbeat_request(responses_framer):
     """Test error response processing."""
-    buffer = bytes.fromhex('5959 0001 000d 0101 5746 3132 3334 4735 3637 01')
+    buffer = bytes.fromhex('5959 0001 000d 0101 5746 3132 3334 4735 3637 02')
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(buffer, callback)
+    responses_framer.process_incoming_packet(buffer, callback)
 
     callback.assert_called_once()
     response = callback.call_args_list[0][0][0]
-    assert isinstance(response, ErrorResponse)
-    assert response.function_code == 0
+    assert isinstance(response, HeartbeatRequest)
+    assert not hasattr(response, 'function_code')
     assert response.data_adapter_serial_number == 'WF1234G567'
-    assert response.error_code == 0x1
+    assert response.data_adapter_type == 2
 
 
 def test_process_stream_short_frame(responses_framer):
@@ -297,7 +291,7 @@ def test_process_stream_short_frame(responses_framer):
     )
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(buffer, callback)
+    responses_framer.process_incoming_packet(buffer, callback)
     callback.assert_not_called()
 
 
@@ -306,7 +300,7 @@ def test_process_stream_good(responses_framer):
     buffer = EXCEPTION_RESPONSE_FRAME + VALID_RESPONSE_FRAME
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(buffer, callback)
+    responses_framer.process_incoming_packet(buffer, callback)
 
     assert len(callback.call_args_list) == 2
 
@@ -333,7 +327,7 @@ def test_process_stream_good_but_noisy(responses_framer):
     buffer = b'\x01\x02asdf' + EXCEPTION_RESPONSE_FRAME + b'foobarbaz' + VALID_RESPONSE_FRAME + b'\x00\x99\xff'
 
     callback = MagicMock(return_value=None)
-    responses_framer.processIncomingPacket(buffer, callback)
+    responses_framer.process_incoming_packet(buffer, callback)
 
     assert len(callback.call_args_list) == 1
 

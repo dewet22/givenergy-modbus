@@ -51,17 +51,12 @@ plugins:
       lang: en
   - mkdocstrings:
       watch:
-        - givenergy-modbus
+        - givenergy_modbus
 extra:
   social:
     - icon: fontawesome/brands/twitter
-      # replace with your own tweet link below
-      link: https://github.com/waynerv/cookiecutter-pypackage
+      link: https://twitter.com/dewet
       name: Tweet
-    - icon: fontawesome/brands/facebook
-      # replace with your own facebook link below
-      link: https://github.com/waynerv/cookiecutter-pypackage
-      name: Facebook
     - icon: fontawesome/brands/github
       link: https://github.com/dewet22/givenergy-modbus
       name: Github

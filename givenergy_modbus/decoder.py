@@ -6,8 +6,17 @@ from typing import Mapping, Sequence
 
 from pymodbus.interfaces import IModbusDecoder
 
-from givenergy_modbus.pdu import REQUEST_PDUS, RESPONSE_PDUS, ErrorResponse, ModbusPDU
-from givenergy_modbus.util import friendly_class_name, hexlify
+from givenergy_modbus.pdu import (
+    HeartbeatRequest,
+    ModbusPDU,
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersRequest,
+    ReadInputRegistersResponse,
+    WriteHoldingRegisterRequest,
+    WriteHoldingRegisterResponse,
+)
+from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -34,15 +43,10 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
 
     def lookupPduClass(self, fn_code: int) -> type[ModbusPDU] | None:
         """Attempts to find the ModbusPDU handler class that can handle a given function code."""
-        if fn_code >= 0x80:
-            fn_code &= 0x7F
-        if fn_code in self._lookup:
-            fn = self._lookup[fn_code]
-            _logger.debug(f"Identified incoming PDU as {fn_code}/{friendly_class_name(fn)}")
-            return fn
-        return None
+        # strip the error bit for lookup; the PDU class will handle the error condition on decoding
+        return self._lookup.get(fn_code & 0x7F, None)
 
-    def decode(self, data: bytes) -> ModbusPDU | ErrorResponse | None:
+    def decode(self, data: bytes) -> ModbusPDU | None:
         """Create an appropriately populated PDU message object from a valid Modbus message.
 
         Extracts the `function code` from the raw message and looks up the matching ModbusPDU handler class
@@ -51,17 +55,13 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
         """
         main_fn = data[0]
         data = data[1:]
-        if main_fn == 0x1:
-            # heartbeat / error?
-            err_response = ErrorResponse()
-            _logger.debug(f"About to decode data [{hexlify(data)}]")
-            err_response.decode(data)
-            return err_response
-        elif main_fn == 0x2:
-            # most functions
+        if main_fn == 0x1:  # heartbeat
+            pdu = HeartbeatRequest()
+            pdu.decode(data)
+            return pdu
+        elif main_fn == 0x2:  # "transparent": pass-through to the inverter behind the data collector
             if len(data) <= 19:
-                _logger.error(f"PDU data is too short to find a valid function id: len={len(data)} [{hexlify(data)}]")
-                return None
+                raise ValueError(f"Data is too short to find a valid function id: len={len(data)}")
             fn_code = data[19]
             response = self.lookupPduClass(fn_code)
             if response:
@@ -69,20 +69,25 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
                 r = response(function_code=fn_code)
                 r.decode(data)
                 return r
-            _logger.error(f"No decoder for function code {fn_code}")
-            return None
-        _logger.error(f"Unknown main function code {hex(main_fn)}")
-        # return ExceptionResponse(main_fn, ModbusExceptions.IllegalFunction)
-        return None
+            raise ValueError(f"No decoder for inner function code {fn_code}")
+        raise ValueError(f"Unknown function code {hex(main_fn)}")
 
 
 class GivEnergyRequestDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Request PDU messages. Typically used by servers processing inbound requests."""
 
-    _function_table = REQUEST_PDUS
+    _function_table = [
+        ReadHoldingRegistersRequest,
+        ReadInputRegistersRequest,
+        WriteHoldingRegisterRequest,
+    ]
 
 
 class GivEnergyResponseDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Response PDU messages. Typically used by clients to process responses."""
 
-    _function_table = RESPONSE_PDUS
+    _function_table = [
+        ReadHoldingRegistersResponse,
+        ReadInputRegistersResponse,
+        WriteHoldingRegisterResponse,
+    ]
