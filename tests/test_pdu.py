@@ -4,6 +4,8 @@ import pytest
 
 from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import (
+    HeartbeatRequest,
+    HeartbeatResponse,
     ModbusRequest,
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
@@ -15,26 +17,28 @@ from givenergy_modbus.pdu import (
 from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 
-@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_str(data):
+def test_str():
     """Test we can represent an instance of PDUs nicely."""
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        "_/ReadRegistersRequest({check: 0x0000, base_register: 0x0003, register_count: 0x0006})"
+        "_/ReadRegistersRequest({base_register: 0x0003, register_count: 0x0006})"
     )
-    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest({check: 0x0000})"
+    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest()"
     assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
-    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest({check: 0x0000})"
+    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest()"
     assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        "3/ReadHoldingRegistersRequest({check: 0x0000, base_register: 0x0000, register_count: 0x0000})"
+        "3/ReadHoldingRegistersRequest({base_register: 0x0000, register_count: 0x003c})"
     )
     assert str(ReadHoldingRegistersRequest) == "<class 'givenergy_modbus.pdu.ReadHoldingRegistersRequest'>"
 
-    assert str(WriteHoldingRegisterRequest(foo=1)) == (
-        "6/WriteHoldingRegisterRequest({check: 0x0000, register: None, value: None})"
-    )
+    assert str(WriteHoldingRegisterRequest(foo=1)) == ("6/WriteHoldingRegisterRequest({register: None, value: None})")
     assert str(WriteHoldingRegisterRequest) == "<class 'givenergy_modbus.pdu.WriteHoldingRegisterRequest'>"
+
+    assert str(HeartbeatRequest(foo=1)) == "_/HeartbeatRequest({data_adapter_type: 0x0000})"
+    assert str(HeartbeatRequest) == "<class 'givenergy_modbus.pdu.HeartbeatRequest'>"
+    assert str(HeartbeatResponse(foo=1)) == "_/HeartbeatResponse({data_adapter_type: 0x0000})"
+    assert str(HeartbeatResponse) == "<class 'givenergy_modbus.pdu.HeartbeatResponse'>"
 
 
 def test_class_equivalence():
@@ -54,10 +58,9 @@ def test_cannot_change_function_code():
     assert ReadHoldingRegistersRequest(function_code=3)
 
     with pytest.raises(ValueError) as e:
-        assert ModbusRequest(function_code=12)
-    assert (
-        e.value.args[0] == "Class ModbusRequest does not have a function code, "
-        "trying to override it is not supported"
+        ModbusRequest(function_code=12)
+    assert e.value.args[0] == (
+        "Class ModbusRequest does not have a function code, trying to override it is not supported"
     )
 
     with pytest.raises(ValueError) as e:
@@ -82,7 +85,7 @@ def test_request_pdu_encoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exc
     if ex:
         with pytest.raises(ex.__class__) as e:
             pdu.encode()
-        assert e.value.args == ex.args
+        assert e.value.args == (ex.args[0], pdu)
     else:
         assert pdu.encode() == encoded_pdu
 
@@ -96,7 +99,7 @@ def test_request_pdu_decoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exc
     if ex:
         with pytest.raises(ex.__class__) as e:
             pdu.decode(encoded_pdu)
-        assert e.value.args == ex.args
+        assert e.value.args == (ex.args[0], pdu)
     else:
         pdu.decode(encoded_pdu)
         if pdu_fn_kwargs:

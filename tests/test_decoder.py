@@ -58,8 +58,10 @@ def test_msg():
 def test_decode(mocked_decoder):
     """Ensure the decoder works for claimed function codes, and not for unclaimed ones."""
     assert mocked_decoder.decode(_msg(b'\x05')) is not None
-    assert mocked_decoder.decode(_msg(b'\x07')) is None
     assert mocked_decoder.decode(_msg(b'\x09')) is not None
+    with pytest.raises(ValueError) as e:
+        mocked_decoder.decode(_msg(b'\x07'))
+    assert e.value.args[0] == 'No decoder for inner function code 7'
 
 
 def test_decode_wiring(mocked_decoder):
@@ -79,7 +81,7 @@ def test_decode_wiring(mocked_decoder):
 
 
 IMPLEMENTED_REQUEST_FUNCTIONS = {3, 4, 6}
-IMPLEMENTED_RESPONSE_FUNCTIONS = {0, 3, 4, 6}
+IMPLEMENTED_RESPONSE_FUNCTIONS = {3, 4, 6}
 
 
 def test_response_decoder():

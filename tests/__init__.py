@@ -41,6 +41,13 @@ REQUEST_PDU_MESSAGES = [
         b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\x14\x00\x01" b"\xc4\x2d",
         None,
     ),
+    (  # data5
+        "HeartbeatRequest",
+        {"data_adapter_serial_number": "AB1234G567", "data_adapter_type": 1},
+        b"YY\x00\x01\x00\x0d\x01\x01",
+        b"AB1234G567" b"\x01",
+        None,
+    ),
 ]
 
 RESPONSE_PDU_MESSAGES = [
@@ -73,7 +80,64 @@ RESPONSE_PDU_MESSAGES = [
         b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
         b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
         b"\x8e\x4b",  # 2b crc
+    ),
+    (   # data1
+        "ReadHoldingRegistersResponse",
+        {
+            "check": 0x8e4b,
+            "inverter_serial_number": 'SA1234G567',
+            "base_register": 0x0000,
+            "register_count": 0x003C,
+            "register_values": [
+                0x0001, 0x0cb0, 0x0c78, 0x0f19, 0x0000, 0x095b, 0x0000, 0x05c5, 0x0001, 0x0002,
+                0x0021, 0x0000, 0x008c, 0x138a, 0x0005, 0x0aa9, 0x2b34, 0x0008, 0x0041, 0x0008,
+                0x003f, 0x0000, 0x0005, 0x0000, 0x0278, 0x0000, 0x0071, 0x0000, 0x02ff, 0x0000,
+                0xff75, 0x0000, 0x0000, 0x0bf5, 0x0000, 0x0057, 0x0054, 0x0049, 0x0000, 0x0000,
+                0x0000, 0x0124, 0x0311, 0x0288, 0x004e, 0x0000, 0x02f7, 0x0000, 0x00b6, 0x0001,
+                0x139e, 0x0467, 0x023c, 0x094b, 0x1389, 0x0121, 0x00be, 0x0000, 0x00f8, 0x0011],
+            "data_adapter_serial_number": 'WF1234G567',
+            "padding": 0x008A,
+            "slave_address": 0x0032,
+        },
+        b'YY\x00\x01\x00\x9e\x01\x02',  # 8b MBAP header
 
+        # 154b total payload, starting with 34b of fields:
+        b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x03' b'SA1234G567' b'\x00\x00' b'\x00<'
+        # 4x60b chunk, containing register values:
+        b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'
+        b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
+        b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
+        b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
+        b"\x8e\x4b",  # 2b crc
+    ),
+    (   # data2
+        "WriteHoldingRegisterResponse",
+        {
+            "check": 0x8e4b,
+            "inverter_serial_number": 'SA1234G567',
+            "register": 0x3223,
+            "value": 0x223C,
+            "data_adapter_serial_number": 'WF1234G567',
+            "padding": 0x8A,
+            "slave_address": 0x32,
+        },
+        b'YY\x00\x01\x00\x28\x01\x02',  # 8b MBAP header
+
+        b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x06' b'SA1234G567'
+        b'\x32\x23'  # register
+        b'\x00\x01'  # count (always 1 for this fn)
+        b'\x22\x3c'  # value readback
+        b"\x8e\x4b",  # 2b crc
+    ),
+    (   # data3
+        "HeartbeatResponse",
+        {
+            "data_adapter_serial_number": 'WF1234G567',
+            "data_adapter_type": 32,
+        },
+        b'YY\x00\x01\x00\x0d\x01\x01',  # 8b MBAP header
+
+        b'WF1234G567' b'\x20',
     ),
 ]
 # fmt: on

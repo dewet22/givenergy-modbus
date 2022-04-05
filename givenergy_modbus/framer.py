@@ -2,197 +2,152 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-from pymodbus.client.sync import BaseModbusClient
-from pymodbus.framer import ModbusFramer
 from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ModbusPDU
-from pymodbus.utilities import hexlify_packets
 
+from givenergy_modbus.pdu import HeartbeatRequest, HeartbeatResponse
 from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
 
-class GivEnergyModbusFramer(ModbusFramer):
+class GivEnergyModbusFramer:
     """GivEnergy Modbus Frame controller.
 
-    A framer abstracts away all the detail about how marshall the wire
-    protocol, e.g. to detect if a current message frame exists, decoding
-    it, sending it, etc.  This implementation understands the
-    idiosyncrasies of GivEnergy's implementation of the Modbus spec. **Note that
-    the understanding below comes from observing the wire format and analysing the
-    data interchanges – no GivEnergy proprietary knowledge was needed or referred to.**
+    A framer abstracts away all the detail about how marshall the wire protocol, in particular detecting if a message
+    frame could be present in a buffer, whether it is complete, extracting the frame and handing off to a decoder,
+    and encoding a frame for sending onto a transport layer. This implementation understands the idiosyncrasies of
+    GivEnergy's implementation of the Modbus spec.
 
-    Packet exchange looks very similar to normal Modbus TCP on the wire, with each
+    Packet exchange looks very similar to normal Modbus TCP, with each
     message still having a regular 7-byte MBAP header consisting of:
 
-      * `tid`, the transaction id
-      * `pid`, the protocol id
-      * `len`, the byte count / length of the remaining data following the header
-      * `uid`, the unit id for addressing devices on the Modbus network
+    * ``tid``, the unique transaction identifier, used to match up requests and responses
+    * ``pid``, the protocol identifier, conventionally ``0x0001`` for regular Modbus
+    * ``len``, the number of bytes following from this point
+    * ``uid``, the unit identifier of the specific device on the Modbus network being addressed, or ``0x00`` to
+      broadcast
 
-    This is followed by `fid` / a function code to specify how the message should be
-    decoded into a PDU:
+    This is followed by ``fid``, a function code which specifies the type of data payload::
 
-    ```
-    [_________MBAP Header______] [_fid_] [_______________data________________]
-    [_tid_][_pid_][_len_][_uid_]
-      2b     2b     2b     1b      1b                  (len-1)b
-    ```
+        [_________MBAP Header______] [_fid_] [_______________data________________]
+        [_tid_][_pid_][_len_][_uid_]
+          2b     2b     2b     1b      1b                  (len-1)b
 
-    GivEnergy's implementation quicks can be summarised as:
+    GivEnergy's implementation quirks can be summarised as:
 
-      * `tid` is always `0x5959/'YY'`, so the assumption/interpretation is that clients
-         have to poll continually instead of maintaining long-lived connections and
-         using varying `tid`s to pair requests with responses
-      * `pid` is always `0x0001`, whereas normal Modbus uses `0x0000`
-      * `len` **adds** 1 extra byte (anecdotally for the unit id?) which normal
-         Modbus does not. This leads to continual off-by-one differences appearing
-         whenever header/frame length calculations are done. This is probably the
-         biggest reason Modbus libraries struggle working out of the box.
-      * `unit_id` is always `0x01`
-      * `fid` is always `0x02/Read Discrete Inputs` even for requests that modify
-         registers. The actual intended function is encoded 19 bytes into the data
-         block. You can interpret this as functionally somewhat akin to Modbus
-         sub-functions where we always use the `0x02` main function.
+    * ``tid`` is always ``0x5959`` (``YY`` in ASCII)
+    * ``pid`` is always ``0x0001``
+    * ``len`` **adds** 1 extra byte compared to regular Modbus
+    * ``uid`` is always ``0x01``
+    * ``fid`` is one of:
+        * ``0x01/Heartbeat``: The data adapter will send this request every 3 minutes and the client needs to
+          respond within 5 seconds. After three missed heartbeats the TCP socket will be closed and the
+          client will need to re-establish a connection.
+        * ``0x02/Transparent``: The primary way to interact with the inverter. The data payload is a GivEnergy
+          specific frame which contains the actual command and data for the inverter. It is functionally similar to
+          Modbus sub-functions, using `0x02` as main function.
 
-    Because these fields are static and we have to reinterpret what `len` means it is
-    simpler to just reconsider the entire header:
+    Because the first two header fields are static you can scan for ``0x59590001`` to find the start of candidate
+    frames in a byte stream - see :meth:`.resetFrame` [.resetFrame][]
 
-    ```
-    [___"MBAP+" Header____] [_______________GivEnergy Frame_______________]
-    [___h1___][_len_][_h2_]
-        4b      2b     2b                      (len+2)b
-    ```
+    GivEnergy Transparent frames have a consistent format:
 
-      * `h1` is always `0x59590001`, so can be used as a sanity check during decoding
-      * `len` needs 2 added during calculations because of the previous extra byte
-         off-by-one inconsistency, plus expanding the header by including 1-byte `fid`
-      * `h2` is always `0x0102`, so can be used as a sanity check during decoding
-
-    TODO These constant headers being present would allow for us to scan through the
-    bytestream to try and recover from stream errors and help reset the framing.
-
-    The GivEnergy frame itself has a consistent format:
-
-    ```
-    [____serial____] [___pad___] [_addr_] [_func_] [______data______] [_crc_]
-          10b            8b         1b       1b            Nb           2b
-    ```
-
-     * `serial` of the responding data adapter (wifi/GPRS?/ethernet?) plugged into
-        the inverter. For requests this is simply hardcoded as a dummy `AB1234G567`
-     * `pad`'s function is unknown - it appears to be a single zero-padded byte that
-        varies across responses, so might be some kind of check/crc?
-     * `addr` is the "slave" address, conventionally `0x32`
-     * `func` is the actual function to be executed:
-        * `0x3` - read holding registers
-        * `0x4` - read input registers
-        * `0x6` - write single register
-     * `data` is specific to the invoked function
-     * `crc` - for requests it is calculated using the function id, base register and
-        step count, but it is not clear how those for responses are calculated (or
-        should be checked)
-
-    In short, the message unframing algorithm is simply:
-
-    ```python
-    while len(buffer) > 8:
-      tid, pid, len, uid, fid = struct.unpack(">HHHBB", buffer)
-      data = buffer[8:6+len]
-      process_message(tid, pid, len, uid, fid, data)
-      buffer = buffer[6+len:]  # skip buffer over frame
-    ```
+    * ``serial`` (10 bytes) of the responding data adapter (wifi/GPRS/ethernet) plugged into the inverter. For
+      requests this is seemingly not important and can be an arbitrary alphanumeric string.
+    * ``pad`` (8 bytes) is not well understood but appears to be a single zero-padded byte that is fairly predictable
+      based on the command.
+    * ``addr`` (1 byte) unit identifier, of which a few are known:
+        * ``0x00``: Android app
+        * ``0x11``: inverter
+        * ``0x32`` to ``0x36``: battery packs connected to the inverter (max 5)
+    * ``func`` (1 byte) is the command to be executed:
+        * `0x03` - read holding registers
+        * `0x04` - read input registers
+        * `0x06` - write single holding register
+        * `0x10` - write multiple holding registers
+    * ``data`` (*n* bytes)is specific to the function being invoked
+    * ``crc`` (2 bytes) CRC for a request is calculated using the function id, base register and
+      step count, but it is unclear how a response CRC is calculated or should be verified.
 
     Raises:
         InvalidMessageReceivedException: When unable to decode an incoming message.
         ModbusIOException: When the identified function decoder fails to decode a message.
     """
 
-    FRAME_HEAD = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
+    if TYPE_CHECKING:
+        from typing import Final
 
-    def __init__(self, decoder: IModbusDecoder, client: BaseModbusClient = None):
-        self._buffer = b""
-        self._length = 0
-        self._hsize = 0x08
-        self._check = 0x0
-        self._fcode = 0x2
+        FRAME_HEAD: Final[str] = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
+        FRAME_HEAD_SIZE: Final[int] = struct.calcsize(FRAME_HEAD)
+    else:  # FIXME remove when py37 is not supported any more
+        FRAME_HEAD: str = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
+        FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
+
+    _buffer: bytes = b""
+    _length: int
+
+    def __init__(self, decoder: IModbusDecoder):
         self.decoder = decoder
-        self.client = client
 
-    def decode_data(self, data: bytes = None) -> dict | None:
+    @classmethod
+    def parse_header(cls, buffer: bytes) -> dict:
         """Tries to extract the MBAP frame header and performs a few sanity checks."""
-        if not data:
-            data = self._buffer[: self._hsize]
-
-        if self.isFrameReady():
-            _logger.debug(f"extracting MBAP header from [{hexlify(data)}] as {self.FRAME_HEAD}")
-            tid, pid, len_, uid, fid = struct.unpack(self.FRAME_HEAD, data)
-            header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
-            _logger.debug(f"extracted values: { dict((k, f'0x{v:02x}') for k,v in header.items()) }")
-            if tid != 0x5959 or pid != 0x1 or uid != 0x1:  # or fid != 0x2:
-                _logger.debug(
-                    f"Invalid MBAP header; corruption likely so cowardly refusing to proceed with this frame. "
-                    f"(0x{tid:04x} 0x{pid:04x} 0x{uid:02x} != 0x5959 0x0001 0x01)"
-                )
-                return None
+        data = buffer[: cls.FRAME_HEAD_SIZE]
+        _logger.debug(f"extracting MBAP header from [{hexlify(data)}] using format {cls.FRAME_HEAD}")
+        tid, pid, len_, uid, fid = struct.unpack(cls.FRAME_HEAD, data)
+        header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
+        _logger.debug(f"extracted values: {dict((k, f'0x{v:02x}') for k, v in header.items())}")
+        if tid == 0x5959 and pid == 0x1 and uid == 0x1 and fid in (0x1, 0x2):
             return header
-        return None
+        raise ValueError(
+            f"Invalid MBAP header: 0x{tid:04x} 0x{pid:04x} 0x{uid:02x}{fid:02x} != 0x5959 0x0001 0x010[12]"
+        )
 
-    def checkFrame(self) -> bool:
+    def check_frame(self) -> bool:
         """Check and decode the next frame. Returns operation success."""
-        if self.isFrameReady():
-            _logger.debug('Frame header should be ready')
-            header = self.decode_data()
-            if not header:
-                _logger.debug('Frame header is corrupt, resetting frame')
-                # self.resetFrame()
+        if self.is_frame_ready():
+            try:
+                header = self.parse_header(self._buffer)
+            except ValueError as e:
+                _logger.error(f'Resetting buffer: {e}')
+                self.reset_frame()
                 return False
-            self._fcode = header["fcode"]
+            # self._fcode = header["fcode"]
             self._length = header["length"]
 
-            # this short a message should not be possible?
-            if self._length < 2:
-                _logger.warning(f"unexpected short message length {self._length}, advancing frame")
-                self.advanceFrame()
-                return False
+            # # this short a message should not be possible?
+            # if self._length < 2:
+            #     _logger.warning(f"unexpected short message length {self._length}, advancing frame")
+            #     self.advanceFrame()
+            #     return False
             # we have at least a complete message, continue
-            if len(self._buffer) >= self._hsize + self._length - 2:
+            if len(self._buffer) >= self.FRAME_HEAD_SIZE + self._length - 2:
                 return True
-            _logger.debug(
-                f'Incomplete message: len(buffer)={len(self._buffer)} < hsize={self._hsize} + length={self._length} - 2'
-            )
         # we don't have enough of a message yet, try again later
         _logger.debug('Frame is not complete yet, needs more buffer data')
         return False
 
-    def advanceFrame(self):
+    def advance_frame(self):
         """Pop the front-most frame from the buffer."""
-        length = self._hsize + self._length - 2
-        _logger.debug(f'length {length} = {self._hsize} + {self._length} - 2, len(buffer) = {len(self._buffer)}')
-        self._buffer = self._buffer[length:]
-        _logger.debug(f"buffer is now {len(self._buffer)} bytes: {self._buffer}")
-        self._length = 0
+        self._buffer = self._buffer[self.FRAME_HEAD_SIZE + self._length - 2 :]
+        del self._length
 
-    def addToFrame(self, message: bytes) -> None:
+    def add_to_frame(self, message: bytes) -> None:
         """Add incoming data to the processing buffer."""
         self._buffer += message
 
-    def isFrameReady(self):
+    def is_frame_ready(self):
         """Check if we have enough data in the buffer to read at least a frame header."""
-        return len(self._buffer) >= self._hsize
+        return len(self._buffer) >= self.FRAME_HEAD_SIZE
 
-    def getFrame(self):
-        """Extract the next PDU frame from the buffer, discarding the leading MBAP header."""
-        return self._buffer[self._hsize - 1 : self._hsize + self._length]
+    def get_frame(self):
+        """Extract the next PDU frame from the buffer, removing the MBAP header except for the function id."""
+        return self._buffer[self.FRAME_HEAD_SIZE - 1 : self.FRAME_HEAD_SIZE + self._length]
 
-    def populateResult(self, result: ModbusPDU):
-        """Populates the Modbus PDU object's metadata attributes from the decoded MBAP headers."""
-        # no-op, there's nothing interesting in there
-
-    def processIncomingPacket(self, data: bytes, callback: Callable, *args, **kwargs) -> None:
+    def process_incoming_packet(self, data: bytes, callback: Callable) -> None:
         """Process an incoming packet.
 
         This takes in a bytestream from the underlying transport and adds it to the
@@ -212,60 +167,40 @@ class GivEnergyModbusFramer(ModbusFramer):
             data: Data from underlying transport.
             callback: Processor to receive newly-decoded PDUs.
         """
-        _logger.debug(f'Incoming {len(data)} bytes: {hexlify_packets(data)}')
-        self.addToFrame(data)
-        while True:
-            if not self.isFrameReady():
-                _logger.debug('No more frames waiting, exiting')
-                break
-            if not self.checkFrame():
-                _logger.debug("Frame check failed, dropping and resetting!!")
-                self.resetFrame()
-            else:
-                _logger.debug('Hand off to _process')
-                self._process(callback)
+        self.add_to_frame(data)
 
-    def _process(self, callback, error=False):
-        """Process incoming packets irrespective error condition."""
-        # if error:
-        #     _logger.error('In error _process')
-        #     data = self.getRawFrame()
-        #     result = self.decoder.decode(data)
-        #     if result.function_code < 0x80:
-        #         raise InvalidMessageReceivedException(result)
-        # else:
-        data = self.getFrame()
-        _logger.debug(f'getFrame() result: {hexlify(data)}')
-        result = self.decoder.decode(data)
-        if result is None:
-            _logger.warning('Unable to decode request')
-            # raise ModbusIOException("Unable to decode request")
+        # Try to extract a full frame from what's in the buffer
+        while self.is_frame_ready() and self.check_frame():
+            frame = self.get_frame()
+            try:
+                result = self.decoder.decode(frame)
+                _logger.debug(f'Decoded response {result}')
+                callback(result)
+            except ValueError as e:
+                if len(e.args) > 1:
+                    # Frame valid (PDU identifiable) but PDU itself has invalid/inconsistent data
+                    _logger.warning(f'Invalid PDU: {e.args[0]} {e.args[1]}')
+                else:
+                    _logger.warning(f'Unable to decode frame: {e} [{hexlify(frame)}]')
+            finally:
+                self.advance_frame()
+
+    def reset_frame(self):
+        """Reset a corrupted message buffer when the next frame can be identified."""
+        next_header_offset = self._buffer.find(b'\x59\x59\x00\x01', 1)
+        if next_header_offset > 0:
+            _logger.info(f'Found next frame at offset {next_header_offset}, advancing buffer.')
+            self._buffer = self._buffer[next_header_offset:]
         else:
-            _logger.info(f'Decoded response {result}')
+            _logger.info('No following frame found yet, doing nothing.')
+            # self._buffer = b""
 
-        self.populateResult(result)
-        self.advanceFrame()
-        callback(result)  # defer or push to a thread?
-
-    def resetFrame(self):
-        """Reset the entire message buffer."""
-        # try to mitigate corruption: if we can find the start of another MBAP header truncate the buffer
-        # only up to that point
-        header_offset = self._buffer.find(b'\x59\x59\x00\x01', 1)
-        if header_offset > 0:
-            _logger.info(
-                f'Found another MBAP header at offset {header_offset} in buffer {hexlify(self._buffer)}, '
-                'attempting recovery.'
-            )
-            self._buffer = self._buffer[header_offset:]
-        else:
-            self._buffer = b""
-        self._length = 0
-
-    def getRawFrame(self):
-        """Returns the complete buffer."""
-        return self._buffer
-
-    def buildPacket(self, message: ModbusPDU) -> bytes:
+    def build_packet(self, message: ModbusPDU) -> bytes:
         """Creates a finalised GivEnergy Modbus packet from a constant header plus the encoded PDU."""
-        return struct.pack(self.FRAME_HEAD, 0x5959, 0x0001, len(message.encode()) + 2, 0x01, 0x02) + message.encode()
+        # FIXME this is hacky
+        if isinstance(message, HeartbeatRequest) or isinstance(message, HeartbeatResponse):
+            fn_code = 0x01
+        else:
+            fn_code = 0x02
+        msg = message.encode()
+        return struct.pack(self.FRAME_HEAD, 0x5959, 0x0001, len(msg) + 2, 0x01, fn_code) + msg
