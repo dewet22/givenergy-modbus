@@ -45,7 +45,13 @@ class Type(Enum):
 
         if self == self.TIME:
             # Convert a BCD-encoded int into datetime.time."""
-            return time(hour=int(f'{value:04}'[:2]), minute=int(f'{value:04}'[2:]) % 60)
+            hour = int(f'{value:04}'[:2])
+            minute = int(f'{value:04}'[2:])
+            if hour == 24:
+                hour = 0
+            if minute == 60:
+                minute = 0
+            return time(hour, minute)
 
         if self == self.ASCII:
             return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
