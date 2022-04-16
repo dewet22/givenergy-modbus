@@ -3,8 +3,13 @@ from __future__ import annotations
 import json
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
-from givenergy_modbus.pdu import ModbusPDU, ReadHoldingRegistersResponse, ReadInputRegistersResponse, \
-    ReadRegistersResponse, WriteHoldingRegisterResponse
+from givenergy_modbus.pdu import (
+    ModbusPDU,
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+    ReadRegistersResponse,
+    WriteHoldingRegisterResponse,
+)
 
 
 class RegisterCache(dict):
@@ -44,10 +49,12 @@ class RegisterCache(dict):
             self[type_(k)] = v
 
     def update_from_pdu(self, pdu: ModbusPDU):
+        """Update internal state directly from a PDU Response message."""
         if isinstance(pdu, ReadRegistersResponse):
             if pdu.slave_address != self['slave_address']:
-                raise ValueError('Mismatched slave address: '
-                                 f'{pdu.slave_address} is not expected {self["slave_address"]}')
+                raise ValueError(
+                    'Mismatched slave address: ' f'{pdu.slave_address} is not expected {self["slave_address"]}'
+                )
             if isinstance(pdu, ReadHoldingRegistersResponse):
                 self.set_registers(HoldingRegister, pdu.to_dict())
             elif isinstance(pdu, ReadInputRegistersResponse):
@@ -77,8 +84,8 @@ class RegisterCache(dict):
                     ret[k] = v
             return ret
 
-        data = json.loads(data, object_hook=register_object_hook)
-        return cls(data['slave_address'], registers=data)
+        decoded_data = json.loads(data, object_hook=register_object_hook)
+        return cls(int(decoded_data['slave_address']), registers=decoded_data)
 
     def debug(self):
         """Dump the internal state of registers and their value representations."""

@@ -1,18 +1,18 @@
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
 import pytest
 
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up mypy
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.model.register import InputRegister, HoldingRegister
-from givenergy_modbus.pdu import ReadRegistersResponse, HeartbeatResponse
+from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.pdu import HeartbeatResponse, ReadRegistersResponse
+from tests import RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 from tests.model.test_register_cache import (  # noqa: F401
     register_cache,
     register_cache_battery_daytime_discharging,
     register_cache_inverter_daytime_discharging_with_solar_generation,
 )
-from tests import RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
 
 def test_plant(  # noqa: F811
@@ -25,10 +25,13 @@ def test_plant(  # noqa: F811
     assert p.json() == '{"register_caches": {"50": {"slave_address": 50}}, "number_batteries": 0}'
 
     p = Plant(number_batteries=2)
-    assert p.dict() == {'number_batteries': 2,
-                        'register_caches': {50: {'slave_address': 50}, 51: {'slave_address': 51}}}
-    assert p.json() == ('{"register_caches": {"50": {"slave_address": 50}, "51": {"slave_address": 51}}, '
-                        '"number_batteries": 2}')
+    assert p.dict() == {
+        'number_batteries': 2,
+        'register_caches': {50: {'slave_address': 50}, 51: {'slave_address': 51}},
+    }
+    assert p.json() == (
+        '{"register_caches": {"50": {"slave_address": 50}, "51": {"slave_address": 51}}, ' '"number_batteries": 2}'
+    )
 
     p = Plant(number_batteries=1)
     assert p.dict() == {'number_batteries': 1, 'register_caches': {50: {'slave_address': 50}}}
@@ -58,6 +61,7 @@ def test_plant(  # noqa: F811
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
 def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
+    """Ensure we can update a Plant from PDU Response messages."""
     p = Plant()
     assert p.dict() == {'number_batteries': 0, 'register_caches': {50: {'slave_address': 50}}}
     assert p.json() == '{"register_caches": {"50": {"slave_address": 50}}, "number_batteries": 0}'
@@ -79,5 +83,10 @@ def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
             assert len(d['register_caches'][50].keys()) == 61
             assert len(p.json()) > 800
         else:  # WriteHoldingRegisterResponse
-            assert p.dict() == {'number_batteries': 0, 'register_caches': {50: {HoldingRegister(35): 8764, 'slave_address': 50}}}
-            assert p.json() == '{"register_caches": {"50": {"slave_address": 50, "HR:35": 8764}}, "number_batteries": 0}'
+            assert p.dict() == {
+                'number_batteries': 0,
+                'register_caches': {50: {HoldingRegister(35): 8764, 'slave_address': 50}},
+            }
+            assert (
+                p.json() == '{"register_caches": {"50": {"slave_address": 50, "HR:35": 8764}}, "number_batteries": 0}'
+            )

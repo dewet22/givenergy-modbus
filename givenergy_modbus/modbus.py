@@ -52,6 +52,7 @@ class GivEnergyModbusBaseClient:
         raise NotImplementedError()
 
     def read_registers(self, kind: type[Register], base_address: int, register_count: int, **kwargs) -> dict[int, int]:
+        """Create and execute requests to read register ranges of the given type."""
         raise NotImplementedError()
 
     def read_holding_registers(self, address: int, count: int = 60, **kwargs) -> dict[int, int]:

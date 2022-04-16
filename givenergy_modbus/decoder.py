@@ -9,13 +9,13 @@ from pymodbus.interfaces import IModbusDecoder
 from givenergy_modbus.pdu import (
     HeartbeatRequest,
     ModbusPDU,
+    NullResponse,
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
-    NullResponse,
 )
 from givenergy_modbus.util import hexlify
 
