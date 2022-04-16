@@ -4,7 +4,7 @@ import json
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import ModbusPDU, ReadHoldingRegistersResponse, ReadInputRegistersResponse, \
-    ReadRegistersResponse
+    ReadRegistersResponse, WriteHoldingRegisterResponse
 
 
 class RegisterCache(dict):
@@ -45,14 +45,17 @@ class RegisterCache(dict):
 
     def update_from_pdu(self, pdu: ModbusPDU):
         if isinstance(pdu, ReadRegistersResponse):
-            if pdu.slave_address != self.slave_address:
-                raise ValueError(f'Mismatched slave address {pdu.slave_address} is not expected {self.slave_address}')
+            if pdu.slave_address != self['slave_address']:
+                raise ValueError('Mismatched slave address: '
+                                 f'{pdu.slave_address} is not expected {self["slave_address"]}')
             if isinstance(pdu, ReadHoldingRegistersResponse):
                 self.set_registers(HoldingRegister, pdu.to_dict())
             elif isinstance(pdu, ReadInputRegistersResponse):
                 self.set_registers(InputRegister, pdu.to_dict())
             else:
                 raise ValueError(f'Cannot handle response {pdu}')
+        elif isinstance(pdu, WriteHoldingRegisterResponse):
+            self.set_registers(HoldingRegister, {pdu.register: pdu.value})
 
     def to_json(self) -> str:
         """Return JSON representation of the register cache, suitable for using with `from_json()`."""
