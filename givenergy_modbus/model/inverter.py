@@ -60,7 +60,7 @@ class Inverter(GivEnergyBaseModel):
     num_mppt: int
     num_phases: int
     enable_ammeter: bool
-    p_grid_port_max_output: int
+    grid_port_max_power_output: int
     enable_60hz_freq_mode: bool
     inverter_modbus_address: int
     modbus_version: float

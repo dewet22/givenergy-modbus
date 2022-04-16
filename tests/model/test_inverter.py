@@ -101,7 +101,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'i_pv2': 0.03,
     'inverter_countdown': 0,
     'inverter_modbus_address': 17,
-    'inverter_model': Model.Hybrid,
+    'inverter_model': 'Hybrid',
     'inverter_module': 198706,
     'inverter_restart_delay_time': 30,
     'inverter_serial_number': 'SA1234G567',
@@ -116,8 +116,8 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'p_battery': 360,
     'p_eps_backup': 0,
     'p_grid_apparent': 554,
-    'p_grid_out': 21,
-    'p_grid_port_max_output': 6000,
+    'p_grid_out': -24295,
+    'grid_port_max_power_output': 6000,
     'p_inverter_out': 536,
     'p_load_demand': 515,
     'p_pv1': 117,
@@ -182,7 +182,7 @@ EXPECTED_INVERTER_DICT = {
     'enable_charge_target': True,
     'usb_device_inserted': 2,
     'select_arm_chip': False,
-    'p_grid_port_max_output': 6000,
+    'grid_port_max_power_output': 6000,
     'battery_power_mode': 1,
     'enable_60hz_freq_mode': False,
     'soc_force_adjust': 0,
@@ -325,7 +325,7 @@ EXPECTED_INVERTER_DICT = {
 def test_from_orm_empty():
     """Ensure an empty object cannot be instantiated/validated because of missing data for virtual attributes."""
     with pytest.raises(KeyError) as e:
-        Inverter.from_orm(RegisterCache())
+        Inverter.from_orm(RegisterCache(0x32))
     # inverter_serial_number virtual attribute depends on registers being loaded
     assert e.value.args[0] == HoldingRegister(13)
 
@@ -341,7 +341,9 @@ def test_from_orm(register_cache):  # noqa: F811
 def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):  # noqa: F811
     """Ensure we can instantiate an Inverter from actual register data."""
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
-    assert len(i.json()) == 3870
+    assert i.inverter_serial_number == 'SA1234G567'
+    assert i.inverter_model == Model.Hybrid
+    assert len(i.json()) == 3878
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
