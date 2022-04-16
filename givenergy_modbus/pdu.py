@@ -128,8 +128,12 @@ class ModbusPDU(ABC):
             )
 
         self._decode_function_data(decoder)
+        if decoder._pointer != len(decoder._payload):
+            _logger.error(f'Decoder did not fully decode {function_code} packet: decoded {decoder._pointer} bytes but '
+                          f'packet header specified length={len(decoder._payload)}. '
+                          f'Remaining bytes: [{decoder._payload[decoder._pointer:]}]')
         self._ensure_valid_state()
-        _logger.debug(f"Successfully decoded {len(data)} bytes")
+        _logger.debug(f"Successfully decoded {len(data)} bytes: {self}")
 
     def _encode_function_data(self) -> None:
         """Complete function-specific encoding of the remainder of the PDU message."""
