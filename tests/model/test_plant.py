@@ -5,7 +5,7 @@ import pytest
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up mypy
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.pdu import HeartbeatResponse, ReadRegistersResponse
 from tests import RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 from tests.model.test_register_cache import (  # noqa: F401
@@ -60,7 +60,7 @@ def test_plant(  # noqa: F811
 
 
 @pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
+def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes]):
     """Ensure we can update a Plant from PDU Response messages."""
     p = Plant()
     assert p.dict() == {'number_batteries': 0, 'register_caches': {50: {'slave_address': 50}}}
