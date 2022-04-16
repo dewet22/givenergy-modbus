@@ -3,16 +3,21 @@ from __future__ import annotations
 import json
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
+from givenergy_modbus.pdu import ModbusPDU, ReadHoldingRegistersResponse, ReadInputRegistersResponse, \
+    ReadRegistersResponse
 
 
 class RegisterCache(dict):
     """Holds a cache of Registers populated after querying a device."""
 
-    def __init__(self, registers=None) -> None:
+    _register_lookup_table: dict[str, Register]
+
+    def __init__(self, slave_address: int, registers=None) -> None:
         if registers is None:
             registers = {}
+        registers['slave_address'] = slave_address
         super().__init__(registers)
-        self._register_lookup_table: dict[str, Register] = {}
+        self._register_lookup_table = {}
         for k, v in InputRegister.__members__.items():
             self._register_lookup_table[k] = v
         for k, v in HoldingRegister.__members__.items():
@@ -38,6 +43,17 @@ class RegisterCache(dict):
         for k, v in registers.items():
             self[type_(k)] = v
 
+    def update_from_pdu(self, pdu: ModbusPDU):
+        if isinstance(pdu, ReadRegistersResponse):
+            if pdu.slave_address != self.slave_address:
+                raise ValueError(f'Mismatched slave address {pdu.slave_address} is not expected {self.slave_address}')
+            if isinstance(pdu, ReadHoldingRegistersResponse):
+                self.set_registers(HoldingRegister, pdu.to_dict())
+            elif isinstance(pdu, ReadInputRegistersResponse):
+                self.set_registers(InputRegister, pdu.to_dict())
+            else:
+                raise ValueError(f'Cannot handle response {pdu}')
+
     def to_json(self) -> str:
         """Return JSON representation of the register cache, suitable for using with `from_json()`."""
         return json.dumps(self)
@@ -51,11 +67,15 @@ class RegisterCache(dict):
             lookup = {'HR': HoldingRegister, 'IR': InputRegister}
             ret = {}
             for k, v in object_dict.items():
-                reg, idx = k.split(':', maxsplit=1)
-                ret[lookup[reg](int(idx))] = v
+                if k.find(':') > 0:
+                    reg, idx = k.split(':', maxsplit=1)
+                    ret[lookup[reg](int(idx))] = v
+                else:
+                    ret[k] = v
             return ret
 
-        return cls(registers=json.loads(data, object_hook=register_object_hook))
+        data = json.loads(data, object_hook=register_object_hook)
+        return cls(data['slave_address'], registers=data)
 
     def debug(self):
         """Dump the internal state of registers and their value representations."""

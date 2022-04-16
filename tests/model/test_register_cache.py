@@ -7,7 +7,8 @@ from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS  # type: ignore  # shut up mypy
 
 JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
-    '{"HR:0": 8193, "HR:1": 3, "HR:2": 2098, "HR:3": 513, "HR:4": 0, "HR:5": 50000, "HR:6": 3600, "HR:7": 1, '
+    '{"slave_address": 50, '
+    '"HR:0": 8193, "HR:1": 3, "HR:2": 2098, "HR:3": 513, "HR:4": 0, "HR:5": 50000, "HR:6": 3600, "HR:7": 1, '
     '"HR:8": 16967, "HR:9": 12594, "HR:10": 13108, "HR:11": 18229, "HR:12": 13879, "HR:13": 21313, "HR:14": 12594, '
     '"HR:15": 13108, "HR:16": 18229, "HR:17": 13879, "HR:18": 3005, "HR:19": 449, "HR:20": 0, "HR:21": 449, '
     '"HR:22": 2, "HR:23": 0, "HR:24": 32768, "HR:25": 30235, "HR:26": 6000, "HR:27": 1, "HR:28": 0, "HR:29": 0, '
@@ -34,7 +35,7 @@ JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
     '"IR:4": 0, "IR:5": 2363, "IR:6": 0, "IR:7": 3565, "IR:8": 3, "IR:9": 3, "IR:10": 27, "IR:11": 0, '
     '"IR:12": 263, "IR:13": 4996, "IR:14": 5, "IR:15": 2829, "IR:16": 9531, "IR:17": 4, "IR:18": 117, "IR:19": 6, '
     '"IR:20": 128, "IR:21": 0, "IR:22": 9, "IR:23": 0, "IR:24": 536, "IR:25": 0, "IR:26": 198, "IR:27": 0, '
-    '"IR:28": 1881, "IR:29": 0, "IR:30": 21, "IR:31": 0, "IR:32": 0, "IR:33": 6242, "IR:34": 0, "IR:35": 93, '
+    '"IR:28": 1881, "IR:29": 0, "IR:30": 41241, "IR:31": 0, "IR:32": 0, "IR:33": 6242, "IR:34": 0, "IR:35": 93, '
     '"IR:36": 91, "IR:37": 34, "IR:38": 0, "IR:39": 0, "IR:40": 0, "IR:41": 244, "IR:42": 515, "IR:43": 554, '
     '"IR:44": 38, "IR:45": 0, "IR:46": 1725, "IR:47": 0, "IR:48": 385, "IR:49": 1, "IR:50": 5173, "IR:51": 647, '
     '"IR:52": 360, "IR:53": 2351, "IR:54": 4992, "IR:55": 241, "IR:56": 160, "IR:57": 0, "IR:58": 257, '
@@ -64,7 +65,8 @@ JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
     '"IR:294": 0, "IR:295": 0, "IR:296": 0, "IR:297": 0, "IR:298": 0, "IR:299": 0}'
 )
 JSON_BATTERY_DAYTIME_DISCHARGING = (
-    '{"IR:60": 3232, "IR:61": 3237, "IR:62": 3235, "IR:63": 3232, "IR:64": 3235, "IR:65": 3229, "IR:66": 3237, '
+    '{"slave_address": 50, '
+    '"IR:60": 3232, "IR:61": 3237, "IR:62": 3235, "IR:63": 3232, "IR:64": 3235, "IR:65": 3229, "IR:66": 3237, '
     '"IR:67": 3233, "IR:68": 3238, "IR:69": 3237, "IR:70": 3235, "IR:71": 3235, "IR:72": 3235, "IR:73": 3235, '
     '"IR:74": 3240, "IR:75": 3238, "IR:76": 168, "IR:77": 157, "IR:78": 165, "IR:79": 146, "IR:80": 51832, '
     '"IR:81": 172, "IR:82": 0, "IR:83": 51816, "IR:84": 0, "IR:85": 19513, "IR:86": 0, "IR:87": 16000, "IR:88": 0, '
@@ -75,7 +77,8 @@ JSON_BATTERY_DAYTIME_DISCHARGING = (
     '"IR:119": 0}'
 )
 JSON_BATTERY_UNSURE = (
-    '{"IR:60": 0, "IR:61": 0, "IR:62": 0, "IR:63": 0, "IR:64": 0, "IR:65": 0, "IR:66": 0, "IR:67": 0, "IR:68": 0, '
+    '{"slave_address": 51, '
+    '"IR:60": 0, "IR:61": 0, "IR:62": 0, "IR:63": 0, "IR:64": 0, "IR:65": 0, "IR:66": 0, "IR:67": 0, "IR:68": 0, '
     '"IR:69": 0, "IR:70": 0, "IR:71": 0, "IR:72": 0, "IR:73": 0, "IR:74": 0, "IR:75": 0, "IR:76": 52, "IR:77": 0, '
     '"IR:78": 0, "IR:79": 0, "IR:80": 0, "IR:81": 256, "IR:82": 0, "IR:83": 0, "IR:84": 0, "IR:85": 0, "IR:86": 0, '
     '"IR:87": 0, "IR:88": 0, "IR:89": 0, "IR:90": 0, "IR:91": 0, "IR:92": 0, "IR:93": 0, "IR:94": 0, "IR:95": 0, '
@@ -84,7 +87,8 @@ JSON_BATTERY_UNSURE = (
     '"IR:113": 0, "IR:114": 0, "IR:115": 0, "IR:116": 0, "IR:117": 0, "IR:118": 0, "IR:119": 0}'
 )
 JSON_BATTERY_MISSING = (
-    '{"IR:60": 0, "IR:61": 0, "IR:62": 0, "IR:63": 0, "IR:64": 0, "IR:65": 0, "IR:66": 0, "IR:67": 0, "IR:68": 0, '
+    '{"slave_address": 52, '
+    '"IR:60": 0, "IR:61": 0, "IR:62": 0, "IR:63": 0, "IR:64": 0, "IR:65": 0, "IR:66": 0, "IR:67": 0, "IR:68": 0, '
     '"IR:69": 0, "IR:70": 0, "IR:71": 0, "IR:72": 0, "IR:73": 0, "IR:74": 0, "IR:75": 0, "IR:76": 0, "IR:77": 0, '
     '"IR:78": 0, "IR:79": 0, "IR:80": 0, "IR:81": 0, "IR:82": 0, "IR:83": 0, "IR:84": 0, "IR:85": 0, "IR:86": 0, '
     '"IR:87": 0, "IR:88": 0, "IR:89": 0, "IR:90": 0, "IR:91": 0, "IR:92": 0, "IR:93": 0, "IR:94": 0, "IR:95": 0, '
@@ -97,7 +101,7 @@ JSON_BATTERY_MISSING = (
 @pytest.fixture
 def register_cache() -> RegisterCache:
     """Ensure we can instantiate a RegisterCache and set registers in it."""
-    i = RegisterCache()
+    i = RegisterCache(0x32)
     i.set_registers(HoldingRegister, HOLDING_REGISTERS)
     i.set_registers(InputRegister, INPUT_REGISTERS)
     return i
@@ -131,6 +135,7 @@ def test_register_cache(register_cache):
     """Ensure we can instantiate a RegisterCache and set registers in it."""
     expected = {HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()}
     expected.update({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
+    expected['slave_address'] = 0x32
     assert register_cache == expected
 
 
@@ -177,6 +182,7 @@ def test_attributes(register_cache):
     assert register_cache.v_p_bus == 7.0
     assert register_cache.v_n_bus == 0.0
     assert register_cache.v_ac1 == 236.7
+    assert register_cache.p_grid_out == -342
 
     assert register_cache.e_pv1_day == 0.4
     assert register_cache.e_pv2_day == 0.5
@@ -197,8 +203,8 @@ def test_attributes(register_cache):
 def test_to_from_json_quick():
     """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
     registers = {HoldingRegister(1): 2, InputRegister(3): 4}
-    json = RegisterCache(registers=registers).to_json()
-    assert json == '{"HR:1": 2, "IR:3": 4}'
+    json = RegisterCache(0x32, registers=registers).to_json()
+    assert json == '{"HR:1": 2, "IR:3": 4, "slave_address": 50}'
     rc = RegisterCache.from_json(json)
     assert rc == registers
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
@@ -207,5 +213,5 @@ def test_to_from_json_quick():
 def test_to_from_json_actual_data():
     """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION)
-    assert len(rc) == 422
+    assert len(rc) == 423
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
