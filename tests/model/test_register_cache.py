@@ -215,3 +215,8 @@ def test_to_from_json_actual_data():
     rc = RegisterCache.from_json(JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION)
     assert len(rc) == 423
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
+
+
+@pytest.mark.skip('TODO')
+def test_update_from_pdu():
+    assert False
