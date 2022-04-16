@@ -1,7 +1,7 @@
 """Tests for GivEnergyModbusFramer."""
 import sys
 from typing import Any, Dict, Tuple
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from pymodbus.framer.socket_framer import ModbusSocketFramer
@@ -226,10 +226,11 @@ def test_request_wire_decoding(requests_framer, data: Tuple[str, Dict[str, Any],
     callback = MagicMock(return_value=None)
     requests_framer.process_incoming_packet(mbap_header + encoded_pdu, callback)
     if ex:
-        callback.assert_not_called()
+        assert callback.mock_calls == [call.__bool__(), call(None, mbap_header + encoded_pdu)]
     else:
         callback.assert_called_once()
-        fn_kwargs = vars(callback.mock_calls[0].args[0])
+        assert callback.mock_calls[0] == call.__bool__()
+        fn_kwargs = vars(callback.mock_calls[1].args[0])
         for (key, val) in pdu_fn_kwargs.items():
             assert fn_kwargs[key] == val
         assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
@@ -257,9 +258,10 @@ def test_client_wire_decoding(responses_framer, data: Tuple[str, Dict[str, Any],
     callback = MagicMock(return_value=None)
     responses_framer.process_incoming_packet(mbap_header + encoded_pdu, callback)
     callback.assert_called_once()
-    fn_kwargs = vars(callback.mock_calls[0].args[0])
+    assert callback.mock_calls[0] == call.__bool__()
+    fn_kwargs = vars(callback.mock_calls[1].args[0])
     for (key, val) in pdu_fn_kwargs.items():
-        assert fn_kwargs[key] == val
+        assert fn_kwargs[key] == val, f'`{key}` attribute must match'
     assert fn_kwargs["data_adapter_serial_number"] == "WF1234G567"
     if hasattr(fn_kwargs, 'slave_address'):
         assert fn_kwargs["slave_address"] == 0x32
