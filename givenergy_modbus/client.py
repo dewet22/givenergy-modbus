@@ -18,13 +18,13 @@ DEFAULT_SLEEP = 0.5
 
 
 class GivEnergyClient:
-    """Client for end users to conveniently access GivEnergy inverters."""
+    """Synchronous client for end users to conveniently access GivEnergy inverters."""
 
     def __init__(self, host: str, port: int = 8899, modbus_client: ModbusTcpClient = None):
         self.host = host
         self.port = port
         if modbus_client is None:
-            modbus_client = GivEnergyModbusTcpClient(host=self.host, port=self.port)
+            modbus_client = GivEnergyModbusSyncClient(host=self.host, port=self.port)
         self.modbus_client = modbus_client
 
     def __repr__(self):
@@ -54,12 +54,15 @@ class GivEnergyClient:
             inverter_registers[HoldingRegister] = [0, 60, 120]
 
         self.fetch_register_pages(
-            inverter_registers, plant.inverter_rc, slave_address=0x32, sleep_between_queries=sleep_between_queries
+            inverter_registers,
+            plant.register_caches[0x32],
+            slave_address=0x32,
+            sleep_between_queries=sleep_between_queries,
         )
-        for i, battery_rc in enumerate(plant.batteries_rcs):
+        for i in range(plant.number_batteries):
             self.fetch_register_pages(
                 {InputRegister: [60]},
-                battery_rc,
+                plant.register_caches[0x32 + i],
                 slave_address=0x32 + i,
                 sleep_between_queries=sleep_between_queries,
             )
