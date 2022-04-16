@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ModbusPDU
@@ -77,14 +77,9 @@ class GivEnergyModbusFramer:
         ModbusIOException: When the identified function decoder fails to decode a message.
     """
 
-    if TYPE_CHECKING:
-        from typing import Final
-
-        FRAME_HEAD: Final[str] = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
-        FRAME_HEAD_SIZE: Final[int] = struct.calcsize(FRAME_HEAD)
-    else:  # FIXME remove when py37 is not supported any more
-        FRAME_HEAD: str = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
-        FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
+    # TODO add Final[..] when py37 is not supported any more
+    FRAME_HEAD: str = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
+    FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
 
     _buffer: bytes = b""
     _length: int
@@ -115,25 +110,18 @@ class GivEnergyModbusFramer:
                 _logger.error(f'Resetting buffer: {e}')
                 self.reset_frame()
                 return False
-            # self._fcode = header["fcode"]
             self._length = header["length"]
-
-            # # this short a message should not be possible?
-            # if self._length < 2:
-            #     _logger.warning(f"unexpected short message length {self._length}, advancing frame")
-            #     self.advanceFrame()
-            #     return False
-            # we have at least a complete message, continue
             if len(self._buffer) >= self.FRAME_HEAD_SIZE + self._length - 2:
                 return True
         # we don't have enough of a message yet, try again later
         _logger.debug('Frame is not complete yet, needs more buffer data')
         return False
 
-    def advance_frame(self):
+    def advance_frame(self) -> bytes:
         """Pop the front-most frame from the buffer."""
+        old_frame = self._buffer[: self.FRAME_HEAD_SIZE + self._length - 2]
         self._buffer = self._buffer[self.FRAME_HEAD_SIZE + self._length - 2 :]
-        del self._length
+        return old_frame
 
     def add_to_frame(self, message: bytes) -> None:
         """Add incoming data to the processing buffer."""
@@ -147,7 +135,7 @@ class GivEnergyModbusFramer:
         """Extract the next PDU frame from the buffer, removing the MBAP header except for the function id."""
         return self._buffer[self.FRAME_HEAD_SIZE - 1: self.FRAME_HEAD_SIZE + self._length - 2]
 
-    def process_incoming_packet(self, data: bytes, callback: Callable) -> None:
+    def process_incoming_packet(self, data: bytes, callback: Callable[[ModbusPDU, bytes], None]) -> None:
         """Process an incoming packet.
 
         This takes in a bytestream from the underlying transport and adds it to the
@@ -172,10 +160,11 @@ class GivEnergyModbusFramer:
         # Try to extract a full frame from what's in the buffer
         while self.is_frame_ready() and self.check_frame():
             frame = self.get_frame()
+            result = None
             try:
+                _logger.debug(f'Decoding frame {hexlify(frame)}')
                 result = self.decoder.decode(frame)
                 _logger.debug(f'Decoded response {result}')
-                callback(result)
             except ValueError as e:
                 if len(e.args) > 1:
                     # Frame valid (PDU identifiable) but PDU itself has invalid/inconsistent data
@@ -183,7 +172,9 @@ class GivEnergyModbusFramer:
                 else:
                     _logger.warning(f'Unable to decode frame: {e} [{hexlify(frame)}]')
             finally:
-                self.advance_frame()
+                raw_frame = self.advance_frame()
+                if callback:
+                    callback(result, raw_frame)
 
     def reset_frame(self):
         """Reset a corrupted message buffer when the next frame can be identified."""
