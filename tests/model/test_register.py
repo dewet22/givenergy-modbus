@@ -211,5 +211,6 @@ def test_render_power_factor(scaling: float):
 
 
 def test_random_sanity_checks():
+    """Just a few random sanity checks."""
     assert Type.INT16.convert(98, 1) == 98
     assert Type.INT16.convert(64786, 1) == -750

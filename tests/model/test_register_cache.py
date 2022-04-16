@@ -219,4 +219,5 @@ def test_to_from_json_actual_data():
 
 @pytest.mark.skip('TODO')
 def test_update_from_pdu():
+    """Ensure we can update our internal state correctly from a given PDU message."""
     assert False
