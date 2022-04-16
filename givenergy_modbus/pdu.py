@@ -438,18 +438,12 @@ class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC
     def _encode_function_data(self):
         self.builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
         self.builder.add_16bit_uint(self.register)
-        self.builder.add_16bit_uint(0x0001)
         self.builder.add_16bit_uint(self.value)
 
     def _decode_function_data(self, decoder):
         """Decode response PDU message and populate instance attributes."""
-        self.inverter_serial_number = decoder.decode_string(10).decode(
-            "ascii",
-        )
+        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
         self.register = decoder.decode_16bit_uint()
-        num_values = decoder.decode_16bit_uint()
-        if num_values != 1:
-            raise ValueError(f'{num_values} values returned, should be 1', self)
         self.value = decoder.decode_16bit_uint()
         self.check = decoder.decode_16bit_uint()
 
