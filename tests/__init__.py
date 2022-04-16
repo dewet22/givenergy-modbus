@@ -115,17 +115,16 @@ RESPONSE_PDU_MESSAGES = [
         {
             "check": 0x8e4b,
             "inverter_serial_number": 'SA1234G567',
-            "register": 0x3223,
+            "register": 0x0023,
             "value": 0x223C,
             "data_adapter_serial_number": 'WF1234G567',
             "padding": 0x8A,
             "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x28\x01\x02',  # 8b MBAP header
+        b'YY\x00\x01\x00\x26\x01\x02',  # 8b MBAP header
 
         b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x06' b'SA1234G567'
-        b'\x32\x23'  # register
-        b'\x00\x01'  # count (always 1 for this fn)
+        b'\x00\x23'  # register
         b'\x22\x3c'  # value readback
         b"\x8e\x4b",  # 2b crc
     ),
