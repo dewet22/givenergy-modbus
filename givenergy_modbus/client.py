@@ -7,7 +7,7 @@ from typing import Mapping, Sequence
 
 from pymodbus.client.sync import ModbusTcpClient
 
-from givenergy_modbus.modbus import GivEnergyModbusTcpClient
+from givenergy_modbus.modbus import GivEnergyModbusSyncClient
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore
 from givenergy_modbus.model.register_cache import RegisterCache
