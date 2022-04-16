@@ -50,8 +50,7 @@ def test_refresh_plant_without_batteries(client):  # noqa: F811
         ],
     )
 
-    assert p.inverter_rc == {}
-    assert p.batteries_rcs == []
+    assert p.register_caches == {50: {'slave_address': 50}}
 
     client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
 
@@ -80,7 +79,7 @@ def test_refresh_plant_without_batteries(client):  # noqa: F811
         num_mppt=2,
         num_phases=1,
         enable_ammeter=True,
-        p_grid_port_max_output=6000,
+        grid_port_max_power_output=6000,
         enable_60hz_freq_mode=False,
         inverter_modbus_address=17,
         modbus_version=1.4,
@@ -264,8 +263,7 @@ def test_refresh_plant_with_batteries(client):  # noqa: F811
         ],
     )
 
-    assert p.inverter_rc == {}
-    assert p.batteries_rcs == [{}, {}, {}]
+    assert p.register_caches == {50: {'slave_address': 50}, 51: {'slave_address': 51}, 52: {'slave_address': 52}}
 
     client.refresh_plant(p, full_refresh=True, sleep_between_queries=0)
 

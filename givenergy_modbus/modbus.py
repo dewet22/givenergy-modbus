@@ -7,7 +7,7 @@ from pymodbus.exceptions import ModbusIOException
 
 from givenergy_modbus.decoder import GivEnergyResponseDecoder
 from givenergy_modbus.framer import GivEnergyModbusFramer
-from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore
 from givenergy_modbus.pdu import (
     ModbusPDU,
     ReadHoldingRegistersRequest,
@@ -22,8 +22,8 @@ from givenergy_modbus.transaction import GivEnergyTransactionManager
 _logger = logging.getLogger(__package__)
 
 
-class GivEnergyModbusTcpClient(ModbusTcpClient):
-    """GivEnergy Modbus Client implementation.
+class GivEnergyModbusBaseClient:
+    """GivEnergy Modbus Client base class.
 
     This class ties together all the pieces to create a functional client that can converse with a
     GivEnergy Modbus implementation over TCP. It exists as a thin wrapper around the ModbusTcpClient
@@ -33,15 +33,42 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
     We also provide a few convenience methods to read and write registers.
     """
 
-    def __init__(self, **kwargs):
+    host: str
+    port: int
+
+    def __init__(self, host, **kwargs):
         kwargs.setdefault("port", 8899)  # GivEnergy default instead of the standard 502
-        super().__init__(**kwargs)
+        self.host = host
+        self.port = kwargs['port']
         self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder())
         self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
         self.timeout = 2
 
     def __repr__(self):
-        return f"GivEnergyModbusTcpClient({self.host}:{self.port}): timeout={self.timeout})"
+        return f"{self.__class__.__name__}({self.host}:{self.port}): timeout={self.timeout})"
+
+    def execute(self, request: ModbusPDU = None) -> ModbusPDU | None:
+        """Send the given PDU to the remote device and return any PDU returned in response."""
+        raise NotImplementedError()
+
+    def read_registers(self, kind: type[Register], base_address: int, register_count: int, **kwargs) -> dict[int, int]:
+        raise NotImplementedError()
+
+    def read_holding_registers(self, address: int, count: int = 60, **kwargs) -> dict[int, int]:
+        """Convenience method to help read out holding registers."""
+        return self.read_registers(HoldingRegister, address, count, **kwargs)
+
+    def read_input_registers(self, address: int, count: int = 60, **kwargs) -> dict[int, int]:
+        """Convenience method to help read out input registers."""
+        return self.read_registers(InputRegister, address, count, **kwargs)
+
+    def write_holding_register(self, register: HoldingRegister, value: int) -> None:
+        """Write a value to a single holding register."""
+        raise NotImplementedError()
+
+
+class GivEnergyModbusSyncClient(GivEnergyModbusBaseClient, ModbusTcpClient):
+    """GivEnergy Modbus synchronous client implementation."""
 
     def execute(self, request: ModbusPDU = None) -> ModbusPDU | None:
         """Send the given PDU to the remote device and return any PDU returned in response."""
@@ -61,22 +88,17 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
             self.close()
             return None
 
-    def read_registers(
-        self, kind: type[HoldingRegister | InputRegister], base_address: int, register_count: int, **kwargs
-    ) -> dict[int, int]:
+    def read_registers(self, kind: type[Register], base_address: int, register_count: int, **kwargs) -> dict[int, int]:
         """Read out registers from the correct location depending on type specified."""
-        # match types of register to their request/response types
-        t_req, t_res = {
-            HoldingRegister: (ReadHoldingRegistersRequest, ReadHoldingRegistersResponse),
-            InputRegister: (ReadInputRegistersRequest, ReadInputRegistersResponse),
-        }[kind]
+        if kind is HoldingRegister:
+            t_req, t_res = ReadHoldingRegistersRequest, ReadHoldingRegistersResponse
+        elif kind is InputRegister:
+            t_req, t_res = ReadInputRegistersRequest, ReadInputRegistersResponse
+        else:
+            _logger.error(f'Unknown type of Register specified: {kind}')
+            return {}
 
-        request = t_req(base_register=base_address, register_count=register_count, **kwargs)
-        _logger.debug(
-            f'Attempting to read {t_req}s #{request.base_register}-'
-            f'{request.base_register + request.register_count} from device {hex(request.slave_address)}...'
-        )
-        response = self.execute(request)
+        response = self.execute(t_req(base_register=base_address, register_count=register_count, **kwargs))
         if response and isinstance(response, t_res):
             if response.base_register != base_address:
                 _logger.error(
@@ -94,14 +116,6 @@ class GivEnergyModbusTcpClient(ModbusTcpClient):
         _logger.error(f'Did not receive expected response type: {t_res.__name__} != {response.__class__.__name__}')
         # FIXME this contract needs improving
         return {}
-
-    def read_holding_registers(self, address, count=1, **kwargs) -> dict[int, int]:
-        """Convenience method to help read out holding registers."""
-        return self.read_registers(HoldingRegister, address, count, **kwargs)
-
-    def read_input_registers(self, address, count=1, **kwargs) -> dict[int, int]:
-        """Convenience method to help read out input registers."""
-        return self.read_registers(InputRegister, address, count, **kwargs)
 
     def write_holding_register(self, register: HoldingRegister, value: int) -> None:
         """Write a value to a single holding register."""
