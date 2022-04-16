@@ -15,6 +15,7 @@ from givenergy_modbus.pdu import (
     ReadInputRegistersResponse,
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
+    NullResponse,
 )
 from givenergy_modbus.util import hexlify
 
@@ -87,6 +88,7 @@ class GivEnergyResponseDecoder(GivEnergyDecoder):
     """Factory class to decode GivEnergy Response PDU messages. Typically used by clients to process responses."""
 
     _function_table = [
+        NullResponse,
         ReadHoldingRegistersResponse,
         ReadInputRegistersResponse,
         WriteHoldingRegisterResponse,

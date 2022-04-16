@@ -81,7 +81,7 @@ def test_decode_wiring(mocked_decoder):
 
 
 IMPLEMENTED_REQUEST_FUNCTIONS = {3, 4, 6}
-IMPLEMENTED_RESPONSE_FUNCTIONS = {3, 4, 6}
+IMPLEMENTED_RESPONSE_FUNCTIONS = {0, 3, 4, 6}
 
 
 def test_response_decoder():

@@ -201,6 +201,25 @@ class ModbusResponse(ModbusPDU, pymodbus_pdu.ModbusResponse, ABC):
 
 
 #################################################################################
+class NullResponse(ModbusResponse):
+    """Concrete PDU implementation for handling function #0/Null Response messages."""
+
+    function_code = 0
+
+    def _encode_function_data(self) -> None:
+        pass
+
+    def _decode_function_data(self, decoder: BinaryPayloadDecoder) -> None:
+        decoder.skip_bytes(len(decoder._payload) - 20)
+
+    def _calculate_function_data_size(self) -> int:
+        pass
+
+    # def _calculate_function_data_size(self) -> int:
+    #     raise NotImplementedError()
+
+
+#################################################################################
 class ReadRegistersRequest(ModbusRequest, RegisterRangeCommand, ABC):
     """Handles all messages that request a range of registers."""
 
