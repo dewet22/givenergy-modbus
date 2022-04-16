@@ -145,7 +145,7 @@ class GivEnergyModbusFramer:
 
     def get_frame(self):
         """Extract the next PDU frame from the buffer, removing the MBAP header except for the function id."""
-        return self._buffer[self.FRAME_HEAD_SIZE - 1 : self.FRAME_HEAD_SIZE + self._length]
+        return self._buffer[self.FRAME_HEAD_SIZE - 1: self.FRAME_HEAD_SIZE + self._length - 2]
 
     def process_incoming_packet(self, data: bytes, callback: Callable) -> None:
         """Process an incoming packet.
