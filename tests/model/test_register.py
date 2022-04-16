@@ -208,3 +208,8 @@ def test_render_power_factor(scaling: float):
     assert Type.POWER_FACTOR.convert(10000, scaling) == 0.0
     assert Type.POWER_FACTOR.convert(15000, scaling) == 0.5
     assert Type.POWER_FACTOR.convert(20000, scaling) == 1.0
+
+
+def test_random_sanity_checks():
+    assert Type.INT16.convert(98, 1) == 98
+    assert Type.INT16.convert(64786, 1) == -750

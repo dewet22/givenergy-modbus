@@ -193,7 +193,7 @@ class HoldingRegister(Register):
     SELECT_ARM_CHIP = (23, {'type': Type.BOOL})  # False: DSP selected
     VARIABLE_ADDRESS = 24
     VARIABLE_VALUE = (25, {'type': Type.INT16})
-    P_GRID_PORT_MAX_OUTPUT = (26, {'unit': Unit.POWER_W})  # Export limit
+    GRID_PORT_MAX_POWER_OUTPUT = (26, {'unit': Unit.POWER_W})  # Export limit
     BATTERY_POWER_MODE = (27, {'write_safe': True})  # 0:export/max 1:demand/self-consumption
     ENABLE_60HZ_FREQ_MODE = (28, {'type': Type.BOOL})  # 0:50hz
     # battery calibration stages (0:off  1:start/discharge  2:set lower limit  3:charge
