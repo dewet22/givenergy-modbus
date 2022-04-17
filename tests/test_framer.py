@@ -61,6 +61,7 @@ def test_framer_constructor():
     assert framer.FRAME_HEAD_SIZE == 0x08
     assert framer._buffer == b""
     assert not hasattr(framer, '_length')
+    assert framer.buffer_length == 0
     assert framer.decoder == client_decoder
     client_decoder.assert_not_called()
 
@@ -181,9 +182,11 @@ def test_check_frame(requests_framer, data: Tuple[bytes, bool, bool, int, bytes]
 
     assert requests_framer.is_frame_ready() is False
     assert requests_framer.check_frame() is False
+    assert requests_framer.buffer_length == 0
     assert not hasattr(requests_framer, '_length')
 
     requests_framer.add_to_frame(input_buffer)
+    assert requests_framer.buffer_length == len(input_buffer)
 
     if is_valid_frame:
         assert requests_framer.check_frame() == is_complete_frame
