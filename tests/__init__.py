@@ -84,17 +84,18 @@ RESPONSE_PDU_MESSAGES = [
     (   # data1
         "ReadHoldingRegistersResponse",
         {
-            "check": 0x8e4b,
+            "check": 0x153d,
             "inverter_serial_number": 'SA1234G567',
             "base_register": 0x0000,
             "register_count": 0x003C,
             "register_values": [
-                0x0001, 0x0cb0, 0x0c78, 0x0f19, 0x0000, 0x095b, 0x0000, 0x05c5, 0x0001, 0x0002,
-                0x0021, 0x0000, 0x008c, 0x138a, 0x0005, 0x0aa9, 0x2b34, 0x0008, 0x0041, 0x0008,
-                0x003f, 0x0000, 0x0005, 0x0000, 0x0278, 0x0000, 0x0071, 0x0000, 0x02ff, 0x0000,
-                0xff75, 0x0000, 0x0000, 0x0bf5, 0x0000, 0x0057, 0x0054, 0x0049, 0x0000, 0x0000,
-                0x0000, 0x0124, 0x0311, 0x0288, 0x004e, 0x0000, 0x02f7, 0x0000, 0x00b6, 0x0001,
-                0x139e, 0x0467, 0x023c, 0x094b, 0x1389, 0x0121, 0x00be, 0x0000, 0x00f8, 0x0011],
+                0x2001, 0x0003, 0x0832, 0x0201, 0x0000, 0xc350, 0x0e10, 0x0001, 0x4247, 0x3132,
+                0x3334, 0x4735, 0x3637, 0x5341, 0x3132, 0x3334, 0x4735, 0x3637, 0x0bbd, 0x01c1,
+                0x0000, 0x01c1, 0x0002, 0x0000, 0x8000, 0x761b, 0x1770, 0x0001, 0x0000, 0x0000,
+                0x0011, 0x0000, 0x0004, 0x0007, 0x008c, 0x0016, 0x0004, 0x0011, 0x0013, 0x0001,
+                0x0001, 0x0001, 0x0002, 0x0000, 0x0000, 0x0000, 0x0065, 0x0001, 0x0000, 0x0000,
+                0x0064, 0x0000, 0x0000, 0x0001, 0x0001, 0x00a0, 0x0640, 0x02bc, 0x0001, 0x0000,
+            ],
             "data_adapter_serial_number": 'WF1234G567',
             "padding": 0x008A,
             "slave_address": 0x0032,
@@ -104,11 +105,16 @@ RESPONSE_PDU_MESSAGES = [
         # 154b total payload, starting with 34b of fields:
         b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x03' b'SA1234G567' b'\x00\x00' b'\x00<'
         # 4x60b chunk, containing register values:
-        b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'
-        b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
-        b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
-        b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
-        b"\x8e\x4b",  # 2b crc
+        b' \x01\x00\x03\x082\x02\x01\x00\x00\xc3P\x0e\x10\x00\x01BG1234G567SA1234G567\x0b\xbd\x01\xc1\x00\x00\x01'
+        b'\xc1\x00\x02\x00\x00\x80\x00v\x1b\x17p\x00\x01\x00\x00\x00\x00\x00\x11\x00\x00\x00\x04\x00\x07\x00\x8c'
+        b'\x00\x16\x00\x04\x00\x11\x00\x13\x00\x01\x00\x01\x00\x01\x00\x02\x00\x00\x00\x00\x00\x00\x00e\x00\x01\x00'
+        b'\x00\x00\x00\x00d\x00\x00\x00\x00\x00\x01\x00\x01\x00\xa0\x06@\x02\xbc\x00\x01\x00\x00'
+        b'\x15=',  # 2b crc
+        # b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'
+        # b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
+        # b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
+        # b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
+        # b"\x8e\x4b",  # 2b crc
     ),
     (   # data2
         "WriteHoldingRegisterResponse",

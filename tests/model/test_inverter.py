@@ -116,7 +116,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'p_battery': 360,
     'p_eps_backup': 0,
     'p_grid_apparent': 554,
-    'p_grid_out': -24295,
+    'p_grid_out': 21,
     'grid_port_max_power_output': 6000,
     'p_inverter_out': 536,
     'p_load_demand': 515,
@@ -343,7 +343,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 3878
+    assert len(i.json()) == 3874
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
