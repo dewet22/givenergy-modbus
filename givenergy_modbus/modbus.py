@@ -17,7 +17,6 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.transaction import GivEnergyTransactionManager
 
 _logger = logging.getLogger(__package__)
 
@@ -41,7 +40,6 @@ class GivEnergyModbusBaseClient:
         self.host = host
         self.port = kwargs['port']
         self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder())
-        self.transaction = GivEnergyTransactionManager(client=self, **kwargs)
         self.timeout = 2
 
     def __repr__(self):
