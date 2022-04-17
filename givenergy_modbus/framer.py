@@ -195,3 +195,8 @@ class GivEnergyModbusFramer:
             fn_code = 0x02
         msg = message.encode()
         return struct.pack(self.FRAME_HEAD, 0x5959, 0x0001, len(msg) + 2, 0x01, fn_code) + msg
+
+    @property
+    def buffer_length(self):
+        """Returns the current length of the bytestream buffer."""
+        return len(self._buffer)
