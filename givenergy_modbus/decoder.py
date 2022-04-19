@@ -17,7 +17,6 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -66,7 +65,7 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
             fn_code = data[19]
             response = self.lookupPduClass(fn_code)
             if response:
-                _logger.debug(f"About to decode data [{hexlify(data)}]")
+                _logger.debug(f"About to decode data [{data.hex()}]")
                 r = response(function_code=fn_code)
                 r.decode(data)
                 return r
