@@ -43,18 +43,27 @@ class RegisterCache(dict):
             return register_l.convert(val_h + val_l)
         raise KeyError(item)
 
-    def set_registers(self, type_: type[Register], registers: dict[int, int]):
+    def set_registers(self, register_type: type[Register], registers: dict[int, int]):
         """Update internal holding register cache with given values."""
+        # loop through all incoming registers to see if any fail to convert – in that case discard entire update
+        errors = []
         for k, v in registers.items():
-            self[type_(k)] = v
+            r = register_type(k)
+            try:
+                r.convert(v)
+            except ValueError as e:
+                errors.append(f"{r}/{r.name}:{e}")
+        if errors:
+            raise ValueError(f'{len(errors)} invalid {register_type.__name__} values ({", ".join(errors)})')
+
+        for k, v in registers.items():
+            self[register_type(k)] = v
 
     def update_from_pdu(self, pdu: ModbusPDU):
         """Update internal state directly from a PDU Response message."""
         if isinstance(pdu, ReadRegistersResponse):
             if pdu.slave_address != self['slave_address']:
-                raise ValueError(
-                    'Mismatched slave address: ' f'{pdu.slave_address} is not expected {self["slave_address"]}'
-                )
+                raise ValueError(f'Mismatched slave address: 0x{pdu.slave_address:02x}!=0x{self["slave_address"]:02x}')
             if isinstance(pdu, ReadHoldingRegistersResponse):
                 self.set_registers(HoldingRegister, pdu.to_dict())
             elif isinstance(pdu, ReadInputRegistersResponse):
