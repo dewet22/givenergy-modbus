@@ -8,7 +8,6 @@ from pymodbus.interfaces import IModbusDecoder
 from pymodbus.pdu import ModbusPDU
 
 from givenergy_modbus.pdu import HeartbeatRequest, HeartbeatResponse
-from givenergy_modbus.util import hexlify
 
 _logger = logging.getLogger(__package__)
 
@@ -91,7 +90,7 @@ class GivEnergyModbusFramer:
     def parse_header(cls, buffer: bytes) -> dict:
         """Tries to extract the MBAP frame header and performs a few sanity checks."""
         data = buffer[: cls.FRAME_HEAD_SIZE]
-        _logger.debug(f"extracting MBAP header from [{hexlify(data)}] using format {cls.FRAME_HEAD}")
+        _logger.debug(f"extracting MBAP header from [{data.hex()}] using format {cls.FRAME_HEAD}")
         tid, pid, len_, uid, fid = struct.unpack(cls.FRAME_HEAD, data)
         header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
         _logger.debug(f"extracted values: {dict((k, f'0x{v:02x}') for k, v in header.items())}")
@@ -162,7 +161,7 @@ class GivEnergyModbusFramer:
             frame = self.get_frame()
             result = None
             try:
-                _logger.debug(f'Decoding frame {hexlify(frame)}')
+                _logger.debug(f'Decoding frame {frame.hex()}')
                 result = self.decoder.decode(frame)
                 _logger.debug(f'Decoded response {result}')
             except ValueError as e:
@@ -170,7 +169,7 @@ class GivEnergyModbusFramer:
                     # Frame valid (PDU identifiable) but PDU itself has invalid/inconsistent data
                     _logger.warning(f'Invalid PDU: {e.args[0]} {e.args[1]}')
                 else:
-                    _logger.warning(f'Unable to decode frame: {e} [{hexlify(frame)}]')
+                    _logger.warning(f'Unable to decode frame: {e} [{frame.hex()}]')
             finally:
                 raw_frame = self.advance_frame()
                 if callback:
