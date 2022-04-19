@@ -20,7 +20,7 @@ from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 def test_str():
     """Test we can represent an instance of PDUs nicely."""
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        "_/ReadRegistersRequest({base_register: 0x0003, register_count: 0x0006})"
+        "_/ReadRegistersRequest(base_register=3 register_count=6)"
     )
     assert str(ModbusRequest(foo=1)) == "_/ModbusRequest()"
     assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
@@ -28,17 +28,41 @@ def test_str():
     assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        "3/ReadHoldingRegistersRequest({base_register: 0x0000, register_count: 0x003c})"
+        "3/ReadHoldingRegistersRequest(base_register=0 register_count=60)"
     )
     assert str(ReadHoldingRegistersRequest) == "<class 'givenergy_modbus.pdu.ReadHoldingRegistersRequest'>"
 
-    assert str(WriteHoldingRegisterRequest(foo=1)) == ("6/WriteHoldingRegisterRequest({register: None, value: None})")
+    assert str(WriteHoldingRegisterRequest(foo=1)) == "6/WriteHoldingRegisterRequest(register=? value=?)"
     assert str(WriteHoldingRegisterRequest) == "<class 'givenergy_modbus.pdu.WriteHoldingRegisterRequest'>"
 
-    assert str(HeartbeatRequest(foo=1)) == "_/HeartbeatRequest({data_adapter_type: 0x0000})"
+    assert str(HeartbeatRequest(foo=1)) == "_/HeartbeatRequest(data_adapter_type=0)"
     assert str(HeartbeatRequest) == "<class 'givenergy_modbus.pdu.HeartbeatRequest'>"
-    assert str(HeartbeatResponse(foo=1)) == "_/HeartbeatResponse({data_adapter_type: 0x0000})"
+    assert str(HeartbeatResponse(foo=1)) == "_/HeartbeatResponse(data_adapter_type=0)"
     assert str(HeartbeatResponse) == "<class 'givenergy_modbus.pdu.HeartbeatResponse'>"
+
+    assert len(REQUEST_PDU_MESSAGES) == 6
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[0][0])(**REQUEST_PDU_MESSAGES[0][1])
+    assert str(pdu) == '4/ReadInputRegistersRequest(base_register=16 register_count=6)'
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[1][0])(**REQUEST_PDU_MESSAGES[1][1])
+    assert str(pdu) == '3/ReadHoldingRegistersRequest(base_register=20817 register_count=2000)'
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[2][0])(**REQUEST_PDU_MESSAGES[2][1])
+    assert str(pdu) == '3/ReadHoldingRegistersRequest(base_register=20817 register_count=2000)'
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[3][0])(**REQUEST_PDU_MESSAGES[3][1])
+    assert str(pdu) == '6/WriteHoldingRegisterRequest(register=20817 value=2000)'
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[4][0])(**REQUEST_PDU_MESSAGES[4][1])
+    assert str(pdu) == '6/WriteHoldingRegisterRequest(register=20 value=1)'
+    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[5][0])(**REQUEST_PDU_MESSAGES[5][1])
+    assert str(pdu) == '_/HeartbeatRequest(data_adapter_type=1)'
+
+    assert len(RESPONSE_PDU_MESSAGES) == 4
+    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[0][0])(**RESPONSE_PDU_MESSAGES[0][1])
+    assert str(pdu) == '4/ReadInputRegistersResponse(slave_address=0x32 base_register=0 register_count=60)'
+    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[1][0])(**RESPONSE_PDU_MESSAGES[1][1])
+    assert str(pdu) == '3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0 register_count=60)'
+    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[2][0])(**RESPONSE_PDU_MESSAGES[2][1])
+    assert str(pdu) == '6/WriteHoldingRegisterResponse(slave_address=0x32 register=35 value=8764)'
+    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[3][0])(**RESPONSE_PDU_MESSAGES[3][1])
+    assert str(pdu) == '_/HeartbeatResponse(data_adapter_type=32)'
 
 
 def test_class_equivalence():
