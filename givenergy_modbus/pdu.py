@@ -11,30 +11,34 @@ from pymodbus import pdu as pymodbus_pdu
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
 
-from givenergy_modbus.util import friendly_class_name, hexxed
-
 _logger = logging.getLogger(__package__)
 
 
-class RegisterRangeCommand:
-    """Mixin for commands that specify base register and register count semantics."""
+class PayloadDecoder(BinaryPayloadDecoder):
+    """Provide a few convenience shortcuts to the provided BinaryPayloadDecoder."""
 
-    base_register: int
-    register_count: int
-    error: bool
+    def __init__(self, payload):
+        super().__init__(payload, byteorder=Endian.Big, wordorder=Endian.Big)
 
-    def _ensure_registers_spec_correct(self):
-        if self.base_register is None:
-            raise ValueError('Base register must be set', self)
-        if 0xFFFF < self.base_register < 0:
-            raise ValueError('Base register must be an unsigned 16-bit int', self)
-        if not self.error and self.base_register % 60 != 0:
-            _logger.warning(f'Base register {self.base_register} is not aligned on 60-byte boundary according to spec')
+    @property
+    def decoding_complete(self) -> bool:
+        """Returns whether the payload has been completely decoded."""
+        return self._pointer == len(self._payload)
 
-        if self.register_count is None:
-            raise ValueError('Register count must be set', self)
-        if 60 < self.register_count < 0:
-            raise ValueError('Register count must be in [0,60]', self)
+    @property
+    def payload_size(self) -> int:
+        """Return the number of bytes the payload consists of."""
+        return len(self._payload)
+
+    @property
+    def decoded_bytes(self) -> int:
+        """Return the number of bytes of the payload that have been decoded."""
+        return self._pointer
+
+    @property
+    def remaining_payload(self) -> bytes:
+        """Return the unprocessed / remaining tail of the payload."""
+        return self._payload[self._pointer :]
 
 
 class ModbusPDU(ABC):
@@ -82,7 +86,14 @@ class ModbusPDU(ABC):
         self._set_attribute_if_present('check', kwargs)
 
     def __str__(self) -> str:
-        filtered_keys = [
+        def format_kv(key, val):
+            if val is None:
+                val = '?'
+            elif key in ('slave_address',):
+                val = f'0x{val:02x}'
+            return f'{key}={val}'
+
+        filtered_keys = (
             'transaction_id',
             'protocol_id',
             'unit_id',
@@ -90,11 +101,12 @@ class ModbusPDU(ABC):
             'skip_encode',  # from pymodbus
             'register_values',
             'builder',
-        ]
-        filtered_vars = ', '.join([f'{k}: {hexxed(v)}' for k, v in vars(self).items() if k not in filtered_keys])
-        if len(filtered_vars) > 0:
-            filtered_vars = '{' + filtered_vars + '}'
-        return f"{getattr(self, 'function_code', '_')}/{friendly_class_name(self.__class__)}({filtered_vars})"
+            'inverter_serial_number',
+            'data_adapter_serial_number',
+            'padding',
+        )
+        filtered_args = [format_kv(k, v) for k, v in vars(self).items() if k not in filtered_keys]
+        return f"{getattr(self, 'function_code', '_')}/{self.__class__.__name__}({' '.join(filtered_args)})"
 
     def _set_attribute_if_present(self, attr: str, kwargs: dict[str, Any]):
         if attr in kwargs:
@@ -114,7 +126,7 @@ class ModbusPDU(ABC):
 
     def decode(self, data: bytes) -> None:
         """Decode PDU message and populate instance attributes."""
-        decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
+        decoder = PayloadDecoder(data)
         self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
         self.padding = decoder.decode_64bit_uint()
         self.slave_address = decoder.decode_8bit_uint()
@@ -128,11 +140,11 @@ class ModbusPDU(ABC):
             )
 
         self._decode_function_data(decoder)
-        if decoder._pointer != len(decoder._payload):
+        if not decoder.decoding_complete:
             _logger.error(
-                f'Decoder did not fully decode {function_code} packet: decoded {decoder._pointer} bytes but '
-                f'packet header specified length={len(decoder._payload)}. '
-                f'Remaining bytes: [{decoder._payload[decoder._pointer:]}]'
+                f'Decoder did not fully decode {function_code} packet: decoded {decoder.decoded_bytes}b but '
+                f'packet header specified length={decoder.payload_size}. '
+                f'Remaining payload: [{decoder.remaining_payload.hex()}]'
             )
         self._ensure_valid_state()
         _logger.debug(f"Successfully decoded {len(data)} bytes: {self}")
@@ -141,7 +153,7 @@ class ModbusPDU(ABC):
         """Complete function-specific encoding of the remainder of the PDU message."""
         raise NotImplementedError()
 
-    def _decode_function_data(self, decoder: BinaryPayloadDecoder) -> None:
+    def _decode_function_data(self, decoder: PayloadDecoder) -> None:
         """Complete function-specific decoding of the remainder of the PDU message."""
         raise NotImplementedError()
 
@@ -215,8 +227,8 @@ class NullResponse(ModbusResponse):
     def _encode_function_data(self) -> None:
         pass
 
-    def _decode_function_data(self, decoder: BinaryPayloadDecoder) -> None:
-        decoder.skip_bytes(len(decoder._payload) - 20)
+    def _decode_function_data(self, decoder: PayloadDecoder) -> None:
+        decoder.skip_bytes(decoder.payload_size - 20)
 
     def _calculate_function_data_size(self) -> int:
         pass
@@ -226,7 +238,29 @@ class NullResponse(ModbusResponse):
 
 
 #################################################################################
-class ReadRegistersRequest(ModbusRequest, RegisterRangeCommand, ABC):
+class RegistersRangeMessage:
+    """Mixin for commands that specify base register and register count semantics."""
+
+    base_register: int
+    register_count: int
+    error: bool
+
+    def _ensure_registers_spec_correct(self):
+        if self.base_register is None:
+            raise ValueError('Base register must be set', self)
+        if 0xFFFF < self.base_register < 0:
+            raise ValueError('Base register must be an unsigned 16-bit int', self)
+        # if not self.error and self.register_count != 1 and self.base_register % 60 != 0:
+        #     _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+
+        if self.register_count is None:
+            raise ValueError('Register count must be set', self)
+        if 60 < self.register_count < 0:
+            raise ValueError('Register count must be in [0,60]', self)
+
+
+#################################################################################
+class ReadRegistersRequest(ModbusRequest, RegistersRangeMessage, ABC):
     """Handles all messages that request a range of registers."""
 
     def __init__(self, **kwargs):
@@ -260,7 +294,7 @@ class ReadRegistersRequest(ModbusRequest, RegisterRangeCommand, ABC):
         self._ensure_registers_spec_correct()
 
 
-class ReadRegistersResponse(ModbusResponse, RegisterRangeCommand, ABC):
+class ReadRegistersResponse(ModbusResponse, RegistersRangeMessage, ABC):
     """Handles all messages that respond with a range of registers."""
 
     request_class: type[ReadRegistersRequest]
@@ -475,7 +509,7 @@ class HeartbeatRequest(ModbusRequest, ABC):
 
     def decode(self, data: bytes):
         """Decode response PDU message and populate instance attributes."""
-        decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
+        decoder = PayloadDecoder(data)
         self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
         self.data_adapter_type = decoder.decode_8bit_uint()
         _logger.debug(f"Successfully decoded {len(data)} bytes")
@@ -512,7 +546,7 @@ class HeartbeatResponse(ModbusResponse, ABC):
 
     def decode(self, data: bytes):
         """Decode response PDU message and populate instance attributes."""
-        decoder = BinaryPayloadDecoder(data, byteorder=Endian.Big)
+        decoder = PayloadDecoder(data)
         self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
         self.data_adapter_type = decoder.decode_8bit_uint()
         _logger.debug(f"Successfully decoded {len(data)} bytes")

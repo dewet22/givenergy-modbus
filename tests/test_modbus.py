@@ -97,9 +97,7 @@ def test_write_holding_register(sync_client):
     sync_client.execute = mock_call
     sync_client.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert mock_call.call_count == 1
-    assert str(mock_call.call_args_list[0].args[0]) == (
-        '6/WriteHoldingRegisterRequest({register: 0x0014, value: 0x0005})'
-    )
+    assert str(mock_call.call_args_list[0].args[0]) == ('6/WriteHoldingRegisterRequest(register=20 value=5)')
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))
     sync_client.execute = mock_call
@@ -107,9 +105,7 @@ def test_write_holding_register(sync_client):
         sync_client.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert e.value.args[0] == 'Register read-back value 0x0002 != written value 0x0005'
     assert mock_call.call_count == 1
-    assert str(mock_call.call_args_list[0].args[0]) == (
-        '6/WriteHoldingRegisterRequest({register: 0x0014, value: 0x0005})'
-    )
+    assert str(mock_call.call_args_list[0].args[0]) == ('6/WriteHoldingRegisterRequest(register=20 value=5)')
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))
     with pytest.raises(ValueError) as e:
