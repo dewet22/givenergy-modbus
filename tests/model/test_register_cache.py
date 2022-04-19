@@ -55,14 +55,7 @@ JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION = (
     '"IR:214": 0, "IR:215": 0, "IR:216": 0, "IR:217": 0, "IR:218": 0, "IR:219": 0, "IR:220": 0, "IR:221": 0, '
     '"IR:222": 0, "IR:223": 0, "IR:224": 0, "IR:225": 0, "IR:226": 0, "IR:227": 300, "IR:228": 0, "IR:229": 0, '
     '"IR:230": 0, "IR:231": 0, "IR:232": 0, "IR:233": 0, "IR:234": 0, "IR:235": 0, "IR:236": 0, "IR:237": 0, '
-    '"IR:238": 0, "IR:239": 0, "IR:240": 2331, "IR:241": 0, "IR:242": 0, "IR:243": 0, "IR:244": 0, "IR:245": 0, '
-    '"IR:246": 90, "IR:247": 0, "IR:248": 0, "IR:249": 0, "IR:250": 0, "IR:251": 0, "IR:252": 0, "IR:253": 0, '
-    '"IR:254": 0, "IR:255": 0, "IR:256": 0, "IR:257": 0, "IR:258": 0, "IR:259": 0, "IR:260": 0, "IR:261": 0, '
-    '"IR:262": 0, "IR:263": 0, "IR:264": 0, "IR:265": 0, "IR:266": 0, "IR:267": 0, "IR:268": 0, "IR:269": 0, '
-    '"IR:270": 0, "IR:271": 0, "IR:272": 0, "IR:273": 0, "IR:274": 0, "IR:275": 0, "IR:276": 0, "IR:277": 0, '
-    '"IR:278": 0, "IR:279": 0, "IR:280": 0, "IR:281": 0, "IR:282": 0, "IR:283": 0, "IR:284": 0, "IR:285": 0, '
-    '"IR:286": 0, "IR:287": 0, "IR:288": 0, "IR:289": 0, "IR:290": 0, "IR:291": 0, "IR:292": 0, "IR:293": 0, '
-    '"IR:294": 0, "IR:295": 0, "IR:296": 0, "IR:297": 0, "IR:298": 0, "IR:299": 0}'
+    '"IR:238": 0, "IR:239": 0}'
 )
 JSON_BATTERY_DAYTIME_DISCHARGING = (
     '{"slave_address": 50, '
@@ -196,8 +189,8 @@ def test_attributes(register_cache):
     assert register_cache.e_battery_throughput_total_l == 183.2
     assert register_cache.e_battery_throughput_total == 183.2
 
-    assert register_cache.v_battery_cell_01 == 3.117
-    assert register_cache.v_battery_cell_16 == 3.119
+    assert register_cache.v_cell_01 == 3.117
+    assert register_cache.v_cell_16 == 3.119
 
 
 def test_to_from_json_quick():
@@ -213,7 +206,7 @@ def test_to_from_json_quick():
 def test_to_from_json_actual_data():
     """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(JSON_INVERTER_DAYTIME_DISCHARGING_WITH_SOLAR_GENERATION)
-    assert len(rc) == 423
+    assert len(rc) == 363
     assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
 
 

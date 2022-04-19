@@ -21,10 +21,9 @@ class Type(Enum):
     UINT32_LOW = auto()  # lower (LSB) address half
     ASCII = auto()  # 2 ASCII characters
     TIME = auto()  # BCD-encoded time. 430 = 04:30
-    PERCENT = auto()  # same as UINT16, but might be useful for rendering
     POWER_FACTOR = auto()  # zero point at 10^4, scale factor 10^4
 
-    def convert(self, value: int, scaling: int) -> Any:
+    def convert(self, value: int, scaling: int) -> Any:  # noqa: C901
         """Convert `val` to its true value as determined by the type and scaling definitions."""
         if self == self.UINT32_HIGH:
             # shift MSB half of the 32-bit int left
@@ -41,12 +40,16 @@ class Type(Enum):
             return value
 
         if self == self.BOOL:  # TODO is this the correct assumption?
+            if value > 1:
+                raise ValueError(value)
             return bool(value)
 
         if self == self.TIME:
             # Convert a BCD-encoded int into datetime.time."""
             hour = int(f'{value:04}'[:2])
             minute = int(f'{value:04}'[2:])
+            if hour > 24 or minute > 60:
+                raise ValueError(f'{value:04}')
             if hour == 24:
                 hour = 0
             if minute == 60:
@@ -54,7 +57,12 @@ class Type(Enum):
             return time(hour, minute)
 
         if self == self.ASCII:
-            return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
+            if value == 0x0:
+                raise ValueError('null')
+            try:
+                return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
+            except UnicodeDecodeError:
+                raise ValueError('non-ASCII')
 
         if self == self.UINT8:
             return value & 0xFF
@@ -75,12 +83,9 @@ class Type(Enum):
             return value / scaling
         return value
 
-    def repr(self, value: Any, scaling: float, unit: str = '') -> str:
+    def repr(self, raw_val: Any, scaling: int, unit: str = '') -> str:
         """Return user-friendly representation of scaled `val` as appropriate for the data type."""
-        v = self.convert(value, scaling)
-
-        if unit:
-            unit = f' {unit}'
+        v = self.convert(raw_val, scaling)
 
         if self == self.TIME:
             # Convert a BCD-encoded int into datetime.time."""
@@ -93,7 +98,7 @@ class Type(Enum):
             return ' '.join([f'{int(n, 16):04b}' for n in list(f'{v:04x}')])
 
         if self == self.HEX:
-            return f'0x{v}'
+            return f'0x{raw_val:04x}'
 
         if isinstance(v, float):
             return f'{v:0.2f}{unit}'
@@ -101,10 +106,10 @@ class Type(Enum):
         return f'{v}{unit}'
 
 
-class Scaling(Enum):
-    """What scaling factor needs to be applied to a register's value.
+class ScalingFactor(Enum):
+    """Scaling factor needs to be applied to a raw register value.
 
-    Specified as a divisor instead, because python deals with rounding precision better that way.
+    Specified as a divisor instead, to improve rounding precision in python.
     """
 
     UNIT = 1
@@ -113,23 +118,37 @@ class Scaling(Enum):
     MILLI = 1000
 
 
-class Unit(Enum):
+class Unit(str, Enum):
     """Measurement unit for the register value."""
 
     NONE = ''
-    ENERGY_KWH = 'kWh'
-    POWER_W = 'W'
-    POWER_KW = 'kW'
-    POWER_VA = 'VA'
-    FREQUENCY_HZ = 'Hz'
-    VOLTAGE_V = 'V'
-    CURRENT_A = 'A'
-    CURRENT_MA = 'mA'
-    TEMPERATURE_C = '°C'
     CHARGE_AH = 'Ah'
+    CURRENT_A = 'A', 'abs(val) < 200'
+    CURRENT_MA = 'mA', 'abs(val) < 2000'
+    ENERGY_KWH = 'kWh', 'val >= 0'
+    FREQUENCY_HZ = 'Hz', '0 <= val < 100'
+    PERCENT = '%', '0 <= val < 256'
+    POWER_KW = 'kW', 'abs(val) < 10'
+    POWER_VA = 'VA', 'abs(val) < 10000'
+    POWER_W = 'W', 'abs(val) < 10000'
+    TEMPERATURE_C = '°C', 'abs(val) < 200'
+    TIME_M = 'min'
     TIME_MS = 'ms'
     TIME_S = 'sec'
-    TIME_M = 'min'
+    VOLTAGE_V = 'V', 'abs({val}) < 2000'
+
+    def __new__(cls, value: int, sanity_check: str = None):
+        """Allows indexing by register index."""
+        obj = str.__new__(cls, str(value))
+        obj._value_ = value
+        obj.sanity_check = sanity_check
+        return obj
+
+    def is_value_sane(self, val: float) -> bool:
+        """Is the given value within the realm of physical reality for a given unit."""
+        if not self.sanity_check:
+            return True
+        return bool(eval(self.sanity_check.format(val=float(val))))  # nosec - we control the eval()
 
 
 @unique
@@ -143,7 +162,7 @@ class Register(str, Enum):
         obj = str.__new__(cls, f'{cls.__name__[0]}R:{int(value)}')
         obj._value_ = value
         obj.type = data.get('type', Type.UINT16)
-        obj.scaling = data.get('scaling', Scaling.UNIT)
+        obj.scaling = data.get('scaling', ScalingFactor.UNIT)
         obj.unit = data.get('unit', Unit.NONE)
         obj.description = data.get('description', None)
         obj.write_safe = data.get('write_safe', False)
@@ -155,13 +174,19 @@ class Register(str, Enum):
     def __repr__(self) -> str:
         return self.__str__()
 
-    def convert(self, val):
+    def convert(self, raw_val: int):
         """Convert val to its true representation as determined by the register type."""
-        return self.type.convert(val, self.scaling.value)
+        try:
+            val = self.type.convert(raw_val, self.scaling.value)
+        except ValueError as e:
+            raise ValueError(f'{e}:0x{raw_val:04x}')
+        if not self.unit.is_value_sane(val):
+            raise ValueError(f'{self.repr(raw_val)}/0x{raw_val:04x}')
+        return val
 
-    def repr(self, val):
-        """Convert val to its true representation as determined by the register type."""
-        return self.type.repr(val, self.scaling.value, self.unit.value)
+    def repr(self, raw_val):
+        """Convert val to its true human-readable representation as determined by the register type."""
+        return self.type.repr(raw_val, self.scaling.value, self.unit.value)
 
 
 class HoldingRegister(Register):
@@ -174,7 +199,7 @@ class HoldingRegister(Register):
     HOLDING_REG004 = 4
     HOLDING_REG005 = 5
     HOLDING_REG006 = 6
-    ENABLE_AMMETER = (7, {'type': Type.BOOL})
+    ENABLE_AMMETER = 7, {'type': Type.BOOL}
     FIRST_BATTERY_SERIAL_NUMBER_1_2 = (8, {'type': Type.ASCII})
     FIRST_BATTERY_SERIAL_NUMBER_3_4 = (9, {'type': Type.ASCII})
     FIRST_BATTERY_SERIAL_NUMBER_5_6 = (10, {'type': Type.ASCII})
@@ -203,7 +228,7 @@ class HoldingRegister(Register):
     CHARGE_SLOT_2_START = (31, {'type': Type.TIME, 'write_safe': True})
     CHARGE_SLOT_2_END = (32, {'type': Type.TIME, 'write_safe': True})
     USER_CODE = 33
-    MODBUS_VERSION = (34, {'scaling': Scaling.CENTI})  # inverter:1.40 EMS:3.40
+    MODBUS_VERSION = (34, {'scaling': ScalingFactor.CENTI})  # inverter:1.40 EMS:3.40
     SYSTEM_TIME_YEAR = (35, {'write_safe': True})
     SYSTEM_TIME_MONTH = (36, {'write_safe': True})
     SYSTEM_TIME_DAY = (37, {'write_safe': True})
@@ -220,8 +245,8 @@ class HoldingRegister(Register):
     REVERSE_115_METER_DIRECT = (48, {'type': Type.BOOL})
     REVERSE_418_METER_DIRECT = (49, {'type': Type.BOOL})
     # from beta remote control: Inverter Max Output Active Power Percent
-    ACTIVE_POWER_RATE = (50, {'type': Type.PERCENT})
-    REACTIVE_POWER_RATE = (51, {'type': Type.PERCENT})
+    ACTIVE_POWER_RATE = (50, {'unit': Unit.PERCENT})
+    REACTIVE_POWER_RATE = (51, {'unit': Unit.PERCENT})
     POWER_FACTOR = (52, {'type': Type.POWER_FACTOR})
     INVERTER_STATE = (53, {'type': Type.DUINT8})  # MSB:auto-restart state, LSB:on/off
     BATTERY_TYPE = 54  # 0:lead acid  1:lithium
@@ -230,30 +255,30 @@ class HoldingRegister(Register):
     DISCHARGE_SLOT_1_END = (57, {'type': Type.TIME, 'write_safe': True})
     ENABLE_AUTO_JUDGE_BATTERY_TYPE = (58, {'type': Type.BOOL})
     ENABLE_DISCHARGE = (59, {'type': Type.BOOL, 'write_safe': True})
-    V_PV_INPUT_START = (60, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    V_PV_INPUT_START = (60, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     INVERTER_START_TIME = (61, {'unit': Unit.TIME_S})
     INVERTER_RESTART_DELAY_TIME = (62, {'unit': Unit.TIME_S})
-    V_AC_LOW_OUT = (63, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC_HIGH_OUT = (64, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_AC_LOW_OUT = (65, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    F_AC_HIGH_OUT = (66, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    V_AC_LOW_OUT = (63, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC_HIGH_OUT = (64, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    F_AC_LOW_OUT = (65, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    F_AC_HIGH_OUT = (66, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
     V_AC_LOW_OUT_TIME = (67, {})
     V_AC_HIGH_OUT_TIME = (68, {})
     F_AC_LOW_OUT_TIME = (69, {})
     F_AC_HIGH_OUT_TIME = (70, {})
-    V_AC_LOW_IN = (71, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC_HIGH_IN = (72, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_AC_LOW_IN = (73, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    F_AC_HIGH_IN = (74, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    V_AC_LOW_IN = (71, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC_HIGH_IN = (72, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    F_AC_LOW_IN = (73, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    F_AC_HIGH_IN = (74, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
     V_AC_LOW_IN_TIME = (75, {})
     V_AC_HIGH_IN_TIME = (76, {})
     F_AC_LOW_IN_TIME = (77, {})
     F_AC_HIGH_IN_TIME = (78, {})
-    V_AC_LOW_C = (79, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC_HIGH_C = (80, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_AC_LOW_C = (81, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    F_AC_HIGH_C = (82, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    V_10_MIN_PROTECTION = (83, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC_LOW_C = (79, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC_HIGH_C = (80, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    F_AC_LOW_C = (81, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    F_AC_HIGH_C = (82, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    V_10_MIN_PROTECTION = (83, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     ISO1 = 84
     ISO2 = 85
     # protection events: ground fault circuit interrupter, DC injection
@@ -268,33 +293,33 @@ class HoldingRegister(Register):
     CHARGE_SLOT_1_START = (94, {'type': Type.TIME, 'write_safe': True})
     CHARGE_SLOT_1_END = (95, {'type': Type.TIME, 'write_safe': True})
     ENABLE_CHARGE = (96, {'type': Type.BOOL, 'write_safe': True})
-    V_BATTERY_UNDER_PROTECTION_LIMIT = (97, {'scaling': Scaling.CENTI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_OVER_PROTECTION_LIMIT = (98, {'scaling': Scaling.CENTI, 'unit': Unit.VOLTAGE_V})
-    PV1_VOLTAGE_ADJUST = (99, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    PV2_VOLTAGE_ADJUST = (100, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    GRID_R_VOLTAGE_ADJUST = (101, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    GRID_S_VOLTAGE_ADJUST = (102, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    GRID_T_VOLTAGE_ADJUST = (103, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    V_BATTERY_UNDER_PROTECTION_LIMIT = (97, {'scaling': ScalingFactor.CENTI, 'unit': Unit.VOLTAGE_V})
+    V_BATTERY_OVER_PROTECTION_LIMIT = (98, {'scaling': ScalingFactor.CENTI, 'unit': Unit.VOLTAGE_V})
+    PV1_VOLTAGE_ADJUST = (99, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    PV2_VOLTAGE_ADJUST = (100, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    GRID_R_VOLTAGE_ADJUST = (101, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    GRID_S_VOLTAGE_ADJUST = (102, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    GRID_T_VOLTAGE_ADJUST = (103, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     GRID_POWER_ADJUST = (104, {'unit': Unit.POWER_W})
-    BATTERY_VOLTAGE_ADJUST = (105, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    BATTERY_VOLTAGE_ADJUST = (105, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     PV1_POWER_ADJUST = (106, {'unit': Unit.POWER_W})
     PV2_POWER_ADJUST = (107, {'unit': Unit.POWER_W})
     BATTERY_LOW_FORCE_CHARGE_TIME = (108, {'unit': Unit.TIME_M})
     ENABLE_BMS_READ = (109, {'type': Type.BOOL})
-    BATTERY_SOC_RESERVE = (110, {'type': Type.PERCENT, 'write_safe': True})
+    BATTERY_SOC_RESERVE = (110, {'unit': Unit.PERCENT, 'write_safe': True})
     # in beta dashboard: Battery Charge & Discharge Power, but rendered as W (50%=2600W), don't set above this?
-    BATTERY_CHARGE_LIMIT = (111, {'type': Type.PERCENT, 'write_safe': True})
-    BATTERY_DISCHARGE_LIMIT = (112, {'type': Type.PERCENT, 'write_safe': True})
+    BATTERY_CHARGE_LIMIT = (111, {'unit': Unit.PERCENT, 'write_safe': True})
+    BATTERY_DISCHARGE_LIMIT = (112, {'unit': Unit.PERCENT, 'write_safe': True})
     ENABLE_BUZZER = (113, {'type': Type.BOOL})
     # in beta dashboard: Battery Cutoff % Limit
-    BATTERY_DISCHARGE_MIN_POWER_RESERVE = (114, {'type': Type.PERCENT, 'write_safe': True})
+    BATTERY_DISCHARGE_MIN_POWER_RESERVE = (114, {'unit': Unit.PERCENT, 'write_safe': True})
     ISLAND_CHECK_CONTINUE = 115
-    CHARGE_TARGET_SOC = (116, {'type': Type.PERCENT, 'write_safe': True})  # when ENABLE_CHARGE_TARGET is enabled
-    CHARGE_SOC_STOP_2 = (117, {'type': Type.PERCENT})
-    DISCHARGE_SOC_STOP_2 = (118, {'type': Type.PERCENT})
-    CHARGE_SOC_STOP_1 = (119, {'type': Type.PERCENT})
-    DISCHARGE_SOC_STOP_1 = (120, {'type': Type.PERCENT})
-    LOCAL_COMMAND_TEST = (121, {})
+    CHARGE_TARGET_SOC = (116, {'unit': Unit.PERCENT, 'write_safe': True})  # when ENABLE_CHARGE_TARGET is enabled
+    CHARGE_SOC_STOP_2 = (117, {'unit': Unit.PERCENT})
+    DISCHARGE_SOC_STOP_2 = (118, {'unit': Unit.PERCENT})
+    CHARGE_SOC_STOP_1 = (119, {'unit': Unit.PERCENT})
+    DISCHARGE_SOC_STOP_1 = (120, {'unit': Unit.PERCENT})
+    LOCAL_COMMAND_TEST = (121, {'type': Type.BOOL})
     POWER_FACTOR_FUNCTION_MODEL = (122, {})
     FREQUENCY_LOAD_LIMIT_RATE = (123, {})
     ENABLE_LOW_VOLTAGE_FAULT_RIDE_THROUGH = (124, {'type': Type.BOOL})
@@ -302,24 +327,24 @@ class HoldingRegister(Register):
     ENABLE_ABOVE_6KW_SYSTEM = (126, {'type': Type.BOOL})
     START_SYSTEM_AUTO_TEST = (127, {'type': Type.BOOL})
     ENABLE_SPI = (128, {'type': Type.BOOL})
-    PF_CMD_MEMORY_STATE = (129, {})
+    PF_CMD_MEMORY_STATE = (129, {'type': Type.BOOL})
     # power factor limit line points: LP=load percentage, PF=power factor
-    PF_LIMIT_LP1_LP = (130, {'type': Type.PERCENT})
+    PF_LIMIT_LP1_LP = (130, {'unit': Unit.PERCENT})
     PF_LIMIT_LP1_PF = (131, {'type': Type.POWER_FACTOR})
-    PF_LIMIT_LP2_LP = (132, {'type': Type.PERCENT})
+    PF_LIMIT_LP2_LP = (132, {'unit': Unit.PERCENT})
     PF_LIMIT_LP2_PF = (133, {'type': Type.POWER_FACTOR})
-    PF_LIMIT_LP3_LP = (134, {'type': Type.PERCENT})
+    PF_LIMIT_LP3_LP = (134, {'unit': Unit.PERCENT})
     PF_LIMIT_LP3_PF = (135, {'type': Type.POWER_FACTOR})
-    PF_LIMIT_LP4_LP = (136, {'type': Type.PERCENT})
+    PF_LIMIT_LP4_LP = (136, {'unit': Unit.PERCENT})
     PF_LIMIT_LP4_PF = (137, {'type': Type.POWER_FACTOR})
     CEI021_V1S = (138, {})
     CEI021_V2S = (139, {})
     CEI021_V1L = (140, {})
     CEI021_V2L = (141, {})
-    CEI021_Q_LOCK_IN_POWER = (142, {'type': Type.PERCENT})
-    CEI021_Q_LOCK_OUT_POWER = (143, {'type': Type.PERCENT})
-    CEI021_LOCK_IN_GRID_VOLTAGE = (144, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    CEI021_LOCK_OUT_GRID_VOLTAGE = (145, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    CEI021_Q_LOCK_IN_POWER = (142, {'unit': Unit.PERCENT})
+    CEI021_Q_LOCK_OUT_POWER = (143, {'unit': Unit.PERCENT})
+    CEI021_LOCK_IN_GRID_VOLTAGE = (144, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    CEI021_LOCK_OUT_GRID_VOLTAGE = (145, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     HOLDING_REG146 = (146, {})
     HOLDING_REG147 = (147, {})
     HOLDING_REG148 = (148, {})
@@ -379,128 +404,137 @@ class HoldingRegister(Register):
 
 
 class InputRegister(Register):
-    """Definitions of what registers in the Input Bank represent."""
+    """Definitions of Input Registers, shared by Inverter and Battery devices."""
 
     INVERTER_STATUS = 0  # 0:waiting 1:normal 2:warning 3:fault 4:flash/fw update
-    V_PV1 = (1, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_PV2 = (2, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_P_BUS = (3, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_N_BUS = (4, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC1 = (5, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    E_BATTERY_THROUGHPUT_TOTAL_H = (6, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_THROUGHPUT_TOTAL_L = (7, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    I_PV1 = (8, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_PV2 = (9, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_AC1 = (10, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    E_PV_TOTAL_H = (11, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_PV_TOTAL_L = (12, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    F_AC1 = (13, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    V_PV1 = (1, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_PV2 = (2, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_P_BUS = (3, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_N_BUS = (4, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC1 = (5, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    E_BATTERY_THROUGHPUT_TOTAL_H = (
+        6,
+        {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH},
+    )
+    E_BATTERY_THROUGHPUT_TOTAL_L = (
+        7,
+        {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH},
+    )
+    I_PV1 = (8, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    I_PV2 = (9, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    I_AC1 = (10, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    E_PV_TOTAL_H = (11, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_PV_TOTAL_L = (12, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    F_AC1 = (13, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
     CHARGE_STATUS = 14  # 2?
     V_HIGHBRIGH_BUS = 15  # high voltage bus?
     PF_INVERTER_OUT = (16, {'type': Type.POWER_FACTOR})  # should be F_? seems to be hovering between 4800-5400
-    E_PV1_DAY = (17, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    P_PV1 = (18, {'unit': Unit.POWER_KW})
-    E_PV2_DAY = (19, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    P_PV2 = (20, {'unit': Unit.POWER_KW})
-    E_GRID_OUT_TOTAL_H = (21, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GRID_OUT_TOTAL_L = (22, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_SOLAR_DIVERTER = (23, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_PV1_DAY = (17, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    P_PV1 = (18, {'unit': Unit.POWER_W})
+    E_PV2_DAY = (19, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    P_PV2 = (20, {'unit': Unit.POWER_W})
+    E_GRID_OUT_TOTAL_H = (21, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_OUT_TOTAL_L = (22, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_SOLAR_DIVERTER = (23, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     P_INVERTER_OUT = (24, {'type': Type.INT16, 'unit': Unit.POWER_W})
-    E_GRID_OUT_DAY = (25, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GRID_IN_DAY = (26, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_INVERTER_IN_TOTAL_H = (27, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_INVERTER_IN_TOTAL_L = (28, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_DISCHARGE_YEAR = (29, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_OUT_DAY = (25, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_IN_DAY = (26, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_IN_TOTAL_H = (27, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_IN_TOTAL_L = (28, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_DISCHARGE_YEAR = (29, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     P_GRID_OUT = (30, {'type': Type.INT16, 'unit': Unit.POWER_W})
     P_EPS_BACKUP = (31, {'unit': Unit.POWER_W})
-    E_GRID_IN_TOTAL_H = (32, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_GRID_IN_TOTAL_L = (33, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_IN_TOTAL_H = (32, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_GRID_IN_TOTAL_L = (33, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     INPUT_REG034 = 34
-    E_INVERTER_IN_DAY = (35, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_CHARGE_DAY = (36, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_DISCHARGE_DAY = (37, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_IN_DAY = (35, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_CHARGE_DAY = (36, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_DAY = (37, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     INVERTER_COUNTDOWN = (38, {'unit': Unit.TIME_S})
     FAULT_CODE_H = (39, {'type': Type.BITFIELD})
     FAULT_CODE_L = (40, {'type': Type.BITFIELD})
-    TEMP_INVERTER_HEATSINK = (41, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_INVERTER_HEATSINK = (41, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C})
     P_LOAD_DEMAND = (42, {'unit': Unit.POWER_W})
     P_GRID_APPARENT = (43, {'unit': Unit.POWER_VA})
-    E_INVERTER_OUT_DAY = (44, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_INVERTER_OUT_TOTAL_H = (45, {'type': Type.UINT32_HIGH, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_INVERTER_OUT_TOTAL_L = (46, {'type': Type.UINT32_LOW, 'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_DAY = (44, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_TOTAL_H = (45, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_INVERTER_OUT_TOTAL_L = (46, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     WORK_TIME_TOTAL_H = (47, {'type': Type.UINT32_HIGH, 'unit': Unit.TIME_S})
     WORK_TIME_TOTAL_L = (48, {'type': Type.UINT32_LOW, 'unit': Unit.TIME_S})
     SYSTEM_MODE = 49  # 0:offline, 1:grid-tied
-    V_BATTERY = (50, {'scaling': Scaling.CENTI, 'unit': Unit.VOLTAGE_V})
-    I_BATTERY = (51, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
+    V_BATTERY = (50, {'scaling': ScalingFactor.CENTI, 'unit': Unit.VOLTAGE_V})
+    I_BATTERY = (51, {'type': Type.INT16, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
     P_BATTERY = (52, {'type': Type.INT16, 'unit': Unit.POWER_W})
-    V_EPS_BACKUP = (53, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_EPS_BACKUP = (54, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    TEMP_CHARGER = (55, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY = (56, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    V_EPS_BACKUP = (53, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    F_EPS_BACKUP = (54, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    TEMP_CHARGER = (55, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C})
+    TEMP_BATTERY = (56, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C})
     CHARGER_WARNING_CODE = 57
-    I_GRID_PORT = (58, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    BATTERY_PERCENT = (59, {'type': Type.PERCENT})
-    V_BATTERY_CELL_01 = (60, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_02 = (61, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_03 = (62, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_04 = (63, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_05 = (64, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_06 = (65, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_07 = (66, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_08 = (67, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_09 = (68, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_10 = (69, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_11 = (70, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_12 = (71, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_13 = (72, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_14 = (73, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_15 = (74, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_CELL_16 = (75, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    TEMP_BATTERY_CELLS_1 = (76, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_CELLS_2 = (77, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_CELLS_3 = (78, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_CELLS_4 = (79, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    V_BATTERY_CELLS_SUM = (80, {'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    TEMP_BMS_MOS = (81, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    V_BATTERY_OUT_H = (82, {'type': Type.UINT32_HIGH, 'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    V_BATTERY_OUT_L = (83, {'type': Type.UINT32_LOW, 'scaling': Scaling.MILLI, 'unit': Unit.VOLTAGE_V})
-    BATTERY_FULL_CAPACITY_H = (84, {'type': Type.UINT32_HIGH, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_FULL_CAPACITY_L = (85, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_DESIGN_CAPACITY_H = (86, {'type': Type.UINT32_HIGH, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_DESIGN_CAPACITY_L = (87, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_REMAINING_CAPACITY_H = (88, {'type': Type.UINT32_HIGH, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_REMAINING_CAPACITY_L = (89, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_STATUS_1_2 = (90, {'type': Type.DUINT8})
-    BATTERY_STATUS_3_4 = (91, {'type': Type.DUINT8})
-    BATTERY_STATUS_5_6 = (92, {'type': Type.DUINT8})
-    BATTERY_STATUS_7 = (93, {'type': Type.DUINT8})
-    BATTERY_WARNING_1_2 = (94, {'type': Type.DUINT8})
+    I_GRID_PORT = (58, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    BATTERY_PERCENT = (59, {'unit': Unit.PERCENT})
+
+    # Used by Batteries / BMS
+    V_CELL_01 = 60, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_02 = 61, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_03 = 62, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_04 = 63, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_05 = 64, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_06 = 65, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_07 = 66, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_08 = 67, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_09 = 68, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_10 = 69, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_11 = 70, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_12 = 71, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_13 = 72, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_14 = 73, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_15 = 74, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_CELL_16 = 75, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    TEMP_CELLS_1 = 76, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    TEMP_CELLS_2 = 77, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    TEMP_CELLS_3 = 78, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    TEMP_CELLS_4 = 79, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    V_CELLS_SUM = 80, {'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    TEMP_BMS_MOS = 81, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    V_BATTERY_OUT_H = 82, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    V_BATTERY_OUT_L = 83, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.MILLI, 'unit': Unit.VOLTAGE_V}
+    FULL_CAPACITY_H = 84, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    FULL_CAPACITY_L = 85, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    DESIGN_CAPACITY_H = 86, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    DESIGN_CAPACITY_L = 87, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    REMAINING_CAPACITY_H = 88, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    REMAINING_CAPACITY_L = 89, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    STATUS_1_2 = 90, {'type': Type.DUINT8}
+    STATUS_3_4 = 91, {'type': Type.DUINT8}
+    STATUS_5_6 = 92, {'type': Type.DUINT8}
+    STATUS_7 = 93, {'type': Type.DUINT8}
+    WARNING_1_2 = 94, {'type': Type.DUINT8}
     INPUT_REG095 = 95
-    BATTERY_NUM_CYCLES = 96
-    BATTERY_NUM_CELLS = 97
+    NUM_CYCLES = 96
+    NUM_CELLS = 97
     BMS_FIRMWARE_VERSION = 98
     INPUT_REG099 = 99
-    BATTERY_SOC = 100
-    BATTERY_DESIGN_CAPACITY_2_H = (101, {'type': Type.UINT32_HIGH, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    BATTERY_DESIGN_CAPACITY_2_L = (102, {'type': Type.UINT32_LOW, 'scaling': Scaling.CENTI, 'unit': Unit.CHARGE_AH})
-    TEMP_BATTERY_MAX = (103, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    TEMP_BATTERY_MIN = (104, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
-    E_BATTERY_DISCHARGE_TOTAL_2 = (105, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_CHARGE_TOTAL_2 = (106, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    SOC = 100
+    DESIGN_CAPACITY_2_H = 101, {'type': Type.UINT32_HIGH, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    DESIGN_CAPACITY_2_L = 102, {'type': Type.UINT32_LOW, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CHARGE_AH}
+    TEMP_MAX = 103, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    TEMP_MIN = 104, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C}
+    E_DISCHARGE_TOTAL = 105, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH}
+    E_CHARGE_TOTAL = 106, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH}
     INPUT_REG107 = 107
     INPUT_REG108 = 108
     INPUT_REG109 = 109
-    BATTERY_SERIAL_NUMBER_1_2 = (110, {'type': Type.ASCII})
-    BATTERY_SERIAL_NUMBER_3_4 = (111, {'type': Type.ASCII})
-    BATTERY_SERIAL_NUMBER_5_6 = (112, {'type': Type.ASCII})
-    BATTERY_SERIAL_NUMBER_7_8 = (113, {'type': Type.ASCII})
-    BATTERY_SERIAL_NUMBER_9_10 = (114, {'type': Type.ASCII})
-    USB_INSERTED = (115, {'type': Type.BOOL})  # 0X08 = true; 0X00 = false
+    BATTERY_SERIAL_NUMBER_1_2 = 110, {'type': Type.ASCII}
+    BATTERY_SERIAL_NUMBER_3_4 = 111, {'type': Type.ASCII}
+    BATTERY_SERIAL_NUMBER_5_6 = 112, {'type': Type.ASCII}
+    BATTERY_SERIAL_NUMBER_7_8 = 113, {'type': Type.ASCII}
+    BATTERY_SERIAL_NUMBER_9_10 = 114, {'type': Type.ASCII}
+    USB_INSERTED = 115, {'type': Type.BITFIELD}  # 0X08 = true; 0X00 = false
     INPUT_REG116 = 116
     INPUT_REG117 = 117
     INPUT_REG118 = 118
     INPUT_REG119 = 119
+
     INPUT_REG120 = 120
     INPUT_REG121 = 121
     INPUT_REG122 = 122
@@ -561,10 +595,10 @@ class InputRegister(Register):
     INPUT_REG177 = 177
     INPUT_REG178 = 178
     INPUT_REG179 = 179
-    E_BATTERY_DISCHARGE_TOTAL = (180, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_CHARGE_TOTAL = (181, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_DISCHARGE_DAY_2 = (182, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
-    E_BATTERY_CHARGE_DAY_2 = (183, {'scaling': Scaling.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_TOTAL = (180, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_CHARGE_TOTAL = (181, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_DISCHARGE_DAY_2 = (182, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
+    E_BATTERY_CHARGE_DAY_2 = (183, {'scaling': ScalingFactor.DECI, 'unit': Unit.ENERGY_KWH})
     INPUT_REG184 = (184, {})
     INPUT_REG185 = (185, {})
     INPUT_REG186 = (186, {})
@@ -591,13 +625,13 @@ class InputRegister(Register):
     INPUT_REG207 = (207, {})
     INPUT_REG208 = (208, {})
     INPUT_REG209 = (209, {})
-    ISO_FAULT_VALUE = (210, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
+    ISO_FAULT_VALUE = (210, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     GFCI_FAULT_VALUE = (211, {'unit': Unit.CURRENT_MA})
-    DCI_FAULT_VALUE = (212, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    V_PV_FAULT_VALUE = (213, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC_FAULT_VALUE = (214, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    F_AV_FAULT_VALUE = (215, {'scaling': Scaling.CENTI, 'unit': Unit.FREQUENCY_HZ})
-    TEMP_FAULT_VALUE = (216, {'scaling': Scaling.DECI, 'unit': Unit.TEMPERATURE_C})
+    DCI_FAULT_VALUE = (212, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    V_PV_FAULT_VALUE = (213, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    V_AC_FAULT_VALUE = (214, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    F_AC_FAULT_VALUE = (215, {'scaling': ScalingFactor.CENTI, 'unit': Unit.FREQUENCY_HZ})
+    TEMP_FAULT_VALUE = (216, {'scaling': ScalingFactor.DECI, 'unit': Unit.TEMPERATURE_C})
     INPUT_REG217 = (217, {})
     INPUT_REG218 = (218, {})
     INPUT_REG219 = (219, {})
@@ -610,76 +644,76 @@ class InputRegister(Register):
     AUTO_TEST_RESULT = (226, {})
     AUTO_TEST_STOP_STEP = (227, {})
     INPUT_REG228 = (228, {})
-    SAFETY_V_F_LIMIT = (229, {'scaling': Scaling.DECI})
+    SAFETY_V_F_LIMIT = (229, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
     SAFETY_TIME_LIMIT = (230, {'unit': Unit.TIME_MS})
-    REAL_V_F_VALUE = (231, {'scaling': Scaling.DECI})
-    TEST_VALUE = (232, {'scaling': Scaling.DECI})
-    TEST_TREAT_VALUE = (233, {'scaling': Scaling.DECI})
-    TEST_TREAT_TIME = (234, {})
+    REAL_V_F_VALUE = (231, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    TEST_VALUE = (232, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    TEST_TREAT_VALUE = (233, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    TEST_TREAT_TIME = (234, {'unit': Unit.TIME_MS})
     INPUT_REG235 = (235, {})
     INPUT_REG236 = (236, {})
     INPUT_REG237 = (237, {})
     INPUT_REG238 = (238, {})
     INPUT_REG239 = (239, {})
-    V_AC1_M3 = (240, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC2_M3 = (241, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC3_M3 = (242, {'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    I_AC1_M3 = (243, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_AC2_M3 = (244, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_AC3_M3 = (245, {'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    GFCI_M3 = (246, {'scaling': Scaling.DECI, 'unit': Unit.CURRENT_MA})
-    INPUT_REG247 = (247, {})
-    INPUT_REG248 = (248, {})
-    INPUT_REG249 = (249, {})
-    INPUT_REG250 = (250, {})
-    INPUT_REG251 = (251, {})
-    INPUT_REG252 = (252, {})
-    INPUT_REG253 = (253, {})
-    INPUT_REG254 = (254, {})
-    INPUT_REG255 = (255, {})
-    INPUT_REG256 = (256, {})
-    INPUT_REG257 = (257, {})
-    V_PV1_LIMIT = (258, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_PV2_LIMIT = (259, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_BUS_LIMIT = (260, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_N_BUS_LIMIT = (261, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC1_LIMIT = (262, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC2_LIMIT = (263, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC3_LIMIT = (264, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    I_PV1_LIMIT = (265, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
-    I_PV2_LIMIT = (266, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
-    I_AC1_LIMIT = (267, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
-    I_AC2_LIMIT = (268, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
-    I_AC3_LIMIT = (269, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
-    P_AC1_LIMIT = (270, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.POWER_W})
-    P_AC2_LIMIT = (271, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.POWER_W})
-    P_AC3_LIMIT = (272, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.POWER_W})
-    DCI_LIMIT = (273, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.CURRENT_MA})
-    GFCI_LIMIT = (274, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.CURRENT_MA})
-    V_AC1_M3_LIMIT = (275, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC2_M3_LIMIT = (276, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    V_AC3_M3_LIMIT = (277, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.VOLTAGE_V})
-    I_AC1_M3_LIMIT = (278, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_AC2_M3_LIMIT = (279, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    I_AC3_M3_LIMIT = (280, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.CURRENT_A})
-    GFCI_M3_LIMIT = (281, {'type': Type.INT16, 'scaling': Scaling.DECI, 'unit': Unit.CURRENT_MA})
-    V_BATTERY_LIMIT = (282, {'type': Type.INT16, 'scaling': Scaling.CENTI, 'unit': Unit.VOLTAGE_V})
-    INPUT_REG283 = (283, {})
-    INPUT_REG284 = (284, {})
-    INPUT_REG285 = (285, {})
-    INPUT_REG286 = (286, {})
-    INPUT_REG287 = (287, {})
-    INPUT_REG288 = (288, {})
-    INPUT_REG289 = (289, {})
-    INPUT_REG290 = (290, {})
-    INPUT_REG291 = (291, {})
-    INPUT_REG292 = (292, {})
-    INPUT_REG293 = (293, {})
-    INPUT_REG294 = (294, {})
-    INPUT_REG295 = (295, {})
-    INPUT_REG296 = (296, {})
-    INPUT_REG297 = (297, {})
-    INPUT_REG298 = (298, {})
-    INPUT_REG299 = (299, {})
-    INPUT_REG300 = (300, {})
-    INPUT_REG301 = (301, {})
+    # V_AC1_M3 = (240, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC2_M3 = (241, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC3_M3 = (242, {'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # I_AC1_M3 = (243, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # I_AC2_M3 = (244, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # I_AC3_M3 = (245, {'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # GFCI_M3 = (246, {'scaling': ScalingFactor.DECI, 'unit': Unit.CURRENT_MA})
+    # INPUT_REG247 = (247, {})
+    # INPUT_REG248 = (248, {})
+    # INPUT_REG249 = (249, {})
+    # INPUT_REG250 = (250, {})
+    # INPUT_REG251 = (251, {})
+    # INPUT_REG252 = (252, {})
+    # INPUT_REG253 = (253, {})
+    # INPUT_REG254 = (254, {})
+    # INPUT_REG255 = (255, {})
+    # INPUT_REG256 = (256, {})
+    # INPUT_REG257 = (257, {})
+    # V_PV1_LIMIT = (258, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_PV2_LIMIT = (259, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_BUS_LIMIT = (260, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_N_BUS_LIMIT = (261, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC1_LIMIT = (262, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC2_LIMIT = (263, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC3_LIMIT = (264, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # I_PV1_LIMIT = (265, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
+    # I_PV2_LIMIT = (266, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
+    # I_AC1_LIMIT = (267, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
+    # I_AC2_LIMIT = (268, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
+    # I_AC3_LIMIT = (269, {'type': Type.INT16, 'unit': Unit.CURRENT_MA})
+    # P_AC1_LIMIT = (270, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.POWER_W})
+    # P_AC2_LIMIT = (271, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.POWER_W})
+    # P_AC3_LIMIT = (272, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.POWER_W})
+    # DCI_LIMIT = (273, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.CURRENT_MA})
+    # GFCI_LIMIT = (274, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.CURRENT_MA})
+    # V_AC1_M3_LIMIT = (275, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC2_M3_LIMIT = (276, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # V_AC3_M3_LIMIT = (277, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.VOLTAGE_V})
+    # I_AC1_M3_LIMIT = (278, {'type': Type.INT16, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # I_AC2_M3_LIMIT = (279, {'type': Type.INT16, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # I_AC3_M3_LIMIT = (280, {'type': Type.INT16, 'scaling': ScalingFactor.CENTI, 'unit': Unit.CURRENT_A})
+    # GFCI_M3_LIMIT = (281, {'type': Type.INT16, 'scaling': ScalingFactor.DECI, 'unit': Unit.CURRENT_MA})
+    # V_BATTERY_LIMIT = (282, {'type': Type.INT16, 'scaling': ScalingFactor.CENTI, 'unit': Unit.VOLTAGE_V})
+    # INPUT_REG283 = (283, {})
+    # INPUT_REG284 = (284, {})
+    # INPUT_REG285 = (285, {})
+    # INPUT_REG286 = (286, {})
+    # INPUT_REG287 = (287, {})
+    # INPUT_REG288 = (288, {})
+    # INPUT_REG289 = (289, {})
+    # INPUT_REG290 = (290, {})
+    # INPUT_REG291 = (291, {})
+    # INPUT_REG292 = (292, {})
+    # INPUT_REG293 = (293, {})
+    # INPUT_REG294 = (294, {})
+    # INPUT_REG295 = (295, {})
+    # INPUT_REG296 = (296, {})
+    # INPUT_REG297 = (297, {})
+    # INPUT_REG298 = (298, {})
+    # INPUT_REG299 = (299, {})
+    # INPUT_REG300 = (300, {})
+    # INPUT_REG301 = (301, {})

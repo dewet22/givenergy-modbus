@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from givenergy_modbus.model.inverter import Inverter, Model, UnknownModelError  # type: ignore  # shut up mypy
-from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
+from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_register_cache import register_cache  # noqa: F401
 from tests.model.test_register_cache import (  # noqa: F401
@@ -23,6 +23,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'battery_soc_reserve': 4,
     'battery_type': 1,
     'battery_voltage_adjust': 0,
+    'bms_chip_version': 101,
     'charge_and_discharge_soc': (0, 0),
     'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
     'charge_slot_2': (datetime.time(0, 0), datetime.time(0, 4)),
@@ -36,6 +37,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'dci_1_time': 0,
     'dci_2_i': 0.0,
     'dci_2_time': 0,
+    'dci_fault_value': 0.0,
     'device_type_code': '2001',
     'discharge_slot_1': (datetime.time(0, 0), datetime.time(0, 0)),
     'discharge_slot_2': (datetime.time(0, 0), datetime.time(0, 0)),
@@ -62,6 +64,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'e_pv2_day': 0.6,
     'e_solar_diverter': 0.0,
     'enable_60hz_freq_mode': False,
+    'enable_above_6kw_system': False,
     'enable_ammeter': True,
     'enable_auto_judge_battery_type': True,
     'enable_bms_read': True,
@@ -70,7 +73,11 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'enable_charge_target': False,
     'enable_discharge': False,
     'enable_drm_rj45_port': True,
+    'enable_frequency_derating': True,
+    'enable_low_voltage_fault_ride_through': False,
+    'enable_spi': True,
     'f_ac1': 49.96,
+    'f_ac_fault_value': 0.0,
     'f_ac_high_c': 52.0,
     'f_ac_high_in': 52.0,
     'f_ac_high_in_time': 28,
@@ -86,10 +93,12 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'firmware_version': 'D0.449-A0.449',
     'first_battery_bms_firmware_version': 3005,
     'first_battery_serial_number': 'BG1234G567',
+    'frequency_load_limit_rate': 24,
     'gfci_1_i': 0.0,
     'gfci_1_time': 0,
     'gfci_2_i': 0.0,
     'gfci_2_time': 0,
+    'gfci_fault_value': 0.0,
     'grid_power_adjust': 0,
     'grid_r_voltage_adjust': 0,
     'grid_s_voltage_adjust': 0,
@@ -109,6 +118,10 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'inverter_state': (0, 1),
     'inverter_status': 1,
     'island_check_continue': 0,
+    'iso1': 0,
+    'iso2': 0,
+    'iso_fault_value': 0.0,
+    'local_command_test': False,
     'meter_type': 1,
     'modbus_version': 1.4,
     'num_mppt': 2,
@@ -123,24 +136,46 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'p_pv1': 117,
     'p_pv2': 128,
     'e_pv_total': 26.3,
+    'pf_cmd_memory_state': True,
     'pf_inverter_out': -0.0469,
+    'pf_limit_lp1_lp': 255,
+    'pf_limit_lp1_pf': 1.0,
+    'pf_limit_lp2_lp': 255,
+    'pf_limit_lp2_pf': 1.0,
+    'pf_limit_lp3_lp': 255,
+    'pf_limit_lp3_pf': 1.0,
+    'pf_limit_lp4_lp': 255,
+    'pf_limit_lp4_pf': 1.0,
     'power_factor': -1,
+    'power_factor_function_model': 0,
     'pv1_power_adjust': 0,
     'pv1_voltage_adjust': 0,
     'pv2_power_adjust': 0,
     'pv2_voltage_adjust': 0,
     'reactive_power_rate': 0,
+    'real_v_f_value': 0.0,
+    'remote_bms_restart': False,
     'reverse_115_meter_direct': False,
     'reverse_418_meter_direct': False,
+    'safety_time_limit': 0.0,
+    'safety_v_f_limit': 0.0,
     'select_arm_chip': False,
     'soc_force_adjust': 0,
+    'start_system_auto_test': False,
     'system_mode': 1,
     'system_time': datetime.datetime(2022, 1, 11, 11, 51, 46),
     'temp_battery': 16.0,
     'temp_charger': 24.1,
+    'temp_fault_value': 0.0,
     'temp_inverter_heatsink': 24.4,
+    'test_treat_time': 0,
+    'test_treat_value': 0.0,
+    'test_value': 0.0,
     'usb_device_inserted': 2,
+    'user_code': 7,
+    'v_10_min_protection': 274.0,
     'v_ac1': 236.3,
+    'v_ac_fault_value': 0.0,
     'v_ac_high_c': 283.7,
     'v_ac_high_in': 262.0,
     'v_ac_high_in_time': 52,
@@ -160,7 +195,10 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'v_p_bus': 383.0,
     'v_pv1': 357.0,
     'v_pv2': 369.70,
+    'v_pv_fault_value': 0.0,
     'v_pv_input_start': 150.0,
+    'variable_address': 32768,
+    'variable_value': 30235,
     'work_time_total': 385,
 }
 
@@ -196,7 +234,7 @@ EXPECTED_INVERTER_DICT = {
     'enable_drm_rj45_port': True,
     'ct_adjust': 2,
     # 'charge_and_discharge_soc': 0,
-    # 'bms_version': 101,
+    'bms_chip_version': 101,
     'meter_type': 1,
     'reverse_115_meter_direct': False,
     'reverse_418_meter_direct': False,
@@ -257,6 +295,11 @@ EXPECTED_INVERTER_DICT = {
     'battery_charge_limit': 50,
     'battery_discharge_limit': 50,
     'enable_buzzer': False,
+    'enable_above_6kw_system': False,
+    'enable_low_voltage_fault_ride_through': False,
+    'enable_spi': False,
+    'enable_frequency_derating': False,
+    'remote_bms_restart': False,
     'island_check_continue': 0,
     'battery_discharge_min_power_reserve': 4,
     'charge_target_soc': 100,
@@ -319,15 +362,97 @@ EXPECTED_INVERTER_DICT = {
     'v_p_bus': 7.0,
     'v_pv1': 1.4,
     'v_pv2': 1.0,
+    'dci_fault_value': 0.0,
+    'f_ac_fault_value': 0.0,
+    'frequency_load_limit_rate': 0,
+    'gfci_fault_value': 0.0,
+    'iso1': 0,
+    'iso2': 0,
+    'iso_fault_value': 0.0,
+    'local_command_test': False,
+    'pf_cmd_memory_state': False,
+    'pf_limit_lp1_lp': 0,
+    'pf_limit_lp1_pf': -1.0,
+    'pf_limit_lp2_lp': 0,
+    'pf_limit_lp2_pf': -1.0,
+    'pf_limit_lp3_lp': 0,
+    'pf_limit_lp3_pf': -1.0,
+    'pf_limit_lp4_lp': 0,
+    'pf_limit_lp4_pf': -1.0,
+    'power_factor_function_model': 0,
+    'real_v_f_value': 0.0,
+    'safety_time_limit': 0.0,
+    'safety_v_f_limit': 0.0,
+    'start_system_auto_test': False,
+    'temp_fault_value': 0.0,
+    'test_treat_time': 0,
+    'test_treat_value': 0.0,
+    'test_value': 0.0,
+    'user_code': 7,
+    'v_10_min_protection': 274.0,
+    'v_ac_fault_value': 0.0,
+    'v_pv_fault_value': 0.0,
+    'variable_address': 32768,
+    'variable_value': 30235,
 }
+
+
+def test_has_expected_attributes():
+    """Ensure registers mapped to Batteries/BMS are represented in the model."""
+    keys_to_ignore = {
+        'system_time_year',
+        'system_time_day',
+        'system_time_hour',
+        'system_time_minute',
+        'system_time_second',
+    }
+    suffixes_to_strip = {'_l', '_start', '_1_2', '_month'}
+    suffixes_to_ignore = {'_h', '_end', '_3_4', '_5_6', '_7_8', '_9_10'}
+    prefixes_to_leave_untouched = {'status_', 'warning_', 'v_pv_input_start'}
+    prefixes_to_ignore = {'input_reg', 'holding_reg', 'cei021_', 'auto_test_'}
+
+    def add_name(values: set, val: str):
+        val = val.lower()
+        for key in keys_to_ignore:
+            if val == key:
+                return
+        for pfx in prefixes_to_leave_untouched:
+            if val.startswith(pfx):
+                values.add(val)
+                return
+        for pfx in prefixes_to_ignore:
+            if val.startswith(pfx):
+                return
+        for sfx in suffixes_to_strip:
+            if val.endswith(sfx):
+                values.add(val[: -len(sfx)])
+                return
+        for sfx in suffixes_to_ignore:
+            if val.endswith(sfx):
+                return
+        if val == 'num_mppt_and_num_phases':
+            values.add('num_mppt')
+            values.add('num_phases')
+            return
+        values.add(val)
+
+    expected_attributes = set()
+    for i in range(60):
+        add_name(expected_attributes, HoldingRegister(i).name)
+        add_name(expected_attributes, HoldingRegister(i + 60).name)
+        add_name(expected_attributes, HoldingRegister(i + 120).name)
+        add_name(expected_attributes, InputRegister(i).name)
+        add_name(expected_attributes, InputRegister(i + 120).name)
+        add_name(expected_attributes, InputRegister(i + 180).name)
+        # add_name(expected_attributes, InputRegister(i+240).name)
+    assert expected_attributes == set(Inverter.__fields__.keys())
 
 
 def test_from_orm_empty():
     """Ensure an empty object cannot be instantiated/validated because of missing data for virtual attributes."""
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(KeyError, match=str(HoldingRegister(13))):
+        # inverter_serial_number virtual attribute depends on registers being loaded
         Inverter.from_orm(RegisterCache(0x32))
-    # inverter_serial_number virtual attribute depends on registers being loaded
-    assert e.value.args[0] == HoldingRegister(13)
 
 
 def test_from_orm(register_cache):  # noqa: F811
@@ -343,7 +468,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 3874
+    assert len(i.json()) == 4848
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
