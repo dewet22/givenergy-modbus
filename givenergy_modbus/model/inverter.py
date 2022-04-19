@@ -56,12 +56,17 @@ class Inverter(GivEnergyBaseModel):
     enable_drm_rj45_port: bool
     ct_adjust: int
     enable_buzzer: bool
+    bms_chip_version: int
 
     num_mppt: int
     num_phases: int
     enable_ammeter: bool
     grid_port_max_power_output: int
     enable_60hz_freq_mode: bool
+    enable_above_6kw_system: bool
+    enable_frequency_derating: bool
+    enable_low_voltage_fault_ride_through: bool
+    enable_spi: bool
     inverter_modbus_address: int
     modbus_version: float
 
@@ -79,11 +84,13 @@ class Inverter(GivEnergyBaseModel):
     active_power_rate: int
     reactive_power_rate: int
     power_factor: int
+    power_factor_function_model: int
     inverter_state: Tuple[int, int]
     inverter_start_time: int
     inverter_restart_delay_time: int
 
     # Fault conditions
+    dci_fault_value: float
     dci_1_i: float
     dci_1_time: int
     dci_2_i: float
@@ -112,6 +119,18 @@ class Inverter(GivEnergyBaseModel):
     v_ac_low_in_time: int
     v_ac_low_out: float
     v_ac_low_out_time: int
+
+    iso_fault_value: float
+    gfci_fault_value: float
+    dci_fault_value: float
+    v_pv_fault_value: float
+    v_ac_fault_value: float
+    f_ac_fault_value: float
+    temp_fault_value: float
+
+    iso1: int
+    iso2: int
+    local_command_test: bool
 
     # Battery configuration
     first_battery_serial_number: str
@@ -148,7 +167,6 @@ class Inverter(GivEnergyBaseModel):
     charge_soc_stop_1: int
     discharge_soc_stop_1: int
 
-    # InputRegisters
     inverter_status: int
     system_mode: int
     inverter_countdown: int
@@ -205,6 +223,31 @@ class Inverter(GivEnergyBaseModel):
     v_p_bus: float
     v_pv1: float
     v_pv2: float
+
+    pf_cmd_memory_state: bool
+    pf_limit_lp1_lp: int
+    pf_limit_lp1_pf: float
+    pf_limit_lp2_lp: int
+    pf_limit_lp2_pf: float
+    pf_limit_lp3_lp: int
+    pf_limit_lp3_pf: float
+    pf_limit_lp4_lp: int
+    pf_limit_lp4_pf: float
+    frequency_load_limit_rate: int
+
+    real_v_f_value: float
+    remote_bms_restart: bool
+    safety_time_limit: float
+    safety_v_f_limit: float
+    start_system_auto_test: bool
+    test_treat_time: int
+    test_treat_value: float
+    test_value: float
+    user_code: int
+    v_10_min_protection: float
+
+    variable_address: int
+    variable_value: int
 
     @root_validator
     def compute_model(cls, values) -> dict:
