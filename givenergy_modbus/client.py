@@ -7,7 +7,7 @@ import socket
 from asyncio import PriorityQueue, Queue, StreamReader, StreamWriter, Task
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
-from typing import Callable, Mapping, Sequence
+from typing import Awaitable, Callable, Mapping, Sequence
 
 import aiofiles  # type: ignore
 from metrology import Metrology
@@ -352,6 +352,10 @@ class GivEnergyAsyncClient:
         self.raw_frames_queue = Queue()
         self.error_frames_queue = Queue()
 
+        from metrology import registry
+
+        registry.clear()
+
     async def refresh_data(self):
         """Refresh data from the remote system."""
         meter = Metrology.meter('refreshes')
@@ -408,7 +412,7 @@ class GivEnergyAsyncClient:
                 error_frames.append(raw_frame)
                 Metrology.meter('rx-pdus-discarded').mark()
 
-        data = await asyncio.wait_for(self.reader.read(15), timeout=self.seconds_between_data_refreshes * 2)
+        data = await asyncio.wait_for(self.reader.read(15), timeout=self.seconds_between_data_refreshes * 3)
         Metrology.meter('rx-bytes').mark(len(data))
 
         new_pdus: list[tuple[ModbusPDU, bytes]] = []
@@ -497,7 +501,7 @@ class GivEnergyAsyncClient:
                             f'battery is likely not installed. {pdu}: {e}'
                         )
                     else:
-                        _logger.warning(f'Rejecting corrupt-looking {pdu}: {e}')
+                        _logger.debug(f'Rejecting corrupt-looking {pdu}: {e}')
 
             if self.pdu_handler:
                 return_pdu = await loop.run_in_executor(None, self.pdu_handler, pdu)
@@ -522,8 +526,13 @@ class GivEnergyAsyncClient:
             dump_queue_to_file(self.error_frames_queue, 'error_frames'),
         )
 
-    async def check_health(self):
+    async def health_check(self):
         """Proto healthcheck function."""
+        all_tasks = asyncio.all_tasks()
+        if len(all_tasks) < 5 or len(all_tasks) > 15:
+            tasks = "\n".join([f"    {t.get_name():30} {t._state:10} {t.get_coro()}" for t in all_tasks])
+            _logger.warning(f'{len(all_tasks)} tasks scheduled:\n{tasks}')
+
         # for f in registry:
         #     _logger.info(f'{f[0]}: {f[1].count}')
         # for name, metric in registry.with_tags:
@@ -535,13 +544,8 @@ class GivEnergyAsyncClient:
         #             'fifteen_minute_rate', 'mean_rate'
         #         ])
 
-        for n, t in self.tasks.items():
-            if t.done() or t.cancelled():
-                _logger.info(f'{n}: {t.done()} {t.cancelled()}')
-
         r = Metrology.meter('refreshes')
-        if r.count < 10:
-            # _logger.info(f'Too few refreshes: {r.count}')
+        if r.count < 5:
             return
         if r.fifteen_minute_rate < 0.1:
             _logger.error(f'Long-term low refresh rate: {r.fifteen_minute_rate}/s < 0.1/s')
@@ -567,30 +571,33 @@ class GivEnergyAsyncClient:
         Metrology.meter('refreshes').clear()
         _logger.info(f'Connected to {self.host}:{self.port}')
 
-    def loop_until_cancelled(self, func: Callable, sleep: float):
+    def run_tasks_forever(self, *funcs: tuple[Callable[[], Awaitable], float]):
         """Helper method to wrap coros in tasks, run them a permanent loop and handle cancellation."""
 
-        async def coro():
-            _logger.debug(f"{func.__name__}() looping until cancelled or disconnected")
+        async def coro(f: Callable[[], Awaitable], s: float, name: str):
             while self.connected:
                 try:
-                    await func()
-                    await asyncio.sleep(sleep)
+                    await f()
+                    await asyncio.sleep(s)
                 except asyncio.CancelledError as e:
-                    _logger.debug(f"{func.__name__}() cancelled: {e}")
+                    _logger.info(f"Cancelling {name}(): {e}")
                     raise
-            _logger.info(f"Disconnected, returning from {func.__name__}()")
+            _logger.info(f"Disconnected, stopping {name}()")
 
-        self.tasks[func.__name__] = asyncio.create_task(coro(), name=func.__name__)
+        for func, sleep in funcs:
+            func_name = func.__name__
+            _logger.debug(f"Forever running {func_name}()")
+            self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name), name=func_name)
 
     async def chaos(self):
         """Inject some chaos."""
-        await asyncio.sleep(random.randint(600, 6000))
+        await asyncio.sleep(random.randint(60, 600))
         self.writer.close()
 
     async def loop_forever(self):
         """Main async client loop."""
         while True:
+            asyncio.create_task(self.chaos(), name='chaos')
             self.reset_state()
             try:
                 await self.connect()
@@ -600,20 +607,20 @@ class GivEnergyAsyncClient:
                 await asyncio.sleep(10)
                 continue
 
-            self.loop_until_cancelled(self.dispatch_incoming_messages, 0.1)
-            self.loop_until_cancelled(self.handle_incoming_packet_data, 0)
-            self.loop_until_cancelled(self.send_queued_messages, self.wait_between_pdu_writes)
-            self.loop_until_cancelled(self.refresh_data, self.seconds_between_data_refreshes)
-            self.loop_until_cancelled(self.dump_queues_to_files, 60)
-            self.loop_until_cancelled(self.check_health, 10)
-
-            asyncio.create_task(self.chaos(), name='chaos')
+            self.run_tasks_forever(
+                (self.dispatch_incoming_messages, 0.1),
+                (self.handle_incoming_packet_data, 0),
+                (self.send_queued_messages, self.wait_between_pdu_writes),
+                (self.refresh_data, self.seconds_between_data_refreshes),
+                (self.dump_queues_to_files, 60),
+                (self.health_check, 10),
+            )
 
             try:
                 await asyncio.gather(*self.tasks.values())
                 _logger.info('All tasks completed, restarting')
-            except (ConnectionError,) as e:  # TimeoutError, asyncio.exceptions.TimeoutError
-                _logger.error(f'Restarting: {type(e).__name__}: {e}')
+            except (ConnectionError, asyncio.exceptions.TimeoutError) as e:  # TimeoutError
+                _logger.error(f'Restarting: {type(e).__name__}{f": {e}" if str(e) else ""}')
 
             self.cancel_tasks()
             self.writer.close()  # this _should_ never throw an exception regardless of the socket state
