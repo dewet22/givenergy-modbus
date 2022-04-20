@@ -10,9 +10,11 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
+    ReadInputRegistersResponse,
     ReadRegistersRequest,
     ReadRegistersResponse,
     WriteHoldingRegisterRequest,
+    WriteHoldingRegisterResponse,
 )
 from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
 
@@ -188,3 +190,51 @@ def test_read_registers_response_as_dict():
         1008: 'a',
         1009: 'a',
     }
+
+
+def test_has_same_shape():
+    """Ensure we can compare PDUs sensibly."""
+    r1 = ReadInputRegistersResponse()
+    r2 = ReadInputRegistersResponse()
+    assert r1._shape_hash() == r2._shape_hash()
+    assert r1.has_same_shape(r2)
+    assert r1 != r2
+    assert r1.has_same_shape(ReadInputRegistersRequest()) is NotImplemented
+    r2 = ReadInputRegistersResponse(slave_address=3)
+    assert r1.has_same_shape(r2) is False
+    r2 = ReadInputRegistersResponse(base_register=1)
+    assert r1.has_same_shape(r2) is False
+
+    r1 = ReadInputRegistersResponse(register_count=2, register_values=[33, 45])
+    r2 = ReadInputRegistersResponse(register_count=2, register_values=[10, 11])
+    assert r1.has_same_shape(r2)
+    assert r1 != r2
+    r1 = ReadInputRegistersResponse(register_count=2, register_values=[10, 11])
+    assert r1.has_same_shape(r2)
+    assert r1 != r2
+
+    test_set = {r1, r2}
+    assert len(test_set) == 2
+    assert r1 in test_set
+    assert r2 in test_set
+
+    r = WriteHoldingRegisterResponse()
+    assert r.has_same_shape(WriteHoldingRegisterResponse())
+    assert r.has_same_shape(WriteHoldingRegisterRequest()) is NotImplemented
+    assert r.has_same_shape(ReadInputRegistersResponse()) is False
+    assert r.has_same_shape(ReadInputRegistersRequest()) is NotImplemented
+    assert r.has_same_shape(WriteHoldingRegisterResponse(slave_address=3)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=1)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10)) is False
+
+    r1 = WriteHoldingRegisterResponse(register=2, value=42)
+    r2 = WriteHoldingRegisterResponse(register=2, value=10)
+    assert r1.has_same_shape(r2)
+    assert r1 != r2
+    r1 = WriteHoldingRegisterResponse(register=2, value=10)
+    assert r1 != r2
+
+    test_set = {r1, r2}
+    assert len(test_set) == 2
+    assert r1 in test_set
+    assert r2 in test_set

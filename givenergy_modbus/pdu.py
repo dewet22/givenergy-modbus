@@ -177,8 +177,31 @@ class ModbusPDU(ABC):
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
 
-    def execute(self) -> ModbusPDU | None:
-        """Called to create the Response PDU after an incoming message has been completely processed."""
+    def has_same_shape(self, o: object):
+        """Calculates whether a given message has the "same shape".
+
+        Messages are similarly shaped when they match message type (response, error state), location (slave device,
+        register type, register indexes) etc. but not data / register values.
+
+        This is not an identity check but could be used both for creating template expected responses from
+        outgoing requests (to facilitate tracking future responses), but also allows incoming messages to be
+        hashed consistently to avoid (e.g.) multiple messages of the same shape getting enqueued unnecessarily –
+        the theory being that newer messages being enqueued might as well replace older ones of the same shape.
+        """
+        if isinstance(o, ModbusResponse):
+            return self._shape_hash() == o._shape_hash()
+        return NotImplemented
+
+    def _shape_hash(self) -> int:
+        """Calculates the "shape hash" for a given message."""
+        return hash(self._shape_hash_keys())
+
+    def _shape_hash_keys(self) -> tuple:
+        """Defines which keys to compare to see if two messages have the same shape."""
+        return (type(self), self.function_code, self.slave_address, self.error) + self._extra_shape_hash_keys()
+
+    def _extra_shape_hash_keys(self) -> tuple:
+        """Allows extra message-specific keys to be mixed in."""
         raise NotImplementedError()
 
 
@@ -186,8 +209,8 @@ class ModbusPDU(ABC):
 class ModbusRequest(ModbusPDU, pymodbus_pdu.ModbusRequest, ABC):
     """Root of the hierarchy for Request PDUs."""
 
-    def execute(self):
-        """Hook that allows a Response PDU to be created from the same context where the Request was handled."""
+    def expected_response_pdu(self) -> ModbusResponse:
+        """Create a template of the expected response to this Request."""
         raise NotImplementedError()
 
 
@@ -198,24 +221,9 @@ class ModbusResponse(ModbusPDU, pymodbus_pdu.ModbusResponse, ABC):
 
     def _update_check_code(self):
         if hasattr(self, 'check'):
-            # Until we know how Responses are checksummed there's nothing we can do here; self.check stays 0x0000
+            # Until we know how Responses' CRCs are calculated there's nothing we can do here; self.check stays 0x0000
             _logger.warning('Unable to recalculate checksum, using whatever value was set')
             self.builder.add_16bit_uint(self.check)
-
-    def execute(self):
-        """There is no automatic Reply following the processing of a Response."""
-
-    # fmt: off
-    def _ensure_valid_state(self):
-        if self.slave_address not in (
-            0x0,                     # mobile app
-            0x11,                    # inverter
-            # 0x30, 0x31,            # ??
-            0x32,                    # inverter / first battery?
-            0x33, 0x34, 0x35, 0x36,  # 4x additional batteries
-        ):
-            _logger.warning(f'Unexpected slave {hex(self.slave_address)}: {self}')
-    # fmt: on
 
 
 #################################################################################
@@ -233,25 +241,30 @@ class NullResponse(ModbusResponse):
     def _calculate_function_data_size(self) -> int:
         pass
 
-    # def _calculate_function_data_size(self) -> int:
-    #     raise NotImplementedError()
+    def _ensure_valid_state(self) -> None:
+        pass
+
+    def _extra_shape_hash_keys(self) -> tuple:
+        return ()
 
 
 #################################################################################
-class RegistersRangeMessage:
+class RegistersRangeMessage(ModbusPDU, ABC):
     """Mixin for commands that specify base register and register count semantics."""
 
     base_register: int
     register_count: int
-    error: bool
+
+    def _extra_shape_hash_keys(self) -> tuple:
+        return self.base_register, self.register_count
 
     def _ensure_registers_spec_correct(self):
         if self.base_register is None:
             raise ValueError('Base register must be set', self)
         if 0xFFFF < self.base_register < 0:
             raise ValueError('Base register must be an unsigned 16-bit int', self)
-        # if not self.error and self.register_count != 1 and self.base_register % 60 != 0:
-        #     _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+        if not self.error and self.register_count != 1 and self.base_register % 60 != 0:
+            _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
 
         if self.register_count is None:
             raise ValueError('Register count must be set', self)
@@ -297,8 +310,6 @@ class ReadRegistersRequest(ModbusRequest, RegistersRangeMessage, ABC):
 class ReadRegistersResponse(ModbusResponse, RegistersRangeMessage, ABC):
     """Handles all messages that respond with a range of registers."""
 
-    request_class: type[ReadRegistersRequest]
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.inverter_serial_number: str = kwargs.get('inverter_serial_number', 'SA1234G567')
@@ -337,7 +348,16 @@ class ReadRegistersResponse(ModbusResponse, RegistersRangeMessage, ABC):
         if self.padding != expected_padding:
             _logger.debug(f'Expected padding {hex(expected_padding)}, found {hex(self.padding)} instead: {self}')
 
-    def to_dict(self):
+        # FIXME how to test crc
+        # crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
+        # crc_builder.add_8bit_uint(self.function_code)
+        # crc_builder.add_16bit_uint(self.base_register)
+        # crc_builder.add_16bit_uint(self.register_count)
+        # # [crc_builder.add_16bit_uint(r) for r in self.register_values]
+        # crc = CrcModbus().process(crc_builder.to_string()).final()
+        # _logger.warning(f'supplied crc = {self.check}, calculated crc = {crc}')
+
+    def to_dict(self) -> dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
         return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
 
@@ -352,15 +372,14 @@ class ReadHoldingRegistersMeta:
 class ReadHoldingRegistersRequest(ReadHoldingRegistersMeta, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #3/Read Holding Registers request messages."""
 
-    def execute(self):
-        """FIXME if we ever implement a server."""
-        raise NotImplementedError()
+    def expected_response_pdu(self) -> ModbusResponse:  # noqa D102 - see superclass
+        return ReadHoldingRegistersResponse(
+            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+        )
 
 
 class ReadHoldingRegistersResponse(ReadHoldingRegistersMeta, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #3/Read Holding Registers response messages."""
-
-    request_class = ReadHoldingRegistersRequest
 
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
@@ -376,29 +395,24 @@ class ReadInputRegistersMeta:
 class ReadInputRegistersRequest(ReadInputRegistersMeta, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
 
-    def execute(self) -> None:
-        """FIXME if we ever implement a server."""
-        raise NotImplementedError()
+    def expected_response_pdu(self) -> ModbusResponse:  # noqa D102 - see superclass
+        return ReadInputRegistersResponse(
+            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+        )
 
 
 class ReadInputRegistersResponse(ReadInputRegistersMeta, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
-
-    request_class = ReadInputRegistersRequest
 
     def _calculate_function_data_size(self) -> int:
         raise NotImplementedError()
 
 
 #################################################################################
-class WriteHoldingRegisterMeta:
+class WriteHoldingRegisterMeta(ModbusPDU, ABC):
     """Request & Response PDUs for function #6/Write Holding Register."""
 
     function_code = 6
-
-
-class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
-    """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
     writable_registers = {
         20,  # ENABLE_CHARGE_TARGET
@@ -425,6 +439,25 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
         116,  # TARGET_SOC
     }
+    register: int
+    value: int
+
+    def _extra_shape_hash_keys(self) -> tuple:
+        return (self.register,)
+
+    def _ensure_valid_state(self):
+        if self.register is None:
+            raise ValueError('Register must be set explicitly', self)
+        elif self.register not in self.writable_registers:
+            raise ValueError(f'Register {self.register} is not safe to write to', self)
+        if self.value is None:
+            raise ValueError('Register value must be set explicitly', self)
+        elif 0 > self.value > 0xFFFF:
+            raise ValueError(f'Register value {hex(self.value)} must be an unsigned 16-bit int', self)
+
+
+class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
+    """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -434,6 +467,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
     def _encode_function_data(self):
         self.builder.add_16bit_uint(self.register)
         self.builder.add_16bit_uint(self.value)
+        # self.check added via self._update_check_code()
 
     def _decode_function_data(self, decoder):
         self.register = decoder.decode_16bit_uint()
@@ -453,13 +487,8 @@ class WriteHoldingRegisterRequest(WriteHoldingRegisterMeta, ModbusRequest, ABC):
         _logger.debug(f"Calculated {size} bytes partial response size for {self}")
         return size
 
-    def _ensure_valid_state(self):
-        if self.register not in self.writable_registers:
-            raise ValueError(f'Register {self.register} is not safe to write to', self)
-        if self.value is None:
-            raise ValueError('Register value must be set explicitly', self)
-        elif 0 > self.value > 0xFFFF:
-            raise ValueError(f'Register value {hex(self.value)} must be an unsigned 16-bit int', self)
+    def expected_response_pdu(self) -> WriteHoldingRegisterResponse:  # noqa D102 - see superclass
+        return WriteHoldingRegisterResponse(register=self.register, value=self.value, slave_address=self.slave_address)
 
 
 class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC):
@@ -482,12 +511,6 @@ class WriteHoldingRegisterResponse(WriteHoldingRegisterMeta, ModbusResponse, ABC
         self.register = decoder.decode_16bit_uint()
         self.value = decoder.decode_16bit_uint()
         self.check = decoder.decode_16bit_uint()
-
-    def _ensure_valid_state(self):
-        if self.register is None:
-            raise ValueError('Register must be set explicitly', self)
-        if self.value is None:
-            raise ValueError('Value must be set explicitly', self)
 
 
 #################################################################################
@@ -514,7 +537,7 @@ class HeartbeatRequest(ModbusRequest, ABC):
         self.data_adapter_type = decoder.decode_8bit_uint()
         _logger.debug(f"Successfully decoded {len(data)} bytes")
 
-    def execute(self) -> HeartbeatResponse:
+    def expected_response_pdu(self) -> HeartbeatResponse:
         """Create an appropriate response for an incoming HeartbeatRequest."""
         return HeartbeatResponse(data_adapter_type=self.data_adapter_type)
 
