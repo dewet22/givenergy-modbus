@@ -17,7 +17,7 @@ end_of_line = crlf
 [LICENSE]
 insert_final_newline = false
 
-[Makefile]
+[makefile]
 indent_style = tab
 
 [*.{yml, yaml}]
