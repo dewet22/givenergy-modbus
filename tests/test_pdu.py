@@ -1,70 +1,79 @@
-from typing import Any, Dict, Tuple
-
 import pytest
 
 from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
-from givenergy_modbus.pdu import (
-    HeartbeatRequest,
-    HeartbeatResponse,
-    ModbusRequest,
-    ReadHoldingRegistersRequest,
-    ReadHoldingRegistersResponse,
-    ReadInputRegistersRequest,
-    ReadInputRegistersResponse,
-    ReadRegistersRequest,
-    ReadRegistersResponse,
-    WriteHoldingRegisterRequest,
-    WriteHoldingRegisterResponse,
-)
-from tests import REQUEST_PDU_MESSAGES, RESPONSE_PDU_MESSAGES, _lookup_pdu_class
+from givenergy_modbus.pdu.heartbeat import *
+from givenergy_modbus.pdu.null import NullResponse
+from givenergy_modbus.pdu.read_registers import *
+from givenergy_modbus.pdu.write_registers import *
+from tests import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _lookup_pdu_class
 
 
 def test_str():
-    """Test we can represent an instance of PDUs nicely."""
-    assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        "_/ReadRegistersRequest(base_register=3 register_count=6)"
+    """Ensure human-friendly string representations."""
+    # ABCs before main function definitions
+    assert '/BasePDU(' not in str(BasePDU())
+    assert '/Request(' not in str(Request())
+    assert '/Response(' not in str(Response())
+    assert str(BasePDU()).startswith('<givenergy_modbus.pdu.BasePDU object at ')
+    assert str(Request()).startswith('<givenergy_modbus.pdu.Request object at ')
+    assert str(Request(foo=1)).startswith('<givenergy_modbus.pdu.Request object at ')
+
+    # __str__() gets defined at the main function ABC
+    assert str(HeartbeatMessage(foo=3, bar=6)) == (
+        '1/HeartbeatMessage(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
     )
-    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest()"
-    assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
-    assert str(ModbusRequest(foo=1)) == "_/ModbusRequest()"
-    assert str(ModbusRequest) == "<class 'givenergy_modbus.pdu.ModbusRequest'>"
+    assert str(HeartbeatMessage(data_adapter_serial_number='xxx', data_adapter_type=33)) == (
+        '1/HeartbeatMessage(data_adapter_serial_number=xxx data_adapter_type=33)'
+    )
+    assert str(HeartbeatRequest(foo=3, bar=6)) == (
+        '1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
+    )
+    assert str(HeartbeatResponse(data_adapter_serial_number='xxx', data_adapter_type=33)) == (
+        '1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)'
+    )
+
+    assert str(TransparentMessage(foo=3, bar=6)) == '2:_/TransparentMessage()'
+    assert str(TransparentRequest(foo=3, bar=6)) == '2:_/TransparentRequest()'
+    assert str(TransparentRequest(inner_function_code=44)) == '2:_/TransparentRequest()'
+    assert str(TransparentResponse(foo=3, bar=6)) == '2:_/TransparentResponse()'
+    assert str(TransparentResponse(inner_function_code=44)) == '2:_/TransparentResponse()'
+
+    assert str(ReadRegisters()) == '2:_/ReadRegisters(base_register=0 register_count=0)'
+    assert str(ReadRegisters(foo=1)) == '2:_/ReadRegisters(base_register=0 register_count=0)'
+    assert str(ReadRegisters(base_register=50)) == '2:_/ReadRegisters(base_register=50 register_count=0)'
+
+    assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
+        '2:_/ReadRegistersRequest(base_register=3 register_count=6)'
+    )
+    assert str(NullResponse(foo=1)) == "2:0/NullResponse()"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        "3/ReadHoldingRegistersRequest(base_register=0 register_count=60)"
+        "2:3/ReadHoldingRegistersRequest(base_register=0 register_count=0)"
     )
-    assert str(ReadHoldingRegistersRequest) == "<class 'givenergy_modbus.pdu.ReadHoldingRegistersRequest'>"
 
-    assert str(WriteHoldingRegisterRequest(foo=1)) == "6/WriteHoldingRegisterRequest(register=? value=?)"
-    assert str(WriteHoldingRegisterRequest) == "<class 'givenergy_modbus.pdu.WriteHoldingRegisterRequest'>"
+    assert str(WriteHoldingRegisterRequest(foo=1)) == "2:6/WriteHoldingRegisterRequest(register=? value=?)"
+    assert str(WriteHoldingRegisterResponse(foo=1)) == "2:6/WriteHoldingRegisterResponse(register=? value=?)"
+    assert str(WriteHoldingRegisterResponse(error=True, register=3, value=5)) == (
+        "2:6/WriteHoldingRegisterResponse(ERROR register=3 value=5)"
+    )
+    assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=3, value=5)) == (
+        "2:6/WriteHoldingRegisterResponse(ERROR inverter_serial_number=SA1234G567 register=3 value=5)"
+    )
 
-    assert str(HeartbeatRequest(foo=1)) == "_/HeartbeatRequest(data_adapter_type=0)"
-    assert str(HeartbeatRequest) == "<class 'givenergy_modbus.pdu.HeartbeatRequest'>"
-    assert str(HeartbeatResponse(foo=1)) == "_/HeartbeatResponse(data_adapter_type=0)"
-    assert str(HeartbeatResponse) == "<class 'givenergy_modbus.pdu.HeartbeatResponse'>"
+    assert str(HeartbeatRequest(foo=1)) == (
+        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+    )
+    assert str(HeartbeatResponse(foo=1)) == (
+        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+    )
 
-    assert len(REQUEST_PDU_MESSAGES) == 6
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[0][0])(**REQUEST_PDU_MESSAGES[0][1])
-    assert str(pdu) == '4/ReadInputRegistersRequest(base_register=16 register_count=6)'
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[1][0])(**REQUEST_PDU_MESSAGES[1][1])
-    assert str(pdu) == '3/ReadHoldingRegistersRequest(base_register=20817 register_count=2000)'
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[2][0])(**REQUEST_PDU_MESSAGES[2][1])
-    assert str(pdu) == '3/ReadHoldingRegistersRequest(base_register=20817 register_count=2000)'
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[3][0])(**REQUEST_PDU_MESSAGES[3][1])
-    assert str(pdu) == '6/WriteHoldingRegisterRequest(register=20817 value=2000)'
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[4][0])(**REQUEST_PDU_MESSAGES[4][1])
-    assert str(pdu) == '6/WriteHoldingRegisterRequest(register=20 value=1)'
-    pdu = _lookup_pdu_class(REQUEST_PDU_MESSAGES[5][0])(**REQUEST_PDU_MESSAGES[5][1])
-    assert str(pdu) == '_/HeartbeatRequest(data_adapter_type=1)'
 
-    assert len(RESPONSE_PDU_MESSAGES) == 4
-    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[0][0])(**RESPONSE_PDU_MESSAGES[0][1])
-    assert str(pdu) == '4/ReadInputRegistersResponse(slave_address=0x32 base_register=0 register_count=60)'
-    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[1][0])(**RESPONSE_PDU_MESSAGES[1][1])
-    assert str(pdu) == '3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0 register_count=60)'
-    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[2][0])(**RESPONSE_PDU_MESSAGES[2][1])
-    assert str(pdu) == '6/WriteHoldingRegisterResponse(slave_address=0x32 register=35 value=8764)'
-    pdu = _lookup_pdu_class(RESPONSE_PDU_MESSAGES[3][0])(**RESPONSE_PDU_MESSAGES[3][1])
-    assert str(pdu) == '_/HeartbeatResponse(data_adapter_type=32)'
+@pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES + SERVER_MESSAGES)
+def test_str_actual_messages(pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex, str_repr):
+    # pdu_class_name, constructor_kwargs, _, _, expected_exception, str_repr = data
+
+    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
+    assert str(pdu) == str_repr
 
 
 def test_class_equivalence():
@@ -79,87 +88,46 @@ def test_class_equivalence():
 
 
 def test_cannot_change_function_code():
-    """Prevent (accidentally) changing the function_code via kwargs in the constructor."""
-    assert ModbusRequest()
-    assert ReadHoldingRegistersRequest(function_code=3)
+    """Disabuse any use of function_code in PDU constructors."""
+    assert not hasattr(Request(), 'function_code')
+    assert not hasattr(Request(), 'main_function_code')
+    assert not hasattr(Request(), 'inner_function_code')
 
-    with pytest.raises(ValueError) as e:
-        ModbusRequest(function_code=12)
-    assert e.value.args[0] == (
-        "Class ModbusRequest does not have a function code, trying to override it is not supported"
-    )
+    assert ReadHoldingRegistersRequest(error=True).inner_function_code == 3
 
-    with pytest.raises(ValueError) as e:
-        ReadRegistersRequest(function_code=12, base_register=3, register_count=6)
-    assert e.value.args[0] == (
-        "Class ReadRegistersRequest does not have a function code, trying to override it is not supported"
-    )
-
-    with pytest.raises(ValueError) as e:
-        assert ReadHoldingRegistersRequest(function_code=14)
-    assert e.value.args[0] == (
-        "Specified function code 14 is different from what 3/ReadHoldingRegistersRequest() is expecting."
-    )
+    assert ReadHoldingRegistersRequest(function_code=12).main_function_code != 12
+    assert ReadHoldingRegistersRequest(main_function_code=12).main_function_code != 12
+    assert ReadHoldingRegistersRequest(inner_function_code=12).main_function_code != 12
+    assert ReadHoldingRegistersRequest(function_code=12).inner_function_code != 12
+    assert ReadHoldingRegistersRequest(main_function_code=12).inner_function_code != 12
+    assert ReadHoldingRegistersRequest(inner_function_code=12).inner_function_code != 12
 
 
-@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_encoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
+@pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
+def test_server_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we correctly encode unencapsulated Request messages."""
-    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
-
-    pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
+    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
     if ex:
-        with pytest.raises(ex.__class__) as e:
+        with pytest.raises(ex.__class__, match=ex.args[0]) as e:
             pdu.encode()
         assert e.value.args == (ex.args[0], pdu)
     else:
-        assert pdu.encode() == encoded_pdu
+        assert pdu.encode() == inner_frame
 
 
-@pytest.mark.parametrize("data", REQUEST_PDU_MESSAGES)
-def test_request_pdu_decoding(data: Tuple[str, Dict[str, Any], bytes, bytes, Exception]):
+@pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
+def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
-    pdu_fn, pdu_fn_kwargs, mbap_head, encoded_pdu, ex = data
-
-    pdu: ReadRegistersRequest = _lookup_pdu_class(pdu_fn)()
+    pdu = _lookup_pdu_class(pdu_class_name)()
     if ex:
-        with pytest.raises(ex.__class__) as e:
-            pdu.decode(encoded_pdu)
+        with pytest.raises(ex.__class__, match=ex.args[0]) as e:
+            pdu.decode(inner_frame)
         assert e.value.args == (ex.args[0], pdu)
     else:
-        pdu.decode(encoded_pdu)
-        if pdu_fn_kwargs:
-            i = 0
-            for (arg, val) in pdu_fn_kwargs.items():
-                i += 1
-                assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
-            assert i == len(pdu_fn_kwargs.keys())
-            assert i > 0
-
-
-@pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_response_pdu_encoding(data: Tuple[str, Dict[str, Any], bytes, bytes]):
-    """Ensure we correctly encode unencapsulated Response messages."""
-    pdu_fn, pdu_fn_kwargs, _, encoded_pdu = data
-
-    pdu: ReadRegistersResponse = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
-    assert pdu.encode() == encoded_pdu
-
-
-@pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_response_pdu_decoding(data: Tuple[str, Dict[str, Any], bytes, bytes]):
-    """Ensure we correctly decode Response messages to their unencapsulated PDU."""
-    pdu_fn, pdu_fn_kwargs, mbap_header, encoded_pdu = data
-
-    pdu: ReadRegistersResponse = _lookup_pdu_class(pdu_fn)()
-    pdu.decode(encoded_pdu)
-    if pdu_fn_kwargs:
-        i = 0
-        for (arg, val) in pdu_fn_kwargs.items():
-            i += 1
-            assert getattr(pdu, arg) == val, f'test {i}: "{arg}" value was not decoded/stored correctly'
-        assert i == len(pdu_fn_kwargs.keys())
-        assert i > 0
+        pdu.decode(inner_frame)
+        for (arg, val) in constructor_kwargs.items():
+            assert hasattr(pdu, arg)
+            assert getattr(pdu, arg) == val, f'<obj>.{arg} == {getattr(pdu, arg)}, expected {val}'
 
 
 def test_writable_registers_match():
@@ -199,7 +167,8 @@ def test_has_same_shape():
     assert r1._shape_hash() == r2._shape_hash()
     assert r1.has_same_shape(r2)
     assert r1 != r2
-    assert r1.has_same_shape(ReadInputRegistersRequest()) is NotImplemented
+    assert r1.has_same_shape(ReadInputRegistersRequest()) is False
+    assert r1.has_same_shape(object()) is NotImplemented
     r2 = ReadInputRegistersResponse(slave_address=3)
     assert r1.has_same_shape(r2) is False
     r2 = ReadInputRegistersResponse(base_register=1)
@@ -220,9 +189,10 @@ def test_has_same_shape():
 
     r = WriteHoldingRegisterResponse()
     assert r.has_same_shape(WriteHoldingRegisterResponse())
-    assert r.has_same_shape(WriteHoldingRegisterRequest()) is NotImplemented
+    assert r.has_same_shape(WriteHoldingRegisterResponse(value=10))
+    assert r.has_same_shape(WriteHoldingRegisterRequest()) is False
     assert r.has_same_shape(ReadInputRegistersResponse()) is False
-    assert r.has_same_shape(ReadInputRegistersRequest()) is NotImplemented
+    assert r.has_same_shape(ReadInputRegistersRequest()) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(slave_address=3)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=1)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10)) is False

@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, Tuple
+import json
 
 import pytest
 
@@ -8,8 +8,9 @@ from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up 
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import ReadRegistersResponse, WriteHoldingRegisterResponse
-from tests import RESPONSE_PDU_MESSAGES, _lookup_pdu_class
+from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
+from tests import CLIENT_MESSAGES, PduTestCaseSig, _lookup_pdu_class
 from tests.model.test_register_cache import (  # noqa: F401
     register_cache,
     register_cache_battery_daytime_discharging,
@@ -17,13 +18,15 @@ from tests.model.test_register_cache import (  # noqa: F401
 )
 
 
-def test_plant(  # noqa: F811
-    register_cache_inverter_daytime_discharging_with_solar_generation,  # noqa: F811
-    register_cache_battery_daytime_discharging,  # noqa: F811
-):
-    """Ensure we can instantiate a Plant from existing DTOs."""
+@pytest.fixture
+def plant():
+    """Yield a Plant."""
     p = Plant()
-    assert p.dict() == {
+    yield p
+
+
+def test_default_instantiation(plant):
+    assert plant.dict() == {
         'register_caches': {
             0: {'slave_address': 0},
             17: {'slave_address': 17},
@@ -37,7 +40,7 @@ def test_plant(  # noqa: F811
             55: {'slave_address': 55},
         }
     }
-    assert p.json() == (
+    assert plant.json() == (
         '{"register_caches": {"0": {"slave_address": 0}, "17": {"slave_address": 17}, '
         '"48": {"slave_address": 48}, "49": {"slave_address": 49}, "50": '
         '{"slave_address": 50}, "51": {"slave_address": 51}, "52": {"slave_address": '
@@ -45,62 +48,47 @@ def test_plant(  # noqa: F811
         '{"slave_address": 55}}}'
     )
 
-    p.register_caches[0x32] = register_cache_inverter_daytime_discharging_with_solar_generation
-    p.register_caches[0x32].update(register_cache_battery_daytime_discharging.items())
+
+def test_plant(  # noqa: F811
+    plant: Plant,
+    register_cache_inverter_daytime_discharging_with_solar_generation,  # noqa: F811
+    register_cache_battery_daytime_discharging,  # noqa: F811
+):
+    """Ensure we can instantiate a Plant from existing DTOs."""
+    plant.register_caches[0x32] = register_cache_inverter_daytime_discharging_with_solar_generation
+    plant.register_caches[0x32].update(register_cache_battery_daytime_discharging.items())
 
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     b = Battery.from_orm(register_cache_battery_daytime_discharging)
     assert b.battery_serial_number == 'BG1234G567'
 
-    assert isinstance(p.inverter, Inverter)
-    assert p.inverter == i
-    assert isinstance(p.batteries[0], Battery)
-    assert p.batteries[0] == b
+    assert isinstance(plant.inverter, Inverter)
+    assert plant.inverter == i
+    assert isinstance(plant.batteries[0], Battery)
+    assert plant.batteries[0] == b
 
-    assert p.dict() == {'register_caches': p.register_caches}
-    j = p.json()
+    assert plant.dict() == {'register_caches': plant.register_caches}
+    j = plant.json()
     assert len(j) > 5000
 
-    assert Plant(**p.dict()) == p
-    assert Plant.from_orm(p) == p
+    assert Plant(**plant.dict()) == plant
+    assert Plant.from_orm(plant) == plant
 
 
-@pytest.mark.parametrize("data", RESPONSE_PDU_MESSAGES)
-def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes]):
+@pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
+def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we can update a Plant from PDU Response messages."""
-    p = Plant()
-    assert p.dict() == {
-        'register_caches': {
-            0: {'slave_address': 0},
-            17: {'slave_address': 17},
-            48: {'slave_address': 48},
-            49: {'slave_address': 49},
-            50: {'slave_address': 50},
-            51: {'slave_address': 51},
-            52: {'slave_address': 52},
-            53: {'slave_address': 53},
-            54: {'slave_address': 54},
-            55: {'slave_address': 55},
-        }
-    }
-    assert p.json() == (
-        '{"register_caches": {"0": {"slave_address": 0}, "17": {"slave_address": 17}, '
-        '"48": {"slave_address": 48}, "49": {"slave_address": 49}, "50": '
-        '{"slave_address": 50}, "51": {"slave_address": 51}, "52": {"slave_address": '
-        '52}, "53": {"slave_address": 53}, "54": {"slave_address": 54}, "55": '
-        '{"slave_address": 55}}}'
-    )
+    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
 
-    pdu_fn, pdu_fn_kwargs, _, encoded_pdu = data
-
-    pdu: ReadRegistersResponse = _lookup_pdu_class(pdu_fn)(**pdu_fn_kwargs)
-
-    p.update(pdu)
-    d = p.dict()
-    j = p.json()
+    plant.update(pdu)
+    d = plant.dict()
+    j = plant.json()
     assert d.keys() == {'register_caches'}
-    assert d['register_caches'].keys() == {0, 17, 48, 49, 50, 51, 52, 53, 54, 55}
+    expected_slave_addresses = {0, 17, 48, 49, 50, 51, 52, 53, 54, 55}
+    if hasattr(pdu, 'slave_address'):
+        expected_slave_addresses.add(pdu.slave_address)
+    assert set(d['register_caches'].keys()) == expected_slave_addresses
     if isinstance(pdu, ReadRegistersResponse):
         assert len(d['register_caches'][50].keys()) == 61
         assert len(j) > 800
@@ -113,8 +101,8 @@ def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes]):
             '{"slave_address": 52}, "53": {"slave_address": 53}, "54": {"slave_address": '
             '54}, "55": {"slave_address": 55}}}'
         )
-    else:  # HeartbeatResponse
-        assert d['register_caches'] == {
+    else:  # HeartbeatResponse / NullResponse
+        expected_caches = {
             0: {'slave_address': 0},
             17: {'slave_address': 17},
             48: {'slave_address': 48},
@@ -126,13 +114,10 @@ def test_update(data: Tuple[str, Dict[str, Any], bytes, bytes]):
             54: {'slave_address': 54},
             55: {'slave_address': 55},
         }
-        assert j == (
-            '{"register_caches": {"0": {"slave_address": 0}, "17": {"slave_address": 17}, '
-            '"48": {"slave_address": 48}, "49": {"slave_address": 49}, "50": '
-            '{"slave_address": 50}, "51": {"slave_address": 51}, "52": {"slave_address": '
-            '52}, "53": {"slave_address": 53}, "54": {"slave_address": 54}, "55": '
-            '{"slave_address": 55}}}'
-        )
+        if hasattr(pdu, 'slave_address'):
+            expected_caches[pdu.slave_address] = {'slave_address': pdu.slave_address}
+        assert d['register_caches'] == expected_caches
+        assert j == json.dumps({'register_caches': expected_caches})
 
 
 def test_from_actual():

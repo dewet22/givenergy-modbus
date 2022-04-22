@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import ModbusPDU
+from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.transparent import TransparentMessage
 
 _logger = logging.getLogger(__package__)
 
@@ -28,8 +29,10 @@ class Plant(BaseModel):
             for i in (0x00, 0x11, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37):
                 self.register_caches[i] = RegisterCache(i)
 
-    def update(self, pdu: ModbusPDU):
+    def update(self, pdu: BasePDU):
         """Update the Plant state using a received Modbus PDU message."""
+        if not isinstance(pdu, TransparentMessage):
+            return
         if pdu.slave_address not in self.register_caches:
             _logger.warning(f'Unexpected slave address 0x{pdu.slave_address:02x}')
             self.register_caches[pdu.slave_address] = RegisterCache(slave_address=pdu.slave_address)

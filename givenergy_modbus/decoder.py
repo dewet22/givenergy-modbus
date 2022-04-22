@@ -1,27 +1,24 @@
 from __future__ import annotations
 
-import abc
 import logging
 from typing import Mapping, Sequence
 
-from pymodbus.interfaces import IModbusDecoder
-
-from givenergy_modbus.pdu import (
-    HeartbeatRequest,
-    ModbusPDU,
-    NullResponse,
+from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
+from givenergy_modbus.pdu.null import NullResponse
+from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
-    WriteHoldingRegisterRequest,
-    WriteHoldingRegisterResponse,
 )
+from givenergy_modbus.pdu.transparent import TransparentMessage
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
 _logger = logging.getLogger(__package__)
 
 
-class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
+class Decoder:
     """GivEnergy Modbus Decoder factory base class.
 
     This is to enable efficient decoding of unencapsulated messages (i.e. having the Modbus-specific framing
@@ -34,47 +31,45 @@ class GivEnergyDecoder(IModbusDecoder, metaclass=abc.ABCMeta):
     instantiate a concrete PDU handler to decode it, and pass it on.
     """
 
-    _function_table: Sequence[type[ModbusPDU]]  # contains all the decoder functions this factory will consider
-    _lookup: Mapping[int, type[ModbusPDU]]  # lookup table mapping function code to decoder type
+    _function_table: Sequence[type[TransparentMessage]]  # contains all the decoder functions this factory will consider
+    _lookup: Mapping[int, type[TransparentMessage]]  # lookup table mapping function code to decoder type
 
     def __init__(self):
         # build the lookup table at instantiation time
-        self._lookup = {f.function_code: f for f in self._function_table}
+        self._lookup = {f.inner_function_code: f for f in self._function_table}
 
-    def lookupPduClass(self, fn_code: int) -> type[ModbusPDU] | None:
+    def lookup_pdu_class(self, fn_code: int) -> type[TransparentMessage] | None:
         """Attempts to find the ModbusPDU handler class that can handle a given function code."""
         # strip the error bit for lookup; the PDU class will handle the error condition on decoding
         return self._lookup.get(fn_code & 0x7F, None)
 
-    def decode(self, data: bytes) -> ModbusPDU | None:
+    def decode(self, main_fn: int, data: bytes) -> BasePDU | None:
         """Create an appropriately populated PDU message object from a valid Modbus message.
 
         Extracts the `function code` from the raw message and looks up the matching ModbusPDU handler class
         that claims that function. This handler is instantiated and passed the raw message, which then proceeds
         to decode its attributes from the bytestream.
         """
-        main_fn = data[0]
-        data = data[1:]
-        if main_fn == 0x1:  # heartbeat
+        if main_fn == 1:
             pdu = HeartbeatRequest()
             pdu.decode(data)
             return pdu
-        elif main_fn == 0x2:  # "transparent": pass-through to the inverter behind the data collector
+        elif main_fn == 2:  # "transparent": pass-through to the inverter behind the data collector
             if len(data) <= 19:
                 raise ValueError(f"Data is too short to find a valid function id: len={len(data)}")
             fn_code = data[19]
-            response = self.lookupPduClass(fn_code)
+            response = self.lookup_pdu_class(fn_code & 0x7F)
             if response:
                 _logger.debug(f"About to decode data [{data.hex()}]")
-                r = response(function_code=fn_code)
+                r = response(error=bool(fn_code & 0x80))
                 r.decode(data)
                 return r
             raise ValueError(f"No decoder for inner function code {fn_code}")
         raise ValueError(f"Unknown function code {hex(main_fn)}")
 
 
-class GivEnergyRequestDecoder(GivEnergyDecoder):
-    """Factory class to decode GivEnergy Request PDU messages. Typically used by servers processing inbound requests."""
+class ServerDecoder(Decoder):
+    """Decoder for incoming messages a server would typically expect."""
 
     _function_table = [
         ReadHoldingRegistersRequest,
@@ -83,8 +78,8 @@ class GivEnergyRequestDecoder(GivEnergyDecoder):
     ]
 
 
-class GivEnergyResponseDecoder(GivEnergyDecoder):
-    """Factory class to decode GivEnergy Response PDU messages. Typically used by clients to process responses."""
+class ClientDecoder(Decoder):
+    """Decoder for incoming messages a client would typically expect."""
 
     _function_table = [
         NullResponse,

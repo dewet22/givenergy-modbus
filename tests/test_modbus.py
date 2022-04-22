@@ -3,15 +3,15 @@ from unittest.mock import MagicMock as Mock
 
 import pytest
 
-from givenergy_modbus.modbus import GivEnergyModbusSyncClient
+from givenergy_modbus.modbus import SyncClient
 from givenergy_modbus.model.register import HoldingRegister  # type: ignore  # shut up mypy
-from givenergy_modbus.pdu import (
+from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
-    WriteHoldingRegisterResponse,
 )
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
 
 
 class MockedReadHoldingRegistersResponse(Mock, ReadHoldingRegistersResponse):  # noqa: D101
@@ -29,7 +29,7 @@ class MockedWriteHoldingRegisterResponse(Mock, WriteHoldingRegisterResponse):  #
 @pytest.fixture
 def sync_client():
     """Yield a real framer for processing Response messages."""
-    yield GivEnergyModbusSyncClient(host='foo')
+    yield SyncClient(host='foo')
 
 
 @pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
@@ -97,7 +97,7 @@ def test_write_holding_register(sync_client):
     sync_client.execute = mock_call
     sync_client.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert mock_call.call_count == 1
-    assert str(mock_call.call_args_list[0].args[0]) == ('6/WriteHoldingRegisterRequest(register=20 value=5)')
+    assert str(mock_call.call_args_list[0].args[0]) == '2:6/WriteHoldingRegisterRequest(register=20 value=5)'
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))
     sync_client.execute = mock_call
@@ -105,7 +105,7 @@ def test_write_holding_register(sync_client):
         sync_client.write_holding_register(HoldingRegister.ENABLE_CHARGE_TARGET, 5)
     assert e.value.args[0] == 'Register read-back value 0x0002 != written value 0x0005'
     assert mock_call.call_count == 1
-    assert str(mock_call.call_args_list[0].args[0]) == ('6/WriteHoldingRegisterRequest(register=20 value=5)')
+    assert str(mock_call.call_args_list[0].args[0]) == '2:6/WriteHoldingRegisterRequest(register=20 value=5)'
 
     mock_call = Mock(name='execute', return_value=MockedWriteHoldingRegisterResponse(value=2))
     with pytest.raises(ValueError) as e:

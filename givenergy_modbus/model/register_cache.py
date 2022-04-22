@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
-from givenergy_modbus.pdu import (
-    ModbusPDU,
+from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
     ReadRegistersResponse,
-    WriteHoldingRegisterResponse,
 )
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
 
 
 class RegisterCache(dict):
@@ -59,7 +59,7 @@ class RegisterCache(dict):
         for k, v in registers.items():
             self[register_type(k)] = v
 
-    def update_from_pdu(self, pdu: ModbusPDU):
+    def update_from_pdu(self, pdu: BasePDU):
         """Update internal state directly from a PDU Response message."""
         if isinstance(pdu, ReadRegistersResponse):
             if pdu.slave_address != self['slave_address']:
