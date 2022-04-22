@@ -107,9 +107,12 @@ class Framer(ABC):
         """
         self._buffer += data
 
-        header_start = 0
-        while header_start >= 0:
+        while self.buffer_length > self.FRAME_HEAD_SIZE:
             header_start = self._buffer.find(b'\x59\x59\x00\x01')
+            if header_start < 0:
+                break
+
+            _logger.debug(f'Found next header_start: {header_start}, buffer_len={self.buffer_length}')
 
             # The next header is not at the start of the buffer: wind the buffer forward to that position
             if header_start > 0:
@@ -121,7 +124,7 @@ class Framer(ABC):
                 header_start = 0
 
             # We are able to extract at least a frame header
-            if header_start == 0 and self.buffer_length >= self.FRAME_HEAD_SIZE:
+            if header_start == 0 and self.buffer_length > self.FRAME_HEAD_SIZE:
                 next_header_start = self._buffer.find(b'\x59\x59\x00\x01', 1)
                 if 0 < next_header_start <= 20:
                     _logger.warning(
@@ -166,8 +169,6 @@ class Framer(ABC):
                     _logger.warning(f'Unable to decode frame: {e} [{inner_frame.hex()}]')
                 finally:
                     callback((pdu, raw_frame))
-
-        _logger.debug('Frame is not complete yet, needs more data')
 
     def build_packet(self, message: BasePDU) -> bytes:
         """Creates a packet from the MBAP header plus the encoded PDU."""

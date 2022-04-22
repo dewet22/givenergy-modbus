@@ -1,4 +1,5 @@
 """Tests for GivEnergyModbusFramer."""
+import logging
 import sys
 from unittest.mock import MagicMock, call
 
@@ -73,10 +74,10 @@ def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inn
     framer = Framer()
     pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
     if ex:
-        with pytest.raises(ex.__class__) as e:
+        with pytest.raises(type(ex), match=ex.message) as e:
             framer.build_packet(pdu)
-        assert e.value.args[0] == ex.args[0]
-        assert e.value.args[1] == pdu
+        assert e.value.args == (ex.message,)
+        assert e.value.pdu == pdu
     else:
         packet = framer.build_packet(pdu)
         assert packet.hex() == (mbap_header + inner_frame).hex()
@@ -88,7 +89,9 @@ def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
     """Ensure Request PDU messages can be decoded from raw messages."""
     framer = ServerFramer()
     callback = MagicMock(return_value=None)
+
     framer.process_incoming_data(mbap_header + inner_frame, callback)
+
     if ex:
         assert callback.mock_calls == [call((None, mbap_header + inner_frame))]
     else:
@@ -176,6 +179,29 @@ def test_process_short_buffer():
     assert response.inner_function_code == 3
     assert callback_args[1] == buffer + buffer[:19]
     assert framer._buffer == buffer[19:]
+
+
+@pytest.mark.parametrize("buffer", [VALID_RESPONSE_FRAME], ids=['VALID_RESPONSE_FRAME'])
+def test_various_short_message_buffers(caplog, buffer):
+    """Try all lengths of incomplete messages to flush out bugs in framing logic."""
+    framer = ClientFramer()
+    callback = MagicMock(return_value=None)
+
+    for i in range(len(buffer)):
+        with caplog.at_level(logging.DEBUG, logger='givenergy_modbus.framer'):
+            framer.process_incoming_data(buffer[:i], callback)
+        callback.assert_not_called()
+        if i <= framer.FRAME_HEAD_SIZE:
+            assert len(caplog.records) == 0, i
+        else:
+            assert len(caplog.records) == 4, i
+            assert caplog.records[0].message == f"Found next header_start: 0, buffer_len={i}"
+            assert caplog.records[1].message == "Candidate MBAP header 0x5959000100320102, parsing using format >HHHBB"
+            assert caplog.records[2].message == "t_id=5959, p_id=0001, len=0032, u_id=01, f_id=02"
+            assert caplog.records[3].message == f"Buffer too short ({i}) to complete frame (56)"
+        caplog.clear()
+        assert framer._buffer == buffer[:i]
+        framer._buffer = b''
 
 
 def test_process_stream_good():
