@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import logging
 import struct
-from typing import Callable
+from abc import ABC
+from typing import Callable, Optional
 
-from pymodbus.interfaces import IModbusDecoder
-from pymodbus.pdu import ModbusPDU
-
-from givenergy_modbus.pdu import HeartbeatRequest, HeartbeatResponse
+from givenergy_modbus.decoder import ClientDecoder, Decoder, ServerDecoder
+from givenergy_modbus.exceptions import InvalidPduState, InvalidFrame
+from givenergy_modbus.pdu import BasePDU
 
 _logger = logging.getLogger(__package__)
 
+PduProcessedCallback = Callable[[tuple[Optional[BasePDU], bytes]], None]
 
-class GivEnergyModbusFramer:
+
+class Framer(ABC):
     """GivEnergy Modbus Frame controller.
 
     A framer abstracts away all the detail about how marshall the wire protocol, in particular detecting if a message
@@ -81,121 +83,112 @@ class GivEnergyModbusFramer:
     FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
 
     _buffer: bytes = b""
-    _length: int
+    _decoder: Decoder
 
-    def __init__(self, decoder: IModbusDecoder):
-        self.decoder = decoder
+    def process_incoming_data(self, data: bytes, callback: PduProcessedCallback) -> None:
+        """Add incoming data to our frame buffer and attempt to process frames found.
 
-    @classmethod
-    def parse_header(cls, buffer: bytes) -> dict:
-        """Tries to extract the MBAP frame header and performs a few sanity checks."""
-        data = buffer[: cls.FRAME_HEAD_SIZE]
-        _logger.debug(f"extracting MBAP header from [{data.hex()}] using format {cls.FRAME_HEAD}")
-        tid, pid, len_, uid, fid = struct.unpack(cls.FRAME_HEAD, data)
-        header = dict(transaction=tid, protocol=pid, length=len_, unit=uid, fcode=fid)
-        _logger.debug(f"extracted values: {dict((k, f'0x{v:02x}') for k, v in header.items())}")
-        if tid == 0x5959 and pid == 0x1 and uid == 0x1 and fid in (0x1, 0x2):
-            return header
-        raise ValueError(
-            f"Invalid MBAP header: 0x{tid:04x} 0x{pid:04x} 0x{uid:02x}{fid:02x} != 0x5959 0x0001 0x010[12]"
-        )
+        This receives raw bytes as passed from the underlying transport and appends them to an internal frame buffer.
+        This means we might have 0, 1 or even more complete frames ready for processing – this method repeatedly
+        attempts sliding window framing on the buffer by scanning for a start-of-frame header and incrementally
+        parsing data to determine if we have a complete frame. If we run out of buffer we return, and on the next
+        invocation will be re-run as new data is added.
 
-    def check_frame(self) -> bool:
-        """Check and decode the next frame. Returns operation success."""
-        if self.is_frame_ready():
-            try:
-                header = self.parse_header(self._buffer)
-            except ValueError as e:
-                _logger.error(f'Resetting buffer: {e}')
-                self.reset_frame()
-                return False
-            self._length = header["length"]
-            if len(self._buffer) >= self.FRAME_HEAD_SIZE + self._length - 2:
-                return True
-        # we don't have enough of a message yet, try again later
-        _logger.debug('Frame is not complete yet, needs more buffer data')
-        return False
+        This handles multiple and/or partial messages in the buffer (due to e.g. fragmentation or buffering),
+        with these partial messages being completed eventually as more data arrives and gets passed here.
 
-    def advance_frame(self) -> bytes:
-        """Pop the front-most frame from the buffer."""
-        old_frame = self._buffer[: self.FRAME_HEAD_SIZE + self._length - 2]
-        self._buffer = self._buffer[self.FRAME_HEAD_SIZE + self._length - 2 :]
-        return old_frame
-
-    def add_to_frame(self, message: bytes) -> None:
-        """Add incoming data to the processing buffer."""
-        self._buffer += message
-
-    def is_frame_ready(self):
-        """Check if we have enough data in the buffer to read at least a frame header."""
-        return len(self._buffer) >= self.FRAME_HEAD_SIZE
-
-    def get_frame(self):
-        """Extract the next PDU frame from the buffer, removing the MBAP header except for the function id."""
-        return self._buffer[self.FRAME_HEAD_SIZE - 1 : self.FRAME_HEAD_SIZE + self._length - 2]
-
-    def process_incoming_packet(self, data: bytes, callback: Callable[[ModbusPDU, bytes], None]) -> None:
-        """Process an incoming packet.
-
-        This takes in a bytestream from the underlying transport and adds it to the
-        frame buffer. It then repeatedly attempts to perform framing on the buffer
-        by checking for a viable message at the head of the buffer, and if found pops
-        off the expected length of the raw frame for processing.
-
-        Returns when the buffer is too short to contain any more viable messages. This
-        handles cases where multiple and/or partial messages arrive due to fragmentation
-        or buffering on the underlying transport - these partial messages will try to
-        be completed eventually as more data subsequently arrives and gets handled here.
-
-        If decoding and processing succeeds for a message, the instantiated PDU DTO is
-        handed to the supplied callback function for onward processing and dispatching.
+        Every complete frame gets passed through the decoder – the result (either way) plus the raw frame gets passed
+        to the supplied callback for onward processing, dispatching, error handling and debugging. The frame buffer
+        is always advanced over that frame.
 
         Args:
             data: Data from underlying transport.
-            callback: Processor to receive newly-decoded PDUs.
+            callback: Callable invoked for every raw frame encountered, including the decoding result.
         """
-        self.add_to_frame(data)
+        self._buffer += data
 
-        # Try to extract a full frame from what's in the buffer
-        while self.is_frame_ready() and self.check_frame():
-            frame = self.get_frame()
-            result = None
-            try:
-                _logger.debug(f'Decoding frame {frame.hex()}')
-                result = self.decoder.decode(frame)
-                _logger.debug(f'Decoded response {result}')
-            except ValueError as e:
-                if len(e.args) > 1:
-                    # Frame valid (PDU identifiable) but PDU itself has invalid/inconsistent data
+        header_start = 0
+        while header_start >= 0:
+            header_start = self._buffer.find(b'\x59\x59\x00\x01')
+
+            # The next header is not at the start of the buffer: wind the buffer forward to that position
+            if header_start > 0:
+                _logger.warning(
+                    f'Likely candidate frame candidate found {header_start} bytes into buffer, '
+                    f'skipping over leading garbage (0x{self._buffer[:header_start].hex()})'
+                )
+                self._buffer = self._buffer[header_start:]
+                header_start = 0
+
+            # We are able to extract at least a frame header
+            if header_start == 0 and self.buffer_length >= self.FRAME_HEAD_SIZE:
+                next_header_start = self._buffer.find(b'\x59\x59\x00\x01', 1)
+                if 0 < next_header_start <= 20:
+                    _logger.warning(
+                        f'Something dodgy going on, another header found impossibly close at '
+                        f'{next_header_start}. {self.buffer_length} bytes, '
+                        f'0x{self._buffer.hex(bytes_per_sep=2)}'
+                    )
+                data = self._buffer[: self.FRAME_HEAD_SIZE]
+                _logger.debug(f"Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}")
+                t_id, p_id, hdr_len, u_id, f_id = struct.unpack(self.FRAME_HEAD, data)
+                _logger.debug(f"t_id={t_id:04x}, p_id={p_id:04x}, len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}")
+                # these two must match since they were the search token that led us here:
+                assert t_id == 0x5959
+                assert p_id == 0x1
+                # check the other attributes are reasonable
+                if hdr_len > 300 or u_id != 1 or f_id not in (1, 2):
+                    _logger.warning(
+                        f'Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), '
+                        f'discarding candidate frame and resuming search'
+                    )
+                    self._buffer = self._buffer[4:]
+                    continue
+
+                # Calculate how many bytes a complete frame needs
+                frame_len = self.FRAME_HEAD_SIZE + hdr_len - 2
+                if self.buffer_length < frame_len:
+                    _logger.debug(f"Buffer too short ({self.buffer_length}) to complete frame ({frame_len})")
+                    return
+
+                # Extract the inner frame and try to decode it
+                raw_frame = self._buffer[:frame_len]
+                inner_frame = raw_frame[self.FRAME_HEAD_SIZE :]
+                self._buffer = self._buffer[frame_len:]
+                try:
+                    _logger.debug(f'Decoding inner frame {inner_frame.hex()}')
+                    pdu = self._decoder.decode(f_id, inner_frame)
+                    _logger.debug(f'Successfully decoded {pdu}')
+                except InvalidPduState as e:
                     _logger.warning(f'Invalid PDU: {e.args[0]} {e.args[1]}')
-                else:
-                    _logger.warning(f'Unable to decode frame: {e} [{frame.hex()}]')
-            finally:
-                raw_frame = self.advance_frame()
-                if callback:
-                    callback(result, raw_frame)
+                except InvalidFrame as e:
+                    _logger.warning(f'Unable to decode frame: {e} [{inner_frame.hex()}]')
+                finally:
+                    callback((pdu, raw_frame))
 
-    def reset_frame(self):
-        """Reset a corrupted message buffer when the next frame can be identified."""
-        next_header_offset = self._buffer.find(b'\x59\x59\x00\x01', 1)
-        if next_header_offset > 0:
-            _logger.info(f'Found next frame at offset {next_header_offset}, advancing buffer.')
-            self._buffer = self._buffer[next_header_offset:]
-        else:
-            _logger.info('No following frame found yet, doing nothing.')
-            # self._buffer = b""
+        _logger.debug('Frame is not complete yet, needs more data')
 
-    def build_packet(self, message: ModbusPDU) -> bytes:
-        """Creates a finalised GivEnergy Modbus packet from a constant header plus the encoded PDU."""
-        # FIXME this is hacky
-        if isinstance(message, HeartbeatRequest) or isinstance(message, HeartbeatResponse):
-            fn_code = 0x01
-        else:
-            fn_code = 0x02
-        msg = message.encode()
-        return struct.pack(self.FRAME_HEAD, 0x5959, 0x0001, len(msg) + 2, 0x01, fn_code) + msg
+    def build_packet(self, message: BasePDU) -> bytes:
+        """Creates a packet from the MBAP header plus the encoded PDU."""
+        inner_frame = message.encode()
+        mbap_header = struct.pack(self.FRAME_HEAD, 0x5959, 0x1, len(inner_frame) + 2, 0x1, message.main_function_code)
+        return mbap_header + inner_frame
 
     @property
     def buffer_length(self):
         """Returns the current length of the bytestream buffer."""
         return len(self._buffer)
+
+
+class ClientFramer(Framer):
+    """Framer implementation for client-side use."""
+
+    def __init__(self):
+        self._decoder = ClientDecoder()
+
+
+class ServerFramer(Framer):
+    """Framer implementation for server-side use."""
+
+    def __init__(self):
+        self._decoder = ServerDecoder()
