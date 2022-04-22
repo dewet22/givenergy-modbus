@@ -5,13 +5,14 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import pytest
 
+from givenergy_modbus.exceptions import InvalidPduState, ExceptionBase
 from givenergy_modbus.pdu import BasePDU
 
 PDUType = str
 CtorKwargs = Dict[str, Union[int, str, List[int]]]
 MbapHeader = bytes
 InnerFrame = bytes
-ExceptionThrown = Optional[Exception]
+ExceptionThrown = Optional[ExceptionBase]
 StrRepr = str
 PduTestCase = Tuple[StrRepr, PDUType, CtorKwargs, MbapHeader, InnerFrame, ExceptionThrown]
 PduTestCaseSig = 'str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex'
@@ -72,7 +73,7 @@ _server_messages: PduTestCases = [
         {"register": 0x5151, "value": 2000, "check": 0x81EE, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x51\x51\x07\xd0" b"\x81\xee",
-        ValueError('Register 20817 is not safe to write to'),
+        InvalidPduState('Register 20817 is not safe to write to', None),
     ),
     (
         '2:6/WriteHoldingRegisterRequest(register=20 value=1)',
