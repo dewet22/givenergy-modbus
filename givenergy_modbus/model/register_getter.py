@@ -29,11 +29,11 @@ class RegisterGetter(GetterDict):
         if key == "battery_serial_number":
             return ''.join(
                 [
-                    self.get('battery_serial_number_1_2'),
-                    self.get('battery_serial_number_3_4'),
-                    self.get('battery_serial_number_5_6'),
-                    self.get('battery_serial_number_7_8'),
-                    self.get('battery_serial_number_9_10'),
+                    self.get('battery_serial_number_1_2', ''),
+                    self.get('battery_serial_number_3_4', ''),
+                    self.get('battery_serial_number_5_6', ''),
+                    self.get('battery_serial_number_7_8', ''),
+                    self.get('battery_serial_number_9_10', ''),
                 ]
             )
         if key == "first_battery_serial_number":

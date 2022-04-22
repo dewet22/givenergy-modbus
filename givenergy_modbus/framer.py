@@ -6,7 +6,7 @@ from abc import ABC
 from typing import Callable, Optional
 
 from givenergy_modbus.decoder import ClientDecoder, Decoder, ServerDecoder
-from givenergy_modbus.exceptions import InvalidPduState, InvalidFrame
+from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
 from givenergy_modbus.pdu import BasePDU
 
 _logger = logging.getLogger(__name__)

@@ -1,5 +1,6 @@
 # type: ignore  # shut up mypy, this whole file is just a minefield
 import logging
+from abc import ABC
 from datetime import time
 from enum import Enum, auto, unique
 from typing import Any

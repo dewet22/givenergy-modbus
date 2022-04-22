@@ -5,7 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import pytest
 
-from givenergy_modbus.exceptions import InvalidPduState, ExceptionBase
+from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
 from givenergy_modbus.pdu import BasePDU
 
 PDUType = str

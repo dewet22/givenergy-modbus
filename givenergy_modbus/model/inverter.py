@@ -2,7 +2,7 @@
 import datetime
 import logging
 from enum import Enum
-from typing import Tuple, Dict
+from typing import Dict, Tuple
 
 from pydantic import root_validator
 
