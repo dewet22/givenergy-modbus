@@ -65,6 +65,7 @@ def test_plant(  # noqa: F811
 
     assert isinstance(plant.inverter, Inverter)
     assert plant.inverter == i
+    assert plant.number_batteries == 1
     assert isinstance(plant.batteries[0], Battery)
     assert plant.batteries[0] == b
 

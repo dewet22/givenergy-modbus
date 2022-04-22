@@ -48,3 +48,9 @@ class Battery(GivEnergyBaseModel):
     temp_max: float
     temp_min: float
     usb_inserted: int
+
+    def is_valid(self) -> bool:
+        return self.battery_serial_number and self.battery_serial_number not in (
+            '',
+            '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+        )
