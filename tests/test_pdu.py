@@ -108,9 +108,9 @@ def test_server_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
     """Ensure we correctly encode unencapsulated Request messages."""
     pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
     if ex:
-        with pytest.raises(ex.__class__, match=ex.args[0]) as e:
+        with pytest.raises(type(ex), match=ex.message) as e:
             pdu.encode()
-        assert e.value.args == (ex.args[0], pdu)
+        assert e.value.args == (ex.message,)
     else:
         assert pdu.encode() == inner_frame
 
@@ -120,9 +120,9 @@ def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     pdu = _lookup_pdu_class(pdu_class_name)()
     if ex:
-        with pytest.raises(ex.__class__, match=ex.args[0]) as e:
+        with pytest.raises(type(ex), match=ex.message) as e:
             pdu.decode(inner_frame)
-        assert e.value.args == (ex.args[0], pdu)
+        assert e.value.args == (ex.message,)
     else:
         pdu.decode(inner_frame)
         for (arg, val) in constructor_kwargs.items():

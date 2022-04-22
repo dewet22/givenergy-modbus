@@ -7,6 +7,7 @@ from crccheck.crc import CrcModbus
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder
 
+from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -55,13 +56,13 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 
     def _ensure_valid_state(self):
         if self.register is None:
-            raise ValueError('Register must be set explicitly', self)
+            raise InvalidPduState('Register must be set explicitly', self)
         elif self.register not in self.writable_registers:
-            raise ValueError(f'Register {self.register} is not safe to write to', self)
+            raise InvalidPduState(f'Register {self.register} is not safe to write to', self)
         if self.value is None:
-            raise ValueError('Register value must be set explicitly', self)
+            raise InvalidPduState('Register value must be set explicitly', self)
         elif 0 > self.value > 0xFFFF:
-            raise ValueError(f'Register value {hex(self.value)} must be an unsigned 16-bit int', self)
+            raise InvalidPduState(f'Register value {hex(self.value)} must be an unsigned 16-bit int', self)
 
 
 class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC):
