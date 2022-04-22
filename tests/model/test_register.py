@@ -51,6 +51,8 @@ HOLDING_REGISTERS: Dict[int, int] = dict(enumerate([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 12x
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 13x
 ]))
+
+
 # fmt: on
 
 
@@ -136,15 +138,7 @@ def test_type_repr(val: int, scaling: int):
     assert Type.HEX.repr(val, scaling) == f'0x{val:04x}'
 
     # scaling doesn't make sense for ascii types
-    # non-ascii values will not decode properly
-    if val == 0x0:
-        with pytest.raises(ValueError, match='null'):
-            Type.ASCII.convert(val, scaling)
-    elif val // 256 < 128 and val % 256 < 128:
-        assert Type.ASCII.repr(val, scaling) == val.to_bytes(2, byteorder='big').decode(encoding='ascii')
-    else:
-        with pytest.raises(ValueError, match='non-ASCII'):
-            Type.ASCII.repr(val, scaling)
+    assert Type.ASCII.repr(val, scaling) == chr(val // 256) + chr(val % 256)
 
     if val == 0x0:
         assert Type.BOOL.repr(val, scaling) == 'False'
@@ -177,15 +171,7 @@ def test_type_convert(val: int, scaling: int):
     assert Type.HEX.convert(val, scaling) == f'{hex(val)[2:]:>04}'
 
     # scaling doesn't make sense for ascii types
-    # non-ascii values will not decode properly
-    if val == 0x0:
-        with pytest.raises(ValueError, match='null'):
-            Type.ASCII.convert(val, scaling)
-    elif val // 256 < 128 and val % 256 < 128:
-        assert Type.ASCII.convert(val, scaling) == val.to_bytes(2, byteorder='big').decode(encoding='ascii')
-    else:
-        with pytest.raises(ValueError, match='non-ASCII'):
-            Type.ASCII.convert(val, scaling)
+    assert Type.ASCII.convert(val, scaling) == chr(val // 256) + chr(val % 256)
 
     if val == 0x0:
         assert Type.BOOL.convert(val, scaling) is False

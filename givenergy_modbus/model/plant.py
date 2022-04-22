@@ -47,10 +47,11 @@ class Plant(BaseModel):
     @property
     def number_batteries(self) -> int:
         """Determine the number of batteries connected to the system based on whether the register data is valid."""
+        i = 0
         for i in range(6):
             try:
-                Battery.from_orm(self.register_caches[i + 0x32])
-            except KeyError:
+                assert Battery.from_orm(self.register_caches[i + 0x32]).is_valid()
+            except (KeyError, AssertionError):
                 break
         return i
 

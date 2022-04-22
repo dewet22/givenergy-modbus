@@ -131,7 +131,12 @@ def test_from_orm_actual_data(register_cache_battery_daytime_discharging):  # no
 
 def test_from_orm_unsure_data(register_cache_battery_unsure, register_cache_battery_missing):  # noqa: F811
     """Ensure we cannot instantiate an instance of battery data from registers returned for non-existent slave."""
-    with pytest.raises(ValueError, match='null:0x0000'):
-        Battery.from_orm(register_cache_battery_unsure)
-    with pytest.raises(ValueError, match='null:0x0000'):
-        Battery.from_orm(register_cache_battery_missing)
+    b = Battery.from_orm(register_cache_battery_unsure)
+    assert b.battery_serial_number == '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+    assert b.is_valid() is False
+
+
+def test_empty():  # noqa: F811
+    """Ensure we cannot instantiate from empty data."""
+    with pytest.raises(ValueError, match='41 validation errors for Battery'):
+        Battery.from_orm({})
