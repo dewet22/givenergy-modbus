@@ -1,27 +1,28 @@
 from __future__ import annotations
 
 import logging
+from abc import ABC
 
 from pymodbus.client.sync import ModbusTcpClient
 from pymodbus.exceptions import ModbusIOException
 
-from givenergy_modbus.decoder import GivEnergyResponseDecoder
-from givenergy_modbus.framer import GivEnergyModbusFramer
+from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore
-from givenergy_modbus.pdu import (
-    ModbusPDU,
+from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
-    WriteHoldingRegisterRequest,
-    WriteHoldingRegisterResponse,
+    ReadRegistersRequest,
+    ReadRegistersResponse,
 )
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
 _logger = logging.getLogger(__package__)
 
 
-class GivEnergyModbusBaseClient:
+class BaseClient(ABC):
     """GivEnergy Modbus Client base class.
 
     This class ties together all the pieces to create a functional client that can converse with a
@@ -39,13 +40,13 @@ class GivEnergyModbusBaseClient:
         kwargs.setdefault("port", 8899)  # GivEnergy default instead of the standard 502
         self.host = host
         self.port = kwargs['port']
-        self.framer = GivEnergyModbusFramer(GivEnergyResponseDecoder())
+        self.framer = ClientFramer()
         self.timeout = 2
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.host}:{self.port}): timeout={self.timeout})"
 
-    def execute(self, request: ModbusPDU = None) -> ModbusPDU | None:
+    def execute(self, request: BasePDU = None) -> BasePDU | None:
         """Send the given PDU to the remote device and return any PDU returned in response."""
         raise NotImplementedError()
 
@@ -66,10 +67,10 @@ class GivEnergyModbusBaseClient:
         raise NotImplementedError()
 
 
-class GivEnergyModbusSyncClient(GivEnergyModbusBaseClient, ModbusTcpClient):
+class SyncClient(BaseClient, ModbusTcpClient):
     """GivEnergy Modbus synchronous client implementation."""
 
-    def execute(self, request: ModbusPDU = None) -> ModbusPDU | None:
+    def execute(self, request: BasePDU = None) -> BasePDU | None:
         """Send the given PDU to the remote device and return any PDU returned in response."""
         _logger.debug(f'Sending request {request}')
         try:
@@ -89,6 +90,8 @@ class GivEnergyModbusSyncClient(GivEnergyModbusBaseClient, ModbusTcpClient):
 
     def read_registers(self, kind: type[Register], base_address: int, register_count: int, **kwargs) -> dict[int, int]:
         """Read out registers from the correct location depending on type specified."""
+        t_req: type[ReadRegistersRequest]
+        t_res: type[ReadRegistersResponse]
         if kind is HoldingRegister:
             t_req, t_res = ReadHoldingRegistersRequest, ReadHoldingRegistersResponse
         elif kind is InputRegister:
