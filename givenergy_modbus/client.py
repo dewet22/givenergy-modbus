@@ -29,7 +29,7 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
 )
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 DEFAULT_SLEEP = 0.5
 

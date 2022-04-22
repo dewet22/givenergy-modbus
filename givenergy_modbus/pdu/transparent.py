@@ -3,7 +3,7 @@ from abc import ABC
 
 from givenergy_modbus.pdu import BasePDU, Request, Response
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class TransparentMessage(BasePDU, ABC):

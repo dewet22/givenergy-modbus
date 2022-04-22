@@ -10,7 +10,7 @@ from pymodbus.payload import BinaryPayloadBuilder
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class ReadRegisters(TransparentMessage, ABC):

@@ -10,7 +10,7 @@ from givenergy_modbus.model.inverter import Inverter  # type: ignore
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.util import InterceptHandler
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 def is_documented_by(original):

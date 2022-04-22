@@ -9,7 +9,7 @@ from givenergy_modbus.decoder import ClientDecoder, Decoder, ServerDecoder
 from givenergy_modbus.exceptions import InvalidPduState, InvalidFrame
 from givenergy_modbus.pdu import BasePDU
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 PduProcessedCallback = Callable[[tuple[Optional[BasePDU], bytes]], None]
 
@@ -155,12 +155,13 @@ class Framer(ABC):
                 raw_frame = self._buffer[:frame_len]
                 inner_frame = raw_frame[self.FRAME_HEAD_SIZE :]
                 self._buffer = self._buffer[frame_len:]
+                pdu = None
                 try:
                     _logger.debug(f'Decoding inner frame {inner_frame.hex()}')
                     pdu = self._decoder.decode(f_id, inner_frame)
                     _logger.debug(f'Successfully decoded {pdu}')
                 except InvalidPduState as e:
-                    _logger.warning(f'Invalid PDU: {e.args[0]} {e.args[1]}')
+                    _logger.warning(f'Invalid PDU: {e.message} {e.pdu}')
                 except InvalidFrame as e:
                     _logger.warning(f'Unable to decode frame: {e} [{inner_frame.hex()}]')
                 finally:

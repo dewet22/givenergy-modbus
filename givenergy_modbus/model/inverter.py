@@ -2,17 +2,13 @@
 import datetime
 import logging
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, Dict
 
 from pydantic import root_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
 
-_logger = logging.getLogger(__package__)
-
-
-class UnknownModelError(Exception):
-    """Raised when encountering an unknown model."""
+_logger = logging.getLogger(__name__)
 
 
 class Model(str, Enum):
@@ -21,8 +17,9 @@ class Model(str, Enum):
     AC = 'AC'
     Gen2 = 'Gen2'
     Hybrid = 'Hybrid'
+    Unknown = 'Unknown'
 
-    __serial_prefix_to_models_lut__ = {
+    __serial_prefix_to_models_lut__: Dict[str, 'Model'] = {
         'CE': AC,
         'ED': Gen2,
         'SA': Hybrid,
@@ -36,7 +33,9 @@ class Model(str, Enum):
         if prefix in cls.__serial_prefix_to_models_lut__:
             return cls.__serial_prefix_to_models_lut__[prefix]
         else:
-            raise UnknownModelError(f"Cannot determine model number from serial number {serial_number}")
+            _logger.error(f"Cannot determine model number from serial number {serial_number!r}")
+            return cls.Unknown
+
 
 
 class Inverter(GivEnergyBaseModel):

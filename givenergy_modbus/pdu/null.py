@@ -5,7 +5,7 @@ import logging
 from givenergy_modbus.pdu import PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class NullResponse(TransparentResponse):
