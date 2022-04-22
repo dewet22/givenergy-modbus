@@ -9,7 +9,7 @@ from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import BasePDU
 from givenergy_modbus.pdu.transparent import TransparentMessage
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class Plant(BaseModel):

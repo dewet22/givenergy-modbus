@@ -5,7 +5,7 @@ from abc import ABC
 
 from givenergy_modbus.pdu import BasePDU, PayloadDecoder, Request, Response
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class HeartbeatMessage(BasePDU, ABC):

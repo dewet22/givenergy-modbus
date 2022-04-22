@@ -8,7 +8,7 @@ from abc import ABC
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class PayloadDecoder(BinaryPayloadDecoder):

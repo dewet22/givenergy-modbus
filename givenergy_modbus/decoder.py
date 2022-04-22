@@ -15,7 +15,7 @@ from givenergy_modbus.pdu.read_registers import (
 from givenergy_modbus.pdu.transparent import TransparentMessage
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class Decoder:

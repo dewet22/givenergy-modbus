@@ -4,7 +4,7 @@ from datetime import time
 from enum import Enum, auto, unique
 from typing import Any
 
-_logger = logging.getLogger(__package__)
+_logger = logging.getLogger(__name__)
 
 
 class Type(Enum):
