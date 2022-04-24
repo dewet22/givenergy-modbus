@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic.utils import GetterDict
+from pydantic.utils import GetterDict  # type: ignore
 
 
 class RegisterGetter(GetterDict):

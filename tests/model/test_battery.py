@@ -1,7 +1,7 @@
 import pytest
 
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.register import InputRegister
+from givenergy_modbus.model.register import InputRegister  # type: ignore
 from tests.model.test_register_cache import (  # noqa: F401
     register_cache,
     register_cache_battery_daytime_discharging,
@@ -136,7 +136,9 @@ def test_from_orm_unsure_data(register_cache_battery_unsure, register_cache_batt
     assert b.is_valid() is False
 
 
-def test_empty():  # noqa: F811
+def test_empty():
     """Ensure we cannot instantiate from empty data."""
-    with pytest.raises(ValueError, match='41 validation errors for Battery'):
+    with pytest.raises(ValueError, match=r'\d validation errors for Battery'):
+        Battery()
+    with pytest.raises(ValueError, match=r'\d validation errors for Battery'):
         Battery.from_orm({})

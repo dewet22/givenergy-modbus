@@ -4,7 +4,7 @@ from givenergy_modbus.pdu import BasePDU
 
 
 class ExceptionBase(Exception):
-    pass
+    """Base exception."""
 
 
 class InvalidPduState(ExceptionBase):

@@ -67,11 +67,11 @@ repos:
     rev: v0.942
     hooks:
       - id: mypy
-        exclude: tests/
+#        exclude: tests/
         args:
-          - --pretty
+#          - --pretty
           - --show-error-codes
-          - --show-error-context
+#          - --show-error-context
         additional_dependencies:
           - types-click
   - repo: https://github.com/PyCQA/bandit
