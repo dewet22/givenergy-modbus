@@ -9,6 +9,7 @@ from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
+from givenergy_modbus.pdu.transparent import TransparentMessage
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
 from tests import CLIENT_MESSAGES, PduTestCaseSig, _lookup_pdu_class
 from tests.model.test_register_cache import (  # noqa: F401
@@ -87,7 +88,7 @@ def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap
     j = plant.json()
     assert d.keys() == {'register_caches'}
     expected_slave_addresses = {0, 17, 48, 49, 50, 51, 52, 53, 54, 55}
-    if hasattr(pdu, 'slave_address'):
+    if isinstance(pdu, TransparentMessage):
         expected_slave_addresses.add(pdu.slave_address)
     assert set(d['register_caches'].keys()) == expected_slave_addresses
     if isinstance(pdu, ReadRegistersResponse):
@@ -115,7 +116,7 @@ def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap
             54: {'slave_address': 54},
             55: {'slave_address': 55},
         }
-        if hasattr(pdu, 'slave_address'):
+        if isinstance(pdu, TransparentMessage):
             expected_caches[pdu.slave_address] = {'slave_address': pdu.slave_address}
         assert d['register_caches'] == expected_caches
         assert j == json.dumps({'register_caches': expected_caches})

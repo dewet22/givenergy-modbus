@@ -125,13 +125,6 @@ class Framer(ABC):
 
             # We are able to extract at least a frame header
             if header_start == 0 and self.buffer_length > self.FRAME_HEAD_SIZE:
-                next_header_start = self._buffer.find(b'\x59\x59\x00\x01', 1)
-                if 0 < next_header_start <= 20:
-                    _logger.warning(
-                        f'Something dodgy going on, another header found impossibly close at '
-                        f'{next_header_start}. {self.buffer_length} bytes, '
-                        f'0x{self._buffer.hex(bytes_per_sep=2)}'
-                    )
                 data = self._buffer[: self.FRAME_HEAD_SIZE]
                 _logger.debug(f"Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}")
                 t_id, p_id, hdr_len, u_id, f_id = struct.unpack(self.FRAME_HEAD, data)

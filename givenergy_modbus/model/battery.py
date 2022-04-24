@@ -50,7 +50,8 @@ class Battery(GivEnergyBaseModel):
     usb_inserted: int
 
     def is_valid(self) -> bool:
-        return self.battery_serial_number and self.battery_serial_number not in (
+        """Try to detect if a battery exists based on its serial number."""
+        return self.battery_serial_number not in (
             '',
             '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
         )
