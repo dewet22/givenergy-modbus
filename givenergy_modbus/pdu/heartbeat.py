@@ -47,7 +47,7 @@ class HeartbeatMessage(BasePDU, ABC):
 class HeartbeatRequest(HeartbeatMessage, Request, ABC):
     """PDU sent by remote server to check liveness of client."""
 
-    def expected_response_pdu(self) -> HeartbeatResponse:
+    def expected_response(self) -> HeartbeatResponse:
         """Create an appropriate response for an incoming HeartbeatRequest."""
         return HeartbeatResponse(data_adapter_type=self.data_adapter_type)
 

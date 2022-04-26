@@ -37,7 +37,6 @@ class Model(str, Enum):
             return cls.Unknown
 
 
-
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 

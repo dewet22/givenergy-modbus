@@ -7,7 +7,7 @@ from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up mypy
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import BasePDU
-from givenergy_modbus.pdu.transparent import TransparentMessage
+from givenergy_modbus.pdu.transparent import TransparentResponse
 
 _logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class Plant(BaseModel):
 
     def update(self, pdu: BasePDU):
         """Update the Plant state using a received Modbus PDU message."""
-        if not isinstance(pdu, TransparentMessage):
+        if not isinstance(pdu, TransparentResponse):
             return
         if pdu.slave_address not in self.register_caches:
             _logger.warning(f'Unexpected slave address 0x{pdu.slave_address:02x}')

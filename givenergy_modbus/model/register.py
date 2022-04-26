@@ -1,6 +1,5 @@
 # type: ignore  # shut up mypy, this whole file is just a minefield
 import logging
-from abc import ABC
 from datetime import time
 from enum import Enum, auto, unique
 from typing import Any
@@ -58,12 +57,7 @@ class Type(Enum):
             return time(hour, minute)
 
         if self == self.ASCII:
-            if value == 0x0:
-                raise ValueError('null')
-            try:
-                return value.to_bytes(2, byteorder='big').decode(encoding='ascii')
-            except UnicodeDecodeError:
-                raise ValueError('non-ASCII')
+            return value.to_bytes(2, byteorder='big').decode(encoding='latin1')
 
         if self == self.UINT8:
             return value & 0xFF
@@ -129,9 +123,9 @@ class Unit(str, Enum):
     ENERGY_KWH = 'kWh', 'val >= 0'
     FREQUENCY_HZ = 'Hz', '0 <= val < 100'
     PERCENT = '%', '0 <= val < 256'
-    POWER_KW = 'kW', 'abs(val) < 10'
-    POWER_VA = 'VA', 'abs(val) < 10000'
-    POWER_W = 'W', 'abs(val) < 10000'
+    POWER_KW = 'kW', 'abs(val) < 20'
+    POWER_VA = 'VA', 'abs(val) < 20000'
+    POWER_W = 'W', 'abs(val) < 20000'
     TEMPERATURE_C = '°C', 'abs(val) < 200'
     TIME_M = 'min'
     TIME_MS = 'ms'

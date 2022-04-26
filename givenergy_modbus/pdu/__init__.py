@@ -107,10 +107,10 @@ class BasePDU(ABC):
         the theory being that newer messages being enqueued might as well replace older ones of the same shape.
         """
         if isinstance(o, BasePDU):
-            return self._shape_hash() == o._shape_hash()
+            return self.shape_hash() == o.shape_hash()
         return NotImplemented
 
-    def _shape_hash(self) -> int:
+    def shape_hash(self) -> int:
         """Calculates the "shape hash" for a given message."""
         return hash(self._shape_hash_keys())
 
@@ -126,7 +126,7 @@ class BasePDU(ABC):
 class Request(BasePDU, ABC):
     """Root of the hierarchy for Request PDUs."""
 
-    def expected_response_pdu(self) -> Response:
+    def expected_response(self) -> Response:
         """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 

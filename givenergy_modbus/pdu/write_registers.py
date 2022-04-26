@@ -57,8 +57,6 @@ class WriteHoldingRegister(TransparentMessage, ABC):
     def _ensure_valid_state(self):
         if self.register is None:
             raise InvalidPduState('Register must be set explicitly', self)
-        elif self.register not in self.writable_registers:
-            raise InvalidPduState(f'Register {self.register} is not safe to write to', self)
         if self.value is None:
             raise InvalidPduState('Register value must be set explicitly', self)
         elif 0 > self.value > 0xFFFF:
@@ -67,6 +65,11 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 
 class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC):
     """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
+
+    def _ensure_valid_state(self):
+        super()._ensure_valid_state()
+        if self.register not in self.writable_registers:
+            raise InvalidPduState(f'Register {self.register} is not safe to write to', self)
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -88,7 +91,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
         self.check = CrcModbus().process(crc_builder.to_string()).final()
         self._builder.add_16bit_uint(self.check)
 
-    def expected_response_pdu(self) -> WriteHoldingRegisterResponse:  # noqa D102 - see superclass
+    def expected_response(self) -> WriteHoldingRegisterResponse:  # noqa D102 - see superclass
         return WriteHoldingRegisterResponse(register=self.register, value=self.value, slave_address=self.slave_address)
 
 
@@ -113,3 +116,8 @@ class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, AB
         self.register = decoder.decode_16bit_uint()
         self.value = decoder.decode_16bit_uint()
         self.check = decoder.decode_16bit_uint()
+
+    def _ensure_valid_state(self):
+        super()._ensure_valid_state()
+        if self.register not in self.writable_registers:
+            _logger.warning(f'Wrote {self.value} to register {self.register} which is not safe for writing')
