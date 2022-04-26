@@ -5,7 +5,7 @@ import datetime
 import logging
 import os
 import socket
-from asyncio import Queue, StreamReader, StreamWriter, Task
+from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable, Mapping, Sequence
 
@@ -13,18 +13,20 @@ import aiofiles  # type: ignore
 from metrology import Metrology
 from pymodbus.client.sync import ModbusTcpClient
 
-from givenergy_modbus.framer import ClientFramer, PduProcessedCallback
+from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.modbus import SyncClient
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu import BasePDU, Request, Response
 from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
+from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
     ReadRegistersRequest,
+    ReadRegistersResponse,
 )
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
@@ -40,8 +42,9 @@ class Message:
     pdu: BasePDU
     raw_frame: bytes = b''
     created: datetime.datetime = field(default_factory=datetime.datetime.now)
-    ttl: float = 5
+    ttl: float = 4.5
     retries_remaining: int = 0
+    future: Future = field(default_factory=lambda: asyncio.get_event_loop().create_future())
 
     @property
     def age(self) -> datetime.timedelta:
@@ -300,7 +303,7 @@ class GivEnergyAsyncClient:
 
     rx_messages: Queue[Message]
     tx_messages: Queue[Message]
-    anticipated_responses: set[Message]
+    expected_responses: dict[int, Message]
     rx_bytes: Queue[Message]
     debug_frames: dict[str, Queue[bytes]] = {}
 
@@ -315,8 +318,22 @@ class GivEnergyAsyncClient:
         self.plant = Plant()
 
         self.tasks = {}
+        self.reset_state()
 
-    def _disconnect(self):
+    def reset_state(self):
+        """Prepare the internal state for a new connection."""
+        self.rx_bytes = Queue(maxsize=100)
+        self.rx_messages = Queue(maxsize=100)
+        self.tx_messages = Queue(maxsize=100)
+        self.expected_responses = {}
+        self.debug_frames = {
+            'all': Queue(maxsize=1000),
+            'error': Queue(maxsize=1000),
+            'suspicious': Queue(maxsize=100),
+            'rejected': Queue(maxsize=100),
+        }
+
+    def disconnect(self):
         """Close any existing network connections."""
         self.connected = False
         if self.reader:  # hasattr(self, 'reader'):
@@ -325,7 +342,7 @@ class GivEnergyAsyncClient:
             self.writer.close()
             del self.writer
 
-    async def _connect(self):
+    async def connect(self):
         """Connect to the given host and store the reader & writer for use elsewhere."""
         backoff = self.connect_backoff_initial
         retries = 0
@@ -337,7 +354,7 @@ class GivEnergyAsyncClient:
                 )
                 self.connected = True
                 _logger.info(
-                    f'(Re)established connection to {self.host}:{self.port}'
+                    f'Connection established to {self.host}:{self.port}'
                     f'{f" after {retries} retries" if retries > 0 else ""}'
                 )
                 return
@@ -353,275 +370,278 @@ class GivEnergyAsyncClient:
             await asyncio.sleep(backoff)
             backoff = min(self.connect_backoff_ceiling, backoff * self.connect_backoff_multiplier)
 
-    def _cancel_tasks(self):
+    def cancel_tasks(self):
         """Cancel looping tasks."""
+        _logger.info(f'Cancelling tasks {",".join(self.tasks.keys())}')
         for name in list(self.tasks.keys()):
             self.tasks[name].cancel()
             del self.tasks[name]
 
-    def reset_state(self):
-        """Prepare the internal state for a new connection."""
-        self.rx_messages = Queue()
-        self.tx_messages = Queue()
-        self.anticipated_responses = set()
-        self.rx_bytes = Queue()
-        self.debug_frames = {
-            'all': Queue(),
-            'error': Queue(),
-            'suspicious': Queue(),
-            'rejected': Queue(),
-        }
-
-    async def enqueue_outbound_pdu(self, pdu: BasePDU):
-        """Place a message on the queue for sending to the network."""
-        await self.tx_messages.put(Message(pdu))
-
-    #########################################################################################################
-    async def schedule_data_refresh_requests(self):
-        """Refresh data from the remote system."""
-
-        def enqueue(request_type: type[ReadRegistersRequest], base_register: int, device_number: int = 0):
-            return self.enqueue_outbound_pdu(
-                request_type(base_register=base_register, register_count=60, slave_address=0x32 + device_number)
-            )
-
-        meter = Metrology.meter('refreshes')
-        if meter.count % self.full_refresh_interval_count == 0:
-            _logger.debug('Doing full refresh & probing all batteries')
-            await enqueue(ReadHoldingRegistersRequest, 0)
-            await enqueue(ReadHoldingRegistersRequest, 60)
-            await enqueue(ReadHoldingRegistersRequest, 120)
-            await enqueue(ReadInputRegistersRequest, 120)
-            number_batteries = 6
-        else:
-            number_batteries = self.plant.number_batteries
-
-        await enqueue(ReadInputRegistersRequest, 0)
-        await enqueue(ReadInputRegistersRequest, 180)
-
-        _logger.debug(f'Refreshing {number_batteries} batteries')
-        for i in range(number_batteries):
-            await enqueue(ReadInputRegistersRequest, 60, i)
-
-        meter.mark()
-
-    async def transmit_queued_messages(self):
-        """Process outbound messages onto the network."""
-        while not self.tx_messages.empty():
-            item = await self.tx_messages.get()
-            if item.expired:
-                _logger.warning(f'Queue item expired, discarding: {item}')
-                continue
-
-            _logger.debug(f'Sending {item.pdu}')
-            packet = await asyncio.get_event_loop().run_in_executor(None, self.framer.build_packet, item.pdu)
-            self.writer.write(packet)
-            await asyncio.wait_for(self.writer.drain(), timeout=self.seconds_between_pdu_writes * 2)
-            # self.pdus_sent.append(pdu)
-            Metrology.meter('tx-pdus').mark()
-            Metrology.meter('tx-bytes').mark(len(packet))
-            await asyncio.sleep(self.seconds_between_pdu_writes)
-
-    async def await_incoming_data(self):
-        """Await incoming data from the network and decode it into complete messages."""
-        data = await self.reader.read(15)
-
-        Metrology.meter('rx-bytes').mark(len(data))
-        results: PduProcessedCallback[0] = []
-        callback: PduProcessedCallback = results.append
-
-        try:
-            await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(None, self.framer.process_incoming_data, data, callback),
-                timeout=10,
-            )
-        except asyncio.TimeoutError:
-            _logger.error(
-                'Frame processing took >10s, something is stuck. '
-                f'Current buffer: len={self.framer.buffer_length} {self.framer._buffer.hex()}'
-            )
-            return
-
-        if not results:
-            _logger.debug(f'No new PDUs, framer buffer length = {self.framer.buffer_length}')
-            return
-
-        for pdu, raw_frame in results:
-            await self.debug_frames['all'].put(raw_frame)
-            if not pdu:
-                _logger.error(f'Unable to decode frame {raw_frame.hex()}')
-                await self.debug_frames['error'].put(raw_frame)
-                Metrology.meter('rx-invalid-frames').mark()
-                continue
-
-            _logger.debug(f'Received {pdu}')
-            await self.rx_messages.put(Message(pdu, raw_frame=raw_frame))
-            Metrology.meter('rx-pdus').mark()
-            # Metrology.meter(f'rx-pdus-from-{pdu.slave_address:02x}').mark()
-            # Metrology.meter(f'rx-pdus-{pdu.__class__.__name__}').mark()
-            if isinstance(pdu, TransparentResponse) and pdu.error:
-                _logger.error(f"Received error {pdu}")
-                Metrology.meter('rx-errors').mark()
-                # Metrology.meter(f'rx-pdus-from-{pdu.slave_address:02x}-error').mark()
-                # Metrology.meter(f'rx-pdus-{pdu.__class__.__name__}-error').mark()
-
-    async def dispatch_incoming_messages(self):
-        """Dispatch queued incoming messages."""
-        _logger.debug(f'PDUs in rx queue: {self.rx_messages.qsize()}')
-        while not self.rx_messages.empty():
-            item = await self.rx_messages.get()
-            if item.expired:
-                _logger.warning(f'Processing expired PDU {item}')
-            pdu = item.pdu
-            loop = asyncio.get_event_loop()
-
-            if isinstance(pdu, HeartbeatRequest):
-                _logger.debug('Returning HeartbeatResponse')
-                return_pdu = pdu.expected_response_pdu()
-                await self.enqueue_outbound_pdu(return_pdu)
-                Metrology.meter('heartbeats').mark()
-            else:
-                _logger.debug(f'Processing {pdu}')
-
-                try:
-                    await loop.run_in_executor(None, self.plant.update, pdu)
-                except ValueError as e:
-                    if (
-                        isinstance(pdu, ReadInputRegistersResponse)
-                        and pdu.base_register % 60 == 0
-                        and pdu.register_count == 60
-                    ):
-                        count_known_bad_register_values = (
-                            pdu.register_values[30] == 0xA119,
-                            pdu.register_values[31] == 0x34EA,
-                            pdu.register_values[32] == 0xE77F,
-                            pdu.register_values[33] == 0xD475,
-                            pdu.register_values[35] == 0x4500,
-                            pdu.register_values[41] == 0xC0A8,
-                            pdu.register_values[43] == 0xC0A8,
-                            pdu.register_values[51] == 0x8018,
-                            pdu.register_values[52] == 0x43E0,
-                            pdu.register_values[53] == 0xF6CE,
-                            pdu.register_values[56] == 0x080A,
-                            pdu.register_values[58] == 0xFCC1,
-                            pdu.register_values[59] == 0x661E,
-                        ).count(True)
-
-                        if count_known_bad_register_values > 5:
-                            _logger.debug(
-                                f'Ignoring known suspicious update with {count_known_bad_register_values} known bad '
-                                f'register values {pdu}: {pdu.to_dict()}'
-                            )
-                            await self.debug_frames['suspicious'].put(item.raw_frame)
-                        elif (  # BMS response based on InputRegister block and slave address range:
-                            pdu.base_register == 60
-                            and 0x30 <= pdu.slave_address <= 0x37
-                            and sum(pdu.register_values[50:55]) == 0x0  # all-null serial number
-                            and pdu.register_values.count(0) > 55  # mostly null values
-                        ):
-                            _logger.info(
-                                'Ignoring BMS Response PDU with mostly empty values, '
-                                f'battery is likely not installed. {pdu}: {e}'
-                            )
-                        else:
-                            await self.debug_frames['rejected'].put(item.raw_frame)
-                            _logger.warning(f'Rejecting update {pdu}: {e}')
-
-                        Metrology.meter('rx-invalid').mark()
-
-            if self.pdu_handler:
-                return_pdu = await loop.run_in_executor(None, self.pdu_handler, pdu)
-                if return_pdu:
-                    await self.enqueue_outbound_pdu(return_pdu)
-
-    #########################################################################################################
-    async def dump_queues_to_files(self):
-        """Dump internal queues of messages to files for debugging."""
-
-        async def dump_queue_to_file(queue: Queue, filename: str):
-            """Write any queued items to the specified files."""
-            if not queue.empty():
-                _logger.debug(f'Logging {queue.qsize()} {filename}')
-                async with aiofiles.open(f'{filename}_frames.txt', mode='a') as str_file:
-                    await str_file.write(f'# {datetime.datetime.now().timestamp()}\n')
-                    while not queue.empty():
-                        item = await queue.get()
-                        await str_file.write(item.hex() + '\n')
-
-        if self.debug_frames:
-            os.makedirs('debug', exist_ok=True)
-            tasks = []
-            for name, queue in self.debug_frames.items():
-                tasks.append(dump_queue_to_file(queue, os.path.join('debug', name)))
-            if tasks:
-                await asyncio.gather(*tasks)
-
-    async def log_stats(self):
-        """Log stats from Metrology."""
-        from metrology import registry
-
-        # counters = []
-        timers = []
-        for meter in registry:
-            name, data = meter
-            if name.startswith('time-'):
-                timers.append(f'{name[5:]}={data.mean:.2f}')
-            # else:
-            #     counters.append(f'{name}={data.count}')
-        # if counters:
-        #     _logger.info(f"counters: {' '.join(counters)}")
-        if timers:
-            _logger.info(f"timers: {' '.join(timers)}")
-
-    async def health_check(self):
-        """Proto healthcheck function."""
-        all_tasks = asyncio.all_tasks()
-        if len(all_tasks) < 5 or len(all_tasks) > 10:
-            tasks = "\n".join([f"    {t.get_name():30} {t._state:10} {t.get_coro()}" for t in all_tasks])
-            _logger.warning(f'{len(all_tasks)} tasks scheduled:\n{tasks}')
-
     def run_tasks_forever(self, *funcs: tuple[Callable[[], Awaitable], float, float | None]):
         """Helper method to wrap coros in tasks, run them a permanent loop and handle cancellation."""
 
-        async def coro(f: Callable[[], Awaitable], s: float, name: str, t: float | None):
+        async def coro(f: Callable[[], Awaitable], s: float, n: str, t: float | None):
             while self.connected:
                 try:
-                    with Metrology.utilization_timer(f'time-{name}'):
+                    with Metrology.utilization_timer(f'time-{n}'):
                         await asyncio.wait_for(f(), timeout=t)
                     await asyncio.sleep(s)
                 except asyncio.CancelledError:
-                    _logger.debug(f"Cancelling {name}()")
+                    self.connected = False
+                    _logger.debug(f"Cancelling {n}()")
                     raise
                 except asyncio.TimeoutError:
-                    _logger.error(f"{name}() took >{t:.1f}s to complete, aborting")
-                    # raise
-            _logger.debug(f"Stopped {name}()")
+                    self.connected = False
+                    _logger.error(f"{n}() took >{t:.1f}s to complete, aborting")
+                    raise
+            _logger.debug(f"Stopped {n}()")
 
         for func, sleep, timeout in funcs:
             func_name = func.__name__
             _logger.debug(f"Forever running {func_name}()")
             self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name, timeout), name=func_name)
 
-    # async def chaos(self):
-    #     """Inject some chaos."""
-    #     await asyncio.sleep(random.randint(300, 6000))
-    #     self.writer.close()
+    #########################################################################################################
+    async def request_data_refresh(self):
+        """Refresh data from the remote system."""
+
+        def enqueue(request_type: type[ReadRegistersRequest], base_register: int, device_idx: int = 0):
+            tasks.append(
+                self.tx_messages.put(
+                    Message(
+                        request_type(base_register=base_register, register_count=60, slave_address=0x32 + device_idx)
+                    )
+                )
+            )
+
+        tasks = []
+        if Metrology.timer('time-request_data_refresh').count % self.full_refresh_interval_count == 0:
+            _logger.debug('Doing full refresh & probing all batteries')
+            enqueue(ReadHoldingRegistersRequest, 0)
+            enqueue(ReadHoldingRegistersRequest, 60)
+            enqueue(ReadHoldingRegistersRequest, 120)
+            enqueue(ReadInputRegistersRequest, 120)
+            number_batteries = 6
+        else:
+            _logger.debug('Doing quick refresh')
+            number_batteries = self.plant.number_batteries
+
+        enqueue(ReadInputRegistersRequest, 0)
+        enqueue(ReadInputRegistersRequest, 180)
+
+        _logger.debug(f'Refreshing {number_batteries} batteries')
+        for i in range(number_batteries):
+            enqueue(ReadInputRegistersRequest, 60, i)
+
+        await (asyncio.gather(*tasks))
+
+    async def transmit_next_queued_message(self):
+        """Process the next outbound message onto the network."""
+        item = await self.tx_messages.get()
+        if item.expired:
+            _logger.warning(f'Queue item expired, discarding: {item}')
+            return
+
+        if isinstance(item.pdu, Request):
+            expected_response = item.pdu.expected_response()
+            shape_hash = expected_response.shape_hash()
+            if shape_hash in self.expected_responses:
+                if not self.expected_responses[shape_hash].expired:
+                    _logger.warning(
+                        f'New {item.pdu} being sent while still awaiting outstanding {expected_response}; '
+                        f'age={self.expected_responses[shape_hash].age}'
+                    )
+                item.future.cancel()
+            message = Message(expected_response, ttl=item.ttl, future=item.future)
+            self.expected_responses[expected_response.shape_hash()] = message
+            _logger.debug(f'Recording expected response {expected_response} to {item.pdu}')
+
+        _logger.debug(f'Sending {item.pdu}')
+        packet = await asyncio.get_event_loop().run_in_executor(None, self.framer.build_packet, item.pdu)
+        self.writer.write(packet)
+        await asyncio.wait_for(self.writer.drain(), timeout=self.seconds_between_pdu_writes * 2)
+        Metrology.meter('tx-pdus').mark()
+        Metrology.meter('tx-bytes').mark(len(packet))
+
+    def handle_framer_result(self, pdu: BasePDU | None, raw_frame: bytes) -> None:
+        """Callback to handle Framer results."""
+        self.debug_frames['all'].put_nowait(raw_frame)
+        if not pdu:
+            _logger.error(f'Unable to decode frame {raw_frame.hex()}')
+            self.debug_frames['error'].put_nowait(raw_frame)
+            Metrology.meter('rx-invalid-frames').mark()
+            return
+
+        _logger.debug(f'Received {pdu}')
+        self.rx_messages.put_nowait(Message(pdu, raw_frame=raw_frame))
+        Metrology.meter('rx-pdus').mark()
+        if isinstance(pdu, TransparentResponse) and pdu.error:
+            _logger.debug(f"Received error {pdu}")
+            Metrology.meter('rx-errors').mark()
+
+    async def await_incoming_data(self):
+        """Await incoming data from the network and decode it into complete messages."""
+        if not self.connected:
+            return
+
+        data = await self.reader.read(300)
+        if data:
+            Metrology.meter('rx-bytes').mark(len(data))
+            self.framer.process_incoming_data(data, self.handle_framer_result)
+
+    async def dispatch_next_incoming_message(self):
+        """Dispatch the next incoming message."""
+        item = await self.rx_messages.get()
+        await self.handle_expected_response(item)
+
+        pdu = item.pdu
+        loop = asyncio.get_event_loop()
+
+        if isinstance(pdu, Request):
+            response = pdu.expected_response()
+            _logger.debug(f'Returning {response} to request {pdu}')
+            await self.tx_messages.put(Message(response))
+        elif isinstance(pdu, Response):
+            _logger.debug(f'Processing {pdu}')
+
+            try:
+                await loop.run_in_executor(None, self.plant.update, pdu)
+            except ValueError as e:
+                if (
+                    isinstance(pdu, ReadInputRegistersResponse)
+                    and pdu.base_register % 60 == 0
+                    and pdu.register_count == 60
+                ):
+                    count_known_bad_register_values = (
+                        pdu.register_values[30] == 0xA119,
+                        pdu.register_values[31] == 0x34EA,
+                        pdu.register_values[32] == 0xE77F,
+                        pdu.register_values[33] == 0xD475,
+                        pdu.register_values[35] == 0x4500,
+                        pdu.register_values[41] == 0xC0A8,
+                        pdu.register_values[43] == 0xC0A8,
+                        pdu.register_values[51] == 0x8018,
+                        pdu.register_values[52] == 0x43E0,
+                        pdu.register_values[53] == 0xF6CE,
+                        pdu.register_values[56] == 0x080A,
+                        pdu.register_values[58] == 0xFCC1,
+                        pdu.register_values[59] == 0x661E,
+                    ).count(True)
+
+                    if count_known_bad_register_values > 5:
+                        _logger.debug(
+                            f'Ignoring known suspicious update with {count_known_bad_register_values} known bad '
+                            f'register values {pdu}: {pdu.to_dict()}'
+                        )
+                        await self.debug_frames['suspicious'].put(item.raw_frame)
+                else:
+                    await self.debug_frames['rejected'].put(item.raw_frame)
+                    _logger.warning(f'Rejecting update {pdu}: {e}')
+
+                Metrology.meter('rx-invalid').mark()
+
+        else:
+            _logger.warning(f'Unable to dispatch {pdu}')
+
+        if self.pdu_handler:
+            return_pdu = await loop.run_in_executor(None, self.pdu_handler, pdu)
+            if return_pdu:
+                await self.tx_messages.put(Message(return_pdu))
+
+    async def handle_expected_response(self, item: Message):
+        """Complete Futures for expected Responses."""
+        pdu = item.pdu
+        if isinstance(pdu, TransparentResponse):
+            sh = pdu.shape_hash()
+            if sh in self.expected_responses:
+                expected_response = self.expected_responses[sh]
+                Metrology.timer('time-roundtrip').update(int(expected_response.age.total_seconds() * 1000))
+                if expected_response.expired:
+                    _logger.error(f'Response {expected_response} is very late! {expected_response.age}')
+                elif expected_response.age > datetime.timedelta(seconds=2):
+                    _logger.warning(f'Expected response arrived >2s: {expected_response.age}: {expected_response}')
+                if expected_response.future:
+                    expected_response.future.set_result(item)
+                del self.expected_responses[sh]
+            elif isinstance(pdu, ReadInputRegistersResponse) and pdu.base_register == 60 and pdu.register_count == 60:
+                _logger.debug(f'Ignoring unsolicited BMS response: {pdu}')
+            elif pdu.slave_address == 0x11:
+                _logger.debug(f'Ignoring periodic automatic cloud refresh: {pdu}')
+            elif pdu.slave_address == 0x00:
+                _logger.debug(f'Ignoring mobile app responses: {pdu}')
+            elif isinstance(pdu, NullResponse):
+                _logger.debug(f'Ignoring null response: {pdu}')
+            elif pdu.error:
+                _logger.debug(f'Ignoring error response: {pdu}')
+            else:
+                _logger.warning(f'Response unexpected: {pdu}')
+        elif isinstance(pdu, HeartbeatRequest):
+            _logger.debug(f'Expected HeartbeatRequest: {pdu}')
+        else:
+            _logger.warning(f'Not a response, ignoring expected-response check: {pdu}')
+
+    #########################################################################################################
+    async def dump_queues_to_files(self):
+        """Dump internal queues of messages to files for debugging."""
+        if self.debug_frames:
+            os.makedirs('debug', exist_ok=True)
+            for name, queue in self.debug_frames.items():
+                if not queue.empty():
+                    async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
+                        await str_file.write(f'# {datetime.datetime.now().timestamp()}\n')
+                        while not queue.empty():
+                            item = await queue.get()
+                            await str_file.write(item.hex() + '\n')
+
+    async def log_stats(self):
+        """Log stats from Metrology."""
+        from metrology import registry
+
+        counters = []
+        timers = []
+        for name, data in registry:
+            if name.startswith('time-'):
+                timers.append(f'{name[5:]}={data.mean:.2f}')
+                counters.append(f'{name[5:]}()={data.count}')
+            else:
+                counters.append(f'{name}={data.count}')
+        if counters:
+            _logger.info(f"counters: {' '.join(counters)}")
+        if timers:
+            _logger.info(f"timers: {' '.join(timers)}")
+
+    async def expected_responses_check(self):
+        """Proto healthcheck function."""
+        for k in list(self.expected_responses.keys()):
+            exp = self.expected_responses[k]
+            if exp.expired:
+                if isinstance(exp.pdu, ReadRegistersResponse):
+                    _logger.debug(f'Expiring expected response {k} {exp.age}: {exp.pdu}')
+                else:
+                    _logger.warning(f'Expiring expected response {k} {exp.age}: {exp.pdu}')
+                del self.expected_responses[k]
+
+    async def health_check(self):
+        """Proto healthcheck function."""
+        all_tasks = asyncio.all_tasks()
+        if len(all_tasks) < 5 or len(all_tasks) > 30:
+            tasks = "\n".join([f"    {t.get_name():30} {t._state:10} {t.get_coro()}" for t in all_tasks])
+            _logger.warning(f'{len(all_tasks)} tasks scheduled:\n{tasks}')
 
     #########################################################################################################
     async def loop_forever(self):
         """Main async client loop."""
         while True:
-            self.reset_state()
-            await self._connect()
+            await self.connect()
             self.run_tasks_forever(
-                (self.dispatch_incoming_messages, 0.1, 10),
-                (self.await_incoming_data, 0, 20),
-                (self.transmit_queued_messages, self.seconds_between_pdu_writes, 10),
-                (self.schedule_data_refresh_requests, self.seconds_between_data_refreshes, 1),
-                (self.dump_queues_to_files, 60, 10),
-                (self.health_check, 30, 5),
+                (self.dispatch_next_incoming_message, 0, 10),
+                (self.await_incoming_data, 0, 60),
+                (self.transmit_next_queued_message, self.seconds_between_pdu_writes, 10),
+                (self.request_data_refresh, self.seconds_between_data_refreshes, 1),
+                (self.dump_queues_to_files, 60, 1),
+                (self.health_check, 30, 1),
+                (self.expected_responses_check, 0.5, 1),
                 (self.log_stats, 600, 5),
-                # (self.chaos, 0, None),
             )
 
             try:
@@ -633,6 +653,48 @@ class GivEnergyAsyncClient:
                     f'restarting in {self.seconds_between_main_loop_restarts:.1f}s'
                 )
 
-            self._disconnect()
-            self._cancel_tasks()
+            self.disconnect()
+            self.cancel_tasks()
+            self.reset_state()
             await asyncio.sleep(self.seconds_between_main_loop_restarts)
+
+    async def execute_single_command(self):
+        """Execute command."""
+        await self.connect()
+        self.run_tasks_forever(
+            (self.dispatch_next_incoming_message, 0, 10),
+            (self.await_incoming_data, 0, 60),
+            (self.transmit_next_queued_message, self.seconds_between_pdu_writes, 10),
+            (self.dump_queues_to_files, 60, 1),
+            (self.expected_responses_check, 0.5, 1),
+            # (self.health_check, 30, 1),
+            # (self.log_stats, 60, 5),
+        )
+
+        # await asyncio.sleep(5)
+
+        m1 = Message(ReadInputRegistersRequest(base_register=0, register_count=60))
+        m2 = Message(ReadInputRegistersRequest(base_register=60, register_count=60))
+        m3 = Message(ReadInputRegistersRequest(base_register=180, register_count=60))
+        await asyncio.gather(
+            self.tx_messages.put(m1),
+            self.tx_messages.put(m2),
+            self.tx_messages.put(m3),
+        )
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(
+                    m1.future,
+                    m2.future,
+                    m3.future,
+                ),
+                timeout=5,
+            )
+            _logger.info('done')
+        except asyncio.TimeoutError:
+            _logger.error('timeout')
+        except asyncio.CancelledError:
+            _logger.error('cancelled')
+
+        # self.disconnect()
+        # self.cancel_tasks()

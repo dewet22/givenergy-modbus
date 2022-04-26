@@ -1,15 +1,17 @@
 import datetime
+from asyncio import AbstractEventLoop
 from typing import Tuple
 from unittest.mock import MagicMock as Mock
 from unittest.mock import call
 
 import pytest
 
-from givenergy_modbus.client import GivEnergyClient
+from givenergy_modbus.client import GivEnergyAsyncClient, GivEnergyClient, Message
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
+from givenergy_modbus.pdu.read_registers import ReadInputRegistersResponse
 from tests.model.test_battery import EXPECTED_BATTERY_DICT
 from tests.model.test_inverter import EXPECTED_INVERTER_DICT
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS  # type: ignore  # shut up mypy
@@ -21,6 +23,14 @@ def client() -> GivEnergyClient:
     """Supply a client with a mocked modbus client."""
     # side_effects = [{1: 2, 3: 4}, {5: 6, 7: 8}, {9: 10, 11: 12}, {13: 14, 15: 16}, {17: 18, 19: 20}]
     return GivEnergyClient(host='foo')  # , modbus_client=Mock(name='modbus_client', side_effect=side_effects))
+
+
+@pytest.fixture()
+def async_client() -> GivEnergyAsyncClient:
+    """Supply an async client."""
+    c = GivEnergyAsyncClient(host='foo')  # , modbus_client=Mock(name='modbus_client', side_effect=side_effects))
+    c.reset_state()
+    return c
 
 
 @pytest.fixture()
@@ -595,3 +605,32 @@ def test_timeout(client):
     client.set_battery_discharge_limit(1)
 
     assert client.modbus_client.socket.call_args_list == []
+
+
+@pytest.mark.asyncio
+async def test_expected_responses(async_client, event_loop: AbstractEventLoop):
+    m1 = Message(
+        ReadInputRegistersResponse(base_register=24, register_count=3, slave_address=0x44),
+        future=event_loop.create_future(),
+    )
+    async_client.expected_responses = {m1.pdu.shape_hash(): m1}
+
+    rx_m1 = Message(
+        ReadInputRegistersResponse(
+            base_register=2, register_count=7, register_values=[9, 8, 7, 6, 5, 4, 3], slave_address=0x33
+        )
+    )
+    async_client.rx_messages.put_nowait(rx_m1)
+    rx_m2 = Message(
+        ReadInputRegistersResponse(base_register=24, register_count=3, register_values=[5, 6, 7], slave_address=0x44)
+    )
+    async_client.rx_messages.put_nowait(rx_m2)
+
+    assert not m1.future.done()
+    assert async_client.rx_messages.qsize() == 2
+
+    await async_client.dispatch_next_incoming_message()
+
+    assert async_client.rx_messages.empty()
+    assert m1.future.done()
+    assert m1.future.result() == rx_m2
