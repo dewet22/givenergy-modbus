@@ -11,7 +11,7 @@ from givenergy_modbus.pdu import BasePDU
 
 _logger = logging.getLogger(__name__)
 
-PduProcessedCallback = Callable[[tuple[Optional[BasePDU], bytes]], None]
+PduProcessedCallback = Callable[[Optional[BasePDU], bytes], None]
 
 
 class Framer(ABC):
@@ -161,7 +161,7 @@ class Framer(ABC):
                 except InvalidFrame as e:
                     _logger.warning(f'Unable to decode frame: {e} [{inner_frame.hex()}]')
                 finally:
-                    callback((pdu, raw_frame))
+                    callback(pdu, raw_frame)
 
     def build_packet(self, message: BasePDU) -> bytes:
         """Creates a packet from the MBAP header plus the encoded PDU."""

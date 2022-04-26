@@ -93,10 +93,10 @@ def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
     framer.process_incoming_data(mbap_header + inner_frame, callback)
 
     if ex:
-        assert callback.mock_calls == [call((None, mbap_header + inner_frame))]
+        assert callback.mock_calls == [call(None, mbap_header + inner_frame)]
     else:
         callback.assert_called_once()
-        fn_kwargs = vars(callback.mock_calls[0].args[0][0])
+        fn_kwargs = vars(callback.mock_calls[0].args[0])
         for (key, val) in constructor_kwargs.items():
             assert fn_kwargs[key] == val, f'{key} must match'
         assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
@@ -113,7 +113,7 @@ def test_client_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
     callback = MagicMock(return_value=None)
     framer.process_incoming_data(mbap_header + inner_frame, callback)
     callback.assert_called_once()
-    fn_kwargs = vars(callback.mock_calls[0].args[0][0])
+    fn_kwargs = vars(callback.mock_calls[0].args[0])
     for (key, val) in constructor_kwargs.items():
         assert fn_kwargs[key] == val, f'`{key}` attribute must match'
     if 'check' in fn_kwargs:
@@ -124,7 +124,7 @@ def decode(framer_class: type[Framer], buffer: str) -> BasePDU:
     callback = MagicMock(return_value=None)
     framer_class().process_incoming_data(bytes.fromhex(buffer), callback)
     callback.assert_called_once()
-    response = callback.call_args_list[0][0][0][0]
+    response = callback.call_args_list[0][0][0]
     return response
 
 
@@ -169,7 +169,7 @@ def test_process_short_buffer():
 
     framer.process_incoming_data(buffer, callback)
     assert len(callback.call_args_list) == 1
-    callback_args = callback.call_args_list[0][0][0]
+    callback_args = callback.call_args_list[0][0]
     response = callback_args[0]
     assert isinstance(response, ReadHoldingRegistersResponse)
     assert response.base_register == 0
@@ -214,7 +214,7 @@ def test_process_stream_good():
 
     assert len(callback.call_args_list) == 2
 
-    response = callback.call_args_list[0][0][0][0]
+    response = callback.call_args_list[0][0][0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 120
@@ -222,7 +222,7 @@ def test_process_stream_good():
     assert response.error is True
     assert response.inner_function_code == 0x04
 
-    response = callback.call_args_list[1][0][0][0]
+    response = callback.call_args_list[1][0][0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 6
@@ -240,7 +240,7 @@ def test_process_stream_good_but_noisy():
 
     assert len(callback.call_args_list) == 2
 
-    callback_args = callback.call_args_list[0][0][0]
+    callback_args = callback.call_args_list[0][0]
     response = callback_args[0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
@@ -250,7 +250,7 @@ def test_process_stream_good_but_noisy():
     assert response.inner_function_code == 0x04
     assert callback_args[1] == EXCEPTION_RESPONSE_FRAME
 
-    callback_args = callback.call_args_list[1][0][0]
+    callback_args = callback.call_args_list[1][0]
     response = callback_args[0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
