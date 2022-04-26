@@ -242,7 +242,7 @@ def test_register_convert():
     assert_can_convert(0, 0.0)
     assert_can_convert(100, 100)
     assert_can_convert(1000, 1000)
-    assert_raises(10_000)
+    assert_can_convert(10_000, 10_000)
     assert_raises(20_000)
 
     func = InputRegister['I_GRID_PORT'].convert
@@ -286,6 +286,8 @@ def test_register_convert():
 
 def test_register_repr():
     """Ensure we can create human-readable forms of register values."""
+    assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(16706) == 'AB'
+    assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(65) == '\x00A'
     assert InputRegister['V_AC1'].repr(15) == '1.50V'
     assert InputRegister['P_PV1'].repr(15) == '15W'
     assert InputRegister['I_GRID_PORT'].repr(15) == '0.15A'
@@ -321,21 +323,24 @@ def test_unit_is_sane_value():
     assert_sane(0)
     assert_sane(100)
     assert_sane(1000)
-    assert_not_sane(10_000)
+    assert_sane(10_000)
+    assert_sane(19_000)
     assert_not_sane(20_000)
 
     func = Unit.POWER_VA.is_value_sane
     assert_sane(0)
     assert_sane(100)
     assert_sane(1000)
-    assert_not_sane(10_000)
+    assert_sane(10_000)
+    assert_sane(19_900)
     assert_not_sane(20_000)
 
     func = Unit.POWER_KW.is_value_sane
     assert_sane(0)
     assert_sane(5)
-    assert_not_sane(10)
-    assert_not_sane(100)
+    assert_sane(10)
+    assert_sane(19.9)
+    assert_not_sane(20)
 
     func = Unit.CURRENT_A.is_value_sane
     assert_sane(0)

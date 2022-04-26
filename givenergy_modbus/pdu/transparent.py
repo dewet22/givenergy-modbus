@@ -40,6 +40,7 @@ class TransparentMessage(BasePDU, ABC):
             'inverter_serial_number',
             'data_adapter_serial_number',
             'padding',
+            '_builder',
         )
         if self.error:
             filtered_args = [format_kv(k, v) for k, v in vars(self).items()]

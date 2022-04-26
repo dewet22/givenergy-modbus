@@ -7,12 +7,13 @@ from crccheck.crc import CrcModbus
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder
 
+from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
 
 
-class ReadRegisters(TransparentMessage, ABC):
+class ReadRegistersMessage(TransparentMessage, ABC):
     """Mixin for commands that specify base register and register count semantics."""
 
     base_register: int
@@ -36,7 +37,7 @@ class ReadRegisters(TransparentMessage, ABC):
             raise ValueError('Register count must be set', self)
 
 
-class ReadRegistersRequest(ReadRegisters, TransparentRequest, ABC):
+class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
     """Handles all messages that request a range of registers."""
 
     def _encode_function_data(self):
@@ -68,18 +69,12 @@ class ReadRegistersRequest(ReadRegisters, TransparentRequest, ABC):
             raise ValueError('Register count must be in (0,60]', self)
 
 
-class ReadRegistersResponse(ReadRegisters, TransparentResponse, ABC):
+class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
     """Handles all messages that respond with a range of registers."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.register_values: list[int] = kwargs.get('register_values', [])
-        if self.register_count != len(self.register_values):
-            raise ValueError(
-                f'Expected to receive {self.register_count} register values, '
-                f'instead received {len(self.register_values)}.',
-                self,
-            )
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -99,13 +94,16 @@ class ReadRegistersResponse(ReadRegisters, TransparentResponse, ABC):
     def _ensure_valid_state(self) -> None:
         self._ensure_registers_spec_correct()
 
-        if not self.error and self.register_count != 1 and self.base_register % 60 != 0:
-            _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+        if not self.error:
+            if self.register_count != 1 and self.base_register % 60 != 0:
+                _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+            if self.register_count != len(self.register_values):
+                raise InvalidPduState(
+                    f'register_count={self.register_count} but len(register_values)={len(self.register_values)}.',
+                    self,
+                )
 
-        if self.error:
-            expected_padding = 0x12
-        else:
-            expected_padding = 0x8A
+        expected_padding = 0x12 if self.error else 0x8A
         if self.padding != expected_padding:
             _logger.debug(f'Expected padding {hex(expected_padding)}, found {hex(self.padding)} instead: {self}')
 
@@ -123,7 +121,7 @@ class ReadRegistersResponse(ReadRegisters, TransparentResponse, ABC):
         return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
 
 
-class ReadHoldingRegisters(ReadRegisters, ABC):
+class ReadHoldingRegisters(ReadRegistersMessage, ABC):
     """Request & Response PDUs for function #3/Read Holding Registers."""
 
     inner_function_code = 3
@@ -132,7 +130,7 @@ class ReadHoldingRegisters(ReadRegisters, ABC):
 class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #3/Read Holding Registers request messages."""
 
-    def expected_response_pdu(self):  # noqa D102 - see superclass
+    def expected_response(self):  # noqa D102 - see superclass
         return ReadHoldingRegistersResponse(
             base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
         )
@@ -142,7 +140,7 @@ class ReadHoldingRegistersResponse(ReadHoldingRegisters, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #3/Read Holding Registers response messages."""
 
 
-class ReadInputRegisters(ReadRegisters, ABC):
+class ReadInputRegisters(ReadRegistersMessage, ABC):
     """Request & Response PDUs for function #4/Read Input Registers."""
 
     inner_function_code = 4
@@ -151,7 +149,7 @@ class ReadInputRegisters(ReadRegisters, ABC):
 class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
 
-    def expected_response_pdu(self):  # noqa D102 - see superclass
+    def expected_response(self):  # noqa D102 - see superclass
         return ReadInputRegistersResponse(
             base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
         )

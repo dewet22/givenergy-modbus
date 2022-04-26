@@ -38,9 +38,9 @@ def test_str():
     assert str(TransparentResponse(foo=3, bar=6)) == '2:_/TransparentResponse()'
     assert str(TransparentResponse(inner_function_code=44)) == '2:_/TransparentResponse()'
 
-    assert str(ReadRegisters()) == '2:_/ReadRegisters(base_register=0 register_count=0)'
-    assert str(ReadRegisters(foo=1)) == '2:_/ReadRegisters(base_register=0 register_count=0)'
-    assert str(ReadRegisters(base_register=50)) == '2:_/ReadRegisters(base_register=50 register_count=0)'
+    assert str(ReadRegistersMessage()) == '2:_/ReadRegistersMessage(base_register=0 register_count=0)'
+    assert str(ReadRegistersMessage(foo=1)) == '2:_/ReadRegistersMessage(base_register=0 register_count=0)'
+    assert str(ReadRegistersMessage(base_register=50)) == '2:_/ReadRegistersMessage(base_register=50 register_count=0)'
 
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
         '2:_/ReadRegistersRequest(base_register=3 register_count=6)'
@@ -104,7 +104,7 @@ def test_cannot_change_function_code():
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_server_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we correctly encode unencapsulated Request messages."""
     pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
     if ex:
@@ -116,7 +116,7 @@ def test_server_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_head
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     pdu = _lookup_pdu_class(pdu_class_name)()
     if ex:
@@ -164,7 +164,7 @@ def test_has_same_shape():
     """Ensure we can compare PDUs sensibly."""
     r1 = ReadInputRegistersResponse()
     r2 = ReadInputRegistersResponse()
-    assert r1._shape_hash() == r2._shape_hash()
+    assert r1.shape_hash() == r2.shape_hash()
     assert r1.has_same_shape(r2)
     assert r1 != r2
     assert r1.has_same_shape(ReadInputRegistersRequest()) is False
@@ -174,12 +174,15 @@ def test_has_same_shape():
     r2 = ReadInputRegistersResponse(base_register=1)
     assert r1.has_same_shape(r2) is False
 
-    r1 = ReadInputRegistersResponse(register_count=2, register_values=[33, 45])
-    r2 = ReadInputRegistersResponse(register_count=2, register_values=[10, 11])
+    r1 = ReadInputRegistersResponse(base_register=1, register_count=2, register_values=[33, 45])
+    r2 = ReadInputRegistersResponse(base_register=1, register_count=2, register_values=[10, 11])
     assert r1.has_same_shape(r2)
     assert r1 != r2
-    r1 = ReadInputRegistersResponse(register_count=2, register_values=[10, 11])
+    r2 = ReadInputRegistersResponse(error=True, base_register=1, register_count=2, register_values=[3])
     assert r1.has_same_shape(r2)
+    assert r1 != r2
+    r2 = ReadInputRegistersResponse(error=True, register_count=2, register_values=[])
+    assert r1.has_same_shape(r2) is False
     assert r1 != r2
 
     test_set = {r1, r2}
@@ -208,3 +211,17 @@ def test_has_same_shape():
     assert len(test_set) == 2
     assert r1 in test_set
     assert r2 in test_set
+
+
+def test_expected_response():
+    req = ReadInputRegistersRequest(base_register=34, register_count=2)
+    res = req.expected_response()
+    assert isinstance(res, ReadInputRegistersResponse)
+    assert res.base_register == req.base_register
+    assert res.register_count == req.register_count
+    assert res.slave_address == req.slave_address
+
+    assert res != req
+    assert req.has_same_shape(res) is False
+    assert req.expected_response().has_same_shape(res)
+    assert res.has_same_shape(req) is False
