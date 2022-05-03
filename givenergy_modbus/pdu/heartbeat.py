@@ -33,7 +33,7 @@ class HeartbeatMessage(BasePDU, ABC):
         """Encode request PDU message and populate instance attributes."""
         self.data_adapter_type = decoder.decode_8bit_uint()
 
-    def _ensure_valid_state(self):
+    def ensure_valid_state(self):
         pass
 
     def _update_check_code(self):

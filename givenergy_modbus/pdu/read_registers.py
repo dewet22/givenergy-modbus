@@ -60,7 +60,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self.check = CrcModbus().process(crc_builder.to_string()).final()
         self._builder.add_16bit_uint(self.check)
 
-    def _ensure_valid_state(self):
+    def ensure_valid_state(self):
         self._ensure_registers_spec_correct()
 
         if self.register_count != 1 and self.base_register % 60 != 0:
@@ -91,7 +91,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
             self.register_values = [decoder.decode_16bit_uint() for _ in range(self.register_count)]
         self.check = decoder.decode_16bit_uint()
 
-    def _ensure_valid_state(self) -> None:
+    def ensure_valid_state(self) -> None:
         self._ensure_registers_spec_correct()
 
         if not self.error:

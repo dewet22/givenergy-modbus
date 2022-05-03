@@ -1,10 +1,9 @@
-# type: ignore  # shut up mypy, this whole file is just a minefield
 import datetime
 from typing import Dict
 
 import pytest
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, ScalingFactor, Type, Unit
+from givenergy_modbus.model.register import DataType, HoldingRegister, InputRegister, Register, ScalingFactor, Unit
 
 # fmt: off
 INPUT_REGISTERS: Dict[int, int] = dict(enumerate([
@@ -51,37 +50,58 @@ HOLDING_REGISTERS: Dict[int, int] = dict(enumerate([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 12x
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 13x
 ]))
-
-
 # fmt: on
+
+
+class RegisterTest(Register):
+    ZERO = 0
+    ONE = 1
+    TWO = 2
+
+
+class RegisterTestAgain(Register):
+    ZERO = 0
+    ONE = 1
+    TWO = 2
 
 
 def test_lookup():
     """Ensure we can look up registers by index, instead of the complex type they're defined as."""
-    assert InputRegister(0) == InputRegister.INVERTER_STATUS
+    assert RegisterTest._value2member_map_ == {0: RegisterTest(0), 1: RegisterTest(1), 2: RegisterTest(2)}
+    assert RegisterTest(0) == RegisterTest.ZERO
+    assert RegisterTest(RegisterTest.ZERO) == RegisterTest.ZERO
+    assert RegisterTest('ZERO') == RegisterTest.ZERO
+    assert RegisterTest(RegisterTest.TWO) == RegisterTest['TWO']
+    assert RegisterTest(RegisterTest.TWO.name) == RegisterTest['TWO']
+    assert RegisterTest(RegisterTest.ONE.value) == RegisterTest.ONE
+    assert RegisterTest[RegisterTest.ONE.name] == RegisterTest.ONE
+
     with pytest.raises(TypeError, match='Cannot extend enumerations'):
-        InputRegister(0, Type.UINT16)
-    assert HoldingRegister(0) == HoldingRegister.DEVICE_TYPE_CODE
+        RegisterTest(0, DataType.UINT16)
     with pytest.raises(TypeError, match='Cannot extend enumerations'):
-        HoldingRegister(0, Type.UINT16)
+        RegisterTest(9999, DataType.UINT16)
 
 
 def test_str_and_repr():
     """Ensure some behaviour around str and repr handling."""
-    assert isinstance(InputRegister(0), Register)
-    assert isinstance(InputRegister(0), str)
-    assert not isinstance(InputRegister(0), int)
-    assert str(InputRegister(0)) == 'IR:000'
-    assert repr(InputRegister(50)) == 'IR:050'
-    assert str(HoldingRegister(109)) == 'HR:109'
-    assert repr(HoldingRegister(99)) == 'HR:099'
+    assert isinstance(RegisterTest(0), Register)
+    assert isinstance(RegisterTest(0), str)
+    assert not isinstance(RegisterTest(0), int)
+    assert str(RegisterTest(0)) == 'RegisterTest(0)'
+    assert repr(RegisterTest(1)) == 'RegisterTest(1)'
+    assert str(RegisterTest(2)) == 'RegisterTest(2)'
+    assert str(RegisterTestAgain(0)) == 'RegisterTestAgain(0)'
+    assert repr(RegisterTestAgain(1)) == 'RegisterTestAgain(1)'
+    assert str(RegisterTestAgain(2)) == 'RegisterTestAgain(2)'
+    assert RegisterTest(1) == 'RegisterTest(1)'
+    assert RegisterTestAgain(2) == 'RegisterTestAgain(2)'
 
 
 def test_comparison():
     """Ensure registers from different banks aren't comparable."""
-    assert HoldingRegister(0) == HoldingRegister(0)
-    assert InputRegister(0) == InputRegister(0)
-    assert HoldingRegister(0) != InputRegister(0)
+    assert RegisterTest(0) == RegisterTest(0)
+    assert RegisterTestAgain(0) == RegisterTestAgain(0)
+    assert RegisterTest(0) != RegisterTestAgain(0)
 
 
 def test_registers_unique_names():
@@ -108,111 +128,105 @@ def _gen_binary(x) -> str:
 def test_type_repr(val: int, scaling: int):
     """Ensure we render types correctly."""
     if scaling != 1:
-        assert Type.UINT16.repr(val, scaling) == f'{val / scaling:0.02f}'
+        assert DataType.UINT16.repr(val, scaling) == f'{val / scaling:0.02f}'
     else:
-        assert Type.UINT16.repr(val, scaling) == str(val)
+        assert DataType.UINT16.repr(val, scaling) == str(val)
 
     if scaling != 1:
         if val > 0x7FFF:  # this should be negative
-            assert Type.INT16.repr(val, scaling) == f'{(val - 2 ** 16) / scaling:0.02f}'
+            assert DataType.INT16.repr(val, scaling) == f'{(val - 2 ** 16) / scaling:0.02f}'
         else:
-            assert Type.INT16.repr(val, scaling) == f'{val / scaling:0.02f}'
+            assert DataType.INT16.repr(val, scaling) == f'{val / scaling:0.02f}'
     else:
         if val > 0x7FFF:  # this should be negative
-            assert Type.INT16.repr(val, scaling) == str(val - 2**16)
+            assert DataType.INT16.repr(val, scaling) == str(val - 2**16)
         else:
-            assert Type.INT16.repr(val, scaling) == str(val)
+            assert DataType.INT16.repr(val, scaling) == str(val)
 
     if scaling != 1:
-        assert Type.UINT32_LOW.repr(val, scaling) == f'{val / scaling:0.02f}'
-        assert Type.UINT32_HIGH.repr(val, scaling) == f'{(val * 2 ** 16) / scaling:0.02f}'
+        assert DataType.UINT32_LOW.repr(val, scaling) == f'{val / scaling:0.02f}'
+        assert DataType.UINT32_HIGH.repr(val, scaling) == f'{(val * 2 ** 16) / scaling:0.02f}'
     else:
-        assert Type.UINT32_LOW.repr(val, scaling) == str(val)
-        assert Type.UINT32_HIGH.repr(val, scaling) == str(val * 2**16)
+        assert DataType.UINT32_LOW.repr(val, scaling) == str(val)
+        assert DataType.UINT32_HIGH.repr(val, scaling) == str(val * 2**16)
 
-    assert Type.UINT8.repr(val, scaling) == str(val % 256)
-    assert Type.DUINT8.repr(val, scaling) == f'{val // 256}, {val % 256}'
+    assert DataType.UINT8.repr(val, scaling) == str(val % 256)
+    assert DataType.DUINT8.repr(val, scaling) == f'{val // 256}, {val % 256}'
 
-    assert Type.BITFIELD.repr(val, scaling) == _gen_binary(val)
+    assert DataType.BITFIELD.repr(val, scaling) == _gen_binary(val)
 
-    assert Type.HEX.repr(val, scaling) == f'0x{val:04x}'
+    assert DataType.HEX.repr(val, scaling) == f'0x{val:04x}'
 
     # scaling doesn't make sense for ascii types
-    assert Type.ASCII.repr(val, scaling) == chr(val // 256) + chr(val % 256)
+    assert DataType.ASCII.repr(val, scaling) == chr(val // 256) + chr(val % 256)
 
     if val == 0x0:
-        assert Type.BOOL.repr(val, scaling) == 'False'
-    elif val == 0x1:
-        assert Type.BOOL.repr(val, scaling) == 'True'
+        assert DataType.BOOL.repr(val, scaling) == 'False'
     else:
-        with pytest.raises(ValueError, match=str(val)):
-            Type.BOOL.repr(val, scaling)
+        assert DataType.BOOL.repr(val, scaling) == 'True'
 
 
 @pytest.mark.parametrize("val", [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
 @pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
 def test_type_convert(val: int, scaling: int):
     """Ensure we render types correctly."""
-    assert Type.UINT16.convert(val, scaling) == val / scaling
+    assert DataType.UINT16.convert(val, scaling) == val / scaling
 
     if val > 0x7FFF:  # this should be negative
-        assert Type.INT16.convert(val, scaling) == (val - 2**16) / scaling
+        assert DataType.INT16.convert(val, scaling) == (val - 2**16) / scaling
     else:
-        assert Type.INT16.convert(val, scaling) == val / scaling
+        assert DataType.INT16.convert(val, scaling) == val / scaling
 
-    assert Type.UINT32_LOW.convert(val, scaling) == val / scaling
-    assert Type.UINT32_HIGH.convert(val, scaling) == (val * 2**16) / scaling
+    assert DataType.UINT32_LOW.convert(val, scaling) == val / scaling
+    assert DataType.UINT32_HIGH.convert(val, scaling) == (val * 2**16) / scaling
 
-    assert Type.UINT8.convert(val, scaling) == val % 256
-    assert Type.DUINT8.convert(val, scaling) == ((val // 256), (val % 256))
+    assert DataType.UINT8.convert(val, scaling) == val % 256
+    assert DataType.DUINT8.convert(val, scaling) == ((val // 256), (val % 256))
 
-    assert Type.BITFIELD.convert(val, scaling) == val
+    assert DataType.BITFIELD.convert(val, scaling) == val
 
-    assert Type.HEX.convert(val, scaling) == f'{hex(val)[2:]:>04}'
+    assert DataType.HEX.convert(val, scaling) == f'{hex(val)[2:]:>04}'
 
     # scaling doesn't make sense for ascii types
-    assert Type.ASCII.convert(val, scaling) == chr(val // 256) + chr(val % 256)
+    assert DataType.ASCII.convert(val, scaling) == chr(val // 256) + chr(val % 256)
 
     if val == 0x0:
-        assert Type.BOOL.convert(val, scaling) is False
-    elif val == 0x1:
-        assert Type.BOOL.convert(val, scaling) is True
+        assert DataType.BOOL.convert(val, scaling) is False
     else:
-        with pytest.raises(ValueError, match=str(val)):
-            Type.BOOL.convert(val, scaling)
+        assert DataType.BOOL.convert(val, scaling) is True
 
 
 @pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
-def test_type_render_time(scaling):
+def test_type_convert_time(scaling):
     """Ensure we can convert BCD-encoded time slots."""
-    assert Type.TIME.convert(0, scaling) == datetime.time(hour=0, minute=0)
-    assert Type.TIME.convert(30, scaling) == datetime.time(hour=0, minute=30)
-    assert Type.TIME.convert(60, scaling) == datetime.time(hour=0, minute=0)  # what _does_ 60 mean?
-    assert Type.TIME.convert(430, scaling) == datetime.time(hour=4, minute=30)
-    assert Type.TIME.convert(123, scaling) == datetime.time(hour=1, minute=23)
-    assert Type.TIME.convert(234, scaling) == datetime.time(hour=2, minute=34)
-    assert Type.TIME.convert(2400, scaling) == datetime.time(hour=0, minute=0)
-    assert Type.TIME.convert(2401, scaling) == datetime.time(hour=0, minute=1)
+    assert DataType.TIME.convert(0, scaling) == datetime.time(hour=0, minute=0)
+    assert DataType.TIME.convert(30, scaling) == datetime.time(hour=0, minute=30)
+    assert DataType.TIME.convert(60, scaling) == datetime.time(hour=0, minute=0)  # what _does_ 60 mean?
+    assert DataType.TIME.convert(430, scaling) == datetime.time(hour=4, minute=30)
+    assert DataType.TIME.convert(123, scaling) == datetime.time(hour=1, minute=23)
+    assert DataType.TIME.convert(234, scaling) == datetime.time(hour=2, minute=34)
+    assert DataType.TIME.convert(2400, scaling) == datetime.time(hour=0, minute=0)
+    assert DataType.TIME.convert(2401, scaling) == datetime.time(hour=0, minute=1)
     with pytest.raises(ValueError, match='0678'):
-        Type.TIME.convert(678, scaling)
+        DataType.TIME.convert(678, scaling)
     with pytest.raises(ValueError, match='9999'):
-        Type.TIME.convert(9999, scaling)
+        DataType.TIME.convert(9999, scaling)
 
 
 @pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
 def test_type_render_power_factor(scaling: int):
     """Ensure we can convert BCD-encoded time slots."""
-    assert Type.POWER_FACTOR.convert(0, scaling) == -1.0
-    assert Type.POWER_FACTOR.convert(5000, scaling) == -0.5
-    assert Type.POWER_FACTOR.convert(10000, scaling) == 0.0
-    assert Type.POWER_FACTOR.convert(15000, scaling) == 0.5
-    assert Type.POWER_FACTOR.convert(20000, scaling) == 1.0
+    assert DataType.POWER_FACTOR.convert(0, scaling) == -1.0
+    assert DataType.POWER_FACTOR.convert(5000, scaling) == -0.5
+    assert DataType.POWER_FACTOR.convert(10000, scaling) == 0.0
+    assert DataType.POWER_FACTOR.convert(15000, scaling) == 0.5
+    assert DataType.POWER_FACTOR.convert(20000, scaling) == 1.0
 
 
 def test_random_sanity_checks():
     """Just a few random sanity checks."""
-    assert Type.INT16.convert(98, 1) == 98
-    assert Type.INT16.convert(64786, 1) == -750
+    assert DataType.INT16.convert(98, 1) == 98
+    assert DataType.INT16.convert(64786, 1) == -750
 
 
 def test_register_convert():
@@ -283,11 +297,26 @@ def test_register_convert():
     assert_can_convert(1555, 155.5)
     assert_raises(2000)
 
+    func = HoldingRegister['CHARGE_SLOT_1_START'].convert
+    assert_can_convert(0, datetime.time(0, 0))
+    assert_can_convert(50, datetime.time(0, 50), False)
+    assert_can_convert(60, datetime.time(0, 0), False)
+    assert_raises(99)
+    assert_can_convert(100, datetime.time(1, 0), False)
+    assert_can_convert(951, datetime.time(9, 51), False)
+    assert_raises(999)
+    assert_can_convert(1555, datetime.time(15, 55), False)
+    assert_can_convert(2000, datetime.time(20, 0), False)
+    assert_can_convert(2400, datetime.time(0, 0), False)
+    assert_can_convert(2401, datetime.time(0, 1), False)
+    assert_raises(2501)
+
 
 def test_register_repr():
     """Ensure we can create human-readable forms of register values."""
     assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(16706) == 'AB'
     assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(65) == '\x00A'
+    assert HoldingRegister['CHARGE_SLOT_1_START'].repr(1234) == '12:34'
     assert InputRegister['V_AC1'].repr(15) == '1.50V'
     assert InputRegister['P_PV1'].repr(15) == '15W'
     assert InputRegister['I_GRID_PORT'].repr(15) == '0.15A'
@@ -312,14 +341,14 @@ def test_unit_is_sane_value():
         if val != 0 and negative_too:
             assert func(-val) is False, f'{-val} should be False'
 
-    func = Unit.VOLTAGE_V.is_value_sane
+    func = Unit.VOLTAGE_V.sanity_check
     assert_sane(0)
     assert_sane(100)
     assert_sane(1000)
     assert_not_sane(10_000)
     assert_not_sane(20_000)
 
-    func = Unit.POWER_W.is_value_sane
+    func = Unit.POWER_W.sanity_check
     assert_sane(0)
     assert_sane(100)
     assert_sane(1000)
@@ -327,7 +356,7 @@ def test_unit_is_sane_value():
     assert_sane(19_000)
     assert_not_sane(20_000)
 
-    func = Unit.POWER_VA.is_value_sane
+    func = Unit.POWER_VA.sanity_check
     assert_sane(0)
     assert_sane(100)
     assert_sane(1000)
@@ -335,14 +364,14 @@ def test_unit_is_sane_value():
     assert_sane(19_900)
     assert_not_sane(20_000)
 
-    func = Unit.POWER_KW.is_value_sane
+    func = Unit.POWER_KW.sanity_check
     assert_sane(0)
     assert_sane(5)
     assert_sane(10)
     assert_sane(19.9)
     assert_not_sane(20)
 
-    func = Unit.CURRENT_A.is_value_sane
+    func = Unit.CURRENT_A.sanity_check
     assert_sane(0)
     assert_sane(50)
     assert_sane(100)
@@ -352,7 +381,7 @@ def test_unit_is_sane_value():
     assert_not_sane(5000)
     assert_not_sane(10_000)
 
-    func = Unit.CURRENT_MA.is_value_sane
+    func = Unit.CURRENT_MA.sanity_check
     assert_sane(0)
     assert_sane(50)
     assert_sane(100)
@@ -362,7 +391,7 @@ def test_unit_is_sane_value():
     assert_not_sane(5000)
     assert_not_sane(10_000)
 
-    func = Unit.ENERGY_KWH.is_value_sane
+    func = Unit.ENERGY_KWH.sanity_check
     assert_sane(0)
     assert_sane(00, False)
     assert_sane(1000, False)
@@ -370,7 +399,7 @@ def test_unit_is_sane_value():
     assert_sane(20_000, False)
     assert_not_sane(-200, False)
 
-    func = Unit.FREQUENCY_HZ.is_value_sane
+    func = Unit.FREQUENCY_HZ.sanity_check
     assert_sane(0)
     assert_sane(50, False)
     assert_sane(60, False)
@@ -378,7 +407,7 @@ def test_unit_is_sane_value():
     assert_not_sane(100)
     assert_not_sane(200)
 
-    func = Unit.TEMPERATURE_C.is_value_sane
+    func = Unit.TEMPERATURE_C.sanity_check
     assert_sane(0)
     assert_sane(50)
     assert_sane(60)
@@ -386,7 +415,7 @@ def test_unit_is_sane_value():
     assert_sane(100)
     assert_not_sane(200)
 
-    func = Unit.PERCENT.is_value_sane
+    func = Unit.PERCENT.sanity_check
     assert_sane(0)
     assert_sane(50, False)
     assert_sane(60, False)

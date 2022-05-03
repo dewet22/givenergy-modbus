@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
+from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import BasePDU
 
 PDUType = str
@@ -68,17 +69,17 @@ _server_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(register=20817 value=2000)',
+        '2:6/WriteHoldingRegisterRequest(HoldingRegister(179)/HOLDING_REG179 -> 2000/0x07d0)',
         "WriteHoldingRegisterRequest",
-        {"register": 0x5151, "value": 2000, "check": 0x81EE, "data_adapter_serial_number": "AB1234G567"},
+        {"register": HoldingRegister(179), "value": 2000, "check": 0x81EE, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x51\x51\x07\xd0" b"\x81\xee",
-        InvalidPduState('Register 20817 is not safe to write to', None),
+        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\xb3\x07\xd0" b"\x81\xee",
+        InvalidPduState('HOLDING_REG179 is not safe to write to'),
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(register=20 value=1)',
+        '2:6/WriteHoldingRegisterRequest(HoldingRegister(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',
         "WriteHoldingRegisterRequest",
-        {"register": 0x14, "value": 1, "check": 0xC42D, "data_adapter_serial_number": "AB1234G567"},
+        {"register": HoldingRegister(0x14), "value": 1, "check": 0xC42D, "data_adapter_serial_number": "AB1234G567"},
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\x14\x00\x01" b"\xc4\x2d",
         None,
@@ -170,12 +171,12 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterResponse(slave_address=0x32 register=35 value=8764)',
+        '2:6/WriteHoldingRegisterResponse(HoldingRegister(35)/SYSTEM_TIME_YEAR -> 8764/0x223c)',
         "WriteHoldingRegisterResponse",
         {
             "check": 0x8E4B,
             "inverter_serial_number": 'SA1234G567',
-            "register": 0x0023,
+            "register": HoldingRegister(0x0023),
             "value": 0x223C,
             "data_adapter_serial_number": 'WF1234G567',
             "padding": 0x8A,
@@ -214,8 +215,6 @@ _client_messages: PduTestCases = [
         None,
     ),
 ]
-
-# 59590001009e010257463231323547333136000000000000008a320000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 
 SERVER_MESSAGES = [pytest.param(*p, id=p[0]) for p in _server_messages]
 CLIENT_MESSAGES = [pytest.param(*p, id=p[0]) for p in _client_messages]

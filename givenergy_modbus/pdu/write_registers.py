@@ -8,9 +8,40 @@ from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder
 
 from givenergy_modbus.exceptions import InvalidPduState
+from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
+
+# Canonical list of registers that are safe to write to.
+WRITE_SAFE_REGISTERS: set[HoldingRegister] = {
+    HoldingRegister[x]
+    for x in (
+        'BATTERY_CHARGE_LIMIT',
+        'BATTERY_DISCHARGE_LIMIT',
+        'BATTERY_DISCHARGE_MIN_POWER_RESERVE',
+        'BATTERY_POWER_MODE',
+        'BATTERY_SOC_RESERVE',
+        'CHARGE_SLOT_1_END',
+        'CHARGE_SLOT_1_START',
+        'CHARGE_SLOT_2_END',
+        'CHARGE_SLOT_2_START',
+        'CHARGE_TARGET_SOC',
+        'DISCHARGE_SLOT_1_END',
+        'DISCHARGE_SLOT_1_START',
+        'DISCHARGE_SLOT_2_END',
+        'DISCHARGE_SLOT_2_START',
+        'ENABLE_CHARGE',
+        'ENABLE_CHARGE_TARGET',
+        'ENABLE_DISCHARGE',
+        'SYSTEM_TIME_DAY',
+        'SYSTEM_TIME_HOUR',
+        'SYSTEM_TIME_MINUTE',
+        'SYSTEM_TIME_MONTH',
+        'SYSTEM_TIME_SECOND',
+        'SYSTEM_TIME_YEAR',
+    )
+}
 
 
 class WriteHoldingRegister(TransparentMessage, ABC):
@@ -18,43 +49,50 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 
     inner_function_code = 6
 
-    writable_registers = {
-        20,  # ENABLE_CHARGE_TARGET
-        27,  # BATTERY_POWER_MODE
-        31,  # CHARGE_SLOT_2_START
-        32,  # CHARGE_SLOT_2_END
-        35,  # SYSTEM_TIME_YEAR
-        36,  # SYSTEM_TIME_MONTH
-        37,  # SYSTEM_TIME_DAY
-        38,  # SYSTEM_TIME_HOUR
-        39,  # SYSTEM_TIME_MINUTE
-        40,  # SYSTEM_TIME_SECOND
-        44,  # DISCHARGE_SLOT_2_START
-        45,  # DISCHARGE_SLOT_2_END
-        56,  # DISCHARGE_SLOT_1_START
-        57,  # DISCHARGE_SLOT_1_END
-        59,  # ENABLE_DISCHARGE
-        94,  # CHARGE_SLOT_1_START
-        95,  # CHARGE_SLOT_1_END
-        96,  # ENABLE_CHARGE
-        110,  # BATTERY_SOC_RESERVE
-        111,  # BATTERY_CHARGE_LIMIT
-        112,  # BATTERY_DISCHARGE_LIMIT
-        114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
-        116,  # TARGET_SOC
-    }
-    register: int
+    register: HoldingRegister
     value: int
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.register = kwargs.get('register')
+        register = kwargs.get('register')
+        if isinstance(register, HoldingRegister):
+            self.register = register
+        elif isinstance(register, int):
+            self.register = HoldingRegister(register)
+        elif isinstance(register, str):
+            self.register = HoldingRegister[register]
+        else:
+            self.register = None
         self.value = kwargs.get('value')
+
+    def __str__(self) -> str:
+        if self.register is not None and self.value is not None:
+            return (
+                f"{self.main_function_code}:{getattr(self, 'inner_function_code', '_')}/"
+                f"{self.__class__.__name__}({'ERROR ' if self.error else ''}"
+                f"{self.register}/{self.register.name} -> "
+                f"{self.register.repr(self.value)}/0x{self.value:04x})"
+            )
+        else:
+            return super().__str__()
+
+    def _encode_function_data(self):
+        super()._encode_function_data()
+        self._builder.add_16bit_uint(self.register.value)
+        self._builder.add_16bit_uint(self.value)
+        self._update_check_code()
+
+    def _decode_function_data(self, decoder):
+        super()._decode_function_data(decoder)
+        self.register = HoldingRegister(decoder.decode_16bit_uint())
+        self.value = decoder.decode_16bit_uint()
+        self.check = decoder.decode_16bit_uint()
 
     def _extra_shape_hash_keys(self) -> tuple:
         return super()._extra_shape_hash_keys() + (self.register,)
 
-    def _ensure_valid_state(self):
+    def ensure_valid_state(self):
+        super().ensure_valid_state()
         if self.register is None:
             raise InvalidPduState('Register must be set explicitly', self)
         if self.value is None:
@@ -66,27 +104,15 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC):
     """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
-    def _ensure_valid_state(self):
-        super()._ensure_valid_state()
-        if self.register not in self.writable_registers:
-            raise InvalidPduState(f'Register {self.register} is not safe to write to', self)
-
-    def _encode_function_data(self):
-        super()._encode_function_data()
-        self._builder.add_16bit_uint(self.register)
-        self._builder.add_16bit_uint(self.value)
-        self._update_check_code()
-
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        self.register = decoder.decode_16bit_uint()
-        self.value = decoder.decode_16bit_uint()
-        self.check = decoder.decode_16bit_uint()
+    def ensure_valid_state(self):
+        super().ensure_valid_state()
+        if self.register not in WRITE_SAFE_REGISTERS:
+            raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
 
     def _update_check_code(self):
         crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
         crc_builder.add_8bit_uint(self.inner_function_code)
-        crc_builder.add_16bit_uint(self.register)
+        crc_builder.add_16bit_uint(self.register.value)
         crc_builder.add_16bit_uint(self.value)
         self.check = CrcModbus().process(crc_builder.to_string()).final()
         self._builder.add_16bit_uint(self.check)
@@ -98,26 +124,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
 class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, ABC):
     """Concrete PDU implementation for handling function #6/Write Holding Register response messages."""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.register: int = kwargs.get('register', None)
-        self.value: int = kwargs.get('value', None)
-
-    def _encode_function_data(self):
-        super()._encode_function_data()
-        # self._builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
-        self._builder.add_16bit_uint(self.register)
-        self._builder.add_16bit_uint(self.value)
-        self._update_check_code()
-
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        # self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
-        self.register = decoder.decode_16bit_uint()
-        self.value = decoder.decode_16bit_uint()
-        self.check = decoder.decode_16bit_uint()
-
-    def _ensure_valid_state(self):
-        super()._ensure_valid_state()
-        if self.register not in self.writable_registers:
+    def ensure_valid_state(self):
+        super().ensure_valid_state()
+        if self.register not in WRITE_SAFE_REGISTERS:
             _logger.warning(f'Wrote {self.value} to register {self.register} which is not safe for writing')

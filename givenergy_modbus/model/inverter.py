@@ -1,4 +1,3 @@
-# type: ignore  # shut up mypy, it seems to struggle with this file
 import datetime
 import logging
 from enum import Enum
@@ -20,10 +19,10 @@ class Model(str, Enum):
     Unknown = 'Unknown'
 
     __serial_prefix_to_models_lut__: Dict[str, 'Model'] = {
-        'CE': AC,
-        'ED': Gen2,
-        'SA': Hybrid,
-        'SD': Hybrid,
+        'CE': AC,  # type: ignore
+        'ED': Gen2,  # type: ignore
+        'SA': Hybrid,  # type: ignore
+        'SD': Hybrid,  # type: ignore
     }
 
     @classmethod
@@ -88,7 +87,6 @@ class Inverter(GivEnergyBaseModel):
     inverter_restart_delay_time: int
 
     # Fault conditions
-    dci_fault_value: float
     dci_1_i: float
     dci_1_time: int
     dci_2_i: float

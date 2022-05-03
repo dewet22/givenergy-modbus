@@ -2,13 +2,9 @@ import datetime
 
 import pytest
 
-from givenergy_modbus.model.inverter import Inverter, Model  # type: ignore  # shut up mypy
-from givenergy_modbus.model.register import HoldingRegister, InputRegister  # type: ignore  # shut up mypy
+from givenergy_modbus.model.inverter import Inverter, Model
+from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
-from tests.model.test_register_cache import register_cache  # noqa: F401
-from tests.model.test_register_cache import (  # noqa: F401
-    register_cache_inverter_daytime_discharging_with_solar_generation,
-)
 
 EXPECTED_ACTUAL_DATA_DICT = {
     'active_power_rate': 100,
@@ -450,9 +446,9 @@ def test_has_expected_attributes():
 
 def test_from_orm_empty():
     """Ensure an empty object cannot be instantiated/validated because of missing data for virtual attributes."""
-    with pytest.raises(KeyError, match=str(HoldingRegister(13))):
+    with pytest.raises(KeyError, match=r'HoldingRegister\(13\)'):
         # inverter_serial_number virtual attribute depends on registers being loaded
-        Inverter.from_orm(RegisterCache(0x32))
+        Inverter.from_orm(RegisterCache())
 
 
 def test_from_orm(register_cache):  # noqa: F811

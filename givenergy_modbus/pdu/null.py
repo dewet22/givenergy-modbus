@@ -29,19 +29,13 @@ class NullResponse(TransparentResponse):
         self.nulls = [decoder.decode_16bit_uint() for _ in range(62)]
         self.check = decoder.decode_16bit_uint()
 
-    def _ensure_valid_state(self) -> None:
+    def ensure_valid_state(self) -> None:
         if self.inverter_serial_number != '\x00' * 10:
-            if isinstance(self.inverter_serial_number, str):
-                hex_str = self.inverter_serial_number.encode('ascii').hex()
-            else:
-                hex_str = bytes(self.inverter_serial_number).hex()
-            _logger.warning(
-                f'Unexpected non-null inverter serial number: {self.inverter_serial_number}/0x{hex_str}', self
-            )
+            hex_str = self.inverter_serial_number.encode('latin1').hex()
+            _logger.warning(f'Unexpected non-null inverter serial number: {self.inverter_serial_number}/0x{hex_str}')
         if any(self.nulls):
             _logger.warning(
-                f'Unexpected non-null "register" values: {dict(filter(lambda v: v[1] != 0, enumerate(self.nulls)))}',
-                self,
+                f'Unexpected non-null "register" values: {dict(filter(lambda v: v[1] != 0, enumerate(self.nulls)))}'
             )
 
     def _extra_shape_hash_keys(self) -> tuple:

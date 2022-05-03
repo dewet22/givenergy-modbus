@@ -4,10 +4,13 @@ from typing import Dict, List
 from pydantic import BaseModel
 
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter  # type: ignore  # shut up mypy
+from givenergy_modbus.model.inverter import Inverter
+from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.read_registers import ReadHoldingRegistersResponse, ReadInputRegistersResponse
 from givenergy_modbus.pdu.transparent import TransparentResponse
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
 
 _logger = logging.getLogger(__name__)
 
@@ -18,26 +21,35 @@ class Plant(BaseModel):
     register_caches: Dict[int, RegisterCache] = {}
 
     class Config:  # noqa: D106
-        arbitrary_types_allowed = True
+        # arbitrary_types_allowed = True
         orm_mode = True
-        # allow_mutation = False
-
-    def __init__(self, *args, **kwargs):
-        """Constructor. Use `number_batteries` to specify the total number of batteries installed."""
-        super().__init__(*args, **kwargs)
-        if not self.register_caches:  # prepopulate well-known / expected slave addresses
-            for i in (0x00, 0x11, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37):
-                self.register_caches[i] = RegisterCache(i)
 
     def update(self, pdu: BasePDU):
-        """Update the Plant state using a received Modbus PDU message."""
+        """Update the Plant state from a PDU message."""
         if not isinstance(pdu, TransparentResponse):
+            _logger.debug(f'Ignoring non-Transparent response {pdu}')
             return
-        if pdu.slave_address not in self.register_caches:
-            _logger.warning(f'Unexpected slave address 0x{pdu.slave_address:02x}')
-            self.register_caches[pdu.slave_address] = RegisterCache(slave_address=pdu.slave_address)
+        if pdu.error:
+            _logger.debug(f'Ignoring error response {pdu}')
+            return
 
-        self.register_caches[pdu.slave_address].update_from_pdu(pdu)
+        # transparently store cloud and app updates in the "normal" inverter address
+        slave_address = pdu.slave_address if pdu.slave_address not in (0x11, 0x00) else 0x32
+
+        if slave_address not in self.register_caches:
+            _logger.info(f'First time encountering slave address 0x{slave_address:02x}')
+            self.register_caches[slave_address] = RegisterCache()
+
+        if isinstance(pdu, ReadHoldingRegistersResponse):
+            self.register_caches[slave_address].update_with_validate(
+                {HoldingRegister(k): v for k, v in pdu.to_dict().items()}
+            )
+        elif isinstance(pdu, ReadInputRegistersResponse):
+            self.register_caches[slave_address].update_with_validate(
+                {InputRegister(k): v for k, v in pdu.to_dict().items()}
+            )
+        if isinstance(pdu, WriteHoldingRegisterResponse):
+            self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
 
     @property
     def inverter(self) -> Inverter:

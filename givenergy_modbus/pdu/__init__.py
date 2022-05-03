@@ -62,7 +62,7 @@ class BasePDU(ABC):
 
     def encode(self) -> bytes:
         """Encode PDU message from instance attributes."""
-        self._ensure_valid_state()
+        self.ensure_valid_state()
         self._builder = BinaryPayloadBuilder(byteorder=Endian.Big)
         self._builder.add_string(f"{self.data_adapter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
         self._encode_function_data()
@@ -72,7 +72,7 @@ class BasePDU(ABC):
     def decode(self, data: bytes) -> None:
         """Decode PDU message and populate instance attributes."""
         decoder = PayloadDecoder(data)
-        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.data_adapter_serial_number = decoder.decode_string(10).decode("latin1")
         self._decode_function_data(decoder)
         if not decoder.decoding_complete:
             _logger.error(
@@ -80,7 +80,7 @@ class BasePDU(ABC):
                 f'packet header specified length={decoder.payload_size}. '
                 f'Remaining payload: [{decoder.remaining_payload.hex()}]'
             )
-        self._ensure_valid_state()
+        self.ensure_valid_state()
         _logger.debug(f"Successfully decoded {len(data)} bytes: {self}")
 
     def _encode_function_data(self) -> None:
@@ -91,7 +91,7 @@ class BasePDU(ABC):
         """Complete function-specific decoding of the remainder of the PDU message."""
         raise NotImplementedError()
 
-    def _ensure_valid_state(self) -> None:
+    def ensure_valid_state(self) -> None:
         """Sanity check our internal state."""
         raise NotImplementedError()
 
