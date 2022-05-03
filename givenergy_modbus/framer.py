@@ -107,7 +107,7 @@ class Framer(ABC):
         """
         self._buffer += data
 
-        while self.buffer_length > self.FRAME_HEAD_SIZE:
+        while self.buffer_length >= 18:  # shortest known message is 18b (heartbeat request)
             header_start = self._buffer.find(b'\x59\x59\x00\x01')
             if header_start < 0:
                 break
@@ -121,10 +121,19 @@ class Framer(ABC):
                     f'skipping over leading garbage (0x{self._buffer[:header_start].hex()})'
                 )
                 self._buffer = self._buffer[header_start:]
-                header_start = 0
+                continue
 
             # We are able to extract at least a frame header
-            if header_start == 0 and self.buffer_length > self.FRAME_HEAD_SIZE:
+            if header_start == 0 and self.buffer_length >= 18:  # shortest known message is 18b (heartbeat request)
+                next_header_start = self._buffer.find(b'\x59\x59\x00\x01', 1)
+                if 0 < next_header_start <= 18:  # shortest known message is 18b (heartbeat request)
+                    _logger.error(
+                        f'Next frame start found impossibly close at {next_header_start} bytes, skipping forward. '
+                        f'Buffer={self.buffer_length}b: 0x{self._buffer.hex(bytes_per_sep=2)}'
+                    )
+                    self._buffer = self._buffer[next_header_start:]
+                    continue
+
                 data = self._buffer[: self.FRAME_HEAD_SIZE]
                 _logger.debug(f"Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}")
                 t_id, p_id, hdr_len, u_id, f_id = struct.unpack(self.FRAME_HEAD, data)

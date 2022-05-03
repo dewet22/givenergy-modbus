@@ -4,7 +4,6 @@ from typing import Tuple
 from pydantic import BaseModel
 
 from givenergy_modbus.model.register_getter import RegisterGetter
-from tests.model.test_register_cache import register_cache  # noqa: F401
 
 
 class TestModel(BaseModel):

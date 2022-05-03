@@ -1,13 +1,7 @@
 import pytest
 
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.register import InputRegister  # type: ignore
-from tests.model.test_register_cache import (  # noqa: F401
-    register_cache,
-    register_cache_battery_daytime_discharging,
-    register_cache_battery_missing,
-    register_cache_battery_unsure,
-)
+from givenergy_modbus.model.register import InputRegister
 
 EXPECTED_BATTERY_DICT = {
     'bms_firmware_version': 3005,

@@ -1,32 +1,39 @@
 from __future__ import annotations
 
 import json
+import logging
+from json import JSONEncoder
+from typing import Any, Mapping
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register  # type: ignore  # shut up mypy
-from givenergy_modbus.pdu import BasePDU
-from givenergy_modbus.pdu.read_registers import (
-    ReadHoldingRegistersResponse,
-    ReadInputRegistersResponse,
-    ReadRegistersResponse,
-)
-from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
+
+_logger = logging.getLogger(__name__)
 
 
-class RegisterCache(dict):
+class RegisterCacheEncoder(JSONEncoder):
+    """Workaround to force register keys to render themselves as strings instead of relying on the internal
+    identity by default (due to the Register Enum extending str)."""
+
+    def encode(self, o: Any) -> str:
+        if isinstance(o, RegisterCache):
+            return super().encode({str(k): v for k, v in o.items()})
+        else:
+            return super().encode(o)
+
+
+class RegisterCache(dict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
     _register_lookup_table: dict[str, Register]
 
-    def __init__(self, slave_address: int, registers=None) -> None:
+    def __init__(self, registers=None) -> None:
         if registers is None:
             registers = {}
-        registers['slave_address'] = slave_address
         super().__init__(registers)
-        self._register_lookup_table = {}
-        for k, v in InputRegister.__members__.items():
-            self._register_lookup_table[k] = v
-        for k, v in HoldingRegister.__members__.items():
-            self._register_lookup_table[k] = v
+        self._register_lookup_table = InputRegister._member_map_.copy()  # type: ignore
+        self._register_lookup_table.update(HoldingRegister._member_map_)  # type: ignore
+        # for k, v in HoldingRegister.__members__.items():
+        #     self._register_lookup_table[k] = v
 
     def __getattr__(self, item: str):
         """Magic attributes that try to look up and convert register values."""
@@ -43,39 +50,20 @@ class RegisterCache(dict):
             return register_l.convert(val_h + val_l)
         raise KeyError(item)
 
-    def set_registers(self, register_type: type[Register], registers: dict[int, int]):
-        """Update internal holding register cache with given values."""
-        # loop through all incoming registers to see if any fail to convert – in that case discard entire update
+    def update_with_validate(self, m: Mapping[Register, int]) -> None:
         errors = []
-        for k, v in registers.items():
-            r = register_type(k)
+        for register, value in m.items():
             try:
-                r.convert(v)
+                register.convert(value)
             except ValueError as e:
-                errors.append(f"{r}/{r.name}:{e}")
+                errors.append(f"{register}/{register.name}:{e}")
         if errors:
-            raise ValueError(f'{len(errors)} invalid {register_type.__name__} values ({", ".join(errors)})')
+            raise ValueError(f'{len(errors)} invalid values ({", ".join(errors)})')
+        super().update(m)
 
-        for k, v in registers.items():
-            self[register_type(k)] = v
-
-    def update_from_pdu(self, pdu: BasePDU):
-        """Update internal state directly from a PDU Response message."""
-        if isinstance(pdu, ReadRegistersResponse):
-            if pdu.slave_address != self['slave_address']:
-                raise ValueError(f'Mismatched slave address: 0x{pdu.slave_address:02x}!=0x{self["slave_address"]:02x}')
-            if isinstance(pdu, ReadHoldingRegistersResponse):
-                self.set_registers(HoldingRegister, pdu.to_dict())
-            elif isinstance(pdu, ReadInputRegistersResponse):
-                self.set_registers(InputRegister, pdu.to_dict())
-            else:
-                raise ValueError(f'Cannot handle response {pdu}')
-        elif isinstance(pdu, WriteHoldingRegisterResponse):
-            self.set_registers(HoldingRegister, {pdu.register: pdu.value})
-
-    def to_json(self) -> str:
+    def json(self) -> str:
         """Return JSON representation of the register cache, suitable for using with `from_json()`."""
-        return json.dumps(self)
+        return json.dumps(self, cls=RegisterCacheEncoder)
 
     @classmethod
     def from_json(cls, data: str) -> RegisterCache:
@@ -83,18 +71,25 @@ class RegisterCache(dict):
 
         def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
-            lookup = {'HR': HoldingRegister, 'IR': InputRegister}
+            lookup = {
+                'HR': HoldingRegister,
+                'IR': InputRegister,
+                'HoldingRegister': HoldingRegister,
+                'InputRegister': InputRegister,
+            }
             ret = {}
             for k, v in object_dict.items():
-                if k.find(':') > 0:
+                if k.find('(') > 0:
+                    reg, idx = k.split('(', maxsplit=1)
+                    ret[lookup[reg](int(idx[:-1]))] = v
+                elif k.find(':') > 0:
                     reg, idx = k.split(':', maxsplit=1)
                     ret[lookup[reg](int(idx))] = v
                 else:
-                    ret[k] = v
+                    raise ValueError(f'{k} is not a valid Register type')
             return ret
 
-        decoded_data = json.loads(data, object_hook=register_object_hook)
-        return cls(int(decoded_data['slave_address']), registers=decoded_data)
+        return cls(registers=(json.loads(data, object_hook=register_object_hook)))
 
     def debug(self):
         """Dump the internal state of registers and their value representations."""
@@ -104,4 +99,7 @@ class RegisterCache(dict):
             if class_name != r.__class__.__name__:
                 class_name = r.__class__.__name__
                 print('### ' + class_name + ' ' + '#' * 100)
-            print(f'{r} {r.name:>35}: {r.repr(v):20}  |  ' f'{r.type.name:15}  {r.scaling.name:5}  0x{v:04x}  {v:10}')
+            print(
+                f'{r} {r.name:>35}: {r.repr(v):20}  |  '
+                f'{r.data_type.name:15}  {r.scaling_factor.name:5}  0x{v:04x}  {v:10}'
+            )

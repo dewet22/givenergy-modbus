@@ -73,9 +73,9 @@ class TransparentMessage(BasePDU, ABC):
                 self,
             )
 
-    def _ensure_valid_state(self) -> None:
+    def ensure_valid_state(self) -> None:
         if self.padding != 0x8A:
-            _logger.warning(f'Expected padding 0x8a, found {hex(self.padding)} instead')
+            _logger.debug(f'Expected padding 0x8a, found {hex(self.padding)} instead')
 
     def _update_check_code(self) -> None:
         """Recalculate CRC of the PDU message."""
@@ -104,7 +104,7 @@ class TransparentResponse(TransparentMessage, Response, ABC):
 
     def _decode_function_data(self, decoder):
         super()._decode_function_data(decoder)
-        self.inverter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.inverter_serial_number = decoder.decode_string(10).decode("latin1")
 
     def _update_check_code(self):
         if hasattr(self, 'check'):

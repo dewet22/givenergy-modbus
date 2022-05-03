@@ -74,10 +74,8 @@ def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inn
     framer = Framer()
     pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
     if ex:
-        with pytest.raises(type(ex), match=ex.message) as e:
+        with pytest.raises(type(ex), match=ex.message):
             framer.build_packet(pdu)
-        assert e.value.args == (ex.message,)
-        assert e.value.pdu == pdu
     else:
         packet = framer.build_packet(pdu)
         assert packet.hex() == (mbap_header + inner_frame).hex()
@@ -191,7 +189,7 @@ def test_various_short_message_buffers(caplog, buffer):
         with caplog.at_level(logging.DEBUG, logger='givenergy_modbus.framer'):
             framer.process_incoming_data(buffer[:i], callback)
         callback.assert_not_called()
-        if i <= framer.FRAME_HEAD_SIZE:
+        if i < 18:  # not framer.FRAME_HEAD_SIZE
             assert len(caplog.records) == 0, i
         else:
             assert len(caplog.records) == 4, i
