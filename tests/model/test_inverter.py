@@ -86,7 +86,6 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'f_ac_low_out_time': 24,
     'f_eps_backup': 49.92,
     'fault_code': 0,
-    'firmware_version': 'D0.449-A0.449',
     'first_battery_bms_firmware_version': 3005,
     'first_battery_serial_number': 'BG1234G567',
     'frequency_load_limit_rate': 24,
@@ -105,6 +104,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'i_pv1': 0.03,
     'i_pv2': 0.03,
     'inverter_countdown': 0,
+    'inverter_firmware_version': 'D0.449-A0.449',
     'inverter_modbus_address': 17,
     'inverter_model': 'Hybrid',
     'inverter_module': 198706,
@@ -204,7 +204,7 @@ EXPECTED_INVERTER_DICT = {
     'inverter_model': Model.Hybrid,
     'device_type_code': '2001',
     'inverter_module': 198706,
-    'firmware_version': 'D0.449-A0.449',
+    'inverter_firmware_version': 'D0.449-A0.449',
     'enable_ammeter': True,
     'num_mppt': 2,
     'num_phases': 1,
@@ -432,7 +432,7 @@ def test_has_expected_attributes():
             return
         values.add(val)
 
-    expected_attributes = set()
+    expected_attributes = {'inverter_firmware_version'}  # virtual fields
     for i in range(60):
         add_name(expected_attributes, HoldingRegister(i).name)
         add_name(expected_attributes, HoldingRegister(i + 60).name)
@@ -464,7 +464,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 4848
+    assert len(i.json()) == 4857
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
