@@ -43,6 +43,7 @@ class Inverter(GivEnergyBaseModel):
     inverter_serial_number: str
     device_type_code: str
     inverter_module: int
+    inverter_firmware_version: str
     dsp_firmware_version: int
     arm_firmware_version: int
     usb_device_inserted: int
@@ -248,11 +249,8 @@ class Inverter(GivEnergyBaseModel):
     @root_validator
     def compute_model(cls, values) -> dict:
         """Computes the inverter model from the serial number prefix."""
-        values['inverter_model'] = Model.from_serial_number(values['inverter_serial_number'])
-        return values
-
-    @root_validator
-    def compute_firmware_version(cls, values) -> dict:
-        """Virtual method to inject a firmware version similar to what the dashboard shows."""
-        values['firmware_version'] = f'D0.{values["dsp_firmware_version"]}-A0.{values["arm_firmware_version"]}'
+        if 'inverter_serial_number' in values:
+            values['inverter_model'] = Model.from_serial_number(values['inverter_serial_number'])
+        else:
+            values['inverter_model'] = Model.Unknown
         return values
