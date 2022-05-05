@@ -34,7 +34,7 @@ class HeartbeatMessage(BasePDU, ABC):
         self.data_adapter_type = decoder.decode_8bit_uint()
 
     def ensure_valid_state(self):
-        pass
+        """Sanity check our internal state."""
 
     def _update_check_code(self):
         pass

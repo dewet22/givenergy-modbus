@@ -30,6 +30,7 @@ class NullResponse(TransparentResponse):
         self.check = decoder.decode_16bit_uint()
 
     def ensure_valid_state(self) -> None:
+        """Sanity check our internal state."""
         if self.inverter_serial_number != '\x00' * 10:
             hex_str = self.inverter_serial_number.encode('latin1').hex()
             _logger.warning(f'Unexpected non-null inverter serial number: {self.inverter_serial_number}/0x{hex_str}')

@@ -11,10 +11,14 @@ _logger = logging.getLogger(__name__)
 
 
 class RegisterCacheEncoder(JSONEncoder):
-    """Workaround to force register keys to render themselves as strings instead of relying on the internal
-    identity by default (due to the Register Enum extending str)."""
+    """Custom JSONEncoder to work around Register behaviour.
+
+    This is a workaround to force register keys to render themselves as strings instead of
+    relying on the internal identity by default (due to the Register Enum extending str).
+    """
 
     def encode(self, o: Any) -> str:
+        """Custom JSON encoder to treat RegisterCaches specially."""
         if isinstance(o, RegisterCache):
             return super().encode({str(k): v for k, v in o.items()})
         else:
@@ -51,6 +55,7 @@ class RegisterCache(dict[Register, int]):
         raise KeyError(item)
 
     def update_with_validate(self, m: Mapping[Register, int]) -> None:
+        """Given a Map of registers and values, validate before applying a bulk update."""
         errors = []
         for register, value in m.items():
             try:
@@ -62,7 +67,7 @@ class RegisterCache(dict[Register, int]):
         super().update(m)
 
     def json(self) -> str:
-        """Return JSON representation of the register cache, suitable for using with `from_json()`."""
+        """Return JSON representation of the register cache, suitable for using with `from_json()`."""  # noqa: D402
         return json.dumps(self, cls=RegisterCacheEncoder)
 
     @classmethod
