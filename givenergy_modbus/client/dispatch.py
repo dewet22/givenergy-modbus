@@ -270,7 +270,7 @@ class DispatchingMixin:
         retries = []
         for k, exp in self.expected_responses.copy().items():
             if exp.expired:
-                _logger.info(f'Found expired expected response: {exp}')
+                _logger.debug(f'Found expired expected response: {exp}')
                 del self.expected_responses[k]
                 req = exp.provenance
                 if exp.retries_remaining > 0:
@@ -284,7 +284,7 @@ class DispatchingMixin:
                         )
                     )
                 elif isinstance(exp.pdu, ReadRegistersResponse):
-                    _logger.info(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
+                    _logger.debug(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
                 else:
                     _logger.warning(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
         if retries:
