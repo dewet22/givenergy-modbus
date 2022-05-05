@@ -92,6 +92,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         return super()._extra_shape_hash_keys() + (self.register,)
 
     def ensure_valid_state(self):
+        """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register is None:
             raise InvalidPduState('Register must be set explicitly', self)
@@ -105,6 +106,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
     """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
     def ensure_valid_state(self):
+        """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
             raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
@@ -125,6 +127,7 @@ class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, AB
     """Concrete PDU implementation for handling function #6/Write Holding Register response messages."""
 
     def ensure_valid_state(self):
+        """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
             _logger.warning(f'Wrote {self.value} to register {self.register} which is not safe for writing')

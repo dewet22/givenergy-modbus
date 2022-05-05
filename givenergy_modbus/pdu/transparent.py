@@ -73,7 +73,8 @@ class TransparentMessage(BasePDU, ABC):
                 self,
             )
 
-    def ensure_valid_state(self) -> None:
+    def ensure_valid_state(self) -> None:  # flake8: D102
+        """Sanity check our internal state."""
         if self.padding != 0x8A:
             _logger.debug(f'Expected padding 0x8a, found {hex(self.padding)} instead')
 

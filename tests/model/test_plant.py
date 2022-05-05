@@ -4,6 +4,7 @@ from typing import Dict
 
 import pytest
 
+from givenergy_modbus.client import Message
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.plant import Plant
@@ -59,12 +60,13 @@ def test_plant(  # noqa: F811
 
 
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
-def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+async def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
     """Ensure we can update a Plant from PDU Response messages."""
     pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
+    message = Message(pdu)
     assert plant.register_caches == {}
 
-    plant.update(pdu)
+    plant.update(message)
 
     d = plant.dict()
     j = plant.json()
@@ -105,6 +107,8 @@ def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap
             expected_caches[pdu.slave_address] = {}
         assert d['register_caches'] == expected_caches
         assert j == json.dumps({'register_caches': expected_caches})
+
+    assert message.future.done() is False
 
 
 def test_from_actual():

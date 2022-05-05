@@ -61,6 +61,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self._builder.add_16bit_uint(self.check)
 
     def ensure_valid_state(self):
+        """Sanity check our internal state."""
         self._ensure_registers_spec_correct()
 
         if self.register_count != 1 and self.base_register % 60 != 0:
@@ -92,6 +93,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         self.check = decoder.decode_16bit_uint()
 
     def ensure_valid_state(self) -> None:
+        """Sanity check our internal state."""
         self._ensure_registers_spec_correct()
 
         if not self.error:
@@ -119,6 +121,36 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
     def to_dict(self) -> dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
         return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
+
+    def is_suspicious(self) -> bool:
+        """Try to identify known-bad data in register lookup calls and prevent them from entering the dispatching."""
+        if self.base_register % 60 == 0 and self.register_count == 60 and len(self.register_values) == 60:
+            count_known_bad_register_values = (
+                self.register_values[28] == 0x4C32,
+                self.register_values[30] == 0xA119,
+                self.register_values[31] == 0x34EA,
+                self.register_values[32] == 0xE77F,
+                self.register_values[33] == 0xD475,
+                self.register_values[35] == 0x4500,
+                self.register_values[40] in (0xE4F9, 0xB619),
+                self.register_values[41] == 0xC0A8,
+                self.register_values[43] == 0xC0A8,
+                self.register_values[46] == 0xC5E9,
+                self.register_values[50] in (0x60EF, 0x503C),
+                self.register_values[51] == 0x8018,
+                self.register_values[52] == 0x43E0,
+                self.register_values[53] == 0xF6CE,
+                self.register_values[56] == 0x080A,
+                self.register_values[58] == 0xFCC1,
+                self.register_values[59] == 0x661E,
+            ).count(True)
+            if count_known_bad_register_values > 5:
+                _logger.debug(
+                    f'Ignoring known suspicious update with {count_known_bad_register_values} known bad '
+                    f'register values {self}: {self.to_dict()}'
+                )
+                return True
+        return False
 
 
 class ReadHoldingRegisters(ReadRegistersMessage, ABC):

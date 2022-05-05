@@ -4,7 +4,6 @@ import pytest
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
-
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
 
