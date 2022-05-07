@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from abc import ABC
 
 from crccheck.crc import CrcModbus
@@ -9,6 +10,7 @@ from pymodbus.payload import BinaryPayloadBuilder
 
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.pdu import PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -61,18 +63,26 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             self.register = HoldingRegister(register)
         elif isinstance(register, str):
             self.register = HoldingRegister[register]
+        elif register is None:
+            raise InvalidPduState('Register must be set', self)
         else:
-            self.register = None
+            raise ValueError(f'Register type {type(register)} is unacceptable')
         self.value = kwargs.get('value')
 
     def __str__(self) -> str:
         if self.register is not None and self.value is not None:
-            return (
-                f"{self.main_function_code}:{getattr(self, 'inner_function_code', '_')}/"
-                f"{self.__class__.__name__}({'ERROR ' if self.error else ''}"
-                f"{self.register}/{self.register.name} -> "
-                f"{self.register.repr(self.value)}/0x{self.value:04x})"
-            )
+            if sys.version_info < (3, 8):
+                return (
+                    f"{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}"
+                    f"({'ERROR ' if self.error else ''}{str(self.register)}/{self.register.name} -> "
+                    f"{self.register.repr(self.value)}/0x{self.value:04x})"
+                )
+            else:
+                return (
+                    f"{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}"
+                    f"({'ERROR ' if self.error else ''}{self.register}/{self.register.name} -> "
+                    f"{self.register.repr(self.value)}/0x{self.value:04x})"
+                )
         else:
             return super().__str__()
 
@@ -82,11 +92,12 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         self._builder.add_16bit_uint(self.value)
         self._update_check_code()
 
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        self.register = HoldingRegister(decoder.decode_16bit_uint())
-        self.value = decoder.decode_16bit_uint()
-        self.check = decoder.decode_16bit_uint()
+    @classmethod
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> WriteHoldingRegister:
+        attrs['register'] = HoldingRegister(decoder.decode_16bit_uint())
+        attrs['value'] = decoder.decode_16bit_uint()
+        attrs['check'] = decoder.decode_16bit_uint()
+        return cls(**attrs)
 
     def _extra_shape_hash_keys(self) -> tuple:
         return super()._extra_shape_hash_keys() + (self.register,)
@@ -95,11 +106,11 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register is None:
-            raise InvalidPduState('Register must be set explicitly', self)
+            raise InvalidPduState('Register must be set', self)
         if self.value is None:
-            raise InvalidPduState('Register value must be set explicitly', self)
+            raise InvalidPduState('Register value must be set', self)
         elif 0 > self.value > 0xFFFF:
-            raise InvalidPduState(f'Register value {hex(self.value)} must be an unsigned 16-bit int', self)
+            raise InvalidPduState(f'Value {self.value}/0x{self.value:04x} must be an unsigned 16-bit int', self)
 
 
 class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC):
@@ -109,7 +120,10 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
         """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
-            raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
+            if sys.version_info < (3, 8):
+                raise InvalidPduState(f'{str(self.register)}/{self.register.name} is not safe to write to', self)
+            else:
+                raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
 
     def _update_check_code(self):
         crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
@@ -130,4 +144,4 @@ class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, AB
         """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
-            _logger.warning(f'Wrote {self.value} to register {self.register} which is not safe for writing')
+            _logger.warning(f'{self} is not safe for writing')

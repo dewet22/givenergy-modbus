@@ -1,21 +1,31 @@
 from __future__ import annotations
 
-from givenergy_modbus.pdu import BasePDU
-
 
 class ExceptionBase(Exception):
     """Base exception."""
+
+    message: str
+    quirk: bool
+
+    def __init__(self, message: str, quirk: bool = False) -> None:
+        super().__init__(message)
+        self.message = message
+        self.quirk = quirk
 
 
 class InvalidPduState(ExceptionBase):
     """Thrown during PDU self-validation."""
 
-    def __init__(self, message: str, pdu: BasePDU = None, quirk: bool = False) -> None:
-        self.message = message
+    def __init__(self, message: str, pdu=None, quirk: bool = False) -> None:
+        super().__init__(message=message, quirk=quirk)
         self.pdu = pdu
-        self.quirk = quirk
-        super().__init__(self.message)
 
 
 class InvalidFrame(ExceptionBase):
     """Thrown during framing when a message cannot be extracted from a frame buffer."""
+
+    frame: bytes
+
+    def __init__(self, message: str, frame: bytes) -> None:
+        super().__init__(message=message)
+        self.frame = frame

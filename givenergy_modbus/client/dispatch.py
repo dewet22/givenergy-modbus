@@ -6,6 +6,7 @@ import datetime
 import logging
 import os
 import socket
+import sys
 from asyncio import Queue, StreamReader, StreamWriter
 
 import aiofiles  # type: ignore[import]
@@ -14,7 +15,7 @@ from metrology import Metrology
 from givenergy_modbus.client import Message
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.pdu import BasePDU, Request, Response
+from givenergy_modbus.pdu import BasePDU, ClientOutgoingMessage
 from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
 from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
 from givenergy_modbus.pdu.transparent import TransparentResponse
@@ -163,8 +164,10 @@ class DispatchingMixin:
     #########################################################################################################
     async def track_expected_response(self, item: Message):
         """Record that an outgoing Request message will generate a matching Response soon."""
-        if isinstance(item.pdu, Request):
+        if isinstance(item.pdu, ClientOutgoingMessage):
             expected_response = item.pdu.expected_response()
+            if not expected_response:
+                return
             shape_hash = expected_response.shape_hash()
             if shape_hash in self.expected_responses:
                 existing_expectation = self.expected_responses[shape_hash]
@@ -172,7 +175,10 @@ class DispatchingMixin:
                     _logger.warning(
                         f'Expiring existing expectation {existing_expectation} age={existing_expectation.age}'
                     )
-                    existing_expectation.future.cancel('expired')
+                    if sys.version_info < (3, 8):
+                        existing_expectation.future.cancel()
+                    else:
+                        existing_expectation.future.cancel('expired')
                 else:
                     _logger.warning(
                         f'New {item.pdu} being sent while still awaiting outstanding {expected_response}; '
@@ -193,40 +199,6 @@ class DispatchingMixin:
         _logger.debug(f'Dispatching {message}')
         pdu = message.pdu
         self.reconcile_if_expected_message(message)
-        if isinstance(pdu, Request):
-            await self.handle_incoming_request_message(message)
-        elif isinstance(pdu, Response):
-            await self.handle_incoming_response_message(message)
-        else:
-            _logger.error(f"Don't know how to dispatch this type of Message: {pdu}")
-
-    def reconcile_if_expected_message(self, item: Message):
-        """Complete references to originating messages if it can be found."""
-        key = item.pdu.shape_hash()
-        if key in self.expected_responses:
-            expected_response = self.expected_responses[key]
-            _logger.debug(f'Expected response {item} to {expected_response.provenance}')
-            item.created = expected_response.created
-            item.provenance = expected_response.provenance
-            item.future.cancel('Replacing with originating request future')
-            item.future = expected_response.future
-            Metrology.timer('time-roundtrip').update(int(item.network_roundtrip.total_seconds() * 1000))
-            if item.network_roundtrip > datetime.timedelta(seconds=1) and not isinstance(
-                item.pdu, ReadRegistersResponse
-            ):
-                _logger.warning(
-                    f'Expected response {item.pdu} arrived after {item.network_roundtrip.total_seconds():.2f}s: '
-                    f'req:{item.provenance.transceived.time()} '  # type: ignore[union-attr]
-                    f'res:{item.transceived.time()}'  # type: ignore[union-attr]
-                )
-            _logger.debug(f'Handled expected response: {item}')
-            del expected_response
-            del self.expected_responses[key]
-        else:
-            _logger.debug(f'Not an expected response: {key} {item}')
-
-    async def handle_incoming_request_message(self, message: Message):
-        """Handler for incoming decoded Request messages. Only currently handles HeartbeatRequest."""
         if isinstance(message.pdu, HeartbeatRequest):
             response = message.pdu.expected_response()
             _logger.debug(f'Returning {response} to request {message.pdu}')
@@ -239,12 +211,6 @@ class DispatchingMixin:
                     future=message.future,
                 )
             )
-        else:
-            _logger.warning(f"Don't know how to respond to incoming {message.pdu} / {message}")
-
-    async def handle_incoming_response_message(self, message: Message):
-        """Handler for incoming decoded Response Messages."""
-        _logger.debug(f'Processing {message}')
         try:
             if hasattr(self, 'plant'):
                 self.plant.update(message)
@@ -263,6 +229,34 @@ class DispatchingMixin:
             await self.debug_frames['rejected'].put(message.raw_frame)
             _logger.warning(f'Rejecting update {pdu}: {e}')
             Metrology.meter('rx-invalid').mark()
+
+    def reconcile_if_expected_message(self, item: Message):
+        """Complete references to originating messages if it can be found."""
+        key = item.pdu.shape_hash()
+        if key in self.expected_responses:
+            expected_response = self.expected_responses[key]
+            _logger.debug(f'Expected response {item} to {expected_response.provenance}')
+            item.created = expected_response.created
+            item.provenance = expected_response.provenance
+            if sys.version_info < (3, 9):
+                item.future.cancel()
+            else:
+                item.future.cancel('Replacing with originating request future')
+            item.future = expected_response.future
+            Metrology.timer('time-roundtrip').update(int(item.network_roundtrip.total_seconds() * 1000))
+            if item.network_roundtrip > datetime.timedelta(seconds=1) and not isinstance(
+                item.pdu, ReadRegistersResponse
+            ):
+                _logger.warning(
+                    f'Expected response {item.pdu} arrived after {item.network_roundtrip.total_seconds():.2f}s: '
+                    f'req:{item.provenance.transceived.time()} '  # type: ignore[union-attr]
+                    f'res:{item.transceived.time()}'  # type: ignore[union-attr]
+                )
+            _logger.debug(f'Handled expected response: {item}')
+            del expected_response
+            del self.expected_responses[key]
+        else:
+            _logger.debug(f'Not an expected response: {key} {item}')
 
     #########################################################################################################
     async def generate_retries_for_expired_expected_responses(self):
@@ -288,7 +282,7 @@ class DispatchingMixin:
                 else:
                     _logger.warning(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
         if retries:
-            _logger.info(f'Scheduling {len(retries)} retries')
+            _logger.debug(f'Scheduling {len(retries)} retries')
             await asyncio.gather(*[self.enqueue_message_for_sending(m) for m in retries])
 
     async def dump_queues_to_files(self):

@@ -5,9 +5,10 @@ import struct
 from abc import ABC
 from typing import Callable, Optional
 
-from givenergy_modbus.decoder import ClientDecoder, Decoder, ServerDecoder
 from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
-from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
+from givenergy_modbus.pdu.null import NullResponse  # noqa - ensure it gets autoloaded
+from givenergy_modbus.pdu.transparent import TransparentResponse
 
 _logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ class Framer(ABC):
     FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
 
     _buffer: bytes = b""
-    _decoder: Decoder
+    _decoder: Callable
 
     def process_incoming_data(self, data: bytes, callback: PduProcessedCallback) -> None:
         """Add incoming data to our frame buffer and attempt to process frames found.
@@ -129,7 +130,7 @@ class Framer(ABC):
                 if 0 < next_header_start <= 18:  # shortest known message is 18b (heartbeat request)
                     _logger.error(
                         f'Next frame start found impossibly close at {next_header_start} bytes, skipping forward. '
-                        f'Buffer={self.buffer_length}b: 0x{self._buffer.hex(bytes_per_sep=2)}'
+                        f'Buffer={self.buffer_length}b: 0x{self._buffer.hex()}'
                     )
                     self._buffer = self._buffer[next_header_start:]
                     continue
@@ -157,20 +158,19 @@ class Framer(ABC):
                     return
 
                 # Extract the inner frame and try to decode it
-                raw_frame = self._buffer[:frame_len]
-                inner_frame = raw_frame[self.FRAME_HEAD_SIZE :]
+                frame = self._buffer[:frame_len]
                 self._buffer = self._buffer[frame_len:]
                 pdu = None
                 try:
-                    _logger.debug(f'Decoding inner frame {inner_frame.hex()}')
-                    pdu = self._decoder.decode(f_id, inner_frame)
+                    _logger.debug(f'Decoding inner frame {frame.hex()}')
+                    pdu = self._decoder(frame)
                     _logger.debug(f'Successfully decoded {pdu}')
                 except InvalidPduState as e:
                     _logger.warning(f'Invalid PDU: {e.message} {e.pdu}')
                 except InvalidFrame as e:
-                    _logger.warning(f'Unable to decode frame: {e} [{inner_frame.hex()}]')
+                    _logger.warning(f'Unable to decode frame: {e} [{frame.hex()}]')
                 finally:
-                    callback(pdu, raw_frame)
+                    callback(pdu, frame)
 
     def build_packet(self, message: BasePDU) -> bytes:
         """Creates a packet from the MBAP header plus the encoded PDU."""
@@ -188,11 +188,17 @@ class ClientFramer(Framer):
     """Framer implementation for client-side use."""
 
     def __init__(self):
-        self._decoder = ClientDecoder()
+        self._decoder = ClientIncomingMessage.decode_bytes
+        candidate_decoder_classes = ClientIncomingMessage.__subclasses__()
+        _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
+        candidate_decoder_classes = TransparentResponse.__subclasses__()
+        for c in candidate_decoder_classes:
+            candidate_decoder_classes.extend(c.__subclasses__())
+        _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
 
 
 class ServerFramer(Framer):
     """Framer implementation for server-side use."""
 
     def __init__(self):
-        self._decoder = ServerDecoder()
+        self._decoder = ClientOutgoingMessage.decode_bytes

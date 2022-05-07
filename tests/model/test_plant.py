@@ -1,19 +1,21 @@
 import datetime
 import json
-from typing import Dict
+from typing import Any, Dict, Optional, Type
 
 import pytest
 
 from givenergy_modbus.client import Message
+from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.pdu import BasePDU
 from givenergy_modbus.pdu.read_registers import ReadInputRegistersResponse, ReadRegistersResponse
 from givenergy_modbus.pdu.transparent import TransparentMessage
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
-from tests import CLIENT_MESSAGES, PduTestCaseSig, _lookup_pdu_class
+from tests.conftest import CLIENT_MESSAGES, PduTestCaseSig
 
 
 @pytest.fixture
@@ -60,9 +62,17 @@ def test_plant(  # noqa: F811
 
 
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
-async def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+async def test_update(
+    plant: Plant,
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+):
     """Ensure we can update a Plant from PDU Response messages."""
-    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
+    pdu = pdu_class(**constructor_kwargs)
     message = Message(pdu)
     assert plant.register_caches == {}
 
@@ -76,7 +86,7 @@ async def test_update(plant: Plant, str_repr, pdu_class_name, constructor_kwargs
         expected_slave_addresses.add(pdu.slave_address)
     assert set(d['register_caches'].keys()) == expected_slave_addresses
     if isinstance(pdu, ReadRegistersResponse):
-        register_type: type[Register]
+        register_type: Type[Register]
         if isinstance(pdu, ReadInputRegistersResponse):
             register_type = InputRegister
         else:

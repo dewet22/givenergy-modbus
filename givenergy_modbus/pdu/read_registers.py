@@ -8,6 +8,7 @@ from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder
 
 from givenergy_modbus.exceptions import InvalidPduState
+from givenergy_modbus.pdu import PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -23,6 +24,15 @@ class ReadRegistersMessage(TransparentMessage, ABC):
         super().__init__(**kwargs)
         self.base_register = kwargs.get('base_register', 0)
         self.register_count = kwargs.get('register_count', 0)
+
+    @classmethod
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> ReadRegistersMessage:
+        attrs['base_register'] = decoder.decode_16bit_uint()
+        attrs['register_count'] = decoder.decode_16bit_uint()
+        if issubclass(cls, ReadRegistersResponse) and not attrs.get('error', False):
+            attrs['register_values'] = [decoder.decode_16bit_uint() for _ in range(attrs['register_count'])]
+        attrs['check'] = decoder.decode_16bit_uint()
+        return cls(**attrs)
 
     def _extra_shape_hash_keys(self) -> tuple:
         return super()._extra_shape_hash_keys() + (self.base_register, self.register_count)
@@ -45,12 +55,6 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self._builder.add_16bit_uint(self.base_register)
         self._builder.add_16bit_uint(self.register_count)
         self._update_check_code()
-
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        self.base_register = decoder.decode_16bit_uint()
-        self.register_count = decoder.decode_16bit_uint()
-        self.check = decoder.decode_16bit_uint()
 
     def _update_check_code(self):
         crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
@@ -84,14 +88,6 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         [self._builder.add_16bit_uint(v) for v in self.register_values]
         self._update_check_code()
 
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        self.base_register = decoder.decode_16bit_uint()
-        self.register_count = decoder.decode_16bit_uint()
-        if not self.error:
-            self.register_values = [decoder.decode_16bit_uint() for _ in range(self.register_count)]
-        self.check = decoder.decode_16bit_uint()
-
     def ensure_valid_state(self) -> None:
         """Sanity check our internal state."""
         self._ensure_registers_spec_correct()
@@ -107,7 +103,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
 
         expected_padding = 0x12 if self.error else 0x8A
         if self.padding != expected_padding:
-            _logger.debug(f'Expected padding {hex(expected_padding)}, found {hex(self.padding)} instead: {self}')
+            _logger.debug(f'Expected padding 0x{expected_padding:02x}, found 0x{self.padding:02x} instead: {self}')
 
         # FIXME how to test crc
         # crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
@@ -189,15 +185,3 @@ class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
 
 class ReadInputRegistersResponse(ReadInputRegisters, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
-
-    # def _ensure_valid_state(self):
-    #     super()._ensure_valid_state()
-    #     if (
-    #         self.base_register == 60
-    #         and self.register_count == 60
-    #         and 0x30 <= self.slave_address <= 0x37
-    #         and sum(self.register_values[50:55]) == 0x0  # all-null serial number
-    #     ):
-    #         # GivEnergy quirk: Unsolicited BMS responses get received, even for non-existent devices – likely
-    #         # part of a discovery mechanism?
-    #         raise InvalidPduState(self, 'BMS data with empty serial number, battery is likely not installed', True)

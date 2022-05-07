@@ -1,7 +1,8 @@
 import logging
 from abc import ABC
 
-from givenergy_modbus.pdu import BasePDU, Request, Response
+from givenergy_modbus.exceptions import InvalidFrame
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, PayloadDecoder
 
 _logger = logging.getLogger(__name__)
 
@@ -21,6 +22,10 @@ class TransparentMessage(BasePDU, ABC):
         self._set_attribute_if_present('slave_address', **kwargs)
         self._set_attribute_if_present('error', **kwargs)
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        _logger.info(f'TransparentMessage.__init_subclass__({cls.__name__})')
+
     def __str__(self) -> str:
         def format_kv(key, val):
             if val is None:
@@ -31,6 +36,8 @@ class TransparentMessage(BasePDU, ABC):
                 val = f'0x{val:04x}'
             elif key == 'error' and val:
                 return 'ERROR'
+            elif key == 'nulls':
+                return f'nulls=[0]*{len(val)}'
             return f'{key}={val}'
 
         filtered_keys = (
@@ -58,25 +65,51 @@ class TransparentMessage(BasePDU, ABC):
         self._builder.add_8bit_uint(self.inner_function_code)
         # self._update_check_code()
 
-    def _decode_function_data(self, decoder):
-        """Encode request PDU message and populate instance attributes."""
-        self.padding = decoder.decode_64bit_uint()
-        self.slave_address = decoder.decode_8bit_uint()
+    @classmethod
+    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'TransparentMessage':
+        attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
+        attrs['padding'] = decoder.decode_64bit_uint()
+        attrs['slave_address'] = decoder.decode_8bit_uint()
         inner_function_code = decoder.decode_8bit_uint()
         if inner_function_code & 0x80:
-            self.error = True
+            error = True
             inner_function_code &= 0x7F
-        if self.inner_function_code != inner_function_code:
-            raise ValueError(
-                f"Expected inner_function_code 0x{self.inner_function_code:02x}, "
-                f"found 0x{inner_function_code:02x} instead.",
-                self,
-            )
+        else:
+            error = False
+        attrs['error'] = error
+
+        if issubclass(cls, TransparentResponse):
+            attrs['inverter_serial_number'] = decoder.decode_serial_number()
+
+        candidate_decoder_classes = cls.__subclasses__()
+        for c in candidate_decoder_classes:
+            candidate_decoder_classes.extend(c.__subclasses__())
+        _logger.debug(
+            f'Candidate decoders for inner function code {inner_function_code}: '
+            f'{", ".join([c.__name__ for c in candidate_decoder_classes])}'
+        )
+
+        for c in candidate_decoder_classes:
+            cls_inner_function_code = getattr(c, 'inner_function_code', None)
+            if cls_inner_function_code == inner_function_code:
+                _logger.debug(
+                    f'Passing off to {c.__name__}.decode_inner_function(0x{decoder.remaining_payload.hex()}, {attrs})'
+                )
+                return c._decode_inner_function(decoder, **attrs)
+            _logger.debug(f'{c.__name__} disregarded, it handles function code {cls_inner_function_code}')
+        raise InvalidFrame(
+            f'No known decoder for inner function code {inner_function_code} (attrs={attrs})',
+            frame=decoder.remaining_payload,
+        )
+
+    @classmethod
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'TransparentMessage':
+        raise NotImplementedError()
 
     def ensure_valid_state(self) -> None:  # flake8: D102
         """Sanity check our internal state."""
         if self.padding != 0x8A:
-            _logger.debug(f'Expected padding 0x8a, found {hex(self.padding)} instead')
+            _logger.debug(f'Expected padding 0x8a, found 0x{self.padding:02x} instead')
 
     def _update_check_code(self) -> None:
         """Recalculate CRC of the PDU message."""
@@ -86,11 +119,11 @@ class TransparentMessage(BasePDU, ABC):
         return (self.slave_address,)
 
 
-class TransparentRequest(TransparentMessage, Request, ABC):
+class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
     """Root of the hierarchy for Transparent Request PDUs."""
 
 
-class TransparentResponse(TransparentMessage, Response, ABC):
+class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
     """Root of the hierarchy for Transparent Response PDUs."""
 
     inverter_serial_number: str
@@ -102,10 +135,6 @@ class TransparentResponse(TransparentMessage, Response, ABC):
     def _encode_function_data(self):
         super()._encode_function_data()
         self._builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
-
-    def _decode_function_data(self, decoder):
-        super()._decode_function_data(decoder)
-        self.inverter_serial_number = decoder.decode_string(10).decode("latin1")
 
     def _update_check_code(self):
         if hasattr(self, 'check'):

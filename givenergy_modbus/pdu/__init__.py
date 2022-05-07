@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
+from typing import Optional
 
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
+
+from givenergy_modbus.exceptions import InvalidFrame
 
 _logger = logging.getLogger(__name__)
 
@@ -16,6 +19,10 @@ class PayloadDecoder(BinaryPayloadDecoder):
 
     def __init__(self, payload):
         super().__init__(payload, byteorder=Endian.Big, wordorder=Endian.Big)
+
+    def decode_serial_number(self):
+        """Returns a 10-character serial number string."""
+        return self.decode_string(10).decode("latin1")
 
     @property
     def decoding_complete(self) -> bool:
@@ -44,7 +51,20 @@ class PayloadDecoder(BinaryPayloadDecoder):
 
 
 class BasePDU(ABC):
-    """Base of the PDU handler tree. Defines the most common shared attributes and code."""
+    """Base of the PDU Message handler class tree.
+
+    The Protocol Data Unit (PDU) defines the basic unit of message exchange for Modbus. It is routed to devices with
+    specific addresses, and targets specific operations through function codes. This tree defines the hierarchy of
+    functions, along with the attributes they specify and how they are encoded.
+
+    The tree branches at the top based on the directionality of the messages – either client-focused (messages a
+    client should expect to receive and send) or server-focused (less important for this library, but messages that a
+    server would emit and expect to receive). It is mirrored in that a Request message from a client would have a
+    matching Response message the server should reply with.
+
+    The PDU classes are also codecs – they know how to convert between binary network frames and instantiated objects
+    that can be manipulated programmatically.
+    """
 
     _builder: BinaryPayloadBuilder
     data_adapter_serial_number: str = 'AB1234G567'  # for client requests this seems ignored
@@ -69,26 +89,58 @@ class BasePDU(ABC):
         # self._update_check_code()
         return self._builder.to_string()
 
-    def decode(self, data: bytes) -> None:
-        """Decode PDU message and populate instance attributes."""
+    @classmethod
+    def decode_bytes(cls, data: bytes) -> BasePDU:
+        """Decode raw byte frame to populated PDU instance."""
+        _logger.debug(f'{cls.__name__}.decode_bytes(0x{data.hex()})')
         decoder = PayloadDecoder(data)
-        self.data_adapter_serial_number = decoder.decode_string(10).decode("latin1")
-        self._decode_function_data(decoder)
-        if not decoder.decoding_complete:
-            _logger.error(
-                f'Decoder did not fully consume frame for {self}: decoded {decoder.decoded_bytes}b but '
-                f'packet header specified length={decoder.payload_size}. '
-                f'Remaining payload: [{decoder.remaining_payload.hex()}]'
-            )
-        self.ensure_valid_state()
-        _logger.debug(f"Successfully decoded {len(data)} bytes: {self}")
+        transaction_id = decoder.decode_16bit_uint()
+        if transaction_id != 0x5959:
+            raise InvalidFrame(f'Transaction ID 0x{transaction_id:04x} != 0x5959', data)
+        protocol_id = decoder.decode_16bit_uint()
+        if protocol_id != 0x01:
+            raise InvalidFrame(f'Protocol ID 0x{protocol_id:04x} != 0x0001', data)
+        length = decoder.decode_16bit_uint()
+        if length != decoder.remaining_bytes:
+            raise InvalidFrame(f'Length header {length} != remaining bytes {decoder.remaining_bytes}', data)
+        unit_id = decoder.decode_8bit_uint()
+        if unit_id != 0x01:
+            raise InvalidFrame(f'Unit ID 0x{unit_id:02x} != 0x01', data)
+        main_function_code = decoder.decode_8bit_uint()
+
+        candidate_decoder_classes = cls.__subclasses__()
+        _logger.debug(
+            f'Candidate decoders for function code {main_function_code}: '
+            f'{", ".join([c.__name__ for c in candidate_decoder_classes])}'
+        )
+
+        for c in candidate_decoder_classes:
+            cls_main_function_code = getattr(c, 'main_function_code', None)
+            if cls_main_function_code == main_function_code:
+                _logger.debug(f'Passing off to {c.__name__}.decode_main_function(0x{decoder.remaining_payload.hex()})')
+                pdu = c._decode_main_function(decoder)
+                if not decoder.decoding_complete:
+                    _logger.error(
+                        f'Decoder did not fully consume frame for {pdu}: decoded {decoder.decoded_bytes}b but '
+                        f'packet header specified length={decoder.payload_size}. '
+                        f'Remaining payload: [{decoder.remaining_payload.hex()}]'
+                    )
+                pdu.ensure_valid_state()
+                if not decoder.remaining_bytes == 0:
+                    _logger.warning(
+                        f'Decoder buffer not exhausted, {decoder.remaining_bytes} bytes remain: '
+                        f'0x{decoder.remaining_payload.hex()}'
+                    )
+                return pdu
+            _logger.debug(f'{c.__name__} disregarded, it handles function code {cls_main_function_code}')
+        raise ValueError(f'Found no decoder for function code {main_function_code}')
+
+    @classmethod
+    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> BasePDU:
+        raise NotImplementedError()
 
     def _encode_function_data(self) -> None:
         """Complete function-specific encoding of the remainder of the PDU message."""
-        raise NotImplementedError()
-
-    def _decode_function_data(self, decoder: PayloadDecoder) -> None:
-        """Complete function-specific decoding of the remainder of the PDU message."""
         raise NotImplementedError()
 
     def ensure_valid_state(self) -> None:
@@ -123,13 +175,21 @@ class BasePDU(ABC):
         raise NotImplementedError()
 
 
-class Request(BasePDU, ABC):
-    """Root of the hierarchy for Request PDUs."""
+class ClientIncomingMessage(BasePDU, ABC):
+    """Root of the hierarchy for PDUs clients are expected to receive and handle."""
 
-    def expected_response(self) -> Response:
+    def expected_response(self) -> Optional[ClientOutgoingMessage]:
         """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 
 
-class Response(BasePDU, ABC):
-    """Root of the hierarchy for Response PDUs."""
+class ClientOutgoingMessage(BasePDU, ABC):
+    """Root of the hierarchy for PDUs clients are expected to send to servers."""
+
+    def expected_response(self) -> Optional[ClientIncomingMessage]:
+        """Create a template of a correctly shaped Response expected for this Request."""
+        raise NotImplementedError()
+
+
+ServerIncomingMessage = ClientOutgoingMessage
+ServerOutgoingMessage = ClientIncomingMessage

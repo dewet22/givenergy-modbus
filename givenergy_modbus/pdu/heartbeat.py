@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from abc import ABC
 
-from givenergy_modbus.pdu import BasePDU, PayloadDecoder, Request, Response
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, PayloadDecoder
 
 _logger = logging.getLogger(__name__)
 
@@ -33,6 +33,12 @@ class HeartbeatMessage(BasePDU, ABC):
         """Encode request PDU message and populate instance attributes."""
         self.data_adapter_type = decoder.decode_8bit_uint()
 
+    @classmethod
+    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> HeartbeatMessage:
+        attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
+        attrs['data_adapter_type'] = decoder.decode_8bit_uint()
+        return cls(**attrs)
+
     def ensure_valid_state(self):
         """Sanity check our internal state."""
 
@@ -44,7 +50,7 @@ class HeartbeatMessage(BasePDU, ABC):
         return (self.data_adapter_type,)
 
 
-class HeartbeatRequest(HeartbeatMessage, Request, ABC):
+class HeartbeatRequest(HeartbeatMessage, ClientIncomingMessage, ABC):
     """PDU sent by remote server to check liveness of client."""
 
     def expected_response(self) -> HeartbeatResponse:
@@ -52,12 +58,15 @@ class HeartbeatRequest(HeartbeatMessage, Request, ABC):
         return HeartbeatResponse(data_adapter_type=self.data_adapter_type)
 
 
-class HeartbeatResponse(HeartbeatMessage, Response, ABC):
+class HeartbeatResponse(HeartbeatMessage, ClientOutgoingMessage, ABC):
     """PDU returned by client (within 5s) to confirm liveness."""
 
     def decode(self, data: bytes):
         """Decode response PDU message and populate instance attributes."""
         decoder = PayloadDecoder(data)
-        self.data_adapter_serial_number = decoder.decode_string(10).decode("ascii")
+        self.data_adapter_serial_number = decoder.decode_serial_number()
         self.data_adapter_type = decoder.decode_8bit_uint()
         _logger.debug(f"Successfully decoded {len(data)} bytes")
+
+    def expected_response(self) -> None:
+        """No replies expected for HeartbeatResponse."""

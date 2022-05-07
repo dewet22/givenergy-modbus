@@ -1,21 +1,24 @@
+from typing import Any, Dict, Type, Optional
+
 import pytest
 
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame
 from givenergy_modbus.pdu.heartbeat import *
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import *
 from givenergy_modbus.pdu.write_registers import *
-from tests import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _lookup_pdu_class
+from tests.conftest import ALL_MESSAGES, PduTestCaseSig
 
 
 def test_str():
     """Ensure human-friendly string representations."""
     # ABCs before main function definitions
     assert '/BasePDU(' not in str(BasePDU())
-    assert '/Request(' not in str(Request())
-    assert '/Response(' not in str(Response())
+    assert '/Request(' not in str(ClientIncomingMessage())
+    assert '/Response(' not in str(ClientOutgoingMessage())
     assert str(BasePDU()).startswith('<givenergy_modbus.pdu.BasePDU object at ')
-    assert str(Request()).startswith('<givenergy_modbus.pdu.Request object at ')
-    assert str(Request(foo=1)).startswith('<givenergy_modbus.pdu.Request object at ')
+    assert str(ClientIncomingMessage()).startswith('<givenergy_modbus.pdu.ClientIncomingMessage object at ')
+    assert str(ClientIncomingMessage(foo=1)).startswith('<givenergy_modbus.pdu.ClientIncomingMessage object at ')
 
     # __str__() gets defined at the main function ABC
     assert str(HeartbeatMessage(foo=3, bar=6)) == (
@@ -44,14 +47,16 @@ def test_str():
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
         '2:_/ReadRegistersRequest(base_register=3 register_count=6)'
     )
-    assert str(NullResponse(foo=1)) == "2:0/NullResponse()"
+    assert str(NullResponse(foo=1)) == "2:0/NullResponse(nulls=[0]*62)"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
         "2:3/ReadHoldingRegistersRequest(base_register=0 register_count=0)"
     )
 
-    assert str(WriteHoldingRegisterRequest(foo=1)) == "2:6/WriteHoldingRegisterRequest(register=? value=?)"
-    assert str(WriteHoldingRegisterResponse(foo=1)) == "2:6/WriteHoldingRegisterResponse(register=? value=?)"
+    with pytest.raises(InvalidPduState, match='Register must be set'):
+        WriteHoldingRegisterRequest(foo=1)
+    with pytest.raises(InvalidPduState, match='Register must be set'):
+        WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
         "2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)"
     )
@@ -70,12 +75,16 @@ def test_str():
     )
 
 
-@pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES + SERVER_MESSAGES)
-def test_str_actual_messages(pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex, str_repr):
-    # pdu_class_name, constructor_kwargs, _, _, expected_exception, str_repr = data
-
-    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
-    assert str(pdu) == str_repr
+@pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
+def test_str_actual_messages(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+):
+    assert str(pdu_class(**constructor_kwargs)) == str_repr
 
 
 def test_class_equivalence():
@@ -91,9 +100,12 @@ def test_class_equivalence():
 
 def test_cannot_change_function_code():
     """Disabuse any use of function_code in PDU constructors."""
-    assert not hasattr(Request(), 'function_code')
-    assert not hasattr(Request(), 'main_function_code')
-    assert not hasattr(Request(), 'inner_function_code')
+    assert not hasattr(ClientIncomingMessage, 'function_code')
+    assert not hasattr(ClientIncomingMessage, 'main_function_code')
+    assert not hasattr(ClientIncomingMessage, 'inner_function_code')
+    assert not hasattr(ClientIncomingMessage(), 'function_code')
+    assert not hasattr(ClientIncomingMessage(), 'main_function_code')
+    assert not hasattr(ClientIncomingMessage(), 'inner_function_code')
 
     assert ReadHoldingRegistersRequest(error=True).inner_function_code == 3
 
@@ -106,28 +118,84 @@ def test_cannot_change_function_code():
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_encoding(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+):
     """Ensure we correctly encode unencapsulated Request messages."""
-    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
+    pdu = pdu_class(**constructor_kwargs)
     if ex:
         with pytest.raises(type(ex), match=ex.message):
             pdu.encode()
     else:
+        assert pdu
         assert pdu.encode() == inner_frame
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_decoding(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+    caplog,
+):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
-    pdu = _lookup_pdu_class(pdu_class_name)()
+    assert mbap_header[-1] == pdu_class.main_function_code
+    frame = mbap_header + inner_frame
+    caplog.set_level(logging.DEBUG)
+
+    if issubclass(pdu_class, ClientIncomingMessage):
+        decoder = ClientIncomingMessage.decode_bytes
+    else:
+        decoder = ClientOutgoingMessage.decode_bytes
+
     if ex:
         with pytest.raises(type(ex), match=ex.message):
-            pdu.decode(inner_frame)
+            decoder(frame)
     else:
-        pdu.decode(inner_frame)
-        for (arg, val) in constructor_kwargs.items():
-            assert hasattr(pdu, arg)
-            assert getattr(pdu, arg) == val, f'<obj>.{arg} == {getattr(pdu, arg)}, expected {val}'
+        pdu = decoder(frame)
+        assert isinstance(pdu, pdu_class)
+        assert pdu.__dict__ == constructor_kwargs
+        assert str(pdu) == str_repr
+
+
+@pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
+def test_decoding_wrong_streams(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+):
+    """Ensure we correctly decode Request messages to their unencapsulated PDU."""
+    if ex:
+        return
+    frame = mbap_header + inner_frame
+
+    if issubclass(pdu_class, ClientIncomingMessage):
+        decoder = ClientIncomingMessage.decode_bytes
+    else:
+        decoder = ClientOutgoingMessage.decode_bytes
+
+    with pytest.raises(InvalidFrame, match='Transaction ID 0x0001 != 0x5959'):
+        decoder(frame[2:])
+    with pytest.raises(InvalidFrame, match=f'Length header {len(frame) - 6} != remaining bytes {len(frame) - 8}'):
+        decoder(frame[:-2])
+    with pytest.raises(InvalidFrame, match=f'Length header {len(frame) - 6} != remaining bytes {len(frame) - 4}'):
+        decoder(frame + b'\x22\x22')
+    with pytest.raises(InvalidFrame, match=f'Transaction ID 0x{frame[-2:].hex()} != 0x5959'):
+        decoder(frame[-2:])
+    rev = frame[::-1]
+    with pytest.raises(InvalidFrame, match=f'Transaction ID 0x{rev[0:2].hex()} != 0x5959'):
+        decoder(rev)
 
 
 @pytest.mark.skip('Needs more thinking')
@@ -223,15 +291,15 @@ def test_has_same_shape():
     assert r1 in test_set
     assert r2 in test_set
 
-    r = WriteHoldingRegisterResponse()
-    assert r.has_same_shape(WriteHoldingRegisterResponse())
-    assert r.has_same_shape(WriteHoldingRegisterResponse(value=10))
-    assert r.has_same_shape(WriteHoldingRegisterRequest()) is False
-    assert r.has_same_shape(ReadInputRegistersResponse()) is False
-    assert r.has_same_shape(ReadInputRegistersRequest()) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(slave_address=3)) is False
+    r = WriteHoldingRegisterResponse(register=2)
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2))
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10))
+    assert r.has_same_shape(WriteHoldingRegisterRequest(register=2)) is False
+    assert r.has_same_shape(ReadInputRegistersResponse(register=2)) is False
+    assert r.has_same_shape(ReadInputRegistersRequest(register=2)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, slave_address=3)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=1)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=3, value=10)) is False
 
     r1 = WriteHoldingRegisterResponse(register=2, value=42)
     r2 = WriteHoldingRegisterResponse(register=2, value=10)

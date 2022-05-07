@@ -28,7 +28,7 @@ class Plant(BaseModel):
         """Update the Plant state from a PDU message."""
         pdu = message.pdu
         if not isinstance(pdu, TransparentResponse):
-            _logger.info(f'Ignoring non-Transparent response {pdu}')
+            _logger.debug(f'Ignoring non-Transparent response {pdu}')
             return
         if pdu.error:
             _logger.info(f'Ignoring error response {pdu}')
@@ -59,8 +59,11 @@ class Plant(BaseModel):
                 if pdu.error or pdu.register != request_pdu.register or pdu.value != request_pdu.value:
                     raise ValueError(f'Register write failed: {pdu} from {request_pdu}')
             else:
-                # trust unsolicited updates blindly
-                _logger.info(f'Updating from unsolicited {pdu}')
+                if pdu.register == HoldingRegister(0):
+                    _logger.debug(f'Silently ignoring likely false Response {pdu}')
+                else:
+                    # trust unsolicited updates blindly
+                    _logger.info(f'Updating state from unsolicited {pdu}')
             self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
 
     @property

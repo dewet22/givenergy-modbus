@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from json import JSONEncoder
-from typing import Any, Mapping
+from typing import Any, Dict, Mapping
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 
@@ -25,7 +25,7 @@ class RegisterCacheEncoder(JSONEncoder):
             return super().encode(o)
 
 
-class RegisterCache(dict[Register, int]):
+class RegisterCache(Dict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
     _register_lookup_table: dict[str, Register]
