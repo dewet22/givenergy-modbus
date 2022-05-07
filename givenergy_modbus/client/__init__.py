@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import logging
+import sys
 from asyncio import Future
 from dataclasses import dataclass, field
 
@@ -27,10 +28,15 @@ class Message:
     future: Future[Message] = field(default_factory=lambda: asyncio.get_event_loop().create_future())
 
     def __str__(self) -> str:
+        if sys.version_info < (3, 8):
+            raw_frame = self.raw_frame.hex()
+        else:
+            raw_frame = self.raw_frame.hex(bytes_per_sep=2)
+
         return (
             f'{self.__class__.__name__}({self.pdu} '
             f'provenance={"None" if not self.provenance else f"Message({self.provenance.pdu} ...)"} '
-            f'raw_frame={self.raw_frame.hex(bytes_per_sep=2)} '
+            f'raw_frame={raw_frame} '
             f'created={self.created.isoformat()} '
             f'transceived={self.transceived.isoformat() if self.transceived else "None"} '
             f'ttl={self.ttl} '

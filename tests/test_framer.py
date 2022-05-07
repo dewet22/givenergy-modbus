@@ -1,17 +1,18 @@
 """Tests for GivEnergyModbusFramer."""
 import logging
-import sys
-from unittest.mock import MagicMock, call
+from typing import Any, Dict, Optional, Type
+from unittest.mock import MagicMock
 
 import pytest
 from pymodbus.framer.socket_framer import ModbusSocketFramer
 
+from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.framer import ClientFramer, Framer, ServerFramer
 from givenergy_modbus.pdu import BasePDU
 from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import ReadHoldingRegistersResponse, ReadInputRegistersResponse
-from tests import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _lookup_pdu_class
+from tests.conftest import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _h2b
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
     b"\x59\x59\x00\x01\x00\x1c\x01\x02"  # 7-byte MBAP header + function code
@@ -69,10 +70,17 @@ def test_framer_constructor():
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_encoding(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+):
     """Ensure message objects can be encoded to the correct wire format."""
     framer = Framer()
-    pdu = _lookup_pdu_class(pdu_class_name)(**constructor_kwargs)
+    pdu = pdu_class(**constructor_kwargs)
     if ex:
         with pytest.raises(type(ex), match=ex.message):
             framer.build_packet(pdu)
@@ -81,46 +89,63 @@ def test_encoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inn
         assert packet.hex() == (mbap_header + inner_frame).hex()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
-@pytest.mark.parametrize(PduTestCaseSig, SERVER_MESSAGES)
-def test_server_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
-    """Ensure Request PDU messages can be decoded from raw messages."""
-    framer = ServerFramer()
+def validate_decoding(
+    framer: Framer,
+    raw_frame: bytes,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    ex: Optional[ExceptionBase],
+    caplog,
+):
     callback = MagicMock(return_value=None)
+    framer.process_incoming_data(raw_frame, callback)
+    callback.assert_called_once()
 
-    framer.process_incoming_data(mbap_header + inner_frame, callback)
+    (pdu, frame), unused_kwargs = callback.call_args_list[0]
+    assert unused_kwargs == {}
+    assert isinstance(frame, bytes)
+    assert frame == raw_frame
 
     if ex:
-        assert callback.mock_calls == [call(None, mbap_header + inner_frame)]
+        assert pdu is None
+        assert len(caplog.records) == 1
+        assert ex.args[0] in caplog.records[0].msg
     else:
-        callback.assert_called_once()
-        fn_kwargs = vars(callback.mock_calls[0].args[0])
-        for (key, val) in constructor_kwargs.items():
-            assert fn_kwargs[key] == val, f'{key} must match'
-        assert fn_kwargs["data_adapter_serial_number"] == "AB1234G567"
-        if hasattr(fn_kwargs, 'slave_address'):
-            assert fn_kwargs["slave_address"] == 0x32
-            assert fn_kwargs["check"] == int.from_bytes(inner_frame[-2:], "big")
+        assert isinstance(pdu, pdu_class)
+        assert pdu.__dict__ == constructor_kwargs
 
 
-@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
+@pytest.mark.parametrize(PduTestCaseSig, SERVER_MESSAGES)
+def test_server_decoding(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+    caplog,
+):
+    """Ensure Request PDU messages can be decoded from raw messages."""
+    validate_decoding(ServerFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex, caplog)
+
+
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
-def test_client_decoding(str_repr, pdu_class_name, constructor_kwargs, mbap_header, inner_frame, ex):
+def test_client_decoding(
+    str_repr: str,
+    pdu_class: Type[BasePDU],
+    constructor_kwargs: Dict[str, Any],
+    mbap_header: bytes,
+    inner_frame: bytes,
+    ex: Optional[ExceptionBase],
+    caplog,
+):
     """Ensure Response PDU messages can be decoded from raw messages."""
-    framer = ClientFramer()
-    callback = MagicMock(return_value=None)
-    framer.process_incoming_data(mbap_header + inner_frame, callback)
-    callback.assert_called_once()
-    fn_kwargs = vars(callback.mock_calls[0].args[0])
-    for (key, val) in constructor_kwargs.items():
-        assert fn_kwargs[key] == val, f'`{key}` attribute must match'
-    if 'check' in fn_kwargs:
-        assert fn_kwargs["check"] == int.from_bytes(inner_frame[-2:], "big")
+    validate_decoding(ClientFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex, caplog)
 
 
-def decode(framer_class: type[Framer], buffer: str) -> BasePDU:
+def decode(framer_class: Type[Framer], buffer: str) -> BasePDU:
     callback = MagicMock(return_value=None)
-    framer_class().process_incoming_data(bytes.fromhex(buffer), callback)
+    framer_class().process_incoming_data(_h2b(buffer), callback)
     callback.assert_called_once()
     response = callback.call_args_list[0][0][0]
     return response
@@ -152,7 +177,7 @@ def test_process_null_response():
 def test_process_short_buffer():
     """Test a buffer with a truncated message."""
     framer = ClientFramer()
-    buffer = bytes.fromhex(
+    buffer = _h2b(
         '5959 0001 009e 0102 5746 3231 3235 4733 3136 0000 0000 0000 008a 1103 5341'
         '3231 3134 4730 3437 0000 003c 2001 0003 0832 0201 0000 c350 0e10 0001 4247'
         '3231 3334 4730 3037 5341 3231 3134 4730 3437 0bbd 01c1 0000 01c1 0002 0000'

@@ -156,7 +156,7 @@ class Register(str, Enum):
         """Allows indexing by register index."""
         if data is None:
             data = {}
-        obj = str.__new__(cls, f'{cls.__name__}({int(value)})')
+        obj = str.__new__(cls, f'{cls.__name__}({value})')
         obj._value_ = value
         obj.data_type = data.get('type', DataType.UINT16)
         obj.scaling_factor = data.get('scaling', ScalingFactor.UNITY)
@@ -165,7 +165,7 @@ class Register(str, Enum):
         return obj
 
     def __str__(self) -> str:
-        return self
+        return f'{self.__class__.__name__}({self.value})'
 
     def __repr__(self) -> str:
         return self.__str__()

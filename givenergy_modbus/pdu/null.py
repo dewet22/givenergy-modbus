@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from givenergy_modbus.pdu import PayloadDecoder
+from givenergy_modbus.pdu import ClientOutgoingMessage, PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -17,17 +17,24 @@ class NullResponse(TransparentResponse):
     """
 
     inner_function_code = 0
-    nulls = [0] * 62
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.nulls = kwargs.get('base_register', [0] * 62)
 
     def _encode_function_data(self) -> None:
         super()._encode_function_data()
         [self._builder.add_16bit_uint(v) for v in self.nulls]
         self._update_check_code()
 
-    def _decode_function_data(self, decoder: PayloadDecoder) -> None:
-        super()._decode_function_data(decoder)
-        self.nulls = [decoder.decode_16bit_uint() for _ in range(62)]
-        self.check = decoder.decode_16bit_uint()
+    @classmethod
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> NullResponse:
+        attrs['nulls'] = [decoder.decode_16bit_uint() for _ in range(62)]
+        attrs['check'] = decoder.decode_16bit_uint()
+        return cls(**attrs)
+
+    def expected_response(self) -> ClientOutgoingMessage:
+        """No response expected."""
 
     def ensure_valid_state(self) -> None:
         """Sanity check our internal state."""
