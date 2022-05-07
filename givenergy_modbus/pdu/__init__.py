@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
-from typing import Optional
 
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
@@ -178,7 +177,7 @@ class BasePDU(ABC):
 class ClientIncomingMessage(BasePDU, ABC):
     """Root of the hierarchy for PDUs clients are expected to receive and handle."""
 
-    def expected_response(self) -> Optional[ClientOutgoingMessage]:
+    def expected_response(self) -> ClientOutgoingMessage | None:
         """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 
@@ -186,7 +185,7 @@ class ClientIncomingMessage(BasePDU, ABC):
 class ClientOutgoingMessage(BasePDU, ABC):
     """Root of the hierarchy for PDUs clients are expected to send to servers."""
 
-    def expected_response(self) -> Optional[ClientIncomingMessage]:
+    def expected_response(self) -> ClientIncomingMessage | None:
         """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 
