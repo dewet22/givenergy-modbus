@@ -122,7 +122,7 @@ class DispatchingMixin:
                 continue
 
             _logger.debug(f'Received {pdu}')
-            await self.rx_messages.put(Message(pdu, raw_frame=raw_frame, transceived=datetime.datetime.now()))
+            await self.rx_messages.put(Message(pdu, raw_frame=raw_frame, transceived=datetime.datetime.utcnow()))
             if isinstance(pdu, TransparentResponse) and pdu.error:
                 _logger.debug(f"Received error {pdu}")
 
@@ -136,7 +136,7 @@ class DispatchingMixin:
 
         _logger.debug(f'Sending {item.pdu}')
         packet = await asyncio.get_event_loop().run_in_executor(None, self.framer.build_packet, item.pdu)
-        item.transceived = datetime.datetime.now()
+        item.transceived = datetime.datetime.utcnow()
         item.raw_frame = packet
         await self.track_expected_response(item)
         self.writer.write(packet)
@@ -196,7 +196,7 @@ class DispatchingMixin:
                     message,
                     pdu=response,
                     provenance=message,
-                    created=datetime.datetime.now(),
+                    created=datetime.datetime.utcnow(),
                     future=message.future,
                 )
             )
@@ -261,7 +261,7 @@ class DispatchingMixin:
                     retries.append(
                         dataclasses.replace(
                             req,
-                            created=datetime.datetime.now(),
+                            created=datetime.datetime.utcnow(),
                             transceived=None,
                             retries_remaining=req.retries_remaining - 1,
                         )
@@ -270,6 +270,8 @@ class DispatchingMixin:
                     _logger.debug(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
                 else:
                     _logger.warning(f'Refusing to retry {req.pdu} after {exp.age.total_seconds():.2f}s')
+            else:
+                _logger.debug(f'Expected response {exp} not expired yet')
         if retries:
             _logger.debug(f'Scheduling {len(retries)} retries')
             await asyncio.gather(*[self.enqueue_message_for_sending(m) for m in retries])
@@ -281,7 +283,7 @@ class DispatchingMixin:
             for name, queue in self.debug_frames.items():
                 if not queue.empty():
                     async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
-                        await str_file.write(f'# {datetime.datetime.now().timestamp()}\n')
+                        await str_file.write(f'# {datetime.datetime.utcnow().timestamp()}\n')
                         while not queue.empty():
                             item = await queue.get()
                             await str_file.write(item.hex() + '\n')

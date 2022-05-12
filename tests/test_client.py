@@ -43,7 +43,7 @@ async def client() -> AsyncGenerator[Client, None]:
 async def loopback_next_outbound_message(c: Client, error: bool = False):
     """Helper simulating transmitting the next queued request and receiving a matching response."""
     item: Message = await c.tx_messages.get()
-    item.transceived = datetime.datetime.now() - datetime.timedelta(seconds=1.5)
+    item.transceived = datetime.datetime.utcnow() - datetime.timedelta(seconds=1.5)
     await c.track_expected_response(item)
     if isinstance(item.pdu, TransparentRequest):
         response_pdu = item.pdu.expected_response()
@@ -51,7 +51,7 @@ async def loopback_next_outbound_message(c: Client, error: bool = False):
         response_pdu.error = error
         response_pdu.inverter_serial_number = 'AB1234'
         response_pdu.data_adapter_serial_number = 'ZY9876'
-        response_message = Message(response_pdu, transceived=datetime.datetime.now(), provenance=item)
+        response_message = Message(response_pdu, transceived=datetime.datetime.utcnow(), provenance=item)
         await c.rx_messages.put(response_message)
     return item
 
@@ -1156,7 +1156,7 @@ async def test_expected_responses(client: Client, event_loop: AbstractEventLoop)
         future=event_loop.create_future(),
         provenance=Message(
             ReadInputRegistersRequest(base_register=24, register_count=3, slave_address=0x44),
-            transceived=datetime.datetime.now() - datetime.timedelta(seconds=0.8),
+            transceived=datetime.datetime.utcnow() - datetime.timedelta(seconds=0.8),
             future=event_loop.create_future(),
         ),
     )
@@ -1171,7 +1171,7 @@ async def test_expected_responses(client: Client, event_loop: AbstractEventLoop)
             register_values=[9, 8, 7, 6, 5, 4, 3],
             slave_address=0x33,
         ),
-        transceived=datetime.datetime.now(),
+        transceived=datetime.datetime.utcnow(),
     )
     client.rx_messages.put_nowait(rx_m1)
     assert rx_m1.pdu.shape_hash() != m1.pdu.shape_hash()
@@ -1185,7 +1185,7 @@ async def test_expected_responses(client: Client, event_loop: AbstractEventLoop)
             register_values=[5, 6, 7],
             slave_address=0x44,
         ),
-        transceived=datetime.datetime.now(),
+        transceived=datetime.datetime.utcnow(),
     )
     client.rx_messages.put_nowait(rx_m2)
     assert rx_m2.pdu.shape_hash() == m1.pdu.shape_hash()
@@ -1238,10 +1238,12 @@ async def test_record_expected_response(client: Client):
     assert expected_msg.pdu.has_same_shape(res)
     assert expected_msg.provenance.pdu == req
     assert expected_msg.retries_remaining == 2
+    assert expected_msg.expired
     assert client.tx_messages.qsize() == 0
 
     await client.generate_retries_for_expired_expected_responses()
 
+    assert len(client.expected_responses) == 0
     assert client.tx_messages.qsize() == 1
     retry = await client.tx_messages.get()
     assert retry.pdu == req
