@@ -32,8 +32,8 @@ async def client() -> AsyncGenerator[Client, None]:
     await c.connect_with_retry()
     await c.reset_tasks()
     c.run_tasks_forever(
-        (c.dispatch_next_incoming_message, 0, 1),
-        (c.generate_retries_for_expired_expected_responses, 0, 1),
+        (c.dispatch_next_incoming_message, 0),
+        (c.generate_retries_for_expired_expected_responses, 0),
     )
     yield c
     await c.disconnect_and_reset()
@@ -49,6 +49,8 @@ async def loopback_next_outbound_message(c: Client, error: bool = False):
         response_pdu = item.pdu.expected_response()
         assert isinstance(response_pdu, TransparentResponse)
         response_pdu.error = error
+        response_pdu.inverter_serial_number = 'AB1234'
+        response_pdu.data_adapter_serial_number = 'ZY9876'
         response_message = Message(response_pdu, transceived=datetime.datetime.now(), provenance=item)
         await c.rx_messages.put(response_message)
     return item
@@ -64,9 +66,9 @@ async def loopback_client(client: Client) -> Client:
 
     client._all_tx_messages = []
     client.run_tasks_forever(
-        (loopback_messages, 0, 1),
+        (loopback_messages, 0),
     )
-    assert client.plant.register_caches == {}
+    assert client.plant.register_caches == {0x32: {}}
     return client
 
 
@@ -109,21 +111,33 @@ async def test_refresh_with_battery_discovery(client: Client):
 
     # internal state is still empty and inconsistent
     assert client.plant == Plant()
-    with pytest.raises(KeyError, match='50'):
+    with pytest.raises(KeyError, match=r'HoldingRegister\(13\)'):
         client.plant.inverter
 
     # read all non-BMS registers
     client.rx_messages._queue = deque(
         [
-            Message(ReadHoldingRegistersResponse(register_values=HOLDING_REGISTERS.values())),
             Message(
-                ReadInputRegistersResponse(
-                    base_register=0, register_values=[v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60]
+                ReadHoldingRegistersResponse(
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
+                    register_values=HOLDING_REGISTERS.values(),
                 )
             ),
             Message(
                 ReadInputRegistersResponse(
-                    base_register=120, register_values=[v for k, v in INPUT_REGISTERS.items() if 120 <= k]
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
+                    base_register=0,
+                    register_values=[v for k, v in INPUT_REGISTERS.items() if 0 <= k < 60],
+                )
+            ),
+            Message(
+                ReadInputRegistersResponse(
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
+                    base_register=120,
+                    register_values=[v for k, v in INPUT_REGISTERS.items() if 120 <= k],
                 )
             ),
         ]
@@ -133,6 +147,8 @@ async def test_refresh_with_battery_discovery(client: Client):
     await client.dispatch_next_incoming_message()
 
     expected_plant = Plant(
+        inverter_serial_number='AB1234',
+        data_adapter_serial_number='XZ9876',
         register_caches={
             50: {
                 HoldingRegister(0): 8193,
@@ -456,7 +472,7 @@ async def test_refresh_with_battery_discovery(client: Client):
                 InputRegister(238): 0,
                 InputRegister(239): 0,
             }
-        }
+        },
     )
     assert client.plant == expected_plant
     expected_inverter = Inverter(
@@ -541,8 +557,8 @@ async def test_refresh_with_battery_discovery(client: Client):
         iso1=0,
         iso2=0,
         local_command_test=False,
-        first_battery_serial_number='BG1234G567',
-        first_battery_bms_firmware_version=3005,
+        inverter_battery_serial_number='BG1234G567',
+        inverter_battery_bms_firmware_version=3005,
         enable_bms_read=True,
         battery_type=1,
         battery_nominal_capacity=160.0,
@@ -674,6 +690,8 @@ async def test_refresh_with_battery_discovery(client: Client):
         [
             Message(
                 ReadInputRegistersResponse(
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
                     base_register=60,
                     register_values=[v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120],
                     slave_address=0x32,
@@ -681,6 +699,8 @@ async def test_refresh_with_battery_discovery(client: Client):
             ),
             Message(
                 ReadInputRegistersResponse(
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
                     base_register=60,
                     register_values=[v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120],
                     slave_address=0x33,
@@ -688,6 +708,8 @@ async def test_refresh_with_battery_discovery(client: Client):
             ),
             Message(
                 ReadInputRegistersResponse(
+                    inverter_serial_number='AB1234',
+                    data_adapter_serial_number='XZ9876',
                     base_register=60,
                     register_values=[v for k, v in INPUT_REGISTERS.items() if 60 <= k < 120],
                     slave_address=0x34,
@@ -1036,7 +1058,7 @@ async def test_client_internal_wiring_async(loopback_client: Client):
 async def test_client_internal_wiring(client: Client):
     """Validate internal client API & behaviour in synchronous steps."""
     # ensure the internal model starts out empty
-    assert client.plant.register_caches == {}
+    assert client.plant.register_caches == {0x32: {}}
 
     # generate some messages onto the tx_queue and verify internal state
     requested_datetime = datetime.datetime(2021, 10, 22, 3, 33, 58)
@@ -1124,7 +1146,13 @@ async def test_client_internal_wiring(client: Client):
 
 async def test_expected_responses(client: Client, event_loop: AbstractEventLoop):
     m1 = Message(
-        ReadInputRegistersResponse(base_register=24, register_count=3, slave_address=0x44),
+        ReadInputRegistersResponse(
+            inverter_serial_number='AB1234',
+            data_adapter_serial_number='XZ9876',
+            base_register=24,
+            register_count=3,
+            slave_address=0x44,
+        ),
         future=event_loop.create_future(),
         provenance=Message(
             ReadInputRegistersRequest(base_register=24, register_count=3, slave_address=0x44),
@@ -1136,7 +1164,12 @@ async def test_expected_responses(client: Client, event_loop: AbstractEventLoop)
 
     rx_m1 = Message(
         ReadInputRegistersResponse(
-            base_register=2, register_count=7, register_values=[9, 8, 7, 6, 5, 4, 3], slave_address=0x33
+            inverter_serial_number='AB1234',
+            data_adapter_serial_number='XZ9876',
+            base_register=2,
+            register_count=7,
+            register_values=[9, 8, 7, 6, 5, 4, 3],
+            slave_address=0x33,
         ),
         transceived=datetime.datetime.now(),
     )
@@ -1144,7 +1177,14 @@ async def test_expected_responses(client: Client, event_loop: AbstractEventLoop)
     assert rx_m1.pdu.shape_hash() != m1.pdu.shape_hash()
 
     rx_m2 = Message(
-        ReadInputRegistersResponse(base_register=24, register_count=3, register_values=[5, 6, 7], slave_address=0x44),
+        ReadInputRegistersResponse(
+            inverter_serial_number='AB1234',
+            data_adapter_serial_number='XZ9876',
+            base_register=24,
+            register_count=3,
+            register_values=[5, 6, 7],
+            slave_address=0x44,
+        ),
         transceived=datetime.datetime.now(),
     )
     client.rx_messages.put_nowait(rx_m2)

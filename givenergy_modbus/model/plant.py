@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from pydantic import BaseModel
 
@@ -20,10 +20,17 @@ class Plant(BaseModel):
     """Representation of a complete GivEnergy plant."""
 
     register_caches: Dict[int, RegisterCache] = {}
+    inverter_serial_number: str = ''
+    data_adapter_serial_number: str = ''
 
     class Config:  # noqa: D106
         # arbitrary_types_allowed = True
         orm_mode = True
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        if not self.register_caches:
+            self.register_caches = {0x32: RegisterCache()}
 
     def update(self, message: Message):
         """Update the Plant state from a PDU message."""
@@ -46,8 +53,8 @@ class Plant(BaseModel):
             _logger.debug(f'First time encountering slave address 0x{slave_address:02x}')
             self.register_caches[slave_address] = RegisterCache()
 
-        #self.inverter_serial_number = pdu.inverter_serial_number
-        #self.data_adapter_serial_number = pdu.data_adapter_serial_number
+        self.inverter_serial_number = pdu.inverter_serial_number
+        self.data_adapter_serial_number = pdu.data_adapter_serial_number
 
         try:
             if isinstance(pdu, ReadHoldingRegistersResponse):

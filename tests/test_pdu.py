@@ -59,13 +59,13 @@ def test_str():
     with pytest.raises(InvalidPduState, match='Register must be set'):
         WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
-        "2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)"
+        "2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)"
     )
     assert str(WriteHoldingRegisterResponse(error=True, register=7, value=6)) == (
         "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(7)/ENABLE_AMMETER -> True/0x0006)"
     )
     assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=18, value=5)) == (
-        "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)"
+        "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)"
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
