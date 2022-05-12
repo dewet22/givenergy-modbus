@@ -2,8 +2,6 @@ import asyncio
 import logging
 from typing import Collection, List
 
-from metrology import Metrology
-
 from givenergy_modbus.client import Message
 from givenergy_modbus.client.commands import ClientCommandsMixin
 from givenergy_modbus.client.dispatch import DispatchingMixin
@@ -47,8 +45,7 @@ class Client(DispatchingMixin, TasksMixin, ClientCommandsMixin, ModelMixin):
 
         try:
             _logger.debug(f'Awaiting {len(messages)} futures')
-            with Metrology.utilization_timer('time-futures'):
-                res = await asyncio.gather(*[m.future for m in messages], return_exceptions=True)
+            res = await asyncio.gather(*[m.future for m in messages], return_exceptions=True)
             _logger.debug('Done')
             failed_messages = [messages[k] for k, v in enumerate(res) if not isinstance(v, Message)]
             if failed_messages:
@@ -95,7 +92,6 @@ class Client(DispatchingMixin, TasksMixin, ClientCommandsMixin, ModelMixin):
             self.run_tasks_forever(
                 (self.request_data_refresh, self.seconds_between_data_refreshes),
                 (self.health_check, 10),
-                (self.log_stats, 1800),
                 (self.update_setting, 300),
             )
 
