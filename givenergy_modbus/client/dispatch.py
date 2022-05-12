@@ -10,7 +10,6 @@ import sys
 from asyncio import Queue, StreamReader, StreamWriter
 
 import aiofiles  # type: ignore[import]
-from metrology import Metrology
 
 from givenergy_modbus.client import Message
 from givenergy_modbus.framer import ClientFramer, Framer
@@ -114,7 +113,6 @@ class DispatchingMixin:
     async def read_incoming_network_data(self):
         """Await incoming data from the network and pass onto the Framer for decoding."""
         data = await self.reader.read(300)
-        Metrology.meter('rx-bytes').mark(len(data))
 
         results: list[BasePDU | None, bytes] = []
         await asyncio.get_event_loop().run_in_executor(
@@ -125,15 +123,12 @@ class DispatchingMixin:
             if not pdu:
                 _logger.error(f'Unable to decode frame {raw_frame.hex()}')
                 await self.debug_frames['error'].put(raw_frame)
-                Metrology.meter('rx-invalid-frames').mark()
                 continue
 
             _logger.debug(f'Received {pdu}')
             await self.rx_messages.put(Message(pdu, raw_frame=raw_frame, transceived=datetime.datetime.now()))
-            Metrology.meter('rx-pdus').mark()
             if isinstance(pdu, TransparentResponse) and pdu.error:
                 _logger.debug(f"Received error {pdu}")
-                Metrology.meter('rx-errors').mark()
 
     async def transmit_next_queued_message(self):
         """Process the next outbound message onto the network."""
@@ -150,9 +145,6 @@ class DispatchingMixin:
         await self.track_expected_response(item)
         self.writer.write(packet)
         await asyncio.wait_for(self.writer.drain(), timeout=self.seconds_between_pdu_writes * 2)
-
-        Metrology.meter('tx-pdus').mark()
-        Metrology.meter('tx-bytes').mark(len(packet))
 
     async def enqueue_message_for_sending(self, message: Message) -> None:
         """Helper to enqueue outbound Messages, adjusting for higher ttl if the queue builds."""
@@ -193,7 +185,6 @@ class DispatchingMixin:
                 provenance=item,
             )
             _logger.debug(f'Recording expected response {shape_hash}/{expected_response} to {item.pdu}')
-            Metrology.meter('expected-responses').mark(len(self.expected_responses))
 
     async def dispatch_next_incoming_message(self):
         """Dispatch the next waiting decoded Message."""
@@ -227,12 +218,10 @@ class DispatchingMixin:
             pdu = message.pdu
             if isinstance(pdu, ReadRegistersResponse) and pdu.is_suspicious():
                 await self.debug_frames['suspicious'].put(message.raw_frame)
-                Metrology.meter('rx-suspicious').mark()
                 return
 
             await self.debug_frames['rejected'].put(message.raw_frame)
             _logger.warning(f'Rejecting update {pdu}: {e}')
-            Metrology.meter('rx-invalid').mark()
 
     def reconcile_if_expected_message(self, item: Message):
         """Complete references to originating messages if it can be found."""
@@ -247,7 +236,6 @@ class DispatchingMixin:
             else:
                 item.future.cancel('Replacing with originating request future')
             item.future = expected_response.future
-            Metrology.timer('time-roundtrip').update(int(item.network_roundtrip.total_seconds() * 1000))
             if item.network_roundtrip > datetime.timedelta(seconds=2) and not isinstance(
                 item.pdu, ReadRegistersResponse
             ):

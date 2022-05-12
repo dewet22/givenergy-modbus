@@ -4,7 +4,8 @@ import sys
 from asyncio import Task
 from typing import Awaitable, Callable, Collection, Dict, Tuple
 
-from metrology import Metrology
+# from metrology import Metrology
+from givenergy_modbus.client import Message
 
 _logger = logging.getLogger(__name__)
 
@@ -35,8 +36,7 @@ class TasksMixin:
         async def coro(f: Callable[[], Awaitable], s: float, n: str):
             while self.connected:
                 try:
-                    with Metrology.utilization_timer(f'time-{n}'):
-                        await f()
+                    await f()
                     await asyncio.sleep(s)
                 except asyncio.CancelledError:
                     self.connected = False
@@ -60,16 +60,16 @@ class TasksMixin:
     #########################################################################################################
     async def log_stats(self):
         """Log stats from Metrology."""
-        from metrology import registry
+        # from metrology import registry
 
         counters = []
         timers = []
-        for name, data in registry:
-            if name.startswith('time-'):
-                timers.append(f'{name[5:]}={data.mean:.2f}')
-                counters.append(f'{name[5:]}()={data.count}')
-            else:
-                counters.append(f'{name}={data.count}')
+        # for name, data in registry:
+        #     if name.startswith('time-'):
+        #         timers.append(f'{name[5:]}={data.mean:.2f}')
+        #         counters.append(f'{name[5:]}()={data.count}')
+        #     else:
+        #         counters.append(f'{name}={data.count}')
         if counters:
             print(f"counters: {' '.join(counters)}")
         if timers:
