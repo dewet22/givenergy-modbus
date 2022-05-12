@@ -3,7 +3,15 @@ from typing import Dict
 
 import pytest
 
-from givenergy_modbus.model.register import DataType, HoldingRegister, InputRegister, Register, ScalingFactor, Unit
+from givenergy_modbus.model.register import (
+    DataType,
+    HoldingRegister,
+    InputRegister,
+    Register,
+    RegisterError,
+    ScalingFactor,
+    Unit,
+)
 
 # fmt: off
 INPUT_REGISTERS: Dict[int, int] = dict(enumerate([
@@ -238,12 +246,12 @@ def test_register_convert():
             if negative_too:
                 assert func(-raw_val) == -expected, f'{-raw_val} should convert to {-expected}'
             else:
-                pytest.raises(ValueError, func, -raw_val)
+                pytest.raises(RegisterError, func, -raw_val)
 
     def assert_raises(raw_val, negative_too=True):
-        pytest.raises(ValueError, func, raw_val)
+        pytest.raises(RegisterError, func, raw_val)
         if raw_val != 0 and negative_too:
-            pytest.raises(ValueError, func, -raw_val)
+            pytest.raises(RegisterError, func, -raw_val)
 
     func = InputRegister['V_AC1'].convert
     assert_can_convert(0, 0.0)

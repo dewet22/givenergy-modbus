@@ -1,8 +1,7 @@
 import logging
 from abc import ABC
 
-from givenergy_modbus.exceptions import InvalidFrame
-from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, PayloadDecoder
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, InvalidFrame, PayloadDecoder
 
 _logger = logging.getLogger(__name__)
 

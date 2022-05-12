@@ -2,7 +2,8 @@ from typing import Any, Dict, Optional, Type
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame
+from givenergy_modbus.exceptions import ExceptionBase
+from givenergy_modbus.pdu import InvalidFrame
 from givenergy_modbus.pdu.heartbeat import *
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import *
@@ -185,17 +186,16 @@ def test_decoding_wrong_streams(
     else:
         decoder = ClientOutgoingMessage.decode_bytes
 
-    with pytest.raises(InvalidFrame, match='Transaction ID 0x0001 != 0x5959'):
+    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
         decoder(frame[2:])
-    with pytest.raises(InvalidFrame, match=f'Length header {len(frame) - 6} != remaining bytes {len(frame) - 8}'):
+    with pytest.raises(InvalidFrame, match=f'Header length {len(frame) - 6} != remaining bytes {len(frame) - 8}'):
         decoder(frame[:-2])
-    with pytest.raises(InvalidFrame, match=f'Length header {len(frame) - 6} != remaining bytes {len(frame) - 4}'):
+    with pytest.raises(InvalidFrame, match=f'Header length {len(frame) - 6} != remaining bytes {len(frame) - 4}'):
         decoder(frame + b'\x22\x22')
-    with pytest.raises(InvalidFrame, match=f'Transaction ID 0x{frame[-2:].hex()} != 0x5959'):
-        decoder(frame[-2:])
-    rev = frame[::-1]
-    with pytest.raises(InvalidFrame, match=f'Transaction ID 0x{rev[0:2].hex()} != 0x5959'):
-        decoder(rev)
+    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
+        decoder(frame[-10:])
+    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
+        decoder(frame[::-1])
 
 
 @pytest.mark.skip('Needs more thinking')
