@@ -3,10 +3,10 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
+from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu import BasePDU, InvalidPduState
 from givenergy_modbus.pdu.heartbeat import HeartbeatRequest, HeartbeatResponse
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import (

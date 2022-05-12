@@ -5,9 +5,18 @@ import logging
 from json import JSONEncoder
 from typing import Any, Dict, Mapping
 
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
+from givenergy_modbus.exceptions import ExceptionBase
+from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
 
 _logger = logging.getLogger(__name__)
+
+
+class RegisterCacheUpdateFailed(ExceptionBase):
+    """Exception raised when a register cache rejects an update due to invalid registers."""
+
+    def __init__(self, errors: list[RegisterError]) -> None:
+        self.errors = errors
+        super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})', False)
 
 
 class RegisterCacheEncoder(JSONEncoder):
@@ -60,10 +69,10 @@ class RegisterCache(Dict[Register, int]):
         for register, value in m.items():
             try:
                 register.convert(value)
-            except ValueError as e:
-                errors.append(f"{register}/{register.name}:{e}")
+            except RegisterError as e:
+                errors.append(e)
         if errors:
-            raise ValueError(f'{len(errors)} invalid values ({", ".join(errors)})')
+            raise RegisterCacheUpdateFailed(errors)
         super().update(m)
 
     def json(self) -> str:

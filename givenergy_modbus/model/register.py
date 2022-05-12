@@ -5,7 +5,31 @@ from datetime import time
 from enum import Enum, auto, unique
 from typing import Any, Callable
 
+from givenergy_modbus.exceptions import ExceptionBase
+
 _logger = logging.getLogger(__name__)
+
+
+class RegisterError(ExceptionBase):
+    """Base for register errors."""
+
+
+class RegisterValueError(RegisterError):
+    """Raised when a register value cannot be parsed/converted based on the register type definition."""
+
+    def __init__(self, register: Register, val: int, e: ValueError) -> None:
+        self.register = register
+        self.val = val
+        super().__init__(f'{str(register)}/{register.name}:{e}:0x{val:04x}', False)
+
+
+class RegisterNotSane(RegisterError):
+    """Raised when a register value is likely corrupt due to being outside the realm of physical possibility."""
+
+    def __init__(self, register: Register, val: int) -> None:
+        self.register = register
+        self.val = val
+        super().__init__(f'{str(register)}/{register.name}:{register.repr(val)}/0x{val:04x}', False)
 
 
 class DataType(Enum):
@@ -181,9 +205,9 @@ class Register(str, Enum):
         try:
             val = self.data_type.convert(raw_val, self.scaling_factor.value)
         except ValueError as e:
-            raise ValueError(f'{e}:0x{raw_val:04x}')
+            raise RegisterValueError(self, raw_val, e)
         if not self.physical_unit.sanity_check(val):
-            raise ValueError(f'{self.repr(raw_val)}/0x{raw_val:04x}')
+            raise RegisterNotSane(self, raw_val)
         return val
 
     def repr(self, raw_val):

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+import struct
 from abc import ABC
 
 from pymodbus.constants import Endian
 from pymodbus.payload import BinaryPayloadBuilder, BinaryPayloadDecoder
 
-from givenergy_modbus.exceptions import InvalidFrame
+from givenergy_modbus.exceptions import ExceptionBase
 
 _logger = logging.getLogger(__name__)
 
@@ -92,32 +93,39 @@ class BasePDU(ABC):
     def decode_bytes(cls, data: bytes) -> BasePDU:
         """Decode raw byte frame to populated PDU instance."""
         _logger.debug(f'{cls.__name__}.decode_bytes(0x{data.hex()})')
+        attrs = {}
         decoder = PayloadDecoder(data)
-        transaction_id = decoder.decode_16bit_uint()
-        if transaction_id != 0x5959:
-            raise InvalidFrame(f'Transaction ID 0x{transaction_id:04x} != 0x5959', data)
-        protocol_id = decoder.decode_16bit_uint()
-        if protocol_id != 0x01:
-            raise InvalidFrame(f'Protocol ID 0x{protocol_id:04x} != 0x0001', data)
-        length = decoder.decode_16bit_uint()
-        if length != decoder.remaining_bytes:
-            raise InvalidFrame(f'Length header {length} != remaining bytes {decoder.remaining_bytes}', data)
-        unit_id = decoder.decode_8bit_uint()
-        if unit_id != 0x01:
-            raise InvalidFrame(f'Unit ID 0x{unit_id:02x} != 0x01', data)
-        main_function_code = decoder.decode_8bit_uint()
+        attrs['_tid'] = decoder.decode_16bit_uint()
+        attrs['_pid'] = decoder.decode_16bit_uint()
+        attrs['_len'] = decoder.decode_16bit_uint()
+        remaining_bytes = decoder.remaining_bytes
+        attrs['_uid'] = decoder.decode_8bit_uint()
+        attrs['main_function_code'] = decoder.decode_8bit_uint()
+        if attrs['_tid'] != 0x5959:
+            raise InvalidFrame(f'Transaction ID != 0x5959, attrs: {attrs}', data)
+        if attrs['_pid'] != 0x01:
+            raise InvalidFrame(f'Protocol ID != 0x0001, attrs: {attrs}', data)
+        if attrs['_len'] != remaining_bytes:
+            raise InvalidFrame(
+                f'Header length {attrs["_len"]} != remaining bytes {remaining_bytes}, attrs: {attrs}', data
+            )
+        if attrs['_uid'] != 0x01:
+            raise InvalidFrame(f'Unit ID != 0x01, attrs: {attrs}', data)
 
         candidate_decoder_classes = cls.__subclasses__()
         _logger.debug(
-            f'Candidate decoders for function code {main_function_code}: '
+            f'Candidate decoders for function code {attrs["main_function_code"]}: '
             f'{", ".join([c.__name__ for c in candidate_decoder_classes])}'
         )
 
         for c in candidate_decoder_classes:
             cls_main_function_code = getattr(c, 'main_function_code', None)
-            if cls_main_function_code == main_function_code:
+            if cls_main_function_code == attrs['main_function_code']:
                 _logger.debug(f'Passing off to {c.__name__}.decode_main_function(0x{decoder.remaining_payload.hex()})')
-                pdu = c._decode_main_function(decoder)
+                try:
+                    pdu = c._decode_main_function(decoder, **attrs)
+                except struct.error as e:
+                    raise InvalidFrame(str(e), data)
                 if not decoder.decoding_complete:
                     _logger.error(
                         f'Decoder did not fully consume frame for {pdu}: decoded {decoder.decoded_bytes}b but '
@@ -132,7 +140,7 @@ class BasePDU(ABC):
                     )
                 return pdu
             _logger.debug(f'{c.__name__} disregarded, it handles function code {cls_main_function_code}')
-        raise ValueError(f'Found no decoder for function code {main_function_code}')
+        raise InvalidFrame(f'Found no decoder for function code {attrs["main_function_code"]}', data)
 
     @classmethod
     def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> BasePDU:
@@ -192,3 +200,21 @@ class ClientOutgoingMessage(BasePDU, ABC):
 
 ServerIncomingMessage = ClientOutgoingMessage
 ServerOutgoingMessage = ClientIncomingMessage
+
+
+class InvalidPduState(ExceptionBase):
+    """Thrown during PDU self-validation."""
+
+    def __init__(self, message: str, pdu=None, quirk: bool = False) -> None:
+        super().__init__(message=message, quirk=quirk)
+        self.pdu = pdu
+
+
+class InvalidFrame(ExceptionBase):
+    """Thrown during framing when a message cannot be extracted from a frame buffer."""
+
+    frame: bytes
+
+    def __init__(self, message: str, frame: bytes) -> None:
+        super().__init__(message=message)
+        self.frame = frame

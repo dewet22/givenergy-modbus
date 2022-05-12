@@ -5,8 +5,7 @@ import struct
 from abc import ABC
 from typing import Callable, Optional
 
-from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
-from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, InvalidFrame, InvalidPduState, ServerIncomingMessage
 from givenergy_modbus.pdu.null import NullResponse  # noqa - ensure it gets autoloaded
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
@@ -118,8 +117,8 @@ class Framer(ABC):
             # The next header is not at the start of the buffer: wind the buffer forward to that position
             if header_start > 0:
                 _logger.warning(
-                    f'Likely candidate frame candidate found {header_start} bytes into buffer, '
-                    f'skipping over leading garbage (0x{self._buffer[:header_start].hex()})'
+                    f'Candidate frame found {header_start} bytes into buffer, '
+                    f'discarding leading garbage 0x{self._buffer[:header_start].hex()}'
                 )
                 self._buffer = self._buffer[header_start:]
                 continue
@@ -157,7 +156,7 @@ class Framer(ABC):
                     _logger.debug(f"Buffer too short ({self.buffer_length}) to complete frame ({frame_len})")
                     return
 
-                # Extract the inner frame and try to decode it
+                # Extract the frame and try to decode it
                 frame = self._buffer[:frame_len]
                 self._buffer = self._buffer[frame_len:]
                 pdu = None
@@ -201,4 +200,4 @@ class ServerFramer(Framer):
     """Framer implementation for server-side use."""
 
     def __init__(self):
-        self._decoder = ClientOutgoingMessage.decode_bytes
+        self._decoder = ServerIncomingMessage.decode_bytes
