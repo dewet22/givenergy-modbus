@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 from asyncio import Task
-from typing import Awaitable, Callable, Collection, Dict, Optional, Tuple
+from typing import Awaitable, Callable, Collection, Dict, Tuple
 
 from metrology import Metrology
 
@@ -21,7 +21,7 @@ class TasksMixin:
             # stop all background tasks
             _logger.debug(f'Cancelling tasks {", ".join(self.tasks.keys())}')
             tasks = self.tasks.values()
-            if sys.version_info < (3, 8):
+            if sys.version_info < (3, 9):
                 [t.cancel() for t in tasks]
             else:
                 [t.cancel('reset_tasks') for t in tasks]
