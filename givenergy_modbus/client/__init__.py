@@ -21,7 +21,7 @@ class Message:
     pdu: BasePDU
     provenance: Message | None = None
     raw_frame: bytes = b''
-    created: datetime.datetime = field(default_factory=datetime.datetime.now)
+    created: datetime.datetime = field(default_factory=datetime.datetime.utcnow)
     transceived: datetime.datetime | None = None
     ttl: float = 4.5
     retries_remaining: int = 0
@@ -50,7 +50,7 @@ class Message:
     @property
     def age(self) -> datetime.timedelta:
         """Calculate time elapsed since message creation."""
-        return datetime.datetime.now() - self.created
+        return datetime.datetime.utcnow() - self.created
 
     @property
     def network_roundtrip(self) -> datetime.timedelta:
@@ -72,9 +72,9 @@ class Message:
     @property
     def expired(self) -> bool:
         """Returns whether an item has passed its expiry time."""
-        now = datetime.datetime.now()
-        res = now > self.expiry
-        _logger.debug(f'Expired: now={now.isoformat()} expiry={self.expiry} res={res}')
+        now = datetime.datetime.utcnow()
+        res = now >= self.expiry
+        _logger.debug(f'Expired: now={now.isoformat()} expiry={self.expiry.isoformat()} res={res}')
         return res
 
 
