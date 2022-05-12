@@ -888,7 +888,7 @@ async def test_set_battery_discharge_mode(client: Client):
         'future=PENDING)'
     )
 
-    message = await client.set_discharge_mode_demand()
+    message = await client.set_discharge_mode_to_match_demand()
     message.created = datetime.datetime(7, 6, 5, 4, 3, 2, 1)
     assert str(message.pdu) == '2:6/WriteHoldingRegisterRequest(HoldingRegister(27)/BATTERY_POWER_MODE -> 1/0x0001)'
     assert str(message) == (
@@ -960,7 +960,7 @@ async def test_set_mode_storage(client: Client):
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(45)/DISCHARGE_SLOT_2_END -> 11:12/0x0458)',
     ]
 
-    messages = await client.set_mode_storage(Timeslot.from_repr(1314, 1516), export=True)
+    messages = await client.set_mode_storage(Timeslot.from_repr(1314, 1516), discharge_for_export=True)
     assert [str(m.pdu) for m in messages] == [
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(27)/BATTERY_POWER_MODE -> 0/0x0000)',
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(110)/BATTERY_SOC_RESERVE -> 100%/0x0064)',
