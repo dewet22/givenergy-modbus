@@ -43,9 +43,6 @@ class DispatchingMixin:
     connect_backoff_ceiling: float = 60.0
     connect_backoff_multiplier: float = 1.2
 
-    refresh_count: int
-    seconds_between_data_refreshes: float = 5
-    full_refresh_interval_count: int = 60  # 5s * 60 = 5m
     seconds_between_pdu_writes: float = 0.35
 
     # provided by other mixins
@@ -98,7 +95,6 @@ class DispatchingMixin:
             await asyncio.sleep(backoff)
             backoff = min(self.connect_backoff_ceiling, backoff * self.connect_backoff_multiplier)
 
-        self.refresh_count = 0
         self.rx_messages = Queue(maxsize=100)
         self.tx_messages = Queue(maxsize=100)
         self.expected_responses = {}

@@ -1,9 +1,9 @@
 import asyncio
 import logging
-from typing import Collection, List
+from typing import List
 
 from givenergy_modbus.client import Message
-from givenergy_modbus.client.commands import ClientCommandsMixin
+from givenergy_modbus.client.commands import CommandsMixin
 from givenergy_modbus.client.dispatch import DispatchingMixin
 from givenergy_modbus.client.model import ModelMixin
 from givenergy_modbus.client.tasks import TasksMixin
@@ -11,29 +11,10 @@ from givenergy_modbus.client.tasks import TasksMixin
 _logger = logging.getLogger(__name__)
 
 
-class Client(DispatchingMixin, TasksMixin, ClientCommandsMixin, ModelMixin):
+class Client(DispatchingMixin, TasksMixin, CommandsMixin, ModelMixin):
     """Asynchronous client utilising long-lived connections to a network device."""
 
     seconds_between_main_loop_restarts: float = 5
-
-    async def request_data_refresh(self) -> Collection[Message]:
-        """Refresh data from the remote system."""
-        full_refresh = self.refresh_count % self.full_refresh_interval_count == 0
-        _logger.debug(f'Doing refresh: full={full_refresh}, batteries={self.number_batteries}')
-        messages = await self.refresh_data(full_refresh, self.number_batteries)
-        await asyncio.gather(*[self.enqueue_message_for_sending(m) for m in messages])
-        self.refresh_count += 1
-        return messages
-        #
-        # try:
-        #     res = await asyncio.gather(*[m.future for m in messages], return_exceptions=True)
-        #     failed_messages = [messages[k] for k, v in enumerate(res) if not isinstance(v, Message)]
-        #     if failed_messages:
-        #         _logger.warning(
-        #             f'{len(failed_messages)} failed refresh futures: {" ".join([m.pdu for m in failed_messages])}'
-        #         )
-        # except asyncio.CancelledError as e:
-        #     _logger.warning(f'A future was cancelled', exc_info=e)
 
     async def update_setting(self) -> None:
         """Prototype for sending commands."""

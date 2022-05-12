@@ -11,11 +11,11 @@ from givenergy_modbus.pdu.transparent import TransparentRequest
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
 
-class ClientCommandsMixin:
-    """Generator methods to create Messages to command the Plant with."""
+class CommandsMixin:
+    """Methods create Messages for interacting with a remote system."""
 
     @staticmethod
-    async def create_request_message(request: TransparentRequest, retries_remaining: int = 0):
+    async def create_request_message(request: TransparentRequest, retries_remaining: int = 0) -> Message:
         """Helper to create a TransparentRequest Message."""
         request.ensure_valid_state()
         return Message(request, retries_remaining=retries_remaining)
@@ -25,7 +25,7 @@ class ClientCommandsMixin:
         base_register: int, register_count: int = 60, slave_address: int = 0x32
     ) -> Message:
         """Helper to create a ReadHoldingRegistersRequest Message."""
-        return await ClientCommandsMixin.create_request_message(
+        return await CommandsMixin.create_request_message(
             ReadHoldingRegistersRequest(
                 base_register=base_register, register_count=register_count, slave_address=slave_address
             )
@@ -33,12 +33,12 @@ class ClientCommandsMixin:
 
     @staticmethod
     async def create_read_input_registers_request_message(
-        base_register: int, register_count: int = 60, slave_address: int = 0x32, device_index: int = 0
+        base_register: int, register_count: int = 60, slave_address: int = 0x32, device_number: int = 0
     ) -> Message:
         """Helper to create a ReadInputRegistersRequest Message."""
-        return await ClientCommandsMixin.create_request_message(
+        return await CommandsMixin.create_request_message(
             ReadInputRegistersRequest(
-                base_register=base_register, register_count=register_count, slave_address=slave_address + device_index
+                base_register=base_register, register_count=register_count, slave_address=slave_address + device_number
             )
         )
 
@@ -47,7 +47,7 @@ class ClientCommandsMixin:
         register: HoldingRegister, value: int, slave_address: int = 0x11, retries_remaining: int = 2
     ) -> Message:
         """Helper to create a WriteHoldingRegisterRequest Message."""
-        return await ClientCommandsMixin.create_request_message(
+        return await CommandsMixin.create_request_message(
             WriteHoldingRegisterRequest(register=register, value=value, slave_address=slave_address),
             retries_remaining=retries_remaining,
         )
@@ -71,7 +71,7 @@ class ClientCommandsMixin:
             number_batteries = 6
 
         for i in range(number_batteries):
-            messages.append(await self.create_read_input_registers_request_message(base_register=60, device_index=i))
+            messages.append(await self.create_read_input_registers_request_message(base_register=60, device_number=i))
 
         return messages
 
@@ -116,15 +116,15 @@ class ClientCommandsMixin:
         return await self.create_write_holding_register_request_message(HoldingRegister.ENABLE_DISCHARGE, False)
 
     async def set_discharge_mode_max_power(self) -> Message:
-        """Set the battery to discharge at maximum power (export) when discharging."""
+        """Set the battery discharge mode to maximum power, exporting to the grid if it exceeds load demand."""
         return await self.create_write_holding_register_request_message(HoldingRegister.BATTERY_POWER_MODE, 0)
 
-    async def set_discharge_mode_demand(self) -> Message:
-        """Set the battery to discharge to match demand (no export) when discharging."""
+    async def set_discharge_mode_to_match_demand(self) -> Message:
+        """Set the battery discharge mode to match demand, avoiding exporting power to the grid."""
         return await self.create_write_holding_register_request_message(HoldingRegister.BATTERY_POWER_MODE, 1)
 
     async def set_shallow_charge(self, val: int) -> Message:
-        """Set the minimum level of charge to keep."""
+        """Set the minimum level of charge to maintain."""
         # TODO what are valid values? 4-100?
         if not 4 <= val <= 100:
             raise ValueError(f'Minimum SOC / shallow charge ({val}) must be in [4-100]%')
@@ -213,43 +213,45 @@ class ClientCommandsMixin:
     async def set_mode_dynamic(self) -> Sequence[Message]:
         """Set system to Dynamic / Eco mode.
 
-        This mode is designed to maximise use of solar generation. The battery will charge when
-        there is excess power being generated from your solar panels. The battery will store and hold this energy
-        until your demand increases. The system will try and balance the use of solar and battery so that you are
-        importing and exporting as little energy as possible. This mode is useful if you want to maximise
-        self-consumption of renewable generation and minimise the amount of energy drawn from the grid.
+        This mode is designed to maximise use of solar generation. The battery will charge from excess solar
+        generation to avoid exporting power, and discharge to meet load demand when solar power is insufficient to
+        avoid importing power. This mode is useful if you want to maximise self-consumption of renewable generation
+        and minimise the amount of energy drawn from the grid.
         """
         return await asyncio.gather(
-            self.set_discharge_mode_demand(),  # r27=1
+            self.set_discharge_mode_to_match_demand(),  # r27=1
             self.set_shallow_charge(4),  # r110=4
             self.disable_discharge(),  # r59=0
         )
 
     async def set_mode_storage(
-        self, slot_1: Timeslot = Timeslot.from_repr(1600, 700), slot_2: Timeslot = None, export: bool = False
+        self,
+        discharge_slot_1: Timeslot = Timeslot.from_repr(1600, 700),
+        discharge_slot_2: Timeslot = None,
+        discharge_for_export: bool = False,
     ) -> Sequence[Message]:
         """Set system to storage mode with specific discharge slots(s).
 
         This mode stores excess solar generation during the day and holds that energy ready for use later in the day.
-        By default, the battery will start to discharge from 4pm-7am to cover energy demand during typical peak hours.
-        This mode is particularly useful if you get charged more for your electricity at certain times to utilise the
-        battery when it is most effective. If the second time slot isn't specified, it will be cleared.
+        By default, the battery will start to discharge from 4pm-7am to cover energy demand during typical peak
+        hours. This mode is particularly useful if you get charged more for your electricity at certain times to
+        utilise the battery when it is most effective. If the second time slot isn't specified, it will be cleared.
 
-        You can optionally also choose to export excess energy: instead of discharging to meet only your home demand,
+        You can optionally also choose to export excess energy: instead of discharging to meet only your load demand,
         the battery will discharge at full power and any excess will be exported to the grid. This is useful if you
         have a variable export tariff (e.g. Agile export) and you want to target the peak times of day (e.g. 4pm-7pm)
-        when it is both most expensive to import and most valuable to export energy.
+        when it is most valuable to export energy.
         """
         ret: list[Message] = []
-        if export:
+        if discharge_for_export:
             ret.append(await self.set_discharge_mode_max_power())  # r27=0
         else:
-            ret.append(await self.set_discharge_mode_demand())  # r27=1
+            ret.append(await self.set_discharge_mode_to_match_demand())  # r27=1
         ret.append(await self.set_shallow_charge(100))  # r110=100
         ret.append(await self.enable_discharge())  # r59=1
-        ret.extend(await self.set_discharge_slot_1(slot_1))  # r56=1600, r57=700
-        if slot_2:
-            ret.extend(await self.set_discharge_slot_2(slot_2))  # r56=1600, r57=700
+        ret.extend(await self.set_discharge_slot_1(discharge_slot_1))  # r56=1600, r57=700
+        if discharge_slot_2:
+            ret.extend(await self.set_discharge_slot_2(discharge_slot_2))  # r56=1600, r57=700
         else:
             ret.extend(await self.reset_discharge_slot_2())
         return ret
