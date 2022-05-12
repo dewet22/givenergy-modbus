@@ -178,9 +178,11 @@ class DispatchingMixin:
                     if sys.version_info < (3, 8):
                         existing_expectation.future.cancel()
                     else:
-                        existing_expectation.future.cancel('expired')
+                        existing_expectation.future.cancel(
+                            f'expired: age={existing_expectation.age}, ttl={existing_expectation.ttl}'
+                        )
                 else:
-                    _logger.warning(
+                    _logger.debug(
                         f'New {item.pdu} being sent while still awaiting outstanding {expected_response}; '
                         f'age={self.expected_responses[shape_hash].age}'
                     )
@@ -214,8 +216,10 @@ class DispatchingMixin:
         try:
             if hasattr(self, 'plant'):
                 self.plant.update(message)
-            if message.future.done() or message.future.cancelled():
+            if message.future.done():
                 _logger.error(f'Message {message} future already complete')
+            elif message.future.cancelled():
+                _logger.error(f'Message {message} future cancelled: {message.future.result()}')
             else:
                 _logger.debug(f'Setting future result: {message}')
                 message.future.set_result(message)
@@ -244,11 +248,12 @@ class DispatchingMixin:
                 item.future.cancel('Replacing with originating request future')
             item.future = expected_response.future
             Metrology.timer('time-roundtrip').update(int(item.network_roundtrip.total_seconds() * 1000))
-            if item.network_roundtrip > datetime.timedelta(seconds=1) and not isinstance(
+            if item.network_roundtrip > datetime.timedelta(seconds=2) and not isinstance(
                 item.pdu, ReadRegistersResponse
             ):
                 _logger.warning(
-                    f'Expected response {item.pdu} arrived after {item.network_roundtrip.total_seconds():.2f}s: '
+                    f'Expected response {item.pdu} '  # type: ignore[union-attr]
+                    f'arrived after {item.network_roundtrip.total_seconds():.2f}s: '  # type: ignore[union-attr]
                     f'req:{item.provenance.transceived.time()} '  # type: ignore[union-attr]
                     f'res:{item.transceived.time()}'  # type: ignore[union-attr]
                 )
@@ -268,7 +273,7 @@ class DispatchingMixin:
                 del self.expected_responses[k]
                 req = exp.provenance
                 if exp.retries_remaining > 0:
-                    _logger.warning(f'Retrying {req.pdu}, retries remaining = {req.retries_remaining}')
+                    _logger.debug(f'Retrying {req.pdu}, retries remaining = {req.retries_remaining}')
                     retries.append(
                         dataclasses.replace(
                             req,
