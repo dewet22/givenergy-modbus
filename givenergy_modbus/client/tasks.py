@@ -21,37 +21,40 @@ class TasksMixin:
             # stop all background tasks
             _logger.debug(f'Cancelling tasks {", ".join(self.tasks.keys())}')
             tasks = self.tasks.values()
-            [t.cancel() for t in tasks]
+            if sys.version_info < (3, 8):
+                [t.cancel() for t in tasks]
+            else:
+                [t.cancel('reset_tasks') for t in tasks]
             result = await asyncio.gather(*tasks, return_exceptions=True)
             _logger.debug(f'Result: {result}')
         self.tasks = {}
 
-    def run_tasks_forever(self, *funcs: Tuple[Callable[[], Awaitable], float, Optional[float]]) -> Collection[Task]:
+    def run_tasks_forever(self, *funcs: Tuple[Callable[[], Awaitable], float]) -> Collection[Task]:
         """Helper method to wrap coros in tasks, run them in a permanent loop and handle cancellation."""
 
-        async def coro(f: Callable[[], Awaitable], s: float, n: str, t: Optional[float]):
+        async def coro(f: Callable[[], Awaitable], s: float, n: str):
             while self.connected:
                 try:
                     with Metrology.utilization_timer(f'time-{n}'):
-                        await asyncio.wait_for(f(), timeout=t)
+                        await f()
                     await asyncio.sleep(s)
                 except asyncio.CancelledError:
                     self.connected = False
-                    _logger.debug(f"Cancelling {n}()")
+                    _logger.debug(f"{n}() cancelled")
                     raise
                 except asyncio.TimeoutError:
                     self.connected = False
-                    _logger.error(f"{n}() took >{t:.1f}s to complete, aborting")
+                    _logger.error(f"{n}() timeout")
                     raise
-            _logger.debug(f"Stopped {n}()")
+            _logger.debug(f"{n}() stopped")
 
-        for func, sleep, timeout in funcs:
+        for func, sleep in funcs:
             func_name = func.__name__
             _logger.debug(f"Forever running {func_name}()")
             if sys.version_info < (3, 8):
-                self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name, timeout))
+                self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name))
             else:
-                self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name, timeout), name=func_name)
+                self.tasks[func_name] = asyncio.create_task(coro(func, sleep, func_name), name=func_name)
         return self.tasks.values()
 
     #########################################################################################################

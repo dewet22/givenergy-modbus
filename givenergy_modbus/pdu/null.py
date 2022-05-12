@@ -29,6 +29,10 @@ class NullResponse(TransparentResponse):
 
     @classmethod
     def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> NullResponse:
+        if decoder.remaining_bytes != 126:
+            _logger.warning(
+                f'remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}'
+            )
         attrs['nulls'] = [decoder.decode_16bit_uint() for _ in range(62)]
         attrs['check'] = decoder.decode_16bit_uint()
         return cls(**attrs)
