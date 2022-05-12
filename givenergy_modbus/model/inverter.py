@@ -39,7 +39,7 @@ class Model(str, Enum):
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
-    # Installation details
+    # Device details
     inverter_serial_number: str
     device_type_code: str
     inverter_module: int
@@ -48,14 +48,19 @@ class Inverter(GivEnergyBaseModel):
     arm_firmware_version: int
     usb_device_inserted: int
     select_arm_chip: bool
+    bms_chip_version: int
+    inverter_modbus_address: int
+    modbus_version: float
+    system_time: datetime.datetime
+    inverter_state: Tuple[int, int]
+
+    # Installation configuration
     meter_type: int
     reverse_115_meter_direct: bool
     reverse_418_meter_direct: bool
     enable_drm_rj45_port: bool
     ct_adjust: int
     enable_buzzer: bool
-    bms_chip_version: int
-
     num_mppt: int
     num_phases: int
     enable_ammeter: bool
@@ -65,8 +70,6 @@ class Inverter(GivEnergyBaseModel):
     enable_frequency_derating: bool
     enable_low_voltage_fault_ride_through: bool
     enable_spi: bool
-    inverter_modbus_address: int
-    modbus_version: float
 
     pv1_voltage_adjust: int
     pv2_voltage_adjust: int
@@ -78,12 +81,10 @@ class Inverter(GivEnergyBaseModel):
     pv1_power_adjust: int
     pv2_power_adjust: int
 
-    system_time: datetime.datetime
     active_power_rate: int
     reactive_power_rate: int
     power_factor: int
     power_factor_function_model: int
-    inverter_state: Tuple[int, int]
     inverter_start_time: int
     inverter_restart_delay_time: int
 
@@ -130,8 +131,8 @@ class Inverter(GivEnergyBaseModel):
     local_command_test: bool
 
     # Battery configuration
-    first_battery_serial_number: str
-    first_battery_bms_firmware_version: int
+    inverter_battery_serial_number: str
+    inverter_battery_bms_firmware_version: int
     enable_bms_read: bool
     battery_type: int
     battery_nominal_capacity: float

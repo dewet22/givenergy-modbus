@@ -12,8 +12,9 @@ from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import BasePDU
+from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
+from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import ReadInputRegistersResponse, ReadRegistersResponse
-from givenergy_modbus.pdu.transparent import TransparentMessage
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
 from tests.conftest import CLIENT_MESSAGES, PduTestCaseSig
 
@@ -26,11 +27,25 @@ def plant():
 
 
 def test_instantiation(plant):
-    assert Plant().dict() == {'register_caches': {}}
-    assert Plant().json() == '{"register_caches": {}}'
+    assert Plant().dict() == {
+        'data_adapter_serial_number': '',
+        'inverter_serial_number': '',
+        'register_caches': {0x32: {}},
+    }
+    assert Plant().json() == (
+        '{"register_caches": {"50": {}}, "inverter_serial_number": "", "data_adapter_serial_number": ""}'
+    )
     rc = RegisterCache(registers={HoldingRegister(1): 2})
-    assert Plant(register_caches={0x30: rc}).dict() == {'register_caches': {0x30: rc}}
-    assert Plant(register_caches={0x30: rc}).json() == '{"register_caches": {"48": {"HoldingRegister(1)": 2}}}'
+    assert Plant(inverter_serial_number='AB1234', register_caches={0x30: rc}).dict() == {
+        'data_adapter_serial_number': '',
+        'inverter_serial_number': 'AB1234',
+        'register_caches': {0x30: rc},
+    }
+    assert Plant(data_adapter_serial_number='ZX9876', register_caches={0x30: rc}).json() == (
+        '{"register_caches": {"48": {"HoldingRegister(1)": 2}}, '
+        '"inverter_serial_number": "", '
+        '"data_adapter_serial_number": "ZX9876"}'
+    )
 
 
 def test_plant(  # noqa: F811
@@ -39,7 +54,8 @@ def test_plant(  # noqa: F811
     register_cache_battery_daytime_discharging,  # noqa: F811
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
-    plant.register_caches[0x32] = register_cache_inverter_daytime_discharging_with_solar_generation
+    plant.register_caches[0x32] = RegisterCache()
+    plant.register_caches[0x32].update_with_validate(register_cache_inverter_daytime_discharging_with_solar_generation)
     plant.register_caches[0x32].update_with_validate(register_cache_battery_daytime_discharging)
 
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
@@ -53,7 +69,11 @@ def test_plant(  # noqa: F811
     assert isinstance(plant.batteries[0], Battery)
     assert plant.batteries[0] == b
 
-    assert plant.dict() == {'register_caches': plant.register_caches}
+    assert plant.dict() == {
+        'data_adapter_serial_number': '',
+        'inverter_serial_number': '',
+        'register_caches': plant.register_caches,
+    }
     j = plant.json()
     assert len(j) > 5000
 
@@ -74,17 +94,19 @@ async def test_update(
     """Ensure we can update a Plant from PDU Response messages."""
     pdu = pdu_class(**constructor_kwargs)
     message = Message(pdu)
-    assert plant.register_caches == {}
+    assert plant.register_caches == {0x32: {}}
 
     plant.update(message)
 
     d = plant.dict()
     j = plant.json()
-    assert d.keys() == {'register_caches'}
-    expected_slave_addresses = set()
-    if isinstance(pdu, TransparentMessage):
-        expected_slave_addresses.add(pdu.slave_address)
-    assert set(d['register_caches'].keys()) == expected_slave_addresses
+    assert d.keys() == {'register_caches', 'inverter_serial_number', 'data_adapter_serial_number'}
+
+    expected_caches_keys = {0x32}
+    if isinstance(pdu, (ReadRegistersResponse, WriteHoldingRegisterResponse)):
+        expected_caches_keys.add(pdu.slave_address)
+    assert set(d['register_caches'].keys()) == expected_caches_keys
+
     if isinstance(pdu, ReadRegistersResponse):
         register_type: Type[Register]
         if isinstance(pdu, ReadInputRegistersResponse):
@@ -108,15 +130,20 @@ async def test_update(
                 str(pdu.register.value),
                 ')": ',
                 str(pdu.value),
-                '}}}',
+                '}}, ' '"inverter_serial_number": "SA1234G567", ' '"data_adapter_serial_number": "WF1234G567"}',
             ]
         )
-    else:  # HeartbeatResponse / NullResponse
-        expected_caches: Dict[int, dict] = {}
-        if isinstance(pdu, TransparentMessage):
-            expected_caches[pdu.slave_address] = {}
-        assert d['register_caches'] == expected_caches
-        assert j == json.dumps({'register_caches': expected_caches})
+    elif isinstance(pdu, (NullResponse, HeartbeatRequest)):
+        assert d['register_caches'] == {k: {} for k in expected_caches_keys}
+        assert j == json.dumps(
+            {
+                'register_caches': {k: {} for k in expected_caches_keys},
+                "inverter_serial_number": '',
+                "data_adapter_serial_number": '',
+            }
+        )
+    else:  # unknown message
+        assert False
 
     assert message.future.done() is False
 
@@ -953,8 +980,6 @@ def test_from_actual():
         'f_ac_low_out_time': 24,
         'f_eps_backup': 50.04,
         'fault_code': 0,
-        'first_battery_bms_firmware_version': 3005,
-        'first_battery_serial_number': 'BG1234G567',
         'frequency_load_limit_rate': 24,
         'gfci_1_i': 0.0,
         'gfci_1_time': 0,
@@ -971,6 +996,8 @@ def test_from_actual():
         'i_grid_port': 2.66,
         'i_pv1': 0.0,
         'i_pv2': 0.0,
+        'inverter_battery_bms_firmware_version': 3005,
+        'inverter_battery_serial_number': 'BG1234G567',
         'inverter_countdown': 0,
         'inverter_firmware_version': 'D0.449-A0.449',
         'inverter_modbus_address': 17,

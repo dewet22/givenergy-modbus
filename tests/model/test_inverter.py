@@ -86,8 +86,6 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'f_ac_low_out_time': 24,
     'f_eps_backup': 49.92,
     'fault_code': 0,
-    'first_battery_bms_firmware_version': 3005,
-    'first_battery_serial_number': 'BG1234G567',
     'frequency_load_limit_rate': 24,
     'gfci_1_i': 0.0,
     'gfci_1_time': 0,
@@ -103,6 +101,8 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'i_grid_port': 2.57,
     'i_pv1': 0.03,
     'i_pv2': 0.03,
+    'inverter_battery_bms_firmware_version': 3005,
+    'inverter_battery_serial_number': 'BG1234G567',
     'inverter_countdown': 0,
     'inverter_firmware_version': 'D0.449-A0.449',
     'inverter_modbus_address': 17,
@@ -208,8 +208,8 @@ EXPECTED_INVERTER_DICT = {
     'enable_ammeter': True,
     'num_mppt': 2,
     'num_phases': 1,
-    'first_battery_serial_number': 'BG1234G567',
-    'first_battery_bms_firmware_version': 3005,
+    'inverter_battery_serial_number': 'BG1234G567',
+    'inverter_battery_bms_firmware_version': 3005,
     'charge_and_discharge_soc': (0, 0),
     'dsp_firmware_version': 449,
     'arm_firmware_version': 449,
@@ -464,7 +464,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 4857
+    assert len(i.json()) == 4863
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
