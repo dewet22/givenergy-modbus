@@ -1,21 +1,17 @@
-from __future__ import annotations
-
 import logging
 import sys
 from abc import ABC
+from typing import Set
 
-from crccheck.crc import CrcModbus
-from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder
-
+from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
+from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.model.register import HoldingRegister
-from givenergy_modbus.pdu import InvalidPduState, PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
 
 # Canonical list of registers that are safe to write to.
-WRITE_SAFE_REGISTERS: set[HoldingRegister] = {
+WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
     HoldingRegister[x]
     for x in (
         'BATTERY_CHARGE_LIMIT',
@@ -72,15 +68,15 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         if self.register is not None and self.value is not None:
             if sys.version_info < (3, 8):
                 return (
-                    f"{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}"
+                    f'{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}'
                     f"({'ERROR ' if self.error else ''}{str(self.register)}/{self.register.name} -> "
-                    f"{self.register.repr(self.value)}/0x{self.value:04x})"
+                    f'{self.register.repr(self.value)}/0x{self.value:04x})'
                 )
             else:
                 return (
-                    f"{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}"
+                    f'{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}'
                     f"({'ERROR ' if self.error else ''}{self.register}/{self.register.name} -> "
-                    f"{self.register.repr(self.value)}/0x{self.value:04x})"
+                    f'{self.register.repr(self.value)}/0x{self.value:04x})'
                 )
         else:
             return super().__str__()
@@ -92,7 +88,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         self._update_check_code()
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> WriteHoldingRegister:
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'WriteHoldingRegister':
         attrs['register'] = HoldingRegister(decoder.decode_16bit_uint())
         attrs['value'] = decoder.decode_16bit_uint()
         attrs['check'] = decoder.decode_16bit_uint()
@@ -125,14 +121,14 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
                 raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
 
     def _update_check_code(self):
-        crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
+        crc_builder = PayloadEncoder()
         crc_builder.add_8bit_uint(self.inner_function_code)
         crc_builder.add_16bit_uint(self.register.value)
         crc_builder.add_16bit_uint(self.value)
-        self.check = CrcModbus().process(crc_builder.to_string()).final()
+        self.check = crc_builder.calculate_crc()
         self._builder.add_16bit_uint(self.check)
 
-    def expected_response(self) -> WriteHoldingRegisterResponse:  # noqa D102 - see superclass
+    def expected_response(self):
         return WriteHoldingRegisterResponse(register=self.register, value=self.value, slave_address=self.slave_address)
 
 
@@ -144,3 +140,6 @@ class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, AB
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
             _logger.warning(f'{self} is not safe for writing')
+
+
+__all__ = ()

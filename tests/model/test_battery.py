@@ -70,12 +70,12 @@ def test_has_expected_attributes():
     assert expected_attributes == set(Battery.__fields__.keys())
 
 
-def test_from_orm(register_cache):  # noqa: F811
+def test_from_orm(register_cache):
     """Ensure we can return a dict view of battery data."""
     assert Battery.from_orm(register_cache).dict() == EXPECTED_BATTERY_DICT
 
 
-def test_from_orm_actual_data(register_cache_battery_daytime_discharging):  # noqa: F811
+def test_from_orm_actual_data(register_cache_battery_daytime_discharging):
     """Ensure we can instantiate an instance of battery data from actual registers."""
     assert Battery.from_orm(register_cache_battery_daytime_discharging).dict() == {
         'battery_serial_number': 'BG1234G567',
@@ -123,7 +123,7 @@ def test_from_orm_actual_data(register_cache_battery_daytime_discharging):  # no
     }
 
 
-def test_from_orm_unsure_data(register_cache_battery_unsure, register_cache_battery_missing):  # noqa: F811
+def test_from_orm_unsure_data(register_cache_battery_unsure, register_cache_battery_missing):
     """Ensure we cannot instantiate an instance of battery data from registers returned for non-existent slave."""
     b = Battery.from_orm(register_cache_battery_unsure)
     assert b.battery_serial_number == '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'

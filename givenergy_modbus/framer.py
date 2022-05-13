@@ -1,13 +1,10 @@
-from __future__ import annotations
-
 import logging
 import struct
 from abc import ABC
 from typing import Callable, Optional
 
-from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, InvalidFrame, InvalidPduState, ServerIncomingMessage
-from givenergy_modbus.pdu.null import NullResponse  # noqa - ensure it gets autoloaded
-from givenergy_modbus.pdu.transparent import TransparentResponse
+from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
+from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ServerIncomingMessage
 
 _logger = logging.getLogger(__name__)
 
@@ -79,10 +76,10 @@ class Framer(ABC):
     """
 
     # TODO add Final[..] when py37 is not supported any more
-    FRAME_HEAD: str = ">HHHBB"  # tid(w), pid(w), length(w), uid(b), fid(b)
+    FRAME_HEAD: str = '>HHHBB'  # tid(w), pid(w), length(w), uid(b), fid(b)
     FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
 
-    _buffer: bytes = b""
+    _buffer: bytes = b''
     _decoder: Callable
 
     def process_incoming_data(self, data: bytes, callback: PduProcessedCallback) -> None:
@@ -135,9 +132,9 @@ class Framer(ABC):
                     continue
 
                 data = self._buffer[: self.FRAME_HEAD_SIZE]
-                _logger.debug(f"Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}")
+                _logger.debug(f'Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}')
                 t_id, p_id, hdr_len, u_id, f_id = struct.unpack(self.FRAME_HEAD, data)
-                _logger.debug(f"t_id={t_id:04x}, p_id={p_id:04x}, len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}")
+                _logger.debug(f't_id={t_id:04x}, p_id={p_id:04x}, len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}')
                 # these two must match since they were the search token that led us here:
                 assert t_id == 0x5959
                 assert p_id == 0x1
@@ -153,7 +150,7 @@ class Framer(ABC):
                 # Calculate how many bytes a complete frame needs
                 frame_len = self.FRAME_HEAD_SIZE + hdr_len - 2
                 if self.buffer_length < frame_len:
-                    _logger.debug(f"Buffer too short ({self.buffer_length}) to complete frame ({frame_len})")
+                    _logger.debug(f'Buffer too short ({self.buffer_length}) to complete frame ({frame_len})')
                     return
 
                 # Extract the frame and try to decode it
@@ -186,14 +183,16 @@ class Framer(ABC):
 class ClientFramer(Framer):
     """Framer implementation for client-side use."""
 
+    # _known_decoders = {HeartbeatRequest, NullResponse, ReadRegistersResponse}
+
     def __init__(self):
         self._decoder = ClientIncomingMessage.decode_bytes
-        candidate_decoder_classes = ClientIncomingMessage.__subclasses__()
-        _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
-        candidate_decoder_classes = TransparentResponse.__subclasses__()
-        for c in candidate_decoder_classes:
-            candidate_decoder_classes.extend(c.__subclasses__())
-        _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
+        # candidate_decoder_classes = ClientIncomingMessage.__subclasses__()
+        # _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
+        # candidate_decoder_classes = TransparentResponse.__subclasses__()
+        # for c in candidate_decoder_classes:
+        #     candidate_decoder_classes.extend(c.__subclasses__())
+        # _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
 
 
 class ServerFramer(Framer):

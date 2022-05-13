@@ -64,6 +64,7 @@ types-aiofiles = {version = "^0.8.8", extras = ["dev"]}
 sentry-sdk = "^1.5.10"
 pytest-asyncio = {version = "^0.18.3", extras = ["test"]}
 pytest-timeout = {version = "^2.1.0", extras = ["test"]}
+pendulum = "^2.1.2"
 
 [tool.poetry.extras]
 test = [

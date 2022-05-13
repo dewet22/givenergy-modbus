@@ -451,7 +451,7 @@ def test_from_orm_empty():
         Inverter.from_orm(RegisterCache())
 
 
-def test_from_orm(register_cache):  # noqa: F811
+def test_from_orm(register_cache):
     """Ensure we can return a dict view of inverter data."""
     i = Inverter.from_orm(register_cache)
     assert i.dict() == EXPECTED_INVERTER_DICT
@@ -459,7 +459,7 @@ def test_from_orm(register_cache):  # noqa: F811
     assert i.inverter_model == Model.Hybrid
 
 
-def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):  # noqa: F811
+def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can instantiate an Inverter from actual register data."""
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'

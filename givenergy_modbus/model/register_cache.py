@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import json
 import logging
 from json import JSONEncoder
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, List, Mapping
 
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
@@ -14,7 +12,7 @@ _logger = logging.getLogger(__name__)
 class RegisterCacheUpdateFailed(ExceptionBase):
     """Exception raised when a register cache rejects an update due to invalid registers."""
 
-    def __init__(self, errors: list[RegisterError]) -> None:
+    def __init__(self, errors: List[RegisterError]) -> None:
         self.errors = errors
         super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})', False)
 
@@ -37,16 +35,15 @@ class RegisterCacheEncoder(JSONEncoder):
 class RegisterCache(Dict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
-    _register_lookup_table: dict[str, Register]
+    _register_lookup_table: Dict[str, Register]
 
     def __init__(self, registers=None) -> None:
         if registers is None:
             registers = {}
         super().__init__(registers)
-        self._register_lookup_table = InputRegister._member_map_.copy()  # type: ignore
-        self._register_lookup_table.update(HoldingRegister._member_map_)  # type: ignore
-        # for k, v in HoldingRegister.__members__.items():
-        #     self._register_lookup_table[k] = v
+        self._register_lookup_table = {}
+        self._register_lookup_table.update(InputRegister._member_map_)  # type: ignore[arg-type]
+        self._register_lookup_table.update(HoldingRegister._member_map_)  # type: ignore[arg-type]
 
     def __getattr__(self, item: str):
         """Magic attributes that try to look up and convert register values."""
@@ -80,10 +77,10 @@ class RegisterCache(Dict[Register, int]):
         return json.dumps(self, cls=RegisterCacheEncoder)
 
     @classmethod
-    def from_json(cls, data: str) -> RegisterCache:
+    def from_json(cls, data: str) -> 'RegisterCache':
         """Instantiate a RegisterCache from its JSON form."""
 
-        def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
+        def register_object_hook(object_dict: Dict[str, int]) -> Dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
             lookup = {
                 'HR': HoldingRegister,

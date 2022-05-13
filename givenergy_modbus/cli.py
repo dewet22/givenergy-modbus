@@ -1,4 +1,5 @@
 """Console script for interacting with GivEnergy inverters."""
+
 import datetime
 import logging
 
@@ -24,7 +25,7 @@ class InterceptHandler(logging.Handler):
 
         # Find caller from where the logged message originated, skipping frames from plumbing/infrastructure
         frame, depth = logging.currentframe(), 2
-        while frame.f_code.co_filename == logging.__file__ or "sentry_sdk/integrations" in frame.f_code.co_filename:
+        while frame.f_code.co_filename == logging.__file__ or 'sentry_sdk/integrations' in frame.f_code.co_filename:
             frame = frame.f_back
             depth += 1
 
@@ -179,5 +180,5 @@ def set_battery_discharge_limit(ctx, discharge_limit: int):  # noqa: D103
     ctx.obj['CLIENT'].set_battery_discharge_limit(discharge_limit)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(obj={})  # pragma: no cover

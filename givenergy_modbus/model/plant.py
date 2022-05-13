@@ -7,11 +7,15 @@ from givenergy_modbus.client import Message
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
-from givenergy_modbus.model.register_cache import RegisterCache, RegisterCacheUpdateFailed
-from givenergy_modbus.pdu.null import NullResponse
-from givenergy_modbus.pdu.read_registers import ReadHoldingRegistersResponse, ReadInputRegistersResponse
-from givenergy_modbus.pdu.transparent import TransparentResponse
-from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
+from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.pdu import (
+    NullResponse,
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+    TransparentResponse,
+    WriteHoldingRegisterRequest,
+    WriteHoldingRegisterResponse,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -23,7 +27,9 @@ class Plant(BaseModel):
     inverter_serial_number: str = ''
     data_adapter_serial_number: str = ''
 
-    class Config:  # noqa: D106
+    class Config:
+        """Pydandic configuration."""
+
         # arbitrary_types_allowed = True
         orm_mode = True
 
@@ -56,32 +62,29 @@ class Plant(BaseModel):
         self.inverter_serial_number = pdu.inverter_serial_number
         self.data_adapter_serial_number = pdu.data_adapter_serial_number
 
-        try:
-            if isinstance(pdu, ReadHoldingRegistersResponse):
-                self.register_caches[slave_address].update_with_validate(
-                    {HoldingRegister(k): v for k, v in pdu.to_dict().items()}
-                )
-            elif isinstance(pdu, ReadInputRegistersResponse):
-                self.register_caches[slave_address].update_with_validate(
-                    {InputRegister(k): v for k, v in pdu.to_dict().items()}
-                )
-            if isinstance(pdu, WriteHoldingRegisterResponse):
-                if message.provenance:
-                    # ensure our own writes were successful
-                    request_pdu = message.provenance.pdu
-                    if not isinstance(request_pdu, WriteHoldingRegisterRequest):
-                        raise ValueError(f'Incorrect request {request_pdu} for {pdu}')
-                    if pdu.error or pdu.register != request_pdu.register or pdu.value != request_pdu.value:
-                        raise ValueError(f'Register write failed: {pdu} from {request_pdu}')
+        if isinstance(pdu, ReadHoldingRegistersResponse):
+            self.register_caches[slave_address].update_with_validate(
+                {HoldingRegister(k): v for k, v in pdu.to_dict().items()}
+            )
+        elif isinstance(pdu, ReadInputRegistersResponse):
+            self.register_caches[slave_address].update_with_validate(
+                {InputRegister(k): v for k, v in pdu.to_dict().items()}
+            )
+        if isinstance(pdu, WriteHoldingRegisterResponse):
+            if message.provenance:
+                # ensure our own writes were successful
+                request_pdu = message.provenance.pdu
+                if not isinstance(request_pdu, WriteHoldingRegisterRequest):
+                    raise ValueError(f'Incorrect request {request_pdu} for {pdu}')
+                if pdu.error or pdu.register != request_pdu.register or pdu.value != request_pdu.value:
+                    raise ValueError(f'Register write failed: {pdu} from {request_pdu}')
+            else:
+                if pdu.register == HoldingRegister(0):
+                    _logger.debug(f'Silently ignoring likely false Response {pdu}')
                 else:
-                    if pdu.register == HoldingRegister(0):
-                        _logger.debug(f'Silently ignoring likely false Response {pdu}')
-                    else:
-                        # trust unsolicited updates blindly
-                        _logger.info(f'Updating state from unsolicited {pdu}')
-                self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
-        except RegisterCacheUpdateFailed as e:
-            _logger.debug(f'Update failed {pdu}: {e}')
+                    # trust unsolicited updates blindly
+                    _logger.info(f'Updating state from unsolicited {pdu}')
+            self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
 
     @property
     def inverter(self) -> Inverter:

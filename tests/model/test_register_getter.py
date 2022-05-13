@@ -9,7 +9,9 @@ from givenergy_modbus.model.register_getter import RegisterGetter
 class TestModel(BaseModel):
     """Structured format for all inverter attributes."""
 
-    class Config:  # noqa: D106
+    class Config:
+        """Pydantic configuration."""
+
         orm_mode = True
         getter_dict = RegisterGetter
         allow_mutation = False
@@ -24,13 +26,13 @@ class TestModel(BaseModel):
     num_phases: int
 
 
-class AttrDict(dict):  # noqa: D101
-    def __init__(self, *args, **kwargs) -> None:  # noqa: D103
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.__dict__ = self
 
 
-def test_get(register_cache):  # noqa: F811
+def test_get(register_cache):
     """Test the getter correctly transcribes fields."""
     tm = TestModel.from_orm(
         AttrDict(

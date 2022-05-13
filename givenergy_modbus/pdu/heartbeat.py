@@ -1,9 +1,8 @@
-from __future__ import annotations
-
 import logging
 from abc import ABC
 
-from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, PayloadDecoder
+from givenergy_modbus.codec import PayloadDecoder
+from givenergy_modbus.pdu.base import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
 
 _logger = logging.getLogger(__name__)
 
@@ -20,9 +19,9 @@ class HeartbeatMessage(BasePDU, ABC):
 
     def __str__(self) -> str:
         return (
-            f"1/{self.__class__.__name__}("
-            f"data_adapter_serial_number={self.data_adapter_serial_number} "
-            f"data_adapter_type={self.data_adapter_type})"
+            f'1/{self.__class__.__name__}('
+            f'data_adapter_serial_number={self.data_adapter_serial_number} '
+            f'data_adapter_type={self.data_adapter_type})'
         )
 
     def _encode_function_data(self):
@@ -34,7 +33,7 @@ class HeartbeatMessage(BasePDU, ABC):
         self.data_adapter_type = decoder.decode_8bit_uint()
 
     @classmethod
-    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> HeartbeatMessage:
+    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'HeartbeatMessage':
         attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
         attrs['data_adapter_type'] = decoder.decode_8bit_uint()
         return cls(**attrs)
@@ -53,7 +52,7 @@ class HeartbeatMessage(BasePDU, ABC):
 class HeartbeatRequest(HeartbeatMessage, ClientIncomingMessage, ABC):
     """PDU sent by remote server to check liveness of client."""
 
-    def expected_response(self) -> HeartbeatResponse:
+    def expected_response(self) -> 'HeartbeatResponse':
         """Create an appropriate response for an incoming HeartbeatRequest."""
         return HeartbeatResponse(data_adapter_type=self.data_adapter_type)
 
@@ -66,7 +65,10 @@ class HeartbeatResponse(HeartbeatMessage, ClientOutgoingMessage, ABC):
         decoder = PayloadDecoder(data)
         self.data_adapter_serial_number = decoder.decode_serial_number()
         self.data_adapter_type = decoder.decode_8bit_uint()
-        _logger.debug(f"Successfully decoded {len(data)} bytes")
+        _logger.debug(f'Successfully decoded {len(data)} bytes')
 
     def expected_response(self) -> None:
         """No replies expected for HeartbeatResponse."""
+
+
+__all__ = ()

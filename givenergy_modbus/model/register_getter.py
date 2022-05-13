@@ -18,15 +18,15 @@ class RegisterGetter(GetterDict):
             if None in (serial1, serial2, serial3, serial4, serial5):
                 return None
             return ''.join([serial1, serial2, serial3, serial4, serial5])
-        if key in ["num_mppt", 'num_phases']:
+        if key in ['num_mppt', 'num_phases']:
             obj = self.get('num_mppt_and_num_phases', None)
             if obj is None:
                 return None
-            elif key == "num_mppt":
+            elif key == 'num_mppt':
                 return obj[0]
             return obj[1]
         # Some special cases first
-        if key == "system_time":
+        if key == 'system_time':
             year = self.get('system_time_year', None)
             month = self.get('system_time_month', None)
             day = self.get('system_time_day', None)
@@ -44,9 +44,9 @@ class RegisterGetter(GetterDict):
                 return None
             return start, end
 
-        if key == "inverter_firmware_version":
-            dsp_firmware_version = self.get("dsp_firmware_version", None)
-            arm_firmware_version = self.get("arm_firmware_version", None)
+        if key == 'inverter_firmware_version':
+            dsp_firmware_version = self.get('dsp_firmware_version', None)
+            arm_firmware_version = self.get('arm_firmware_version', None)
             if None in (dsp_firmware_version, arm_firmware_version):
                 return None
             return f'D0.{dsp_firmware_version}-A0.{arm_firmware_version}'
