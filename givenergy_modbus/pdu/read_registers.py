@@ -1,13 +1,9 @@
-from __future__ import annotations
-
 import logging
 from abc import ABC
+from typing import Dict, List
 
-from crccheck.crc import CrcModbus
-from pymodbus.constants import Endian
-from pymodbus.payload import BinaryPayloadBuilder
-
-from givenergy_modbus.pdu import InvalidPduState, PayloadDecoder
+from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
+from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -25,7 +21,7 @@ class ReadRegistersMessage(TransparentMessage, ABC):
         self.register_count = kwargs.get('register_count', 0)
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> ReadRegistersMessage:
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'ReadRegistersMessage':
         attrs['base_register'] = decoder.decode_16bit_uint()
         attrs['register_count'] = decoder.decode_16bit_uint()
         if issubclass(cls, ReadRegistersResponse) and not attrs.get('error', False):
@@ -56,11 +52,11 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self._update_check_code()
 
     def _update_check_code(self):
-        crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
+        crc_builder = PayloadEncoder()
         crc_builder.add_8bit_uint(self.inner_function_code)
         crc_builder.add_16bit_uint(self.base_register)
         crc_builder.add_16bit_uint(self.register_count)
-        self.check = CrcModbus().process(crc_builder.to_string()).final()
+        self.check = crc_builder.calculate_crc()
         self._builder.add_16bit_uint(self.check)
 
     def ensure_valid_state(self):
@@ -78,7 +74,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.register_values: list[int] = kwargs.get('register_values', [])
+        self.register_values: List[int] = kwargs.get('register_values', [])
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -113,7 +109,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         # crc = CrcModbus().process(crc_builder.to_string()).final()
         # _logger.warning(f'supplied crc = {self.check}, calculated crc = {crc}')
 
-    def to_dict(self) -> dict[int, int]:
+    def to_dict(self) -> Dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
         return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
 
@@ -157,7 +153,7 @@ class ReadHoldingRegisters(ReadRegistersMessage, ABC):
 class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #3/Read Holding Registers request messages."""
 
-    def expected_response(self):  # noqa D102 - see superclass
+    def expected_response(self):
         return ReadHoldingRegistersResponse(
             base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
         )
@@ -165,6 +161,9 @@ class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
 
 class ReadHoldingRegistersResponse(ReadHoldingRegisters, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #3/Read Holding Registers response messages."""
+
+    def expected_response(self):
+        return
 
 
 class ReadInputRegisters(ReadRegistersMessage, ABC):
@@ -176,7 +175,7 @@ class ReadInputRegisters(ReadRegistersMessage, ABC):
 class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
     """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
 
-    def expected_response(self):  # noqa D102 - see superclass
+    def expected_response(self):
         return ReadInputRegistersResponse(
             base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
         )
@@ -184,3 +183,9 @@ class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
 
 class ReadInputRegistersResponse(ReadInputRegisters, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
+
+    def expected_response(self):
+        return
+
+
+__all__ = ()

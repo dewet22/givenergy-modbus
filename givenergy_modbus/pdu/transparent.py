@@ -1,7 +1,9 @@
 import logging
 from abc import ABC
 
-from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ClientOutgoingMessage, InvalidFrame, PayloadDecoder
+from givenergy_modbus.codec import PayloadDecoder
+from givenergy_modbus.exceptions import InvalidFrame
+from givenergy_modbus.pdu.base import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
 
 _logger = logging.getLogger(__name__)
 
@@ -107,8 +109,8 @@ class TransparentMessage(BasePDU, ABC):
 
     def ensure_valid_state(self) -> None:  # flake8: D102
         """Sanity check our internal state."""
-        if self.padding != 0x8A:
-            _logger.debug(f'Expected padding 0x8a, found 0x{self.padding:02x} instead')
+        # if self.padding != 0x8A:
+        #     _logger.debug(f'Expected padding 0x8a, found 0x{self.padding:02x} instead')
 
     def _update_check_code(self) -> None:
         """Recalculate CRC of the PDU message."""
@@ -133,10 +135,13 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
 
     def _encode_function_data(self):
         super()._encode_function_data()
-        self._builder.add_string(f"{self.inverter_serial_number[-10:]:*>10}")  # ensure exactly 10 bytes
+        self._builder.add_serial_number(self.inverter_serial_number)
 
     def _update_check_code(self):
         if hasattr(self, 'check'):
             # Until we know how Responses' CRCs are calculated there's nothing we can do here; self.check stays 0x0000
             _logger.warning('Unable to recalculate checksum, using whatever value was set')
             self._builder.add_16bit_uint(self.check)
+
+
+__all__ = ()

@@ -11,11 +11,14 @@ from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import BasePDU
-from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
-from givenergy_modbus.pdu.null import NullResponse
-from givenergy_modbus.pdu.read_registers import ReadInputRegistersResponse, ReadRegistersResponse
-from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterResponse
+from givenergy_modbus.pdu import (
+    BasePDU,
+    HeartbeatRequest,
+    NullResponse,
+    ReadInputRegistersResponse,
+    ReadRegistersResponse,
+    WriteHoldingRegisterResponse,
+)
 from tests.conftest import CLIENT_MESSAGES, PduTestCaseSig
 
 
@@ -48,10 +51,10 @@ def test_instantiation(plant):
     )
 
 
-def test_plant(  # noqa: F811
+def test_plant(
     plant: Plant,
-    register_cache_inverter_daytime_discharging_with_solar_generation,  # noqa: F811
-    register_cache_battery_daytime_discharging,  # noqa: F811
+    register_cache_inverter_daytime_discharging_with_solar_generation,
+    register_cache_battery_daytime_discharging,
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
     plant.register_caches[0x32] = RegisterCache()
@@ -138,8 +141,8 @@ async def test_update(
         assert j == json.dumps(
             {
                 'register_caches': {k: {} for k in expected_caches_keys},
-                "inverter_serial_number": '',
-                "data_adapter_serial_number": '',
+                'inverter_serial_number': '',
+                'data_adapter_serial_number': '',
             }
         )
     else:  # unknown message

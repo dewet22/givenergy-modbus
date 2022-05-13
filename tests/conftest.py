@@ -1,22 +1,34 @@
 import inspect
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, Generator, List, Optional, Tuple, Type, Union
 
+import pendulum
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase
+from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import BasePDU, InvalidPduState
-from givenergy_modbus.pdu.heartbeat import HeartbeatRequest, HeartbeatResponse
-from givenergy_modbus.pdu.null import NullResponse
-from givenergy_modbus.pdu.read_registers import (
+from givenergy_modbus.pdu import (
+    BasePDU,
+    HeartbeatRequest,
+    HeartbeatResponse,
+    NullResponse,
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
+    WriteHoldingRegisterRequest,
+    WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
+
+FIXED_NOW_TIME = pendulum.datetime(2020, 1, 2, 3, 4, 5, 666777)
+
+
+@pytest.fixture
+def fixed_now() -> Generator[pendulum.DateTime, None, None]:
+    pendulum.set_test_now(FIXED_NOW_TIME)
+    yield FIXED_NOW_TIME
+    pendulum.set_test_now()
 
 
 @pytest.fixture
@@ -184,88 +196,88 @@ _server_messages: PduTestCases = [
         '2:4/ReadInputRegistersRequest(slave_address=0x32 base_register=16 register_count=6)',
         ReadInputRegistersRequest,
         {
-            "base_register": 0x10,
-            "register_count": 6,
-            "check": 0x0754,
+            'base_register': 0x10,
+            'register_count': 6,
+            'check': 0x0754,
             'data_adapter_serial_number': 'AB1234G567',
             'error': False,
             'padding': 8,
             'slave_address': 0x32,
         },
-        b"YY\x00\x01\x00\x1c\x01\x02",  # 8 bytes
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x04\x00\x10\x00\x06" b"\x07\x54",  # 26 bytes
+        b'YY\x00\x01\x00\x1c\x01\x02',  # 8 bytes
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x04\x00\x10\x00\x06' b'\x07\x54',  # 26 bytes
         None,
     ),
     (
         '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=20)',
         ReadHoldingRegistersRequest,
         {
-            "base_register": 0x5151,
-            "register_count": 20,
-            "check": 0x2221,
+            'base_register': 0x5151,
+            'register_count': 20,
+            'check': 0x2221,
             'data_adapter_serial_number': 'AB1234G567',
             'error': False,
             'padding': 8,
             'slave_address': 0x32,
         },
-        b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x03\x51\x51\x00\x14" b"\x22\x21",
+        b'YY\x00\x01\x00\x1c\x01\x02',
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x03\x51\x51\x00\x14' b'\x22\x21',
         None,
     ),
     (
         '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=30)',
         ReadHoldingRegistersRequest,
         {
-            "base_register": 0x5151,
-            "register_count": 30,
-            "check": 0x25A1,
-            "data_adapter_serial_number": "AB1234G567",
+            'base_register': 0x5151,
+            'register_count': 30,
+            'check': 0x25A1,
+            'data_adapter_serial_number': 'AB1234G567',
             'error': False,
             'padding': 8,
             'slave_address': 0x32,
         },
-        b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x03\x51\x51\x00\x1e" b"\x25\xa1",
+        b'YY\x00\x01\x00\x1c\x01\x02',
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x03\x51\x51\x00\x1e' b'\x25\xa1',
         None,
     ),
     (
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(179)/HOLDING_REG179 -> 2000/0x07d0)',
         WriteHoldingRegisterRequest,
         {
-            "register": HoldingRegister(179),
-            "value": 2000,
-            "check": 0x81EE,
-            "data_adapter_serial_number": "AB1234G567",
+            'register': HoldingRegister(179),
+            'value': 2000,
+            'check': 0x81EE,
+            'data_adapter_serial_number': 'AB1234G567',
             'error': False,
             'padding': 8,
             'slave_address': 0x32,
         },
-        b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\xb3\x07\xd0" b"\x81\xee",
+        b'YY\x00\x01\x00\x1c\x01\x02',
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xb3\x07\xd0' b'\x81\xee',
         InvalidPduState('HOLDING_REG179 is not safe to write to'),
     ),
     (
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',
         WriteHoldingRegisterRequest,
         {
-            "register": HoldingRegister(0x14),
-            "value": 1,
-            "check": 0xC42D,
-            "data_adapter_serial_number": "AB1234G567",
+            'register': HoldingRegister(0x14),
+            'value': 1,
+            'check': 0xC42D,
+            'data_adapter_serial_number': 'AB1234G567',
             'error': False,
             'padding': 8,
             'slave_address': 0x32,
         },
-        b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567" b"\x00\x00\x00\x00\x00\x00\x00\x08" b"\x32\x06\x00\x14\x00\x01" b"\xc4\x2d",
+        b'YY\x00\x01\x00\x1c\x01\x02',
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\x14\x00\x01' b'\xc4\x2d',
         None,
     ),
     (
         '1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=32)',
         HeartbeatResponse,
         {
-            "data_adapter_serial_number": 'AB1234G567',
-            "data_adapter_type": 32,
+            'data_adapter_serial_number': 'AB1234G567',
+            'data_adapter_type': 32,
         },
         b'YY\x00\x01\x00\x0d\x01\x01',  # 8b MBAP header
         b'AB1234G567' b'\x20',
@@ -279,12 +291,12 @@ _client_messages: PduTestCases = [
         '2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0 register_count=60)',
         ReadInputRegistersResponse,
         {
-            "check": 0x8E4B,
-            "inverter_serial_number": 'SA1234G567',
-            "base_register": 0x0000,
-            "register_count": 0x003C,
+            'check': 0x8E4B,
+            'inverter_serial_number': 'SA1234G567',
+            'base_register': 0x0000,
+            'register_count': 0x003C,
             # fmt: off
-            "register_values": [
+            'register_values': [
                 0x0001, 0x0CB0, 0x0C78, 0x0F19, 0x0000, 0x095B, 0x0000, 0x05C5, 0x0001, 0x0002,
                 0x0021, 0x0000, 0x008C, 0x138A, 0x0005, 0x0AA9, 0x2B34, 0x0008, 0x0041, 0x0008,
                 0x003F, 0x0000, 0x0005, 0x0000, 0x0278, 0x0000, 0x0071, 0x0000, 0x02FF, 0x0000,
@@ -293,9 +305,9 @@ _client_messages: PduTestCases = [
                 0x139E, 0x0467, 0x023C, 0x094B, 0x1389, 0x0121, 0x00BE, 0x0000, 0x00F8, 0x0011,
             ],
             # fmt: on
-            "data_adapter_serial_number": 'WF1234G567',
-            "padding": 0x8A,
-            "slave_address": 0x32,
+            'data_adapter_serial_number': 'WF1234G567',
+            'padding': 0x8A,
+            'slave_address': 0x32,
             'error': False,
         },
         b'YY\x00\x01\x00\x9e\x01\x02',  # 8b MBAP header
@@ -306,19 +318,19 @@ _client_messages: PduTestCases = [
         b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
         b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
         b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
-        b"\x8e\x4b",  # 2b crc
+        b'\x8e\x4b',  # 2b crc
         None,
     ),
     (
         '2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0 register_count=60)',
         ReadHoldingRegistersResponse,
         {
-            "check": 0x153D,
-            "inverter_serial_number": 'SA1234G567',
-            "base_register": 0x0000,
-            "register_count": 0x003C,
+            'check': 0x153D,
+            'inverter_serial_number': 'SA1234G567',
+            'base_register': 0x0000,
+            'register_count': 0x003C,
             # fmt: off
-            "register_values": [
+            'register_values': [
                 0x2001, 0x0003, 0x0832, 0x0201, 0x0000, 0xC350, 0x0E10, 0x0001, 0x4247, 0x3132,
                 0x3334, 0x4735, 0x3637, 0x5341, 0x3132, 0x3334, 0x4735, 0x3637, 0x0BBD, 0x01C1,
                 0x0000, 0x01C1, 0x0002, 0x0000, 0x8000, 0x761B, 0x1770, 0x0001, 0x0000, 0x0000,
@@ -327,9 +339,9 @@ _client_messages: PduTestCases = [
                 0x0064, 0x0000, 0x0000, 0x0001, 0x0001, 0x00A0, 0x0640, 0x02BC, 0x0001, 0x0000,
             ],
             # fmt: on
-            "data_adapter_serial_number": 'WF1234G567',
-            "padding": 0x8A,
-            "slave_address": 0x32,
+            'data_adapter_serial_number': 'WF1234G567',
+            'padding': 0x8A,
+            'slave_address': 0x32,
             'error': False,
         },
         b'YY\x00\x01\x00\x9e\x01\x02',  # 8b MBAP header
@@ -352,13 +364,13 @@ _client_messages: PduTestCases = [
         '2:6/WriteHoldingRegisterResponse(HoldingRegister(35)/SYSTEM_TIME_YEAR -> 8764/0x223c)',
         WriteHoldingRegisterResponse,
         {
-            "check": 0x8E4B,
-            "inverter_serial_number": 'SA1234G567',
-            "register": HoldingRegister(0x0023),
-            "value": 0x223C,
-            "data_adapter_serial_number": 'WF1234G567',
-            "padding": 0x8A,
-            "slave_address": 0x32,
+            'check': 0x8E4B,
+            'inverter_serial_number': 'SA1234G567',
+            'register': HoldingRegister(0x0023),
+            'value': 0x223C,
+            'data_adapter_serial_number': 'WF1234G567',
+            'padding': 0x8A,
+            'slave_address': 0x32,
             'error': False,
         },
         b'YY\x00\x01\x00\x26\x01\x02',  # 8b MBAP header
@@ -368,26 +380,26 @@ _client_messages: PduTestCases = [
         b'SA1234G567'
         b'\x00\x23'  # register
         b'\x22\x3c'  # value readback
-        b"\x8e\x4b",  # 2b crc
+        b'\x8e\x4b',  # 2b crc
         None,
     ),
     (
         '1/HeartbeatRequest(data_adapter_serial_number=WF1234G567 data_adapter_type=1)',
         HeartbeatRequest,
-        {"data_adapter_serial_number": "WF1234G567", "data_adapter_type": 1},
+        {'data_adapter_serial_number': 'WF1234G567', 'data_adapter_type': 1},
         _mbap_header(1, 0x0D),
-        b"WF1234G567" + _h2b("01"),
+        b'WF1234G567' + _h2b('01'),
         None,
     ),
     (
         '2:0/NullResponse(slave_address=0x22 nulls=[0]*62)',
         NullResponse,
         {
-            "check": 0x0,
-            "inverter_serial_number": '\x00' * 10,
-            "data_adapter_serial_number": 'KK4321H987',
-            "padding": 0x8A,
-            "slave_address": 0x22,
+            'check': 0x0,
+            'inverter_serial_number': '\x00' * 10,
+            'data_adapter_serial_number': 'KK4321H987',
+            'padding': 0x8A,
+            'slave_address': 0x22,
             'error': False,
             'nulls': [0] * 62,
         },

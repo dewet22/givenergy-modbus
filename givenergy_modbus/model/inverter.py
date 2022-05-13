@@ -1,7 +1,7 @@
 import datetime
 import logging
 from enum import Enum
-from typing import Dict, Tuple
+from typing import Tuple
 
 from pydantic import root_validator
 
@@ -18,21 +18,20 @@ class Model(str, Enum):
     Hybrid = 'Hybrid'
     Unknown = 'Unknown'
 
-    __serial_prefix_to_models_lut__: Dict[str, 'Model'] = {
-        'CE': AC,  # type: ignore
-        'ED': Gen2,  # type: ignore
-        'SA': Hybrid,  # type: ignore
-        'SD': Hybrid,  # type: ignore
-    }
-
     @classmethod
     def from_serial_number(cls, serial_number: str):
         """Return the appropriate model from a given serial number."""
+        serial_prefix_to_models_lut = {
+            'CE': cls.AC,
+            'ED': cls.Gen2,
+            'SA': cls.Hybrid,
+            'SD': cls.Hybrid,
+        }
         prefix = serial_number[:2]
-        if prefix in cls.__serial_prefix_to_models_lut__:
-            return cls.__serial_prefix_to_models_lut__[prefix]
+        if prefix in serial_prefix_to_models_lut:
+            return serial_prefix_to_models_lut[prefix]
         else:
-            _logger.error(f"Cannot determine model number from serial number {serial_number!r}")
+            _logger.error(f'Cannot determine model number from serial number {serial_number!r}')
             return cls.Unknown
 
 

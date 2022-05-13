@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 import logging
 from datetime import time
 from enum import Enum, auto, unique
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from givenergy_modbus.exceptions import ExceptionBase
 
@@ -17,7 +15,7 @@ class RegisterError(ExceptionBase):
 class RegisterValueError(RegisterError):
     """Raised when a register value cannot be parsed/converted based on the register type definition."""
 
-    def __init__(self, register: Register, val: int, e: ValueError) -> None:
+    def __init__(self, register: 'Register', val: int, e: ValueError):
         self.register = register
         self.val = val
         super().__init__(f'{str(register)}/{register.name}:{e}:0x{val:04x}', False)
@@ -26,7 +24,7 @@ class RegisterValueError(RegisterError):
 class RegisterNotSane(RegisterError):
     """Raised when a register value is likely corrupt due to being outside the realm of physical possibility."""
 
-    def __init__(self, register: Register, val: int) -> None:
+    def __init__(self, register: 'Register', val: int):
         self.register = register
         self.val = val
         super().__init__(f'{str(register)}/{register.name}:{register.repr(val)}/0x{val:04x}', False)
@@ -195,7 +193,7 @@ class Register(str, Enum):
         return self.__str__()
 
     @classmethod
-    def _missing_(cls, value: object) -> Enum | None:
+    def _missing_(cls, value: object) -> Optional[Enum]:
         if isinstance(value, str):
             return cls._member_map_.get(value, None)
         return cls._missing_(value)

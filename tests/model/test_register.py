@@ -131,8 +131,8 @@ def _gen_binary(x) -> str:
     return ' '.join([v1, v2, v3, v4])
 
 
-@pytest.mark.parametrize("val", [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
-@pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
+@pytest.mark.parametrize('val', [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
+@pytest.mark.parametrize('scaling', [v.value for v in ScalingFactor.__members__.values()])
 def test_type_repr(val: int, scaling: int):
     """Ensure we render types correctly."""
     if scaling != 1:
@@ -174,8 +174,8 @@ def test_type_repr(val: int, scaling: int):
         assert DataType.BOOL.repr(val, scaling) == 'True'
 
 
-@pytest.mark.parametrize("val", [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
-@pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
+@pytest.mark.parametrize('val', [0, 0x32, 0x7FFF, 0x8000, 0xFFFF])
+@pytest.mark.parametrize('scaling', [v.value for v in ScalingFactor.__members__.values()])
 def test_type_convert(val: int, scaling: int):
     """Ensure we render types correctly."""
     assert DataType.UINT16.convert(val, scaling) == val / scaling
@@ -204,7 +204,7 @@ def test_type_convert(val: int, scaling: int):
         assert DataType.BOOL.convert(val, scaling) is True
 
 
-@pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
+@pytest.mark.parametrize('scaling', [v.value for v in ScalingFactor.__members__.values()])
 def test_type_convert_time(scaling):
     """Ensure we can convert BCD-encoded time slots."""
     assert DataType.TIME.convert(0, scaling) == datetime.time(hour=0, minute=0)
@@ -221,7 +221,7 @@ def test_type_convert_time(scaling):
         DataType.TIME.convert(9999, scaling)
 
 
-@pytest.mark.parametrize("scaling", [v.value for v in ScalingFactor.__members__.values()])
+@pytest.mark.parametrize('scaling', [v.value for v in ScalingFactor.__members__.values()])
 def test_type_render_power_factor(scaling: int):
     """Ensure we can convert BCD-encoded time slots."""
     assert DataType.POWER_FACTOR.convert(0, scaling) == -1.0

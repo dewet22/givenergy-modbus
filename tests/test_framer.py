@@ -4,66 +4,67 @@ from typing import Any, Dict, Optional, Type
 from unittest.mock import MagicMock
 
 import pytest
-from pymodbus.framer.socket_framer import ModbusSocketFramer
 
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.framer import ClientFramer, Framer, ServerFramer
-from givenergy_modbus.pdu import BasePDU
-from givenergy_modbus.pdu.heartbeat import HeartbeatRequest
-from givenergy_modbus.pdu.null import NullResponse
-from givenergy_modbus.pdu.read_registers import ReadHoldingRegistersResponse, ReadInputRegistersResponse
+from givenergy_modbus.pdu import (
+    BasePDU,
+    HeartbeatRequest,
+    NullResponse,
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+)
 from tests.conftest import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _h2b
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
-    b"\x59\x59\x00\x01\x00\x1c\x01\x02"  # 7-byte MBAP header + function code
-    b"\x41\x42\x31\x32\x33\x34\x47\x35\x36\x37"  # 10-byte serial number: AB1234G567
-    b"\x00\x00\x00\x00\x00\x00\x00\x08"  # 8-byte padding / crc / check?
-    b"\x32"  # slave address
-    b"\x04"  # sub-function: query input registers
-    b"\x00\x00"  # start register: 0
-    b"\x00\x06"  # step: 6
-    b"\xc2\x55"  # crc
+    b'\x59\x59\x00\x01\x00\x1c\x01\x02'  # 7-byte MBAP header + function code
+    b'\x41\x42\x31\x32\x33\x34\x47\x35\x36\x37'  # 10-byte serial number: AB1234G567
+    b'\x00\x00\x00\x00\x00\x00\x00\x08'  # 8-byte padding / crc / check?
+    b'\x32'  # slave address
+    b'\x04'  # sub-function: query input registers
+    b'\x00\x00'  # start register: 0
+    b'\x00\x06'  # step: 6
+    b'\xc2\x55'  # crc
 )  # 34 bytes
 
 VALID_RESPONSE_FRAME = (  # actual recorded response frame, to request above
-    b"\x59\x59\x00\x01\x00\x32\x01\x02"  # 7-byte MBAP header + function code
-    b"\x57\x46\x31\x32\x33\x34\x47\x35\x36\x37"  # 10-byte serial number WF1234G567
-    b"\x00\x00\x00\x00\x00\x00\x00\x1e"  # 8-byte padding / crc / check?
-    b"\x32"  # slave address
-    b"\x04"  # sub-function
-    b"\x53\x41\x31\x32\x33\x34\x45\x35\x36\x37"  # 10-byte serial number SA1234G567
-    b"\x00\x00"  # start register: 0
-    b"\x00\x06"  # step: 6
-    b"\x00\x01"  # register 0: 1 (inverter status, == OK?)
-    b"\x0b\xee"  # register 1: 3054 (V_pv1, with 0.1 scaling == 305.4V)
-    b"\x0b\xd5"  # register 2: 3029 (V_pv2, with 0.1 scaling == 302.9V)
-    b"\x0f\x29"  # register 3: 3881 (V_P-bus_inside, with 0.1 scaling == 388.1)
-    b"\x00\x00"  # register 4: 0 (V_N-bus_inside, with 0.1 scaling == 0.0)
-    b"\x09\x55"  # register 5: 2389 (V_grid (single-phase), with 0.1 scaling == 238.9)
-    b"\xb5\xd2"  # crc
+    b'\x59\x59\x00\x01\x00\x32\x01\x02'  # 7-byte MBAP header + function code
+    b'\x57\x46\x31\x32\x33\x34\x47\x35\x36\x37'  # 10-byte serial number WF1234G567
+    b'\x00\x00\x00\x00\x00\x00\x00\x1e'  # 8-byte padding / crc / check?
+    b'\x32'  # slave address
+    b'\x04'  # sub-function
+    b'\x53\x41\x31\x32\x33\x34\x45\x35\x36\x37'  # 10-byte serial number SA1234G567
+    b'\x00\x00'  # start register: 0
+    b'\x00\x06'  # step: 6
+    b'\x00\x01'  # register 0: 1 (inverter status, == OK?)
+    b'\x0b\xee'  # register 1: 3054 (V_pv1, with 0.1 scaling == 305.4V)
+    b'\x0b\xd5'  # register 2: 3029 (V_pv2, with 0.1 scaling == 302.9V)
+    b'\x0f\x29'  # register 3: 3881 (V_P-bus_inside, with 0.1 scaling == 388.1)
+    b'\x00\x00'  # register 4: 0 (V_N-bus_inside, with 0.1 scaling == 0.0)
+    b'\x09\x55'  # register 5: 2389 (V_grid (single-phase), with 0.1 scaling == 238.9)
+    b'\xb5\xd2'  # crc
 )  # 56 bytes
 
 EXCEPTION_RESPONSE_FRAME = (  # actual recorded response frame, to request above
-    b"\x59\x59\x00\x01\x00\x26\x01\x02"  # 7-byte MBAP header + function code
-    b"\x57\x46\x31\x32\x33\x34\x47\x35\x36\x37"  # 10-byte serial number WF1234G567
-    b"\x00\x00\x00\x00\x00\x00\x00\x12"  # 8-byte padding / crc / check?
-    b"\x32"  # slave address
-    b"\x84"  # sub-function
-    b"\x53\x41\x31\x32\x33\x34\x45\x35\x36\x37"  # 10-byte serial number SA1234G567
-    b"\x00\x00"  # start register: 0
-    b"\x00\x78"  # step: 120 – GivEnergy protocol only supports up to 60.
-    b"\xf1\x33"  # crc
+    b'\x59\x59\x00\x01\x00\x26\x01\x02'  # 7-byte MBAP header + function code
+    b'\x57\x46\x31\x32\x33\x34\x47\x35\x36\x37'  # 10-byte serial number WF1234G567
+    b'\x00\x00\x00\x00\x00\x00\x00\x12'  # 8-byte padding / crc / check?
+    b'\x32'  # slave address
+    b'\x84'  # sub-function
+    b'\x53\x41\x31\x32\x33\x34\x45\x35\x36\x37'  # 10-byte serial number SA1234G567
+    b'\x00\x00'  # start register: 0
+    b'\x00\x78'  # step: 120 – GivEnergy protocol only supports up to 60.
+    b'\xf1\x33'  # crc
 )  # 44 bytes
 
 
 def test_framer_constructor():
     """Test constructor."""
     framer = Framer()
-    assert not isinstance(framer, ModbusSocketFramer)
     framer.decoder = MagicMock()
-    assert framer.FRAME_HEAD == ">HHHBB"
+    assert framer.FRAME_HEAD == '>HHHBB'
     assert framer.FRAME_HEAD_SIZE == 0x08
-    assert framer._buffer == b""
+    assert framer._buffer == b''
     assert not hasattr(framer, '_length')
     assert framer.buffer_length == 0
     framer.decoder.assert_not_called()
@@ -204,7 +205,7 @@ def test_process_short_buffer():
     assert framer._buffer == buffer[19:]
 
 
-@pytest.mark.parametrize("buffer", [VALID_RESPONSE_FRAME], ids=['VALID_RESPONSE_FRAME'])
+@pytest.mark.parametrize('buffer', [VALID_RESPONSE_FRAME], ids=['VALID_RESPONSE_FRAME'])
 def test_various_short_message_buffers(caplog, buffer):
     """Try all lengths of incomplete messages to flush out bugs in framing logic."""
     framer = ClientFramer()
@@ -218,10 +219,10 @@ def test_various_short_message_buffers(caplog, buffer):
             assert len(caplog.records) == 0, i
         else:
             assert len(caplog.records) == 4, i
-            assert caplog.records[0].message == f"Found next header_start: 0, buffer_len={i}"
-            assert caplog.records[1].message == "Candidate MBAP header 0x5959000100320102, parsing using format >HHHBB"
-            assert caplog.records[2].message == "t_id=5959, p_id=0001, len=0032, u_id=01, f_id=02"
-            assert caplog.records[3].message == f"Buffer too short ({i}) to complete frame (56)"
+            assert caplog.records[0].message == f'Found next header_start: 0, buffer_len={i}'
+            assert caplog.records[1].message == 'Candidate MBAP header 0x5959000100320102, parsing using format >HHHBB'
+            assert caplog.records[2].message == 't_id=5959, p_id=0001, len=0032, u_id=01, f_id=02'
+            assert caplog.records[3].message == f'Buffer too short ({i}) to complete frame (56)'
         caplog.clear()
         assert framer._buffer == buffer[:i]
         framer._buffer = b''

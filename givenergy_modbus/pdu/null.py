@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import logging
 
-from givenergy_modbus.pdu import ClientOutgoingMessage, PayloadDecoder
+from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -28,7 +26,7 @@ class NullResponse(TransparentResponse):
         self._update_check_code()
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> NullResponse:
+    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'NullResponse':
         if decoder.remaining_bytes != 126:
             _logger.warning(
                 f'remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}'
@@ -37,7 +35,7 @@ class NullResponse(TransparentResponse):
         attrs['check'] = decoder.decode_16bit_uint()
         return cls(**attrs)
 
-    def expected_response(self) -> ClientOutgoingMessage:
+    def expected_response(self):
         """No response expected."""
 
     def ensure_valid_state(self) -> None:
@@ -52,3 +50,6 @@ class NullResponse(TransparentResponse):
 
     def _extra_shape_hash_keys(self) -> tuple:
         return ()
+
+
+__all__ = ()

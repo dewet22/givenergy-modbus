@@ -1,13 +1,31 @@
+import logging
 from typing import Any, Dict, Optional, Type
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase
-from givenergy_modbus.pdu import InvalidFrame
-from givenergy_modbus.pdu.heartbeat import *
-from givenergy_modbus.pdu.null import NullResponse
-from givenergy_modbus.pdu.read_registers import *
-from givenergy_modbus.pdu.write_registers import *
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
+from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.pdu import (
+    BasePDU,
+    ClientIncomingMessage,
+    ClientOutgoingMessage,
+    HeartbeatMessage,
+    HeartbeatRequest,
+    HeartbeatResponse,
+    NullResponse,
+    ReadHoldingRegistersRequest,
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersRequest,
+    ReadInputRegistersResponse,
+    ReadRegistersMessage,
+    ReadRegistersRequest,
+    TransparentMessage,
+    TransparentRequest,
+    TransparentResponse,
+    WriteHoldingRegisterRequest,
+    WriteHoldingRegisterResponse,
+)
+from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
 from tests.conftest import ALL_MESSAGES, PduTestCaseSig
 
 
@@ -17,9 +35,9 @@ def test_str():
     assert '/BasePDU(' not in str(BasePDU())
     assert '/Request(' not in str(ClientIncomingMessage())
     assert '/Response(' not in str(ClientOutgoingMessage())
-    assert str(BasePDU()).startswith('<givenergy_modbus.pdu.BasePDU object at ')
-    assert str(ClientIncomingMessage()).startswith('<givenergy_modbus.pdu.ClientIncomingMessage object at ')
-    assert str(ClientIncomingMessage(foo=1)).startswith('<givenergy_modbus.pdu.ClientIncomingMessage object at ')
+    assert str(BasePDU()).startswith('<givenergy_modbus.pdu.base.BasePDU object at ')
+    assert str(ClientIncomingMessage()).startswith('<givenergy_modbus.pdu.base.ClientIncomingMessage object at ')
+    assert str(ClientIncomingMessage(foo=1)).startswith('<givenergy_modbus.pdu.base.ClientIncomingMessage object at ')
 
     # __str__() gets defined at the main function ABC
     assert str(HeartbeatMessage(foo=3, bar=6)) == (
@@ -48,10 +66,10 @@ def test_str():
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
         '2:_/ReadRegistersRequest(base_register=3 register_count=6)'
     )
-    assert str(NullResponse(foo=1)) == "2:0/NullResponse(nulls=[0]*62)"
+    assert str(NullResponse(foo=1)) == '2:0/NullResponse(nulls=[0]*62)'
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        "2:3/ReadHoldingRegistersRequest(base_register=0 register_count=0)"
+        '2:3/ReadHoldingRegistersRequest(base_register=0 register_count=0)'
     )
 
     with pytest.raises(InvalidPduState, match='Register must be set'):
@@ -59,20 +77,20 @@ def test_str():
     with pytest.raises(InvalidPduState, match='Register must be set'):
         WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
-        "2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)"
+        '2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, register=7, value=6)) == (
-        "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(7)/ENABLE_AMMETER -> True/0x0006)"
+        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(7)/ENABLE_AMMETER -> True/0x0006)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=18, value=5)) == (
-        "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)"
+        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)'
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
-        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        '1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
     )
     assert str(HeartbeatResponse(foo=1)) == (
-        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        '1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
     )
 
 
@@ -150,7 +168,7 @@ def test_decoding(
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     assert mbap_header[-1] == pdu_class.main_function_code
     frame = mbap_header + inner_frame
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG)  # FIXME remove
 
     if issubclass(pdu_class, ClientIncomingMessage):
         decoder = ClientIncomingMessage.decode_bytes
