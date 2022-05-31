@@ -29,7 +29,7 @@ repos:
         args: [ '--django' ]
 
 #  - repo: https://github.com/python-poetry/poetry
-#    rev: 1.1.13
+#    rev: master  # FIXME when released in a version
 #    hooks:
 #      - id: poetry-check
 #        verbose: true
