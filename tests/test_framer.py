@@ -1,7 +1,6 @@
 """Tests for GivEnergyModbusFramer."""
 import logging
-from typing import Any, Dict, Optional, Type
-from unittest.mock import MagicMock
+from typing import Any, Dict, Optional, Type, Union
 
 import pytest
 
@@ -14,7 +13,7 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
 )
-from tests.conftest import ALL_MESSAGES, CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _h2b
+from tests.conftest import CLIENT_MESSAGES, SERVER_MESSAGES, PduTestCaseSig, _h2b
 
 VALID_REQUEST_FRAME = (  # actual recorded request frame, look up 6 input registers starting at #0
     b'\x59\x59\x00\x01\x00\x1c\x01\x02'  # 7-byte MBAP header + function code
@@ -58,110 +57,71 @@ EXCEPTION_RESPONSE_FRAME = (  # actual recorded response frame, to request above
 )  # 44 bytes
 
 
-def test_framer_constructor():
-    """Test constructor."""
-    framer = Framer()
-    framer.decoder = MagicMock()
-    assert framer.FRAME_HEAD == '>HHHBB'
-    assert framer.FRAME_HEAD_SIZE == 0x08
-    assert framer._buffer == b''
-    assert not hasattr(framer, '_length')
-    assert framer.buffer_length == 0
-    framer.decoder.assert_not_called()
-
-
-@pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
-def test_encoding(
-    str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
-    mbap_header: bytes,
-    inner_frame: bytes,
-    ex: Optional[ExceptionBase],
-):
-    """Ensure message objects can be encoded to the correct wire format."""
-    framer = Framer()
-    pdu = pdu_class(**constructor_kwargs)
-    if ex:
-        with pytest.raises(type(ex), match=ex.message):
-            framer.build_packet(pdu)
-    else:
-        packet = framer.build_packet(pdu)
-        assert packet.hex() == (mbap_header + inner_frame).hex()
-
-
-def validate_decoding(
+async def validate_decoding(
     framer: Framer,
     raw_frame: bytes,
     pdu_class: Type[BasePDU],
     constructor_kwargs: Dict[str, Any],
     ex: Optional[ExceptionBase],
-    caplog,
 ):
-    callback = MagicMock(return_value=None)
-    framer.process_incoming_data(raw_frame, callback)
-    callback.assert_called_once()
-
-    (pdu, frame), unused_kwargs = callback.call_args_list[0]
-    assert unused_kwargs == {}
-    assert isinstance(frame, bytes)
-    assert frame == raw_frame
+    results = []
+    async for result in framer.decode(raw_frame):
+        results.append(result)
+    assert len(results) == 1
+    pdu = results[0]
 
     if ex:
-        assert pdu is None
-        assert len(caplog.records) == 1
-        assert ex.args[0] in caplog.records[0].msg
+        assert isinstance(pdu, type(ex))
     else:
         assert isinstance(pdu, pdu_class)
+        constructor_kwargs['raw_frame'] = raw_frame
         assert pdu.__dict__ == constructor_kwargs
 
 
 @pytest.mark.parametrize(PduTestCaseSig, SERVER_MESSAGES)
-def test_server_decoding(
+async def test_server_decoding(
     str_repr: str,
     pdu_class: Type[BasePDU],
     constructor_kwargs: Dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
-    caplog,
 ):
     """Ensure Request PDU messages can be decoded from raw messages."""
-    validate_decoding(ServerFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex, caplog)
+    await validate_decoding(ServerFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex)
 
 
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
-def test_client_decoding(
+async def test_client_decoding(
     str_repr: str,
     pdu_class: Type[BasePDU],
     constructor_kwargs: Dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
-    caplog,
 ):
     """Ensure Response PDU messages can be decoded from raw messages."""
-    validate_decoding(ClientFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex, caplog)
+    await validate_decoding(ClientFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex)
 
 
-def decode(framer_class: Type[Framer], buffer: str) -> BasePDU:
-    callback = MagicMock(return_value=None)
-    framer_class().process_incoming_data(_h2b(buffer), callback)
-    callback.assert_called_once()
-    response = callback.call_args_list[0][0][0]
-    return response
+async def decode(framer_class: Type[Framer], buffer: str) -> Union[BasePDU, ExceptionBase]:
+    results = []
+    async for result in framer_class().decode(_h2b(buffer)):
+        results.append(result)
+    assert len(results) == 1
+    return results[0]
 
 
-def test_process_heartbeat_request():
-    response = decode(ClientFramer, '5959 0001 000d 0101 5746 3132 3334 4735 3637 02')
+async def test_process_heartbeat_request():
+    response = await decode(ClientFramer, '5959 0001 000d 0101 5746 3132 3334 4735 3637 02')
     assert isinstance(response, HeartbeatRequest)
-    assert not hasattr(response, 'function_code')
+    assert response.function_code == 1
     assert response.data_adapter_serial_number == 'WF1234G567'
     assert response.data_adapter_type == 2
 
 
-def test_process_null_response():
-    response = decode(
+async def test_process_null_response():
+    response = await decode(
         ClientFramer,
         '5959 0001 009e 0102 5746 3132 3334 4735 3637 0000 0000 0000 008a 3200 0000 '
         '0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 '
@@ -171,11 +131,11 @@ def test_process_null_response():
         '0000 0000 0000 0000 0000 0000 0000',
     )
     assert isinstance(response, NullResponse)
-    assert not hasattr(response, 'function_code')
+    assert response.function_code == 2
     assert response.data_adapter_serial_number == 'WF1234G567'
 
 
-def test_process_short_buffer():
+async def test_process_short_buffer():
     """Test a buffer with a truncated message."""
     framer = ClientFramer()
     buffer = _h2b(
@@ -185,101 +145,132 @@ def test_process_short_buffer():
         '8000 761b 1770 0001 0000 0000 0011 0000 0004 0007 008c 0016 0001 000b 000e'
         '000c 0034 0001 0002 0000 0000 0000 0065 0001 0000 0000 0064 00'
     )
-    callback = MagicMock(return_value=None)
+    results = []
 
-    framer.process_incoming_data(buffer, callback)
+    async for result in framer.decode(buffer):
+        results.append(result)
 
-    callback.assert_not_called()
+    assert len(results) == 0
 
-    framer.process_incoming_data(buffer, callback)
-    assert len(callback.call_args_list) == 1
-    callback_args = callback.call_args_list[0][0]
-    response = callback_args[0]
+    async for result in framer.decode(buffer):
+        results.append(result)
+    assert len(results) == 1
+    response = results[0]
     assert isinstance(response, ReadHoldingRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 60
     assert len(response.register_values) == 60
     assert response.error is False
-    assert response.inner_function_code == 3
-    assert callback_args[1] == buffer + buffer[:19]
+    assert response.transparent_function_code == 3
+    assert response.raw_frame.hex() == (buffer + buffer[:19]).hex()
     assert framer._buffer == buffer[19:]
 
 
 @pytest.mark.parametrize('buffer', [VALID_RESPONSE_FRAME], ids=['VALID_RESPONSE_FRAME'])
-def test_various_short_message_buffers(caplog, buffer):
+async def test_various_short_message_buffers(caplog, buffer):
     """Try all lengths of incomplete messages to flush out bugs in framing logic."""
     framer = ClientFramer()
-    callback = MagicMock(return_value=None)
+    results = []
 
     for i in range(len(buffer)):
         with caplog.at_level(logging.DEBUG, logger='givenergy_modbus.framer'):
-            framer.process_incoming_data(buffer[:i], callback)
-        callback.assert_not_called()
-        if i < 18:  # not framer.FRAME_HEAD_SIZE
+            async for result in framer.decode(buffer[:i]):
+                results.append(result)
+        assert results == []
+        if i < 18:
             assert len(caplog.records) == 0, i
         else:
-            assert len(caplog.records) == 4, i
-            assert caplog.records[0].message == f'Found next header_start: 0, buffer_len={i}'
-            assert caplog.records[1].message == 'Candidate MBAP header 0x5959000100320102, parsing using format >HHHBB'
-            assert caplog.records[2].message == 't_id=5959, p_id=0001, len=0032, u_id=01, f_id=02'
-            assert caplog.records[3].message == f'Buffer too short ({i}) to complete frame (56)'
+            assert len(caplog.records) == 2, i
+            assert caplog.records[0].message == f'Found next frame: 0x{buffer[:8].hex()}..., buffer_len={i}'
+            assert caplog.records[1].message == f'Buffer ({i}b) insufficient for frame of length 56b, await more data'
         caplog.clear()
         assert framer._buffer == buffer[:i]
         framer._buffer = b''
 
 
-def test_process_stream_good():
+async def test_process_stream_good():
     """Test a buffer of good messages without noise."""
     framer = ClientFramer()
     buffer = EXCEPTION_RESPONSE_FRAME + VALID_RESPONSE_FRAME
-    callback = MagicMock(return_value=None)
+    results = []
 
-    framer.process_incoming_data(buffer, callback)
+    async for result in framer.decode(buffer):
+        results.append(result)
 
-    assert len(callback.call_args_list) == 2
+    assert len(results) == 2
 
-    response = callback.call_args_list[0][0][0]
+    response = results[0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 120
     assert response.register_values == []
     assert response.error is True
-    assert response.inner_function_code == 0x04
+    assert response.transparent_function_code == 0x04
 
-    response = callback.call_args_list[1][0][0]
+    response = results[1]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 6
     assert response.register_values == [1, 3054, 3029, 3881, 0, 2389]
     assert response.error is False
-    assert response.inner_function_code == 0x04
+    assert response.transparent_function_code == 0x04
 
 
-def test_process_stream_good_but_noisy():
+async def test_process_stream_good_but_noisy():
     """Test a buffer of good messages without noise."""
     buffer = b'\x01\x02asdf' + EXCEPTION_RESPONSE_FRAME + b'foobarbaz' + VALID_RESPONSE_FRAME + b'\x00\x99\xff'
-    callback = MagicMock(return_value=None)
+    results = []
 
-    ClientFramer().process_incoming_data(buffer, callback)
+    async for result in ClientFramer().decode(buffer):
+        results.append(result)
 
-    assert len(callback.call_args_list) == 2
+    assert len(results) == 2
 
-    callback_args = callback.call_args_list[0][0]
-    response = callback_args[0]
+    response = results[0]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 120
     assert response.register_values == []
     assert response.error is True
-    assert response.inner_function_code == 0x04
-    assert callback_args[1] == EXCEPTION_RESPONSE_FRAME
+    assert response.transparent_function_code == 0x04
+    assert response.raw_frame == EXCEPTION_RESPONSE_FRAME
 
-    callback_args = callback.call_args_list[1][0]
-    response = callback_args[0]
+    response = results[1]
     assert isinstance(response, ReadInputRegistersResponse)
     assert response.base_register == 0
     assert response.register_count == 6
     assert response.register_values == [1, 3054, 3029, 3881, 0, 2389]
     assert response.error is False
-    assert response.inner_function_code == 0x04
-    assert callback_args[1] == VALID_RESPONSE_FRAME
+    assert response.transparent_function_code == 0x04
+    assert response.raw_frame == VALID_RESPONSE_FRAME
+
+
+async def test_decode_frames_bulk(caplog):
+    caplog.set_level(logging.DEBUG)
+
+    buffer = b''
+    for message in CLIENT_MESSAGES:
+        buffer += b'foo'
+        buffer += message[0][3] + message[0][4]
+        buffer += b'bar'
+
+    i = 0
+    framer = ClientFramer()
+    async for message in framer.decode(buffer):
+        assert str(message) == CLIENT_MESSAGES[i][0][0]
+        assert isinstance(message, CLIENT_MESSAGES[i][0][1])
+        assert len(caplog.records) >= 2
+        if i == 0:
+            assert caplog.records[0].message == (
+                'Candidate frame found 3 bytes into buffer, discarding leading garbage: 0x666f6f'
+            )
+        else:
+            assert caplog.records[0].message == (
+                'Candidate frame found 6 bytes into buffer, discarding leading garbage: 0x626172666f6f'
+            )
+
+        assert caplog.records[1].message.startswith('Found next frame: 0x')
+        caplog.clear()
+        i += 1
+    assert i == len(CLIENT_MESSAGES)
+    assert framer._buffer == b'bar'
