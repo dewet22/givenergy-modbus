@@ -3,17 +3,16 @@ from typing import Any, Dict, List
 
 from pydantic import BaseModel
 
-from givenergy_modbus.client import Message
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
+    ClientIncomingMessage,
     NullResponse,
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
     TransparentResponse,
-    WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
 
@@ -38,9 +37,8 @@ class Plant(BaseModel):
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
 
-    def update(self, message: Message):
+    def update(self, pdu: ClientIncomingMessage):
         """Update the Plant state from a PDU message."""
-        pdu = message.pdu
         if not isinstance(pdu, TransparentResponse):
             _logger.debug(f'Ignoring non-Transparent response {pdu}')
             return
@@ -70,20 +68,9 @@ class Plant(BaseModel):
             self.register_caches[slave_address].update_with_validate(
                 {InputRegister(k): v for k, v in pdu.to_dict().items()}
             )
-        if isinstance(pdu, WriteHoldingRegisterResponse):
-            if message.provenance:
-                # ensure our own writes were successful
-                request_pdu = message.provenance.pdu
-                if not isinstance(request_pdu, WriteHoldingRegisterRequest):
-                    raise ValueError(f'Incorrect request {request_pdu} for {pdu}')
-                if pdu.error or pdu.register != request_pdu.register or pdu.value != request_pdu.value:
-                    raise ValueError(f'Register write failed: {pdu} from {request_pdu}')
-            else:
-                if pdu.register == HoldingRegister(0):
-                    _logger.debug(f'Silently ignoring likely false Response {pdu}')
-                else:
-                    # trust unsolicited updates blindly
-                    _logger.info(f'Updating state from unsolicited {pdu}')
+        elif isinstance(pdu, WriteHoldingRegisterResponse):
+            if pdu.register == HoldingRegister(0):
+                _logger.warning(f'Silently ignoring likely false Response {pdu}')
             self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
 
     @property

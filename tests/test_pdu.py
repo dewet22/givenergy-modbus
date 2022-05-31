@@ -53,23 +53,29 @@ def test_str():
         '1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)'
     )
 
-    assert str(TransparentMessage(foo=3, bar=6)) == '2:_/TransparentMessage()'
-    assert str(TransparentRequest(foo=3, bar=6)) == '2:_/TransparentRequest()'
-    assert str(TransparentRequest(inner_function_code=44)) == '2:_/TransparentRequest()'
-    assert str(TransparentResponse(foo=3, bar=6)) == '2:_/TransparentResponse()'
-    assert str(TransparentResponse(inner_function_code=44)) == '2:_/TransparentResponse()'
+    assert str(TransparentMessage(foo=3, bar=6)) == '2:_/TransparentMessage(slave_address=0x32)'
+    assert str(TransparentRequest(foo=3, bar=6)) == '2:_/TransparentRequest(slave_address=0x32)'
+    assert str(TransparentRequest(inner_function_code=44)) == '2:_/TransparentRequest(slave_address=0x32)'
+    assert str(TransparentResponse(foo=3, bar=6)) == '2:_/TransparentResponse(slave_address=0x32)'
+    assert str(TransparentResponse(inner_function_code=44)) == '2:_/TransparentResponse(slave_address=0x32)'
 
-    assert str(ReadRegistersMessage()) == '2:_/ReadRegistersMessage(base_register=0 register_count=0)'
-    assert str(ReadRegistersMessage(foo=1)) == '2:_/ReadRegistersMessage(base_register=0 register_count=0)'
-    assert str(ReadRegistersMessage(base_register=50)) == '2:_/ReadRegistersMessage(base_register=50 register_count=0)'
+    assert str(ReadRegistersMessage()) == (
+        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)'
+    )
+    assert str(ReadRegistersMessage(foo=1)) == (
+        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)'
+    )
+    assert str(ReadRegistersMessage(base_register=50)) == (
+        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=50 register_count=0)'
+    )
 
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        '2:_/ReadRegistersRequest(base_register=3 register_count=6)'
+        '2:_/ReadRegistersRequest(slave_address=0x32 base_register=3 register_count=6)'
     )
-    assert str(NullResponse(foo=1)) == '2:0/NullResponse(nulls=[0]*62)'
+    assert str(NullResponse(foo=1)) == '2:0/NullResponse(slave_address=0x32 nulls=[0]*62)'
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        '2:3/ReadHoldingRegistersRequest(base_register=0 register_count=0)'
+        '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=0 register_count=0)'
     )
 
     with pytest.raises(InvalidPduState, match='Register must be set'):
@@ -120,20 +126,20 @@ def test_class_equivalence():
 def test_cannot_change_function_code():
     """Disabuse any use of function_code in PDU constructors."""
     assert not hasattr(ClientIncomingMessage, 'function_code')
-    assert not hasattr(ClientIncomingMessage, 'main_function_code')
-    assert not hasattr(ClientIncomingMessage, 'inner_function_code')
+    assert not hasattr(ClientIncomingMessage, 'function_code')
+    assert not hasattr(ClientIncomingMessage, 'transparent_function_code')
     assert not hasattr(ClientIncomingMessage(), 'function_code')
-    assert not hasattr(ClientIncomingMessage(), 'main_function_code')
-    assert not hasattr(ClientIncomingMessage(), 'inner_function_code')
+    assert not hasattr(ClientIncomingMessage(), 'function_code')
+    assert not hasattr(ClientIncomingMessage(), 'transparent_function_code')
 
-    assert ReadHoldingRegistersRequest(error=True).inner_function_code == 3
+    assert ReadHoldingRegistersRequest(error=True).transparent_function_code == 3
 
-    assert ReadHoldingRegistersRequest(function_code=12).main_function_code != 12
-    assert ReadHoldingRegistersRequest(main_function_code=12).main_function_code != 12
-    assert ReadHoldingRegistersRequest(inner_function_code=12).main_function_code != 12
-    assert ReadHoldingRegistersRequest(function_code=12).inner_function_code != 12
-    assert ReadHoldingRegistersRequest(main_function_code=12).inner_function_code != 12
-    assert ReadHoldingRegistersRequest(inner_function_code=12).inner_function_code != 12
+    assert ReadHoldingRegistersRequest(function_code=12).function_code != 12
+    assert ReadHoldingRegistersRequest(main_function_code=12).function_code != 12
+    assert ReadHoldingRegistersRequest(transparent_function_code=12).function_code != 12
+    assert ReadHoldingRegistersRequest(function_code=12).transparent_function_code != 12
+    assert ReadHoldingRegistersRequest(main_function_code=12).transparent_function_code != 12
+    assert ReadHoldingRegistersRequest(transparent_function_code=12).transparent_function_code != 12
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
@@ -145,14 +151,13 @@ def test_encoding(
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
 ):
-    """Ensure we correctly encode unencapsulated Request messages."""
+    """Ensure PDU objects can be encoded to the correct wire format."""
     pdu = pdu_class(**constructor_kwargs)
     if ex:
         with pytest.raises(type(ex), match=ex.message):
             pdu.encode()
     else:
-        assert pdu
-        assert pdu.encode() == inner_frame
+        assert pdu.encode().hex() == (mbap_header + inner_frame).hex()
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
@@ -166,7 +171,7 @@ def test_decoding(
     caplog,
 ):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
-    assert mbap_header[-1] == pdu_class.main_function_code
+    assert mbap_header[-1] == pdu_class.function_code
     frame = mbap_header + inner_frame
     caplog.set_level(logging.DEBUG)  # FIXME remove
 
@@ -179,6 +184,7 @@ def test_decoding(
         with pytest.raises(type(ex), match=ex.message):
             decoder(frame)
     else:
+        constructor_kwargs['raw_frame'] = mbap_header + inner_frame
         pdu = decoder(frame)
         assert isinstance(pdu, pdu_class)
         assert pdu.__dict__ == constructor_kwargs
@@ -204,15 +210,19 @@ def test_decoding_wrong_streams(
     else:
         decoder = ClientOutgoingMessage.decode_bytes
 
-    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
+    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
         decoder(frame[2:])
-    with pytest.raises(InvalidFrame, match=f'Header length {len(frame) - 6} != remaining bytes {len(frame) - 8}'):
+    with pytest.raises(
+        InvalidFrame, match=f'Header length {len(frame) - 6} != remaining frame length {len(frame) - 8}'
+    ):
         decoder(frame[:-2])
-    with pytest.raises(InvalidFrame, match=f'Header length {len(frame) - 6} != remaining bytes {len(frame) - 4}'):
+    with pytest.raises(
+        InvalidFrame, match=f'Header length {len(frame) - 6} != remaining frame length {len(frame) - 4}'
+    ):
         decoder(frame + b'\x22\x22')
-    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
+    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
         decoder(frame[-10:])
-    with pytest.raises(InvalidFrame, match='Transaction ID != 0x5959'):
+    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
         decoder(frame[::-1])
 
 
@@ -287,7 +297,8 @@ def test_has_same_shape():
     assert r1.has_same_shape(r2)
     assert r1 != r2
     assert r1.has_same_shape(ReadInputRegistersRequest()) is False
-    assert r1.has_same_shape(object()) is NotImplemented
+    with pytest.raises(NotImplementedError):
+        r1.has_same_shape(object())
     r2 = ReadInputRegistersResponse(slave_address=3)
     assert r1.has_same_shape(r2) is False
     r2 = ReadInputRegistersResponse(base_register=1)

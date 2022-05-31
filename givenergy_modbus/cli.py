@@ -6,7 +6,7 @@ import logging
 import click
 from loguru import logger
 
-from givenergy_modbus.client.asynchronous import Client
+from givenergy_modbus.client.coordinator import Coordinator
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.plant import Plant
@@ -57,9 +57,9 @@ def main(ctx, host, log_level):
     """A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."""
     ctx.ensure_object(dict)
 
-    # Install our improved logging handler.
+    # Install our improved logging network_timeout_handler.
     # logging.basicConfig(handlers=[InterceptHandler()], level=getattr(logging, log_level))
-    ctx.obj['CLIENT'] = Client(host=host)
+    ctx.obj['CLIENT'] = Coordinator(host=host)
 
 
 @main.command()
@@ -88,56 +88,56 @@ def dump_registers(ctx, batteries):
 @main.command()
 @click.pass_context
 @click.argument('target_soc', type=int)
-@is_documented_by(Client.set_charge_target)
+# @is_documented_by(Coordinator.set_charge_target)
 def set_charge_target(ctx, target_soc):  # noqa: D103
     ctx.obj['CLIENT'].set_charge_target(target_soc)
 
 
 @main.command()
 @click.pass_context
-@is_documented_by(Client.disable_charge_target)
+# @is_documented_by(Coordinator.disable_charge_target)
 def disable_charge_target(ctx):  # noqa: D103
     ctx.obj['CLIENT'].disable_charge_target()
 
 
 @main.command()
 @click.pass_context
-@is_documented_by(Client.enable_charge)
+# @is_documented_by(Coordinator.enable_charge)
 def enable_charge(ctx):  # noqa: D103
     ctx.obj['CLIENT'].enable_charge()
 
 
 @main.command()
 @click.pass_context
-@is_documented_by(Client.disable_charge)
+# @is_documented_by(Coordinator.disable_charge)
 def disable_charge(ctx):  # noqa: D103
     ctx.obj['CLIENT'].disable_charge()
 
 
 @main.command()
 @click.pass_context
-@is_documented_by(Client.enable_discharge)
+# @is_documented_by(Coordinator.enable_discharge)
 def enable_discharge(ctx):  # noqa: D103
     ctx.obj['CLIENT'].enable_discharge()
 
 
 @main.command()
 @click.pass_context
-@is_documented_by(Client.disable_discharge)
+# @is_documented_by(Coordinator.disable_discharge)
 def disable_discharge(ctx):  # noqa: D103
     ctx.obj['CLIENT'].disable_discharge()
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Client.set_battery_discharge_mode_max_power)
+# @is_documented_by(Coordinator.set_battery_discharge_mode_max_power)
 def set_battery_discharge_mode_max_power(ctx):  # noqa: D103
     ctx.obj['CLIENT'].set_battery_discharge_mode_max_power()
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Client.set_battery_discharge_mode_demand)
+# @is_documented_by(Coordinator.set_battery_discharge_mode_demand)
 def set_battery_discharge_mode_demand(ctx):  # noqa: D103
     ctx.obj['CLIENT'].set_battery_discharge_mode_demand()
 
@@ -146,7 +146,7 @@ def set_battery_discharge_mode_demand(ctx):  # noqa: D103
 @click.option('-s', '--start', type=click.DateTime(formats=['%H:%m']), required=True)
 @click.option('-e', '--end', type=click.DateTime(formats=['%H:%m']), required=True)
 @click.pass_context
-@is_documented_by(Client.set_charge_slot_1)
+# @is_documented_by(Coordinator.set_charge_slot_1)
 def set_charge_slot_1(ctx, start, end):  # noqa: D103
     _logger.info(start)
     _logger.info(end)
@@ -157,7 +157,7 @@ def set_charge_slot_1(ctx, start, end):  # noqa: D103
 @click.option('-s', '--start', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
 @click.option('-e', '--end', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
 @click.pass_context
-@is_documented_by(Client.set_charge_slot_2)
+# @is_documented_by(Coordinator.set_charge_slot_2)
 def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
     _logger.info(start.time())
     _logger.info(end.time())
@@ -167,7 +167,7 @@ def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  #
 @main.command()
 @click.argument('charge_limit', type=int)
 @click.pass_context
-@is_documented_by(Client.set_battery_charge_limit)
+# @is_documented_by(Coordinator.set_battery_charge_limit)
 def set_battery_charge_limit(ctx, charge_limit: int):  # noqa: D103
     ctx.obj['CLIENT'].set_battery_charge_limit(charge_limit)
 
@@ -175,7 +175,7 @@ def set_battery_charge_limit(ctx, charge_limit: int):  # noqa: D103
 @main.command()
 @click.argument('discharge_limit', type=int)
 @click.pass_context
-@is_documented_by(Client.set_battery_discharge_limit)
+# @is_documented_by(Coordinator.set_battery_discharge_limit)
 def set_battery_discharge_limit(ctx, discharge_limit: int):  # noqa: D103
     ctx.obj['CLIENT'].set_battery_discharge_limit(discharge_limit)
 

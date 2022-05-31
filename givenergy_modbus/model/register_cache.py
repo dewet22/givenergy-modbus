@@ -14,7 +14,7 @@ class RegisterCacheUpdateFailed(ExceptionBase):
 
     def __init__(self, errors: List[RegisterError]) -> None:
         self.errors = errors
-        super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})', False)
+        super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})')
 
 
 class RegisterCacheEncoder(JSONEncoder):
