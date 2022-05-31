@@ -1,7 +1,6 @@
 import inspect
-from typing import Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
-import pendulum
 import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
@@ -20,15 +19,6 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterResponse,
 )
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
-
-FIXED_NOW_TIME = pendulum.datetime(2020, 1, 2, 3, 4, 5, 666777)
-
-
-@pytest.fixture
-def fixed_now() -> Generator[pendulum.DateTime, None, None]:
-    pendulum.set_test_now(FIXED_NOW_TIME)
-    yield FIXED_NOW_TIME
-    pendulum.set_test_now()
 
 
 @pytest.fixture
@@ -254,7 +244,7 @@ _server_messages: PduTestCases = [
         },
         b'YY\x00\x01\x00\x1c\x01\x02',
         b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xb3\x07\xd0' b'\x81\xee',
-        InvalidPduState('HOLDING_REG179 is not safe to write to'),
+        InvalidPduState(r'HoldingRegister\(179\)/HOLDING_REG179 is not safe to write to', None),
     ),
     (
         '2:6/WriteHoldingRegisterRequest(HoldingRegister(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',
@@ -288,7 +278,7 @@ _server_messages: PduTestCases = [
 # Messages a client should be expected to process (or, typical messages a server would send)
 _client_messages: PduTestCases = [
     (
-        '2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0 register_count=60)',
+        '2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0)',
         ReadInputRegistersResponse,
         {
             'check': 0x8E4B,
@@ -322,7 +312,7 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        '2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0 register_count=60)',
+        '2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0)',
         ReadHoldingRegistersResponse,
         {
             'check': 0x153D,

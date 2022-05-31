@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional, Type
 
 import pytest
 
-from givenergy_modbus.client import Message
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
@@ -96,10 +95,9 @@ async def test_update(
 ):
     """Ensure we can update a Plant from PDU Response messages."""
     pdu = pdu_class(**constructor_kwargs)
-    message = Message(pdu)
     assert plant.register_caches == {0x32: {}}
 
-    plant.update(message)
+    plant.update(pdu)  # type: ignore[arg-type]
 
     d = plant.dict()
     j = plant.json()
@@ -147,8 +145,6 @@ async def test_update(
         )
     else:  # unknown message
         assert False
-
-    assert message.future.done() is False
 
 
 def test_from_actual():

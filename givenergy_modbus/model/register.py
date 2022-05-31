@@ -18,7 +18,7 @@ class RegisterValueError(RegisterError):
     def __init__(self, register: 'Register', val: int, e: ValueError):
         self.register = register
         self.val = val
-        super().__init__(f'{str(register)}/{register.name}:{e}:0x{val:04x}', False)
+        super().__init__(f'{str(register)}/{register.name}:{e}:0x{val:04x}')
 
 
 class RegisterNotSane(RegisterError):
@@ -27,7 +27,7 @@ class RegisterNotSane(RegisterError):
     def __init__(self, register: 'Register', val: int):
         self.register = register
         self.val = val
-        super().__init__(f'{str(register)}/{register.name}:{register.repr(val)}/0x{val:04x}', False)
+        super().__init__(f'{str(register)}/{register.name}:{register.repr(val)}/0x{val:04x}')
 
 
 class DataType(Enum):
