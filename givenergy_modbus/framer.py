@@ -1,26 +1,27 @@
 import logging
-import struct
 from abc import ABC
-from typing import Callable, Optional
+from typing import AsyncIterator, Callable, Optional, Type, Union
 
-from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
 from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ServerIncomingMessage
 
 _logger = logging.getLogger(__name__)
 
 PduProcessedCallback = Callable[[Optional[BasePDU], bytes], None]
+DataProcessedCallback = Callable[[Optional[BasePDU], bytes], None]
+
+HEADER_START_MARKER: bytes = bytes.fromhex('59590001')
 
 
 class Framer(ABC):
-    """GivEnergy Modbus Frame controller.
+    """Modbus Framer for parsing the GivEnergy data format.
 
-    A framer abstracts away all the detail about how marshall the wire protocol, in particular detecting if a message
-    frame could be present in a buffer, whether it is complete, extracting the frame and handing off to a decoder,
-    and encoding a frame for sending onto a transport layer. This implementation understands the idiosyncrasies of
-    GivEnergy's implementation of the Modbus spec.
+    A framer knows how to unmarshal a wire protocol, in particular detecting if a message frame is likely present in
+    a buffer, whether it is complete, extracting the frame, and handing off to a decoder. This implementation
+    understands the idiosyncrasies of GivEnergy's implementation of the Modbus spec.
 
-    Packet exchange looks very similar to normal Modbus TCP, with each
-    message still having a regular 7-byte MBAP header consisting of:
+    The wire protocol looks very similar to normal Modbus TCP, with each message still having a regular 7-byte MBAP
+    header consisting of:
 
     * ``tid``, the unique transaction identifier, used to match up requests and responses
     * ``pid``, the protocol identifier, conventionally ``0x0001`` for regular Modbus
@@ -41,162 +42,125 @@ class Framer(ABC):
     * ``len`` **adds** 1 extra byte compared to regular Modbus
     * ``uid`` is always ``0x01``
     * ``fid`` is one of:
-        * ``0x01/Heartbeat``: The data adapter will send this request every 3 minutes and the client needs to
-          respond within 5 seconds. After three missed heartbeats the TCP socket will be closed and the
-          client will need to re-establish a connection.
+        * ``0x01/Heartbeat``: The data adapter will send this request every 3 minutes and the client needs to respond
+          within 5 seconds. After three missed heartbeats the TCP socket will be closed and the client will need to
+          re-establish a connection.
         * ``0x02/Transparent``: The primary way to interact with the inverter. The data payload is a GivEnergy
-          specific frame which contains the actual command and data for the inverter. It is functionally similar to
+          specific sub-frame which encodes the actual command and data for the inverter. It is functionally similar to
           Modbus sub-functions, using `0x02` as main function.
 
-    Because the first two header fields are static you can scan for ``0x59590001`` to find the start of candidate
-    frames in a byte stream - see :meth:`.resetFrame` [.resetFrame][]
+    Because the first two header fields are static we scan for ``0x59590001`` to find the start of candidate frames
+    in a byte stream.
 
-    GivEnergy Transparent frames have a consistent format:
+    GivEnergy Transparent sub-frames have a consistent format:
 
     * ``serial`` (10 bytes) of the responding data adapter (wifi/GPRS/ethernet) plugged into the inverter. For
-      requests this is seemingly not important and can be an arbitrary alphanumeric string.
+      client-originating messages this is seemingly not important and can be an arbitrary alphanumeric string.
     * ``pad`` (8 bytes) is not well understood but appears to be a single zero-padded byte that is fairly predictable
-      based on the command.
+      based on the command. Setting this to zero makes the inverter stop responding to requests.
     * ``addr`` (1 byte) unit identifier, of which a few are known:
-        * ``0x00``: Android app
-        * ``0x11``: inverter
-        * ``0x32`` to ``0x36``: battery packs connected to the inverter (max 5)
+        * ``0x00``: Android (+iOS?) app
+        * ``0x11``: inverter, but responses get forwarded to the GivEnergy cloud - high frequency queries (anything
+          less than 5-minute intervals) should avoid this unit id and use ``0x32`` instead
+        * ``0x32`` to ``0x36``: BMS for battery packs 1-5 connected to the inverter, but only for Input Registers
+          60-119. This is also the strategy to detect which batteries are present: query these unit ids for those
+          Input Register pages and use all-zero responses to indicate missing units
     * ``func`` (1 byte) is the command to be executed:
         * `0x03` - read holding registers
         * `0x04` - read input registers
         * `0x06` - write single holding register
-        * `0x10` - write multiple holding registers
-    * ``data`` (*n* bytes)is specific to the function being invoked
+        * `0x10` - write multiple holding registers (not implemented by this library)
+    * ``data`` (*n* bytes) depends on the function invoked
     * ``crc`` (2 bytes) CRC for a request is calculated using the function id, base register and
       step count, but it is unclear how a response CRC is calculated or should be verified.
-
-    Raises:
-        InvalidMessageReceivedException: When unable to decode an incoming message.
-        ModbusIOException: When the identified function decoder fails to decode a message.
     """
 
-    # TODO add Final[..] when py37 is not supported any more
-    FRAME_HEAD: str = '>HHHBB'  # tid(w), pid(w), length(w), uid(b), fid(b)
-    FRAME_HEAD_SIZE: int = struct.calcsize(FRAME_HEAD)
-
     _buffer: bytes = b''
-    _decoder: Callable
+    pdu_class: 'Type[BasePDU]'
 
-    def process_incoming_data(self, data: bytes, callback: PduProcessedCallback) -> None:
-        """Add incoming data to our frame buffer and attempt to process frames found.
+    async def decode(self, data: bytes) -> AsyncIterator[Union[BasePDU, ExceptionBase]]:
+        """Receive incoming network data and attempt to decode frames into messages.
 
-        This receives raw bytes as passed from the underlying transport and appends them to an internal frame buffer.
-        This means we might have 0, 1 or even more complete frames ready for processing – this method repeatedly
-        attempts sliding window framing on the buffer by scanning for a start-of-frame header and incrementally
-        parsing data to determine if we have a complete frame. If we run out of buffer we return, and on the next
-        invocation will be re-run as new data is added.
+        This method receives raw bytes as passed from the underlying transport and appends it onto an internal
+        buffer. This means we might have any number of complete frames, potentially followed by a partial frame in
+        the buffer ready for unframing and processing. There is also plenty of evidence that garbage and corruption
+        is present from time to time which we attempt to skip over. This framer repeatedly attempts sliding window
+        framing on the buffer by scanning for a constant start-of-frame marker, extracting the expected frame size,
+        and if the buffer is long enough extracts that frame and trims the buffer. This will extract, decode and
+        yield all complete messages that are able to be unframed this way, and returns when the first partial frame
+        is encountered (i.e., the buffer is too short to contain any viable message due to fragmentation or
+        buffering), with the expectation that this partial frame will be completed as more data arrives and gets
+        passed here.
 
-        This handles multiple and/or partial messages in the buffer (due to e.g. fragmentation or buffering),
-        with these partial messages being completed eventually as more data arrives and gets passed here.
-
-        Every complete frame gets passed through the decoder – the result (either way) plus the raw frame gets passed
-        to the supplied callback for onward processing, dispatching, error handling and debugging. The frame buffer
-        is always advanced over that frame.
-
-        Args:
-            data: Data from underlying transport.
-            callback: Callable invoked for every raw frame encountered, including the decoding result.
+        Every complete frame gets passed through the decoder – the result (either a valid message or a caught
+        exception) is yielded to the caller for onward processing, dispatching, error handling and debugging,
+        and the frame buffer is always advanced over that frame.
         """
         self._buffer += data
-
-        while self.buffer_length >= 18:  # shortest known message is 18b (heartbeat request)
-            header_start = self._buffer.find(b'\x59\x59\x00\x01')
-            if header_start < 0:
+        while len(self._buffer) >= 18:  # shortest known message is 18b (heartbeat request)
+            # ensure the head of the buffer starts with a valid MBAP header
+            frame_start_offset = self._buffer.find(HEADER_START_MARKER)
+            if frame_start_offset < 0:
+                _logger.info('No frame header found, await more data')
                 break
-
-            _logger.debug(f'Found next header_start: {header_start}, buffer_len={self.buffer_length}')
-
-            # The next header is not at the start of the buffer: wind the buffer forward to that position
-            if header_start > 0:
+            elif frame_start_offset > 0:
+                # The next candidate frame header is not at the start of the buffer: skip forward to that position
                 _logger.warning(
-                    f'Candidate frame found {header_start} bytes into buffer, '
-                    f'discarding leading garbage 0x{self._buffer[:header_start].hex()}'
+                    f'Candidate frame found {frame_start_offset} bytes into buffer, '
+                    f'discarding leading garbage: 0x{self._buffer[:frame_start_offset].hex()}'
                 )
-                self._buffer = self._buffer[header_start:]
+                self._buffer = self._buffer[frame_start_offset:]
                 continue
 
-            # We are able to extract at least a frame header
-            if header_start == 0 and self.buffer_length >= 18:  # shortest known message is 18b (heartbeat request)
-                next_header_start = self._buffer.find(b'\x59\x59\x00\x01', 1)
-                if 0 < next_header_start <= 18:  # shortest known message is 18b (heartbeat request)
-                    _logger.error(
-                        f'Next frame start found impossibly close at {next_header_start} bytes, skipping forward. '
-                        f'Buffer={self.buffer_length}b: 0x{self._buffer.hex()}'
-                    )
-                    self._buffer = self._buffer[next_header_start:]
-                    continue
+            _logger.debug(f'Found next frame: 0x{self._buffer[:8].hex()}..., buffer_len={len(self._buffer)}')
 
-                data = self._buffer[: self.FRAME_HEAD_SIZE]
-                _logger.debug(f'Candidate MBAP header 0x{data.hex()}, parsing using format {self.FRAME_HEAD}')
-                t_id, p_id, hdr_len, u_id, f_id = struct.unpack(self.FRAME_HEAD, data)
-                _logger.debug(f't_id={t_id:04x}, p_id={p_id:04x}, len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}')
-                # these two must match since they were the search token that led us here:
-                assert t_id == 0x5959
-                assert p_id == 0x1
-                # check the other attributes are reasonable
-                if hdr_len > 300 or u_id != 1 or f_id not in (1, 2):
-                    _logger.warning(
-                        f'Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), '
-                        f'discarding candidate frame and resuming search'
-                    )
-                    self._buffer = self._buffer[4:]
-                    continue
+            # check that the current frame isn't invalid / weirdly truncated
+            next_frame_start_offset = self._buffer.find(HEADER_START_MARKER, 1)
+            if 0 < next_frame_start_offset < 18:
+                _logger.error(
+                    'Next frame start found implausibly near, current frame likely corrupt/invalid. '
+                    f'Skipping forward {next_frame_start_offset}b. '
+                    f'Buffer={len(self._buffer)}b: 0x{self._buffer.hex()}'
+                )
+                self._buffer = self._buffer[next_frame_start_offset:]
+                continue
 
-                # Calculate how many bytes a complete frame needs
-                frame_len = self.FRAME_HEAD_SIZE + hdr_len - 2
-                if self.buffer_length < frame_len:
-                    _logger.debug(f'Buffer too short ({self.buffer_length}) to complete frame ({frame_len})')
-                    return
+            # sanity check the rest of the MBAP header
+            hdr_len, u_id, f_id = int.from_bytes(self._buffer[4:6], byteorder='big'), self._buffer[6], self._buffer[7]
+            if hdr_len > 300 or u_id != 1 or f_id not in (1, 2):
+                _logger.warning(
+                    f'Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), '
+                    f'discarding candidate frame and resuming search'
+                )
+                self._buffer = self._buffer[4:]
+                continue
 
-                # Extract the frame and try to decode it
-                frame = self._buffer[:frame_len]
-                self._buffer = self._buffer[frame_len:]
-                pdu = None
-                try:
-                    _logger.debug(f'Decoding inner frame {frame.hex()}')
-                    pdu = self._decoder(frame)
-                    _logger.debug(f'Successfully decoded {pdu}')
-                except InvalidPduState as e:
-                    _logger.warning(f'Invalid PDU: {e.message} {e.pdu}')
-                except InvalidFrame as e:
-                    _logger.warning(f'Unable to decode frame: {e} [{frame.hex()}]')
-                finally:
-                    callback(pdu, frame)
+            # Calculate how many bytes is needed to read the current frame completely and await more data if necessary
+            frame_len = 6 + hdr_len
+            if len(self._buffer) < frame_len:
+                _logger.debug(
+                    f'Buffer ({len(self._buffer)}b) insufficient for frame of length {frame_len}b, await more data'
+                )
+                break
 
-    def build_packet(self, message: BasePDU) -> bytes:
-        """Creates a packet from the MBAP header plus the encoded PDU."""
-        inner_frame = message.encode()
-        mbap_header = struct.pack(self.FRAME_HEAD, 0x5959, 0x1, len(inner_frame) + 2, 0x1, message.main_function_code)
-        return mbap_header + inner_frame
-
-    @property
-    def buffer_length(self):
-        """Returns the current length of the bytestream buffer."""
-        return len(self._buffer)
+            # Extract the frame and try to decode it
+            frame = self._buffer[:frame_len]
+            self._buffer = self._buffer[frame_len:]
+            try:
+                yield self.pdu_class.decode_bytes(frame)
+            except (InvalidPduState, InvalidFrame) as e:
+                yield e
 
 
 class ClientFramer(Framer):
     """Framer implementation for client-side use."""
 
-    # _known_decoders = {HeartbeatRequest, NullResponse, ReadRegistersResponse}
-
     def __init__(self):
-        self._decoder = ClientIncomingMessage.decode_bytes
-        # candidate_decoder_classes = ClientIncomingMessage.__subclasses__()
-        # _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
-        # candidate_decoder_classes = TransparentResponse.__subclasses__()
-        # for c in candidate_decoder_classes:
-        #     candidate_decoder_classes.extend(c.__subclasses__())
-        # _logger.info(f'Candidate decoders: ' f'{", ".join([c.__name__ for c in candidate_decoder_classes])}')
+        self.pdu_class = ClientIncomingMessage
 
 
 class ServerFramer(Framer):
     """Framer implementation for server-side use."""
 
     def __init__(self):
-        self._decoder = ServerIncomingMessage.decode_bytes
+        self.pdu_class = ServerIncomingMessage

@@ -14,7 +14,7 @@ class NullResponse(TransparentResponse):
     data payload seems to be invariably just a series of nulls.
     """
 
-    inner_function_code = 0
+    transparent_function_code = 0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -26,7 +26,7 @@ class NullResponse(TransparentResponse):
         self._update_check_code()
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'NullResponse':
+    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> 'NullResponse':
         if decoder.remaining_bytes != 126:
             _logger.warning(
                 f'remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}'

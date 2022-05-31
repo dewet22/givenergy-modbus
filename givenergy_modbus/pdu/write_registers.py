@@ -44,12 +44,16 @@ WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
 class WriteHoldingRegister(TransparentMessage, ABC):
     """Request & Response PDUs for function #6/Write Holding Register."""
 
-    inner_function_code = 6
+    transparent_function_code = 6
 
     register: HoldingRegister
     value: int
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        if len(args) == 2:
+            kwargs['register'] = args[0]
+            kwargs['value'] = args[1]
+        kwargs['slave_address'] = kwargs.get('slave_address', 0x11)
         super().__init__(**kwargs)
         register = kwargs.get('register')
         if isinstance(register, HoldingRegister):
@@ -68,18 +72,26 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         if self.register is not None and self.value is not None:
             if sys.version_info < (3, 8):
                 return (
-                    f'{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}'
+                    f'{self.function_code}:{self.transparent_function_code}/{self.__class__.__name__}'
                     f"({'ERROR ' if self.error else ''}{str(self.register)}/{self.register.name} -> "
                     f'{self.register.repr(self.value)}/0x{self.value:04x})'
                 )
             else:
                 return (
-                    f'{self.main_function_code}:{self.inner_function_code}/{self.__class__.__name__}'
+                    f'{self.function_code}:{self.transparent_function_code}/{self.__class__.__name__}'
                     f"({'ERROR ' if self.error else ''}{self.register}/{self.register.name} -> "
                     f'{self.register.repr(self.value)}/0x{self.value:04x})'
                 )
         else:
             return super().__str__()
+
+    def __eq__(self, o: object) -> bool:
+        return (
+            isinstance(o, type(self))
+            and self.has_same_shape(o)
+            and o.register == self.register
+            and o.value == self.value
+        )
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -88,7 +100,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         self._update_check_code()
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'WriteHoldingRegister':
+    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> 'WriteHoldingRegister':
         attrs['register'] = HoldingRegister(decoder.decode_16bit_uint())
         attrs['value'] = decoder.decode_16bit_uint()
         attrs['check'] = decoder.decode_16bit_uint()
@@ -108,7 +120,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             raise InvalidPduState(f'Value {self.value}/0x{self.value:04x} must be an unsigned 16-bit int', self)
 
 
-class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC):
+class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
     """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
     def ensure_valid_state(self):
@@ -122,7 +134,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
 
     def _update_check_code(self):
         crc_builder = PayloadEncoder()
-        crc_builder.add_8bit_uint(self.inner_function_code)
+        crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.register.value)
         crc_builder.add_16bit_uint(self.value)
         self.check = crc_builder.calculate_crc()
@@ -132,13 +144,13 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest, ABC)
         return WriteHoldingRegisterResponse(register=self.register, value=self.value, slave_address=self.slave_address)
 
 
-class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse, ABC):
+class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse):
     """Concrete PDU implementation for handling function #6/Write Holding Register response messages."""
 
     def ensure_valid_state(self):
         """Sanity check our internal state."""
         super().ensure_valid_state()
-        if self.register not in WRITE_SAFE_REGISTERS:
+        if self.register not in WRITE_SAFE_REGISTERS and not self.error:
             _logger.warning(f'{self} is not safe for writing')
 
 

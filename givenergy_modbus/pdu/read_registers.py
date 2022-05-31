@@ -21,7 +21,7 @@ class ReadRegistersMessage(TransparentMessage, ABC):
         self.register_count = kwargs.get('register_count', 0)
 
     @classmethod
-    def _decode_inner_function(cls, decoder: PayloadDecoder, **attrs) -> 'ReadRegistersMessage':
+    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> 'ReadRegistersMessage':
         attrs['base_register'] = decoder.decode_16bit_uint()
         attrs['register_count'] = decoder.decode_16bit_uint()
         if issubclass(cls, ReadRegistersResponse) and not attrs.get('error', False):
@@ -34,12 +34,14 @@ class ReadRegistersMessage(TransparentMessage, ABC):
 
     def _ensure_registers_spec_correct(self):
         if self.base_register is None:
-            raise ValueError('Base register must be set', self)
+            raise InvalidPduState('Base register must be set', self)
         if self.base_register < 0 or 0xFFFF < self.base_register:
-            raise ValueError('Base register must be an unsigned 16-bit int', self)
+            raise InvalidPduState('Base register must be an unsigned 16-bit int', self)
 
         if self.register_count is None:
-            raise ValueError('Register count must be set', self)
+            raise InvalidPduState('Register count must be set', self)
+        if self.register_count == 0 and not self.error:
+            _logger.warning(f'Register count of 0 does not make sense: {self}')
 
 
 class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
@@ -53,7 +55,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
 
     def _update_check_code(self):
         crc_builder = PayloadEncoder()
-        crc_builder.add_8bit_uint(self.inner_function_code)
+        crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.base_register)
         crc_builder.add_16bit_uint(self.register_count)
         self.check = crc_builder.calculate_crc()
@@ -66,7 +68,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         if self.register_count != 1 and self.base_register % 60 != 0:
             _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
         if self.register_count <= 0 or 60 < self.register_count:
-            raise ValueError('Register count must be in (0,60]', self)
+            raise InvalidPduState('Register count must be in (0,60]', self)
 
 
 class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
@@ -88,8 +90,8 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         self._ensure_registers_spec_correct()
 
         if not self.error:
-            if self.register_count != 1 and self.base_register % 60 != 0:
-                _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+            # if self.register_count != 1 and self.base_register % 60 != 0:
+            #     _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
             if self.register_count != len(self.register_values):
                 raise InvalidPduState(
                     f'register_count={self.register_count} but len(register_values)={len(self.register_values)}.',
@@ -147,7 +149,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
 class ReadHoldingRegisters(ReadRegistersMessage, ABC):
     """Request & Response PDUs for function #3/Read Holding Registers."""
 
-    inner_function_code = 3
+    transparent_function_code = 3
 
 
 class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
@@ -169,7 +171,7 @@ class ReadHoldingRegistersResponse(ReadHoldingRegisters, ReadRegistersResponse):
 class ReadInputRegisters(ReadRegistersMessage, ABC):
     """Request & Response PDUs for function #4/Read Input Registers."""
 
-    inner_function_code = 4
+    transparent_function_code = 4
 
 
 class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):

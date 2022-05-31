@@ -10,7 +10,7 @@ _logger = logging.getLogger(__name__)
 class HeartbeatMessage(BasePDU, ABC):
     """Root of the hierarchy for 1/Heartbeat function PDUs."""
 
-    main_function_code = 1
+    function_code = 1
     data_adapter_type: int
 
     def __init__(self, **kwargs):
@@ -33,7 +33,7 @@ class HeartbeatMessage(BasePDU, ABC):
         self.data_adapter_type = decoder.decode_8bit_uint()
 
     @classmethod
-    def _decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'HeartbeatMessage':
+    def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'HeartbeatMessage':
         attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
         attrs['data_adapter_type'] = decoder.decode_8bit_uint()
         return cls(**attrs)
