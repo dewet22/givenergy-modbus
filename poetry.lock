@@ -638,11 +638,11 @@ python-versions = "*"
 
 [[package]]
 name = "pip"
-version = "20.3.4"
+version = "21.1"
 description = "The PyPA recommended tool for installing Python packages."
 category = "main"
 optional = true
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
+python-versions = ">=3.6"
 
 [[package]]
 name = "pkginfo"
@@ -1280,7 +1280,7 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<4.0"
-content-hash = "78e1d514b00b644f55997ec7a1f0698f9af131db5239cea730865660d6fa993f"
+content-hash = "1f22b63ac931a2d63f69e2b1d61e9e509a6b1dd5fb5b9d2b40ac330a26a9d7c5"
 
 [metadata.files]
 aiofiles = [
@@ -1649,8 +1649,8 @@ pickleshare = [
     {file = "pickleshare-0.7.5.tar.gz", hash = "sha256:87683d47965c1da65cdacaf31c8441d12b8044cdec9aca500cd78fc2c683afca"},
 ]
 pip = [
-    {file = "pip-20.3.4-py2.py3-none-any.whl", hash = "sha256:217ae5161a0e08c0fb873858806e3478c9775caffce5168b50ec885e358c199d"},
-    {file = "pip-20.3.4.tar.gz", hash = "sha256:6773934e5f5fc3eaa8c5a44949b5b924fc122daa0a8aa9f80c835b4ca2a543fc"},
+    {file = "pip-21.1-py3-none-any.whl", hash = "sha256:ea9f2668484893e90149fd5a6124e04651ffedd67203a8aaf030d31406b937a4"},
+    {file = "pip-21.1.tar.gz", hash = "sha256:a810bf07c3723a28621c29abe8e34429fa082c337f89aea9a795865416b66d3e"},
 ]
 pkginfo = [
     {file = "pkginfo-1.8.2-py2.py3-none-any.whl", hash = "sha256:c24c487c6a7f72c66e816ab1796b96ac6c3d14d49338293d2141664330b55ffc"},
