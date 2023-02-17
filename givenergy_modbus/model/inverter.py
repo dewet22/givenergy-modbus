@@ -24,6 +24,7 @@ class Model(str, Enum):
         serial_prefix_to_models_lut = {
             'CE': cls.AC,
             'ED': cls.Gen2,
+            'EA': cls.Gen2,
             'SA': cls.Hybrid,
             'SD': cls.Hybrid,
         }
