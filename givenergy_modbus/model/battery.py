@@ -54,4 +54,5 @@ class Battery(GivEnergyBaseModel):
         return self.battery_serial_number not in (
             '',
             '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+            '          ',
         )
