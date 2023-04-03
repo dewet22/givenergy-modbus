@@ -84,9 +84,9 @@ def test_lookup():
     assert RegisterTest(RegisterTest.ONE.value) == RegisterTest.ONE
     assert RegisterTest[RegisterTest.ONE.name] == RegisterTest.ONE
 
-    with pytest.raises(TypeError, match='Cannot extend enumerations'):
+    with pytest.raises(TypeError, match="cannot extend <enum 'RegisterTest'>"):
         RegisterTest(0, DataType.UINT16)
-    with pytest.raises(TypeError, match='Cannot extend enumerations'):
+    with pytest.raises(TypeError, match="cannot extend <enum 'RegisterTest'>"):
         RegisterTest(9999, DataType.UINT16)
 
 
