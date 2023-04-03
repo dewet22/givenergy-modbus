@@ -1,4 +1,4 @@
-"""Helper methods create Requests for interacting with a remote system."""
+"""High-level methods for interacting with a remote system."""
 
 from typing import List, Optional
 

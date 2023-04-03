@@ -19,7 +19,7 @@ class NetworkClient:
 
     tx_queue: 'Queue[Tuple[bytes, Future]]'
 
-    def __init__(self, host: str = 'localhost', port: int = 8899) -> None:
+    def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
 

@@ -1,15 +1,14 @@
 """Console script for interacting with GivEnergy inverters."""
-
+import asyncio
 import datetime
 import logging
+import pprint
+import sys
 
 import click
 from loguru import logger
 
 from givenergy_modbus.client.coordinator import Coordinator
-from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter
-from givenergy_modbus.model.plant import Plant
 
 
 class InterceptHandler(logging.Handler):
@@ -24,15 +23,14 @@ class InterceptHandler(logging.Handler):
             level = record.levelno
 
         # Find caller from where the logged message originated, skipping frames from plumbing/infrastructure
-        frame, depth = logging.currentframe(), 2
-        while frame.f_code.co_filename == logging.__file__ or 'sentry_sdk/integrations' in frame.f_code.co_filename:
+        frame, depth = sys._getframe(6), 6
+        while frame and (
+            frame.f_code.co_filename == logging.__file__ or 'sentry_sdk/integrations' in frame.f_code.co_filename
+        ):
             frame = frame.f_back
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
-
-
-_logger = logging.getLogger(__name__)
 
 
 def is_documented_by(original):
@@ -46,43 +44,58 @@ def is_documented_by(original):
 
 
 @click.group()
-@click.option('-h', '--host', type=str, required=True, envvar='GIVENERGY_HOST')
+@click.option(
+    '-h',
+    '--host',
+    help='Host to connect to, can also be set via the GIVENERGY_HOST environment variable',
+    type=str,
+    required=True,
+    envvar='GIVENERGY_HOST',
+)
+@click.option(
+    '-p',
+    '--port',
+    help='Port to connect to, can also be set via the GIVENERGY_PORT environment variable',
+    type=int,
+    required=False,
+    default=8899,
+    envvar='GIVENERGY_PORT',
+)
 @click.option(
     '--log-level',
     default='INFO',
     type=click.Choice(['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'NOTSET'], case_sensitive=False),
 )
 @click.pass_context
-def main(ctx, host, log_level):
-    """A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."""
+def main(ctx, host, port, log_level):
+    """A python CLI to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."""
     ctx.ensure_object(dict)
-
-    # Install our improved logging network_timeout_handler.
-    # logging.basicConfig(handlers=[InterceptHandler()], level=getattr(logging, log_level))
-    ctx.obj['CLIENT'] = Coordinator(host=host)
+    logging.basicConfig(handlers=[InterceptHandler()], force=True, level=getattr(logging, log_level))
+    ctx.obj['CLIENT'] = Coordinator(host=host, port=port)
 
 
 @main.command()
 @click.pass_context
-@click.option('-b', '--batteries', type=int, default=1)
-def dump_registers(ctx, batteries):
+# @click.option('-b', '--batteries', type=int, default=1)
+def show_plant(ctx):
+    """Show interpretation of the current plant state."""
+    p = asyncio.run(ctx.obj['CLIENT'].refresh_plant())
+    click.echo('Inverter data:')
+    click.echo(pprint.pformat(p.inverter.dict(), indent=4))
+    for i, b in enumerate(p.batteries):
+        click.echo(f'Battery #{i} data:')
+        click.echo(pprint.pformat(b.dict(), indent=4))
+    # logger.info(json.dumps(p.register_caches))
+
+
+@main.command()
+@click.pass_context
+# @click.option('-b', '--batteries', type=int, default=1)
+def dump_registers(ctx):
     """Dump out raw register data for use in debugging."""
-    plant = Plant(number_batteries=batteries)
-    ctx.obj['CLIENT'].refresh_plant(plant=plant, full_refresh=True)
-    inverter_json = plant.inverter_rc.json()
-    inverter = Inverter.from_orm(plant.inverter_rc)
-
-    batteries_json = {}
-    for i in range(batteries):
-        batteries_json[i] = plant.batteries_rcs[i].json()
-
-    click.echo('Inverter registers:')
-    click.echo(inverter_json)
-    click.echo('Batteries registers:')
-    click.echo(batteries_json)
-    click.echo(inverter.json())
-    for i in range(batteries):
-        click.echo(Battery.from_orm(plant.batteries_rcs[i]).json())
+    p = asyncio.run(ctx.obj['CLIENT'].refresh_plant())
+    for i, rc in p.register_caches.items():
+        click.echo(f'{i}: {rc.json()}')
 
 
 @main.command()
@@ -148,8 +161,8 @@ def set_battery_discharge_mode_demand(ctx):  # noqa: D103
 @click.pass_context
 # @is_documented_by(Coordinator.set_charge_slot_1)
 def set_charge_slot_1(ctx, start, end):  # noqa: D103
-    _logger.info(start)
-    _logger.info(end)
+    click.echo(start)
+    click.echo(end)
     ctx.obj['CLIENT'].set_charge_slot_1((start, end))
 
 
@@ -159,8 +172,8 @@ def set_charge_slot_1(ctx, start, end):  # noqa: D103
 @click.pass_context
 # @is_documented_by(Coordinator.set_charge_slot_2)
 def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
-    _logger.info(start.time())
-    _logger.info(end.time())
+    click.echo(start.time())
+    click.echo(end.time())
     ctx.obj['CLIENT'].set_charge_slot_2((start, end))
 
 

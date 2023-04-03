@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from asyncio import Future, Queue, Task
+from contextlib import asynccontextmanager
 from typing import Dict, List
 
 import aiofiles
@@ -29,7 +30,7 @@ class Coordinator:
     refresh_count: int = 0
     debug_frames: Dict[str, Queue]
 
-    def __init__(self, host: str = 'localhost', port: int = 8899) -> None:
+    def __init__(self, host: str, port: int) -> None:
         self.network_client = NetworkClient(host, port)
         self.framer = ClientFramer()
         self.plant = Plant()
@@ -63,17 +64,31 @@ class Coordinator:
                                 item = await queue.get()
                                 await str_file.write(item.hex() + '\n')
 
+    async def refresh_plant(
+        self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
+    ):
+        """Refresh data about the Plant."""
+        async with self.session():
+            reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
+            await self.do_requests(reqs, timeout=timeout, retries=retries)
+        return self.plant
+
     async def refresh_plant_loop(
-        self, refresh_period: float = 5.0, full_refresh_interval: int = 12, max_batteries: int = 5
+        self,
+        refresh_period: float = 5.0,
+        full_refresh_interval: int = 12,
+        max_batteries: int = 5,
+        timeout: float = 1.0,
+        retries: int = 0,
     ):
         """Refresh data about the Plant."""
         while True:
-            messages = commands.refresh_plant_data(
-                self.refresh_count % full_refresh_interval == 0, self.plant.number_batteries, max_batteries
+            await self.refresh_plant(
+                self.refresh_count % full_refresh_interval == 0,
+                max_batteries=max_batteries,
+                timeout=timeout,
+                retries=retries,
             )
-            # tasks = [self.do_request(m, timeout=1.0, retries=1) for m in messages]
-            # await asyncio.gather(*tasks, return_exceptions=True)
-            await self.do_requests(messages, timeout=1.0, retries=0, return_exceptions=True)
             self.refresh_count += 1
             if self.refresh_count % 100 == 0:
                 _logger.info(f'Refresh #{self.refresh_count}')
@@ -115,8 +130,8 @@ class Coordinator:
         )
 
     async def do_request(self, request: TransparentRequest, timeout: float, retries: int) -> TransparentResponse:
-        """Send a command to the remote, await and return the response."""
-        # record the expected response
+        """Send a request to the remote, await and return the response."""
+        # mark the expected response
         expected_response = request.expected_response()
         expected_shape_hash = expected_response.shape_hash()
         existing_response_future = self.expected_responses.get(expected_shape_hash, None)
@@ -149,13 +164,59 @@ class Coordinator:
 
         raise asyncio.TimeoutError(f'Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up')
 
+    @asynccontextmanager
+    async def session(self):
+        """Async context manager to establish a connection and background tasks."""
+        async with self.network_client.session():
+            tasks = [
+                asyncio.create_task(self.process_incoming_data_loop(), name='process_incoming_data'),
+                asyncio.create_task(self.dump_queues_to_files_loop(), name='dump_queues_to_files'),
+            ]
+            yield self
+            for t in tasks:
+                t.cancel()
+
+    async def run_commands(self, commands: dict):
+        """Run the coordinator in a loop forever."""
+        async with self.session():
+            tasks = []
+            for name, command in commands.items():
+                _logger.info(f'{name}: {command}')
+                tasks.append(asyncio.create_task(command, name=name))
+
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+
+            for t in done:
+                t_name = t.get_name()
+                if t.cancelled():
+                    _logger.info(f'{t_name}: cancelled')
+                elif t.exception():
+                    e = t.exception()
+                    if isinstance(e, asyncio.CancelledError):
+                        _logger.error(f'{t_name} cancelled {e}')
+                    if isinstance(e, asyncio.TimeoutError):
+                        _logger.error(f'{t_name} timeout {e}')
+                    elif isinstance(e, OSError):
+                        _logger.error(f'{t_name}: OSError {e}')
+                    elif isinstance(e, ExceptionBase):
+                        _logger.error(f'{t_name} internal error: {e}', exc_info=e)
+                    else:
+                        _logger.error(f'{t_name}: {e}', exc_info=e)
+                else:
+                    _logger.info(f'{t_name} finished normally: {t}')
+            for t in pending:
+                t.cancel()
+
+            for future in self.expected_responses.values():
+                future.cancel('client restarting')
+
     async def run(self):
         """Run the coordinator in a loop forever."""
         while True:
             async with self.network_client.session():
                 tasks = []
                 for coro in (
-                    self.refresh_plant_loop,
+                    self.refresh_plant,
                     # self.chaos,
                     self.process_incoming_data_loop,
                     # self.update_setting,

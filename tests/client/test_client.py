@@ -18,7 +18,7 @@ async def test_expected_response():
     async def mock_await_frames():
         yield WriteHoldingRegisterResponse(inverter_serial_number='', register=HoldingRegister(35), value=20).encode()
 
-    client = Coordinator()
+    client = Coordinator(host='foo', port=4321)
     assert client.expected_responses == {}
     req = WriteHoldingRegisterRequest(register=HoldingRegister(35), value=20)
     client.network_client.transmit_frame = mock_transmit_frame
