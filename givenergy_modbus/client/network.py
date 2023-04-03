@@ -52,10 +52,7 @@ class NetworkClient:
         self.tx_queue = Queue()
 
         _logger.info(f'Connection established to {self.host}:{self.port} (retries={retries})')
-        if sys.version_info < (3, 8):
-            producer_task = asyncio.create_task(self.producer())
-        else:
-            producer_task = asyncio.create_task(self.producer(), name='NetworkClient.producer')
+        producer_task = asyncio.create_task(self.producer(), name='NetworkClient.producer')
 
         yield self
 

@@ -70,18 +70,11 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 
     def __str__(self) -> str:
         if self.register is not None and self.value is not None:
-            if sys.version_info < (3, 8):
-                return (
-                    f'{self.function_code}:{self.transparent_function_code}/{self.__class__.__name__}'
-                    f"({'ERROR ' if self.error else ''}{str(self.register)}/{self.register.name} -> "
-                    f'{self.register.repr(self.value)}/0x{self.value:04x})'
-                )
-            else:
-                return (
-                    f'{self.function_code}:{self.transparent_function_code}/{self.__class__.__name__}'
-                    f"({'ERROR ' if self.error else ''}{self.register}/{self.register.name} -> "
-                    f'{self.register.repr(self.value)}/0x{self.value:04x})'
-                )
+            return (
+                f'{self.function_code}:{self.transparent_function_code}/{self.__class__.__name__}'
+                f"({'ERROR ' if self.error else ''}{self.register}/{self.register.name} -> "
+                f'{self.register.repr(self.value)}/0x{self.value:04x})'
+            )
         else:
             return super().__str__()
 
@@ -127,10 +120,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
         """Sanity check our internal state."""
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
-            if sys.version_info < (3, 8):
-                raise InvalidPduState(f'{str(self.register)}/{self.register.name} is not safe to write to', self)
-            else:
-                raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
+            raise InvalidPduState(f'{self.register}/{self.register.name} is not safe to write to', self)
 
     def _update_check_code(self):
         crc_builder = PayloadEncoder()

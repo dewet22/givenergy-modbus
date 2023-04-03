@@ -123,10 +123,7 @@ class Coordinator:
         existing_response_future = self.expected_responses.get(expected_shape_hash, None)
         if existing_response_future and not existing_response_future.done():
             _logger.debug(f'Cancelling existing in-flight request and replacing: {request}')
-            if sys.version_info < (3, 8):
-                existing_response_future.cancel()
-            else:
-                existing_response_future.cancel('replaced')
+            existing_response_future.cancel('replaced')
         response_future: Future[TransparentResponse] = asyncio.get_event_loop().create_future()
         self.expected_responses[expected_shape_hash] = response_future
 
@@ -165,17 +162,11 @@ class Coordinator:
                     # self.update_setting,
                     self.dump_queues_to_files_loop,
                 ):
-                    if sys.version_info < (3, 8):
-                        tasks.append(asyncio.create_task(coro()))
-                    else:
-                        tasks.append(asyncio.create_task(coro(), name=coro.__name__))
+                    tasks.append(asyncio.create_task(coro(), name=coro.__name__))
                 done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
 
                 for t in done:
-                    if sys.version_info < (3, 8):
-                        t_name = str(t)
-                    else:
-                        t_name = t.get_name()
+                    t_name = t.get_name()
                     if t.cancelled():
                         _logger.info(f'{t_name}: cancelled')
                     elif t.exception():
@@ -196,10 +187,7 @@ class Coordinator:
                     t.cancel()
 
                 for future in self.expected_responses.values():
-                    if sys.version_info < (3, 8):
-                        future.cancel()
-                    else:
-                        future.cancel('client restarting')
+                    future.cancel('client restarting')
 
                 _logger.info(f'Restarting client in {self.seconds_between_main_loop_restarts}s')
                 await asyncio.sleep(self.seconds_between_main_loop_restarts)
