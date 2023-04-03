@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import socket
-import sys
 from asyncio import Future, Queue, StreamReader, StreamWriter
 from contextlib import asynccontextmanager
 from typing import AsyncIterator, Tuple

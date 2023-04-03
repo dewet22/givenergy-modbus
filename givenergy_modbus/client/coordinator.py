@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import sys
 from asyncio import Future, Queue, Task
 from typing import Dict, List
 
