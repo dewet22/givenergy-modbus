@@ -95,9 +95,9 @@ repos:
     hooks:
       - id: codespell
 #        args:
-#          # - --skip="./.*,*.csv,*.json"
+#           - --skip="*.lock"
 #          - --quiet-level=2
-#        # exclude_types: [csv, json]
+#        exclude_types: [csv, json]
 
 #  - repo: https://github.com/MarcoGorelli/absolufy-imports
 #    rev: v0.3.1
