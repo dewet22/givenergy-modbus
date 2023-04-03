@@ -195,7 +195,7 @@ def set_mode_dynamic() -> List[TransparentRequest]:
 
 def set_mode_storage(
     discharge_slot_1: Timeslot = Timeslot.from_repr(1600, 700),
-    discharge_slot_2: Timeslot = None,
+    discharge_slot_2: Optional[Timeslot] = None,
     discharge_for_export: bool = False,
 ) -> List[TransparentRequest]:
     """Set system to storage mode with specific discharge slots(s).
