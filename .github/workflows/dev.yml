@@ -44,7 +44,7 @@ jobs:
       - name: list files
         run: ls -l .
 
-      - uses: codecov/codecov-action@v2
+      - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}  # remove once public
           fail_ci_if_error: true
