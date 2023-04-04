@@ -1,10 +1,6 @@
-# Publish package on main branch if it's tagged with 'v*'
+name: Release & publish
 
-name: release & publish workflow
-
-# Controls when the action will run.
 on:
-  # Triggers the workflow on push events but only for the master branch
   push:
     tags:
       - 'v*'
@@ -12,27 +8,34 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "release"
   release:
     name: Create Release
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-versions: [3.11]
+        python-versions: ['3.11']
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - name: Get version from tag
         id: tag_name
-        run: |
-          echo ::set-output name=current_version::${GITHUB_REF#refs/tags/v}
+        run: echo ::set-output name=current_version::${GITHUB_REF#refs/tags/v}
         shell: bash
 
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: poetry
+      - name: Install dependencies
+        run: |
+          poetry env use ${{ matrix.python-version }}
+          poetry install --no-root --sync --with=test --with=docs
 
       - name: Get Changelog Entry
         id: changelog_reader
@@ -42,21 +45,11 @@ jobs:
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-versions }}
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-
-      - name: Install dependencies
-        run: poetry install --no-root --sync --with=test --with=docs
-
-      - name: build documentation
+      - name: Build documentation
         run: |
           poetry run mkdocs build
 
-      - name: publish documentation
+      - name: Publish documentation
         uses: peaceiris/actions-gh-pages@v3
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
@@ -66,11 +59,7 @@ jobs:
         run: >-
           poetry build
 
-      - name: show temporary files
-        run: >-
-          ls -l
-
-      - name: create github release
+      - name: Create GitHub release
         id: create_release
         uses: softprops/action-gh-release@v1
         env:

@@ -1,12 +1,8 @@
-# This is a basic workflow to help you get started with Actions
+name: Stage & preview
 
-name: stage & preview workflow
-
-# Controls when the action will run.
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ master, main ]
+    branches: ['master', 'main']
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -18,33 +14,31 @@ jobs:
 
     strategy:
       matrix:
-        python-versions: [ '3.11' ]
+        python-versions: ['3.11']
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-versions }}
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-
+          python-version: ${{ matrix.python-version }}
+          cache: poetry
       - name: Install dependencies
-        run: poetry install --no-root --sync --with=test
-
-      - name: test with tox
-        run: poetry run tox
-
+        run: |
+          poetry env use ${{ matrix.python-version }}
+          poetry install --no-root --sync --with=test
       - name: Build wheels and source tarball
         run: |
           poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
           poetry version --short
           poetry build
-
-      - name: publish to Test PyPI
-        uses: pypa/gh-action-pypi-publish@master
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI_API_TOKEN}}
           repository_url: https://test.pypi.org/legacy/
-          skip_existing: true
+          skip_existing: false
