@@ -9,9 +9,9 @@ import click
 from loguru import logger
 from tabulate import tabulate
 
+from givenergy_modbus.client import Timeslot, commands
 from givenergy_modbus.client.coordinator import Coordinator
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.plant import Plant
 
 
@@ -83,8 +83,11 @@ def main(ctx, host, port, log_level):
 # @click.option('-b', '--batteries', type=int, default=1)
 def show_plant(ctx):
     """Show interpretation of the current plant state."""
-    p = asyncio.run(ctx.obj['CLIENT'].refresh_plant())
-    i: Inverter = p.inverter
+    reqs = commands.refresh_plant_data(complete=True)
+    c: Coordinator = ctx.obj['CLIENT']
+    asyncio.run(c.one_shot_command(reqs))
+    p = c.plant
+    i = p.inverter
     click.echo(f'{i.inverter_model.name} Inverter, serial {i.inverter_serial_number}:')
     click.echo(f'    Firmware version {i.inverter_firmware_version}, type code {i.device_type_code}')
     click.echo(f'    Number of grid phases: {i.num_phases}')
@@ -217,8 +220,10 @@ def show_plant(ctx):
 # @click.option('-b', '--batteries', type=int, default=1)
 def dump_registers(ctx):
     """Dump out raw register data for use in debugging."""
-    p = asyncio.run(ctx.obj['CLIENT'].refresh_plant())
-    for i, rc in p.register_caches.items():
+    reqs = commands.refresh_plant_data(complete=True)
+    c = ctx.obj['CLIENT']
+    asyncio.run(c.one_shot_command(reqs))
+    for i, rc in c.plant.register_caches.items():
         click.echo(f'{i}: {rc.json()}')
 
 
@@ -263,96 +268,96 @@ def watch_plant(ctx, delay):
 @main.command()
 @click.pass_context
 @click.argument('target_soc', type=int)
-@is_documented_by(Coordinator.set_charge_target)
+@is_documented_by(commands.set_charge_target)
 def set_charge_target(ctx, target_soc):  # noqa: D103
-    asyncio.run(ctx.obj['CLIENT'].set_charge_target(target_soc))
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.set_charge_target(target_soc)))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.disable_charge_target)
+@is_documented_by(commands.disable_charge_target)
 def disable_charge_target(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].disable_charge_target()
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.disable_charge_target()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.enable_charge)
+@is_documented_by(commands.enable_charge)
 def enable_charge(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].enable_charge()
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.enable_charge()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.disable_charge)
+@is_documented_by(commands.disable_charge)
 def disable_charge(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].disable_charge()
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.disable_charge()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.enable_discharge)
+@is_documented_by(commands.enable_discharge)
 def enable_discharge(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].enable_discharge()
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.enable_discharge()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.disable_discharge)
+@is_documented_by(commands.disable_discharge)
 def disable_discharge(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].disable_discharge()
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.disable_discharge()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.set_battery_discharge_mode_max_power)
-def set_battery_discharge_mode_max_power(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].set_battery_discharge_mode_max_power()
+@is_documented_by(commands.set_discharge_mode_max_power)
+def set_discharge_mode_max_power(ctx):  # noqa: D103
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.set_discharge_mode_max_power()))
 
 
 @main.command()
 @click.pass_context
-# @is_documented_by(Coordinator.set_battery_discharge_mode_demand)
+@is_documented_by(commands.set_discharge_mode_to_match_demand)
 def set_battery_discharge_mode_demand(ctx):  # noqa: D103
-    ctx.obj['CLIENT'].set_battery_discharge_mode_demand()
-
-
-@main.command()
-@click.option('-s', '--start', type=click.DateTime(formats=['%H:%m']), required=True)
-@click.option('-e', '--end', type=click.DateTime(formats=['%H:%m']), required=True)
-@click.pass_context
-# @is_documented_by(Coordinator.set_charge_slot_1)
-def set_charge_slot_1(ctx, start, end):  # noqa: D103
-    click.echo(start)
-    click.echo(end)
-    ctx.obj['CLIENT'].set_charge_slot_1((start, end))
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.set_discharge_mode_to_match_demand()))
 
 
 @main.command()
 @click.option('-s', '--start', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
 @click.option('-e', '--end', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
 @click.pass_context
-# @is_documented_by(Coordinator.set_charge_slot_2)
-def set_charge_slot_2(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
-    click.echo(start.time())
-    click.echo(end.time())
-    ctx.obj['CLIENT'].set_charge_slot_2((start, end))
+@is_documented_by(commands.set_charge_slot_1)
+def set_charge_slot(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
+    asyncio.run(
+        ctx.obj['CLIENT'].one_shot_command(commands.set_charge_slot_1(Timeslot(start=start.time(), end=end.time())))
+    )
+
+
+@main.command()
+@click.option('-s', '--start', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
+@click.option('-e', '--end', type=click.DateTime(formats=['%H:%M', '%H%M']), required=True)
+@click.pass_context
+@is_documented_by(commands.set_discharge_slot_1)
+def set_discharge_slot(ctx, start: datetime.datetime, end: datetime.datetime):  # noqa: D103
+    asyncio.run(
+        ctx.obj['CLIENT'].one_shot_command(commands.set_discharge_slot_1(Timeslot(start=start.time(), end=end.time())))
+    )
 
 
 @main.command()
 @click.argument('charge_limit', type=int)
 @click.pass_context
-# @is_documented_by(Coordinator.set_battery_charge_limit)
+@is_documented_by(commands.set_battery_charge_limit)
 def set_battery_charge_limit(ctx, charge_limit: int):  # noqa: D103
-    ctx.obj['CLIENT'].set_battery_charge_limit(charge_limit)
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.set_battery_charge_limit(charge_limit)))
 
 
 @main.command()
 @click.argument('discharge_limit', type=int)
 @click.pass_context
-# @is_documented_by(Coordinator.set_battery_discharge_limit)
+@is_documented_by(commands.set_battery_discharge_limit)
 def set_battery_discharge_limit(ctx, discharge_limit: int):  # noqa: D103
-    ctx.obj['CLIENT'].set_battery_discharge_limit(discharge_limit)
+    asyncio.run(ctx.obj['CLIENT'].one_shot_command(commands.set_battery_discharge_limit(discharge_limit)))
 
 
 if __name__ == '__main__':

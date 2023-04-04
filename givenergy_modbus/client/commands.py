@@ -14,7 +14,7 @@ from givenergy_modbus.pdu import (
 )
 
 
-def refresh_plant_data(complete: bool, number_batteries: int, max_batteries: int) -> List[TransparentRequest]:
+def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> List[TransparentRequest]:
     """Refresh plant data."""
     requests: List[TransparentRequest] = [
         ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=0x32),

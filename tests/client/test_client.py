@@ -25,8 +25,8 @@ async def test_expected_response():
     client.network_client.await_frames = mock_await_frames
 
     res, _ = await asyncio.gather(
-        client.do_request(req, timeout=0.1, retries=2),
-        client.process_incoming_data_loop(),
+        client._execute_request(req, timeout=0.1, retries=2),
+        client._task_process_incoming_data(),
     )
 
     assert transmitted_frames == [req.encode()]

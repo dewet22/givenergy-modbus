@@ -23,7 +23,7 @@ class Coordinator:
     """Asynchronous client utilising long-lived connections to a network device."""
 
     network_client: NetworkClient
-    seconds_between_main_loop_restarts: float = 5
+    # seconds_between_main_loop_restarts: float = 5
     framer: Framer
     expected_responses: 'Dict[int, Future[TransparentResponse]]' = {}
     plant: Plant
@@ -45,7 +45,7 @@ class Coordinator:
         """Refresh data about the Plant."""
         async with self.session():
             reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
-            await self.do_requests(reqs, timeout=timeout, retries=retries)
+            await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant
 
     async def watch_plant(
@@ -65,20 +65,20 @@ class Coordinator:
                     self.plant.number_batteries,
                     max_batteries=max_batteries,
                 )
-                await self.do_requests(reqs, timeout=timeout, retries=retries, return_exceptions=True)
+                await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
                 self.refresh_count += 1
                 if self.refresh_count % 100 == 0:
                     _logger.info(f'Refresh #{self.refresh_count}')
                 handler(self.plant)
                 await asyncio.sleep(refresh_period)
 
-    async def set_charge_target(self, charge_target: int) -> None:
-        """."""
+    async def one_shot_command(self, requests: List[TransparentRequest], timeout=1.0, retries=0) -> None:
+        """Run a single set of requests and return."""
         async with self.session():
-            await self.do_requests(commands.set_charge_target(charge_target), timeout=1.0, retries=3)
+            await self.execute(requests, timeout=timeout, retries=retries)
 
-    async def process_incoming_data_loop(self):
-        """Loop for handling incoming data."""
+    async def _task_process_incoming_data(self):
+        """Task for orchestrating incoming data."""
         async for frame in self.network_client.await_frames():
             await self.debug_frames['all'].put(frame)
             async for message in self.framer.decode(frame):
@@ -106,8 +106,8 @@ class Coordinator:
                     await self.debug_frames['error'].put(frame)
                     _logger.debug(f'Ignoring {message}: {e}')
 
-    async def dump_queues_to_files_loop(self):
-        """Dump internal queues of messages to files for debugging."""
+    async def _task_dump_queues_to_files(self):
+        """Task to periodically dump debug message frames to disk for debugging."""
         while True:
             await asyncio.sleep(30)
             if self.debug_frames:
@@ -120,16 +120,16 @@ class Coordinator:
                                 item = await queue.get()
                                 await str_file.write(item.hex() + '\n')
 
-    def do_requests(
+    def execute(
         self, requests: List[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
     ) -> 'Future[List[TransparentResponse]]':
         """Helper to perform multiple requests in bulk."""
         return asyncio.gather(
-            *[self.do_request(m, timeout=timeout, retries=retries) for m in requests],
+            *[self._execute_request(m, timeout=timeout, retries=retries) for m in requests],
             return_exceptions=return_exceptions,
         )
 
-    async def do_request(self, request: TransparentRequest, timeout: float, retries: int) -> TransparentResponse:
+    async def _execute_request(self, request: TransparentRequest, timeout: float, retries: int) -> TransparentResponse:
         """Send a request to the remote, await and return the response."""
         # mark the expected response
         expected_response = request.expected_response()
@@ -167,88 +167,92 @@ class Coordinator:
 
     @asynccontextmanager
     async def session(self):
-        """Async context manager to establish a connection and background tasks."""
+        """Async context manager to establish a connection and background processing tasks."""
         async with self.network_client.session():
             tasks = [
-                asyncio.create_task(self.process_incoming_data_loop(), name='process_incoming_data'),
-                asyncio.create_task(self.dump_queues_to_files_loop(), name='dump_queues_to_files'),
+                asyncio.create_task(self._task_process_incoming_data(), name='process_incoming_data'),
+                asyncio.create_task(self._task_dump_queues_to_files(), name='dump_queues_to_files'),
             ]
-            yield self
+
+            yield
+
             for t in tasks:
                 t.cancel()
-
-    async def run_commands(self, commands: dict):
-        """Run the coordinator in a loop forever."""
-        async with self.session():
-            tasks = []
-            for name, command in commands.items():
-                _logger.info(f'{name}: {command}')
-                tasks.append(asyncio.create_task(command, name=name))
-
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
-
-            for t in done:
-                t_name = t.get_name()
-                if t.cancelled():
-                    _logger.info(f'{t_name}: cancelled')
-                elif t.exception():
-                    e = t.exception()
-                    if isinstance(e, asyncio.CancelledError):
-                        _logger.error(f'{t_name} cancelled {e}')
-                    if isinstance(e, asyncio.TimeoutError):
-                        _logger.error(f'{t_name} timeout {e}')
-                    elif isinstance(e, OSError):
-                        _logger.error(f'{t_name}: OSError {e}')
-                    elif isinstance(e, ExceptionBase):
-                        _logger.error(f'{t_name} internal error: {e}', exc_info=e)
-                    else:
-                        _logger.error(f'{t_name}: {e}', exc_info=e)
-                else:
-                    _logger.info(f'{t_name} finished normally: {t}')
-            for t in pending:
-                t.cancel()
-
             for future in self.expected_responses.values():
                 future.cancel('client restarting')
 
-    async def run(self):
-        """Run the coordinator in a loop forever."""
-        while True:
-            async with self.network_client.session():
-                tasks = []
-                for coro in (
-                    self.refresh_plant,
-                    # self.chaos,
-                    self.process_incoming_data_loop,
-                    # self.update_setting,
-                    self.dump_queues_to_files_loop,
-                ):
-                    tasks.append(asyncio.create_task(coro(), name=coro.__name__))
-                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-
-                for t in done:
-                    t_name = t.get_name()
-                    if t.cancelled():
-                        _logger.info(f'{t_name}: cancelled')
-                    elif t.exception():
-                        e = t.exception()
-                        if isinstance(e, asyncio.CancelledError):
-                            _logger.error(f'{t_name} cancelled {e}')
-                        if isinstance(e, asyncio.TimeoutError):
-                            _logger.error(f'{t_name} timeout {e}')
-                        elif isinstance(e, OSError):
-                            _logger.error(f'{t_name}: OSError {e}')
-                        elif isinstance(e, ExceptionBase):
-                            _logger.error(f'{t_name} internal error: {e}', exc_info=e)
-                        else:
-                            _logger.error(f'{t_name}: {e}', exc_info=e)
-                    else:
-                        _logger.info(f'{t_name} finished normally: {t}')
-                for t in pending:
-                    t.cancel()
-
-                for future in self.expected_responses.values():
-                    future.cancel('client restarting')
-
-                _logger.info(f'Restarting client in {self.seconds_between_main_loop_restarts}s')
-                await asyncio.sleep(self.seconds_between_main_loop_restarts)
+    # async def run_commands(self, commands: dict):
+    #     """Run the coordinator in a loop forever."""
+    #     async with self.session():
+    #         tasks = []
+    #         for name, command in commands.items():
+    #             _logger.info(f'{name}: {command}')
+    #             tasks.append(asyncio.create_task(command, name=name))
+    #
+    #         done, pending = await asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+    #
+    #         for t in done:
+    #             t_name = t.get_name()
+    #             if t.cancelled():
+    #                 _logger.info(f'{t_name}: cancelled')
+    #             elif t.exception():
+    #                 e = t.exception()
+    #                 if isinstance(e, asyncio.CancelledError):
+    #                     _logger.error(f'{t_name} cancelled {e}')
+    #                 if isinstance(e, asyncio.TimeoutError):
+    #                     _logger.error(f'{t_name} timeout {e}')
+    #                 elif isinstance(e, OSError):
+    #                     _logger.error(f'{t_name}: OSError {e}')
+    #                 elif isinstance(e, ExceptionBase):
+    #                     _logger.error(f'{t_name} internal error: {e}', exc_info=e)
+    #                 else:
+    #                     _logger.error(f'{t_name}: {e}', exc_info=e)
+    #             else:
+    #                 _logger.info(f'{t_name} finished normally: {t}')
+    #         for t in pending:
+    #             t.cancel()
+    #
+    #         for future in self.expected_responses.values():
+    #             future.cancel('client restarting')
+    #
+    # async def run(self):
+    #     """Run the coordinator in a loop forever."""
+    #     while True:
+    #         async with self.network_client.session():
+    #             tasks = []
+    #             for coro in (
+    #                 self.refresh_plant,
+    #                 # self.chaos,
+    #                 self.process_incoming_data_loop,
+    #                 # self.update_setting,
+    #                 self.dump_queues_to_files_loop,
+    #             ):
+    #                 tasks.append(asyncio.create_task(coro(), name=coro.__name__))
+    #             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    #
+    #             for t in done:
+    #                 t_name = t.get_name()
+    #                 if t.cancelled():
+    #                     _logger.info(f'{t_name}: cancelled')
+    #                 elif t.exception():
+    #                     e = t.exception()
+    #                     if isinstance(e, asyncio.CancelledError):
+    #                         _logger.error(f'{t_name} cancelled {e}')
+    #                     if isinstance(e, asyncio.TimeoutError):
+    #                         _logger.error(f'{t_name} timeout {e}')
+    #                     elif isinstance(e, OSError):
+    #                         _logger.error(f'{t_name}: OSError {e}')
+    #                     elif isinstance(e, ExceptionBase):
+    #                         _logger.error(f'{t_name} internal error: {e}', exc_info=e)
+    #                     else:
+    #                         _logger.error(f'{t_name}: {e}', exc_info=e)
+    #                 else:
+    #                     _logger.info(f'{t_name} finished normally: {t}')
+    #             for t in pending:
+    #                 t.cancel()
+    #
+    #             for future in self.expected_responses.values():
+    #                 future.cancel('client restarting')
+    #
+    #             _logger.info(f'Restarting client in {self.seconds_between_main_loop_restarts}s')
+    #             await asyncio.sleep(self.seconds_between_main_loop_restarts)
