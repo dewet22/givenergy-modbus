@@ -137,7 +137,7 @@ class Coordinator:
         existing_response_future = self.expected_responses.get(expected_shape_hash, None)
         if existing_response_future and not existing_response_future.done():
             _logger.debug(f'Cancelling existing in-flight request and replacing: {request}')
-            existing_response_future.cancel('replaced')
+            existing_response_future.cancel()
         response_future: Future[TransparentResponse] = asyncio.get_event_loop().create_future()
         self.expected_responses[expected_shape_hash] = response_future
 
@@ -179,7 +179,7 @@ class Coordinator:
             for t in tasks:
                 t.cancel()
             for future in self.expected_responses.values():
-                future.cancel('client restarting')
+                future.cancel()
 
     # async def run_commands(self, commands: dict):
     #     """Run the coordinator in a loop forever."""
