@@ -10,12 +10,11 @@ on:
 
 jobs:
   release:
-    name: Create Release
-    runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        python-versions: ['3.11']
+        python-version: ['3.11']
+        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Get version from tag
