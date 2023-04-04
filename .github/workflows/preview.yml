@@ -33,8 +33,7 @@ jobs:
         run: poetry install --no-root --sync --with=test
 
       - name: test with tox
-        run:
-          tox
+        run: poetry run tox
 
       - name: Build wheels and source tarball
         run: |
