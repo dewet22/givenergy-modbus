@@ -3,7 +3,7 @@ import logging
 import os
 from asyncio import Future, Queue, Task
 from contextlib import asynccontextmanager
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 import aiofiles
 import arrow
@@ -35,34 +35,9 @@ class Coordinator:
         self.framer = ClientFramer()
         self.plant = Plant()
         self.debug_frames = {
-            'all': Queue(),
-            'error': Queue(),
+            'all': Queue(maxsize=1000),
+            'error': Queue(maxsize=1000),
         }
-
-    async def update_setting(self) -> None:
-        """Prototype for sending commands."""
-        while True:
-            await asyncio.sleep(2.7)
-            await self.do_requests(commands.set_charge_target(85), timeout=1.0, retries=1)
-            await self.do_requests(commands.set_mode_dynamic(), timeout=1.0, retries=1)
-            await self.do_requests(commands.reset_discharge_slot_1(), timeout=1.0, retries=1)
-            await self.do_requests(commands.reset_discharge_slot_2(), timeout=1.0, retries=1)
-            # _logger.info(f'Update result: {[str(r) for r in res]}')
-            await asyncio.sleep(46.2)
-
-    async def dump_queues_to_files_loop(self):
-        """Dump internal queues of messages to files for debugging."""
-        while True:
-            await asyncio.sleep(30)
-            if self.debug_frames:
-                os.makedirs('debug', exist_ok=True)
-                for name, queue in self.debug_frames.items():
-                    if not queue.empty():
-                        async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
-                            await str_file.write(f'# {arrow.utcnow().timestamp()}\n')
-                            while not queue.empty():
-                                item = await queue.get()
-                                await str_file.write(item.hex() + '\n')
 
     async def refresh_plant(
         self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
@@ -73,8 +48,9 @@ class Coordinator:
             await self.do_requests(reqs, timeout=timeout, retries=retries)
         return self.plant
 
-    async def refresh_plant_loop(
+    async def watch_plant(
         self,
+        handler: Callable,
         refresh_period: float = 5.0,
         full_refresh_interval: int = 12,
         max_batteries: int = 5,
@@ -82,17 +58,24 @@ class Coordinator:
         retries: int = 0,
     ):
         """Refresh data about the Plant."""
-        while True:
-            await self.refresh_plant(
-                self.refresh_count % full_refresh_interval == 0,
-                max_batteries=max_batteries,
-                timeout=timeout,
-                retries=retries,
-            )
-            self.refresh_count += 1
-            if self.refresh_count % 100 == 0:
-                _logger.info(f'Refresh #{self.refresh_count}')
-            await asyncio.sleep(refresh_period)
+        async with self.session():
+            while True:
+                reqs = commands.refresh_plant_data(
+                    self.refresh_count % full_refresh_interval == 0,
+                    self.plant.number_batteries,
+                    max_batteries=max_batteries,
+                )
+                await self.do_requests(reqs, timeout=timeout, retries=retries, return_exceptions=True)
+                self.refresh_count += 1
+                if self.refresh_count % 100 == 0:
+                    _logger.info(f'Refresh #{self.refresh_count}')
+                handler(self.plant)
+                await asyncio.sleep(refresh_period)
+
+    async def set_charge_target(self, charge_target: int) -> None:
+        """."""
+        async with self.session():
+            await self.do_requests(commands.set_charge_target(charge_target), timeout=1.0, retries=3)
 
     async def process_incoming_data_loop(self):
         """Loop for handling incoming data."""
@@ -109,7 +92,10 @@ class Coordinator:
                     _logger.warning(f'Received unexpected message type for a client: {message}')
                     continue
                 if isinstance(message, WriteHoldingRegisterResponse):
-                    _logger.warning(f'Update: {message}')
+                    if message.error:
+                        _logger.warning(f'{message}')
+                    else:
+                        _logger.info(f'{message}')
 
                 future = self.expected_responses.get(message.shape_hash(), None)
                 if future and not future.done():
@@ -119,6 +105,20 @@ class Coordinator:
                 except RegisterCacheUpdateFailed as e:
                     await self.debug_frames['error'].put(frame)
                     _logger.debug(f'Ignoring {message}: {e}')
+
+    async def dump_queues_to_files_loop(self):
+        """Dump internal queues of messages to files for debugging."""
+        while True:
+            await asyncio.sleep(30)
+            if self.debug_frames:
+                os.makedirs('debug', exist_ok=True)
+                for name, queue in self.debug_frames.items():
+                    if not queue.empty():
+                        async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
+                            await str_file.write(f'# {arrow.utcnow().timestamp()}\n')
+                            while not queue.empty():
+                                item = await queue.get()
+                                await str_file.write(item.hex() + '\n')
 
     def do_requests(
         self, requests: List[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
@@ -162,7 +162,8 @@ class Coordinator:
                     return response
             tries += 1
 
-        raise asyncio.TimeoutError(f'Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up')
+        _logger.error(f'Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up')
+        raise asyncio.TimeoutError()
 
     @asynccontextmanager
     async def session(self):

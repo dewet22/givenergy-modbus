@@ -142,6 +142,7 @@ repos:
       - id: mypy
         additional_dependencies:
           - types-aiofiles
+          - types-tabulate
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.5

@@ -99,8 +99,8 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'i_ac1': 0.27,
     'i_battery': 6.47,
     'i_grid_port': 2.57,
-    'i_pv1': 0.03,
-    'i_pv2': 0.03,
+    'i_pv1': 0.3,
+    'i_pv2': 0.3,
     'inverter_battery_bms_firmware_version': 3005,
     'inverter_battery_serial_number': 'BG1234G567',
     'inverter_countdown': 0,
@@ -457,6 +457,7 @@ def test_from_orm(register_cache):
     assert i.dict() == EXPECTED_INVERTER_DICT
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
+    assert i.inverter_model.name == 'Hybrid'
 
 
 def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
@@ -464,7 +465,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 4863
+    assert len(i.json()) == 4861
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 
