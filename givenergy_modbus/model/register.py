@@ -418,7 +418,7 @@ class HoldingRegister(Register):
     HOLDING_REG160 = 160
     HOLDING_REG161 = 161
     HOLDING_REG162 = 162
-    HOLDING_REG163 = 163
+    INVERTER_REBOOT = (163, {'unit': U_PERCENT, 'write_safe': True})  # 100= reboot
     HOLDING_REG164 = 164
     HOLDING_REG165 = 165
     HOLDING_REG166 = 166
@@ -476,7 +476,7 @@ class InputRegister(Register):
     E_PV_TOTAL_H = (11, {'type': T_QUAD_H, 'scaling': S_10, 'unit': U_KWH})
     E_PV_TOTAL_L = (12, {'type': T_QUAD_L, 'scaling': S_10, 'unit': U_KWH})
     F_AC1 = (13, {'scaling': S_100, 'unit': U_HZ})
-    CHARGE_STATUS = 14  # 2?
+    CHARGE_STATUS = 14  # 2? 5-discharge?
     V_HIGHBRIGH_BUS = 15  # high voltage bus?
     PF_INVERTER_OUT = (16, {'type': T_POWER_FACTOR})  # should be F_? seems to be hovering between 4800-5400
     E_PV1_DAY = (17, {'scaling': S_10, 'unit': U_KWH})
@@ -645,6 +645,7 @@ class InputRegister(Register):
     INPUT_REG177 = 177
     INPUT_REG178 = 178
     INPUT_REG179 = 179
+
     E_BATTERY_DISCHARGE_TOTAL = (180, {'scaling': S_10, 'unit': U_KWH})
     E_BATTERY_CHARGE_TOTAL = (181, {'scaling': S_10, 'unit': U_KWH})
     E_BATTERY_DISCHARGE_DAY_2 = (182, {'scaling': S_10, 'unit': U_KWH})

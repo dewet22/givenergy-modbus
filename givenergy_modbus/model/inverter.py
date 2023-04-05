@@ -247,6 +247,8 @@ class Inverter(GivEnergyBaseModel):
     variable_address: int
     variable_value: int
 
+    inverter_reboot: int
+
     @root_validator
     def compute_model(cls, values) -> dict:
         """Computes the inverter model from the serial number prefix."""

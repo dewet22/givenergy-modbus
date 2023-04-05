@@ -108,6 +108,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'inverter_modbus_address': 17,
     'inverter_model': 'Hybrid',
     'inverter_module': 198706,
+    'inverter_reboot': 0,
     'inverter_restart_delay_time': 30,
     'inverter_serial_number': 'SA1234G567',
     'inverter_start_time': 30,
@@ -390,6 +391,7 @@ EXPECTED_INVERTER_DICT = {
     'v_pv_fault_value': 0.0,
     'variable_address': 32768,
     'variable_value': 30235,
+    'inverter_reboot': 0,
 }
 
 
@@ -468,7 +470,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 4861
+    assert len(i.json()) == 4883
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 

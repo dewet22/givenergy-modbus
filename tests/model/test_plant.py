@@ -1002,6 +1002,7 @@ def test_from_actual():
         'inverter_modbus_address': 17,
         'inverter_model': 'Hybrid',
         'inverter_module': 198706,
+        'inverter_reboot': 0,
         'inverter_restart_delay_time': 30,
         'inverter_serial_number': 'SA1234G567',
         'inverter_start_time': 30,

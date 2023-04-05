@@ -36,6 +36,7 @@ WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
         'SYSTEM_TIME_MONTH',
         'SYSTEM_TIME_SECOND',
         'SYSTEM_TIME_YEAR',
+        'INVERTER_REBOOT',
     )
 }
 

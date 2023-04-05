@@ -27,7 +27,7 @@ class Plant(BaseModel):
     data_adapter_serial_number: str = ''
 
     class Config:
-        """Pydandic configuration."""
+        """Pydantic configuration."""
 
         # arbitrary_types_allowed = True
         orm_mode = True
@@ -46,7 +46,7 @@ class Plant(BaseModel):
             _logger.debug(f'Ignoring Null response {pdu}')
             return
         if pdu.error:
-            _logger.info(f'Ignoring error response {pdu}')
+            _logger.debug(f'Ignoring error response {pdu}')
             return
         _logger.debug(f'Handling {pdu}')
 
@@ -70,7 +70,7 @@ class Plant(BaseModel):
             )
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == HoldingRegister(0):
-                _logger.warning(f'Silently ignoring likely false Response {pdu}')
+                _logger.warning(f'Ignoring, likely corrupt: {pdu}')
             self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
 
     @property
