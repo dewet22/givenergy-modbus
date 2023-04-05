@@ -3,7 +3,7 @@ import logging
 import os
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import aiofiles
 import arrow
@@ -31,7 +31,7 @@ class Client:
     network_consumer_task: Task
     network_producer_task: Task
 
-    tx_queue: 'Queue[tuple[bytes, Optional[Future]]]'
+    tx_queue: 'Queue[Tuple[bytes, Optional[Future]]]'
 
     def __init__(self, host: str, port: int, connect_timeout: float = 2.0) -> None:
         self.host = host
