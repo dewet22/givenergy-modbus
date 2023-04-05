@@ -1,16 +1,15 @@
 import asyncio
 import logging
 import os
-from asyncio import Future, Queue, Task
-from contextlib import asynccontextmanager
-from typing import Callable, Dict, List
+import socket
+from asyncio import Future, Queue, StreamReader, StreamWriter, Task
+from typing import AsyncIterator, Callable, Dict, List
 
 import aiofiles
 import arrow
 
 from givenergy_modbus.client import commands
-from givenergy_modbus.client.network import NetworkClient
-from givenergy_modbus.exceptions import ExceptionBase
+from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register_cache import RegisterCacheUpdateFailed
@@ -19,33 +18,67 @@ from givenergy_modbus.pdu import HeartbeatRequest, TransparentRequest, Transpare
 _logger = logging.getLogger(__name__)
 
 
-class Coordinator:
+class Client:
     """Asynchronous client utilising long-lived connections to a network device."""
 
-    network_client: NetworkClient
-    # seconds_between_main_loop_restarts: float = 5
     framer: Framer
     expected_responses: 'Dict[int, Future[TransparentResponse]]' = {}
     plant: Plant
     refresh_count: int = 0
     debug_frames: Dict[str, Queue]
+    reader: StreamReader
+    writer: StreamWriter
+    network_consumer_task: Task
+    network_producer_task: Task
 
-    def __init__(self, host: str, port: int) -> None:
-        self.network_client = NetworkClient(host, port)
+    tx_queue: 'Queue[tuple[bytes, Future]]'
+
+    def __init__(self, host: str, port: int, connect_timeout: float = 2.0) -> None:
+        self.host = host
+        self.port = port
+        self.connect_timeout = connect_timeout
         self.framer = ClientFramer()
         self.plant = Plant()
+        self.tx_queue = Queue()
         self.debug_frames = {
             'all': Queue(maxsize=1000),
             'error': Queue(maxsize=1000),
         }
 
+    async def connect(self) -> None:
+        """Connect to the remote host and start background tasks."""
+        try:
+            connection = asyncio.open_connection(host=self.host, port=self.port, flags=socket.TCP_NODELAY)
+            self.reader, self.writer = await asyncio.wait_for(connection, timeout=self.connect_timeout)
+        except OSError as e:
+            raise CommunicationError(f'Error connecting to {self.host}:{self.port}') from e
+        self.network_consumer_task = asyncio.create_task(self._task_network_consumer(), name='network_consumer')
+        self.network_producer_task = asyncio.create_task(self._task_network_producer(), name='network_producer')
+        # asyncio.create_task(self._task_dump_queues_to_files(), name='dump_queues_to_files'),
+        _logger.info(f'Connection established to {self.host}:{self.port}')
+
+    async def close(self):
+        """Disconnect from the remote host and clean up tasks and queues."""
+        if self.tx_queue:
+            while not self.tx_queue.empty():
+                message, future = self.tx_queue.get_nowait()
+                future.cancel()
+        self.network_producer_task.cancel()
+        if hasattr(self, 'writer') and self.writer:
+            self.writer.close()
+            del self.writer
+
+        self.network_consumer_task.cancel()
+        if hasattr(self, 'reader') and self.reader:
+            self.reader.set_exception(RuntimeError('cancelling'))
+            del self.reader
+
     async def refresh_plant(
         self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
     ):
         """Refresh data about the Plant."""
-        async with self.session():
-            reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
-            await self.execute(reqs, timeout=timeout, retries=retries)
+        reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
+        await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant
 
     async def watch_plant(
@@ -58,35 +91,46 @@ class Coordinator:
         retries: int = 0,
     ):
         """Refresh data about the Plant."""
-        async with self.session():
-            while True:
-                reqs = commands.refresh_plant_data(
-                    self.refresh_count % full_refresh_interval == 0,
-                    self.plant.number_batteries,
-                    max_batteries=max_batteries,
-                )
-                await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
-                self.refresh_count += 1
-                if self.refresh_count % 100 == 0:
-                    _logger.info(f'Refresh #{self.refresh_count}')
-                handler(self.plant)
-                await asyncio.sleep(refresh_period)
+        await self.connect()
+        while True:
+            reqs = commands.refresh_plant_data(
+                self.refresh_count % full_refresh_interval == 0,
+                self.plant.number_batteries,
+                max_batteries=max_batteries,
+            )
+            await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
+            self.refresh_count += 1
+            if self.refresh_count % 100 == 0:
+                _logger.info(f'Refresh #{self.refresh_count}')
+            handler(self.plant)
+            await asyncio.sleep(refresh_period)
 
     async def one_shot_command(self, requests: List[TransparentRequest], timeout=1.0, retries=0) -> None:
         """Run a single set of requests and return."""
-        async with self.session():
-            await self.execute(requests, timeout=timeout, retries=retries)
+        await self.execute(requests, timeout=timeout, retries=retries)
 
-    async def _task_process_incoming_data(self):
+    async def await_frames(self) -> AsyncIterator[bytes]:
+        """Await data from the network."""
+        while True:
+            yield await self.reader.read(300)
+
+    async def _enqueue_frame(self, frame: bytes):
+        """Queue and await an outgoing frame to be transmitted."""
+        future = asyncio.get_event_loop().create_future()
+        await self.tx_queue.put((frame, future))
+        await future
+        _logger.debug(f'Sent {frame.hex()}')
+
+    async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
-        async for frame in self.network_client.await_frames():
+        async for frame in self.await_frames():
             await self.debug_frames['all'].put(frame)
             async for message in self.framer.decode(frame):
                 if isinstance(message, ExceptionBase):
                     _logger.warning(f'Expected response never arrived but resulted in exception: {message}')
                     continue
                 if isinstance(message, HeartbeatRequest):
-                    await self.network_client.transmit_frame(message.expected_response().encode())
+                    await self._enqueue_frame(message.expected_response().encode())
                     continue
                 if not isinstance(message, TransparentResponse):
                     _logger.warning(f'Received unexpected message type for a client: {message}')
@@ -105,6 +149,19 @@ class Coordinator:
                 except RegisterCacheUpdateFailed as e:
                     await self.debug_frames['error'].put(frame)
                     _logger.debug(f'Ignoring {message}: {e}')
+
+    async def _task_network_producer(self, tx_message_wait: float = 0.25):
+        """Producer loop to transmit queued frames with an appropriate delay."""
+        while True:
+            message, future = await self.tx_queue.get()
+            self.writer.write(message)
+            future.set_result(message)
+            await asyncio.gather(
+                self.writer.drain(),
+                asyncio.sleep(tx_message_wait),
+            )
+            if self.tx_queue.qsize() > 20:
+                _logger.warning(f'tx_queue size = {self.tx_queue.qsize()}')
 
     async def _task_dump_queues_to_files(self):
         """Task to periodically dump debug message frames to disk for debugging."""
@@ -147,7 +204,7 @@ class Coordinator:
         while tries <= retries:
             if tries > 0:
                 _logger.debug(f'Timeout awaiting {expected_response}, attempting retry {tries} of {retries}')
-            await self.network_client.transmit_frame(raw_frame)
+            await self._enqueue_frame(raw_frame)
             timeout_task: Task = asyncio.create_task(asyncio.sleep(timeout))
             # either we get a response, or time out while waiting for one
             await asyncio.wait((response_future, timeout_task), return_when=asyncio.FIRST_COMPLETED)
@@ -164,22 +221,6 @@ class Coordinator:
 
         _logger.error(f'Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up')
         raise asyncio.TimeoutError()
-
-    @asynccontextmanager
-    async def session(self):
-        """Async context manager to establish a connection and background processing tasks."""
-        async with self.network_client.session():
-            tasks = [
-                asyncio.create_task(self._task_process_incoming_data(), name='process_incoming_data'),
-                asyncio.create_task(self._task_dump_queues_to_files(), name='dump_queues_to_files'),
-            ]
-
-            yield
-
-            for t in tasks:
-                t.cancel()
-            for future in self.expected_responses.values():
-                future.cancel()
 
     # async def run_commands(self, commands: dict):
     #     """Run the coordinator in a loop forever."""

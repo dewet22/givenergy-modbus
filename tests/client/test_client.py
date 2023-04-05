@@ -4,7 +4,7 @@ import datetime
 import pytest
 
 from givenergy_modbus.client import Timeslot
-from givenergy_modbus.client.coordinator import Coordinator
+from givenergy_modbus.client.client import Client
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
@@ -18,15 +18,15 @@ async def test_expected_response():
     async def mock_await_frames():
         yield WriteHoldingRegisterResponse(inverter_serial_number='', register=HoldingRegister(35), value=20).encode()
 
-    client = Coordinator(host='foo', port=4321)
+    client = Client(host='foo', port=4321)
     assert client.expected_responses == {}
     req = WriteHoldingRegisterRequest(register=HoldingRegister(35), value=20)
-    client.network_client.transmit_frame = mock_transmit_frame
-    client.network_client.await_frames = mock_await_frames
+    client._enqueue_frame = mock_transmit_frame
+    client.await_frames = mock_await_frames
 
     res, _ = await asyncio.gather(
         client._execute_request(req, timeout=0.1, retries=2),
-        client._task_process_incoming_data(),
+        client._task_network_consumer(),
     )
 
     assert transmitted_frames == [req.encode()]

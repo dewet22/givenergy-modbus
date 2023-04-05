@@ -10,7 +10,7 @@ from loguru import logger
 from tabulate import tabulate
 
 from givenergy_modbus.client import Timeslot, commands
-from givenergy_modbus.client.coordinator import Coordinator
+from givenergy_modbus.client.client import Client
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.plant import Plant
 
@@ -75,7 +75,7 @@ def main(ctx, host, port, log_level):
     """A python CLI to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."""
     ctx.ensure_object(dict)
     logging.basicConfig(handlers=[InterceptHandler()], force=True, level=getattr(logging, log_level))
-    ctx.obj['CLIENT'] = Coordinator(host=host, port=port)
+    ctx.obj['CLIENT'] = Client(host=host, port=port)
 
 
 @main.command()
@@ -84,7 +84,7 @@ def main(ctx, host, port, log_level):
 def show_plant(ctx):
     """Show interpretation of the current plant state."""
     reqs = commands.refresh_plant_data(complete=True)
-    c: Coordinator = ctx.obj['CLIENT']
+    c: Client = ctx.obj['CLIENT']
     asyncio.run(c.one_shot_command(reqs))
     p = c.plant
     i = p.inverter

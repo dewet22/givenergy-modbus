@@ -28,7 +28,7 @@ class TransparentMessage(BasePDU, ABC):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        _logger.info(f'TransparentMessage.__init_subclass__({cls.__name__})')
+        _logger.debug(f'TransparentMessage.__init_subclass__({cls.__name__})')
 
     def __str__(self) -> str:
         def format_kv(key, val):

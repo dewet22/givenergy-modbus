@@ -458,6 +458,9 @@ def test_from_orm(register_cache):
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
     assert i.inverter_model.name == 'Hybrid'
+    assert getattr(i, 'inverter_serial_number') == 'SA1234G567'
+    with pytest.raises(TypeError, match="'Inverter' object is not subscriptable"):
+        i['inverter_serial_number']
 
 
 def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
