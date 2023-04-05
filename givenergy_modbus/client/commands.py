@@ -3,7 +3,7 @@
 from typing import List, Optional
 
 from arrow import Arrow
-from typing_extensions import deprecated
+from typing_extensions import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.client import Timeslot
 from givenergy_modbus.model.register import HoldingRegister
@@ -44,7 +44,7 @@ def set_charge_target(target_soc: int) -> List[TransparentRequest]:
     """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
     if not 4 <= target_soc <= 100:
         raise ValueError(f'Charge Target SOC ({target_soc}) must be in [4-100]%')
-    ret = enable_charge()
+    ret = set_enable_charge(True)
     if target_soc == 100:
         ret.extend(disable_charge_target())
     else:
@@ -70,25 +70,25 @@ def set_inverter_reboot(enabled: bool) -> List[TransparentRequest]:
     return []
 
 
-@deprecated
+@deprecated('use set_enable_charge(True) instead')
 def enable_charge() -> List[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
     return set_enable_charge(True)
 
 
-@deprecated
+@deprecated('use set_enable_charge(False) instead')
 def disable_charge() -> List[TransparentRequest]:
     """Prevent the battery from charging at all."""
     return set_enable_charge(False)
 
 
-@deprecated
+@deprecated('use set_enable_discharge(True) instead')
 def enable_discharge() -> List[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
     return set_enable_discharge(True)
 
 
-@deprecated
+@deprecated('use set_enable_discharge(False) instead')
 def disable_discharge() -> List[TransparentRequest]:
     """Prevent the battery from discharging at all."""
     return set_enable_discharge(False)
@@ -212,7 +212,7 @@ def set_mode_dynamic() -> List[TransparentRequest]:
     and minimise the amount of energy drawn from the grid.
     """
     # r27=1 r110=4 r59=0
-    return set_discharge_mode_to_match_demand() + set_shallow_charge(4) + disable_discharge()
+    return set_discharge_mode_to_match_demand() + set_shallow_charge(4) + set_enable_discharge(False)
 
 
 def set_mode_storage(
@@ -237,7 +237,7 @@ def set_mode_storage(
     else:
         ret = set_discharge_mode_to_match_demand()  # r27=1
     ret.extend(set_shallow_charge(100))  # r110=100
-    ret.extend(enable_discharge())  # r59=1
+    ret.extend(set_enable_discharge(True))  # r59=1
     ret.extend(set_discharge_slot_1(discharge_slot_1))  # r56=1600, r57=700
     if discharge_slot_2:
         ret.extend(set_discharge_slot_2(discharge_slot_2))  # r56=1600, r57=700

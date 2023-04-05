@@ -34,14 +34,24 @@ async def test_configure_charge_target():
 
 async def test_set_charge():
     """Ensure we can toggle charging."""
-    assert commands.enable_charge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, True)]
-    assert commands.disable_charge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, False)]
+    assert commands.set_enable_charge(True) == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, True)]
+    assert commands.set_enable_charge(False) == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, False)]
+    with pytest.warns(DeprecationWarning):
+        assert commands.enable_charge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, True)]
+    with pytest.warns(DeprecationWarning):
+        assert commands.disable_charge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, False)]
 
 
 async def test_set_discharge():
     """Ensure we can toggle discharging."""
-    assert commands.enable_discharge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True)]
-    assert commands.disable_discharge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, False)]
+    assert commands.set_enable_discharge(True) == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True)]
+    assert commands.set_enable_discharge(False) == [
+        WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, False)
+    ]
+    with pytest.warns(DeprecationWarning):
+        assert commands.enable_discharge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True)]
+    with pytest.warns(DeprecationWarning):
+        assert commands.disable_discharge() == [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, False)]
 
 
 async def test_set_battery_discharge_mode():
