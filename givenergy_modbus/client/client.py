@@ -57,7 +57,7 @@ class Client:
         # asyncio.create_task(self._task_dump_queues_to_files(), name='dump_queues_to_files'),
         _logger.info(f'Connection established to {self.host}:{self.port}')
 
-    def close(self):
+    async def close(self):
         """Disconnect from the remote host and clean up tasks and queues."""
         if self.tx_queue:
             while not self.tx_queue.empty():
@@ -67,6 +67,7 @@ class Client:
         self.network_producer_task.cancel()
         if hasattr(self, 'writer') and self.writer:
             self.writer.close()
+            await self.writer.wait_closed()
             del self.writer
 
         self.network_consumer_task.cancel()
@@ -110,7 +111,7 @@ class Client:
 
     async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
-        while not self.reader.at_eof():
+        while hasattr(self, 'reader') and self.reader and not self.reader.at_eof():
             frame = await self.reader.read(300)
             await self.debug_frames['all'].put(frame)
             async for message in self.framer.decode(frame):
@@ -118,6 +119,7 @@ class Client:
                     _logger.warning(f'Expected response never arrived but resulted in exception: {message}')
                     continue
                 if isinstance(message, HeartbeatRequest):
+                    _logger.info('Responding to HeartbeatRequest')
                     await self.tx_queue.put((message.expected_response().encode(), None))
                     continue
                 if not isinstance(message, TransparentResponse):
@@ -141,7 +143,7 @@ class Client:
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
         """Producer loop to transmit queued frames with an appropriate delay."""
-        while not self.writer.is_closing():
+        while hasattr(self, 'writer') and self.writer and not self.writer.is_closing():
             message, future = await self.tx_queue.get()
             self.writer.write(message)
             await self.writer.drain()
