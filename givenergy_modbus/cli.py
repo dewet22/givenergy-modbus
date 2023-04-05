@@ -235,9 +235,16 @@ def dump_registers(ctx):
     '--delay',
     help='Delay in seconds between refreshes. Refreshes typically take ~1s to complete.',
     type=float,
-    default=4.0,
+    default=9.0,
 )
-def watch_plant(ctx, delay):
+@click.option(
+    '-p',
+    '--passive',
+    help='Besides doing a full refresh on startup, only monitor for other traffic.',
+    is_flag=True,
+    default=False,
+)
+def watch_plant(ctx, delay, passive):
     """Continuously refresh plant details and print energy flow summaries."""
     lines = 0
 
@@ -262,7 +269,7 @@ def watch_plant(ctx, delay):
         # {i.p_grid_out + i.p_load_demand - i.p_battery - i.p_pv1 - i.p_pv2}
         lines += 1
 
-    asyncio.run(ctx.obj['CLIENT'].watch_plant(handler, refresh_period=delay))
+    asyncio.run(ctx.obj['CLIENT'].watch_plant(handler, refresh_period=delay, passive=passive))
 
 
 @main.command()

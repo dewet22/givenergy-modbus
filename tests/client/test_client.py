@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from asyncio import StreamReader
 
 import pytest
 
@@ -10,26 +11,30 @@ from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, Wr
 
 
 async def test_expected_response():
-    transmitted_frames = []
-
-    async def mock_transmit_frame(frame: bytes):
-        transmitted_frames.append(frame)
-
-    async def mock_await_frames():
-        yield WriteHoldingRegisterResponse(inverter_serial_number='', register=HoldingRegister(35), value=20).encode()
-
     client = Client(host='foo', port=4321)
     assert client.expected_responses == {}
     req = WriteHoldingRegisterRequest(register=HoldingRegister(35), value=20)
-    client._enqueue_frame = mock_transmit_frame
-    client.await_frames = mock_await_frames
+    client.reader = StreamReader()
+    network_consumer = asyncio.create_task(client._task_network_consumer())
 
-    res, _ = await asyncio.gather(
-        client._execute_request(req, timeout=0.1, retries=2),
-        client._task_network_consumer(),
+    # enqueue the request
+    send_and_wait = asyncio.create_task(client.send_request_and_await_response(req, timeout=0.1, retries=2))
+
+    # simulate the message being transmitted
+    tx_msg, tx_fut = await client.tx_queue.get()
+    assert tx_msg == req.encode()
+    client.tx_queue.task_done()
+    tx_fut.set_result(True)
+
+    # simulate receiving a response, which enables the consumer task to mark response_future as done
+    client.reader.feed_data(
+        WriteHoldingRegisterResponse(inverter_serial_number='', register=HoldingRegister(35), value=20).encode()
     )
+    client.reader.feed_eof()
 
-    assert transmitted_frames == [req.encode()]
+    # check the response
+    res, _ = await asyncio.gather(send_and_wait, network_consumer)
+
     assert len(client.expected_responses) == 1
     assert res.shape_hash() in client.expected_responses.keys()
     expected_res_future = client.expected_responses[res.shape_hash()]
