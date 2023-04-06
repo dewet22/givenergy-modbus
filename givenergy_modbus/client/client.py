@@ -3,6 +3,7 @@ import logging
 import os
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
+from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
 
 import aiofiles
@@ -25,7 +26,7 @@ class Client:
     expected_responses: 'Dict[int, Future[TransparentResponse]]' = {}
     plant: Plant
     # refresh_count: int = 0
-    debug_frames: Dict[str, Queue]
+    # debug_frames: Dict[str, Queue]
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task
@@ -40,10 +41,10 @@ class Client:
         self.framer = ClientFramer()
         self.plant = Plant()
         self.tx_queue = Queue(maxsize=20)
-        self.debug_frames = {
-            'all': Queue(maxsize=1000),
-            'error': Queue(maxsize=1000),
-        }
+        # self.debug_frames = {
+        #     'all': Queue(maxsize=1000),
+        #     'error': Queue(maxsize=1000),
+        # }
 
     async def connect(self) -> None:
         """Connect to the remote host and start background tasks."""
@@ -77,6 +78,10 @@ class Client:
             del self.reader
 
         self.expected_responses = {}
+        # self.debug_frames = {
+        #     'all': Queue(maxsize=1000),
+        #     'error': Queue(maxsize=1000),
+        # }
 
     async def refresh_plant(
         self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
@@ -113,13 +118,14 @@ class Client:
         """Task for orchestrating incoming data."""
         while hasattr(self, 'reader') and self.reader and not self.reader.at_eof():
             frame = await self.reader.read(300)
-            await self.debug_frames['all'].put(frame)
+            # await self.debug_frames['all'].put(frame)
             async for message in self.framer.decode(frame):
+                _logger.debug(f'Processing {message}')
                 if isinstance(message, ExceptionBase):
                     _logger.warning(f'Expected response never arrived but resulted in exception: {message}')
                     continue
                 if isinstance(message, HeartbeatRequest):
-                    _logger.info('Responding to HeartbeatRequest')
+                    _logger.debug('Responding to HeartbeatRequest')
                     await self.tx_queue.put((message.expected_response().encode(), None))
                     continue
                 if not isinstance(message, TransparentResponse):
@@ -137,9 +143,9 @@ class Client:
                 try:
                     self.plant.update(message)
                 except RegisterCacheUpdateFailed as e:
-                    await self.debug_frames['error'].put(frame)
+                    # await self.debug_frames['error'].put(frame)
                     _logger.debug(f'Ignoring {message}: {e}')
-        _logger.warning('network_consumer exiting, reader at EOF')
+        _logger.critical('network_consumer reader at EOF, cannot continue')
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
         """Producer loop to transmit queued frames with an appropriate delay."""
@@ -151,21 +157,21 @@ class Client:
             if future:
                 future.set_result(True)
             await asyncio.sleep(tx_message_wait)
-        _logger.warning('network_producer exiting, writer is closing')
+        _logger.critical('network_producer writer is closing, cannot continue')
 
-    async def _task_dump_queues_to_files(self):
-        """Task to periodically dump debug message frames to disk for debugging."""
-        while True:
-            await asyncio.sleep(30)
-            if self.debug_frames:
-                os.makedirs('debug', exist_ok=True)
-                for name, queue in self.debug_frames.items():
-                    if not queue.empty():
-                        async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
-                            await str_file.write(f'# {arrow.utcnow().timestamp()}\n')
-                            while not queue.empty():
-                                item = await queue.get()
-                                await str_file.write(item.hex() + '\n')
+    # async def _task_dump_queues_to_files(self):
+    #     """Task to periodically dump debug message frames to disk for debugging."""
+    #     while True:
+    #         await asyncio.sleep(30)
+    #         if self.debug_frames:
+    #             os.makedirs('debug', exist_ok=True)
+    #             for name, queue in self.debug_frames.items():
+    #                 if not queue.empty():
+    #                     async with aiofiles.open(f'{os.path.join("debug", name)}_frames.txt', mode='a') as str_file:
+    #                         await str_file.write(f'# {arrow.utcnow().timestamp()}\n')
+    #                         while not queue.empty():
+    #                             item = await queue.get()
+    #                             await str_file.write(item.hex() + '\n')
 
     def execute(
         self, requests: List[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
