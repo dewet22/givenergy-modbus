@@ -301,7 +301,7 @@ class HoldingRegister(Register):
     REVERSE_115_METER_DIRECT = (48, {'type': T_BOOL})
     REVERSE_418_METER_DIRECT = (49, {'type': T_BOOL})
     # from beta remote control: Inverter Max Output Active Power Percent
-    ACTIVE_POWER_RATE = (50, {'unit': U_PERCENT})
+    ACTIVE_POWER_RATE = (50, {'unit': U_PERCENT, 'write_safe': True})
     REACTIVE_POWER_RATE = (51, {'unit': U_PERCENT})
     POWER_FACTOR = (52, {'type': T_POWER_FACTOR})
     INVERTER_STATE = (53, {'type': T_DOUBLE_BYTE})  # MSB:auto-restart state, LSB:on/off

@@ -13,6 +13,7 @@ _logger = logging.getLogger(__name__)
 WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
     HoldingRegister[x]
     for x in (
+        'ACTIVE_POWER_RATE',
         'BATTERY_CHARGE_LIMIT',
         'BATTERY_DISCHARGE_LIMIT',
         'BATTERY_DISCHARGE_MIN_POWER_RESERVE',
@@ -30,13 +31,13 @@ WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
         'ENABLE_CHARGE',
         'ENABLE_CHARGE_TARGET',
         'ENABLE_DISCHARGE',
+        'INVERTER_REBOOT',
         'SYSTEM_TIME_DAY',
         'SYSTEM_TIME_HOUR',
         'SYSTEM_TIME_MINUTE',
         'SYSTEM_TIME_MONTH',
         'SYSTEM_TIME_SECOND',
         'SYSTEM_TIME_YEAR',
-        'INVERTER_REBOOT',
     )
 }
 
