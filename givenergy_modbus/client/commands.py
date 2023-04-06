@@ -106,6 +106,7 @@ def set_discharge_mode_to_match_demand() -> List[TransparentRequest]:
 
 @deprecated('Use set_battery_soc_reserve(val) instead')
 def set_shallow_charge(val: int) -> List[TransparentRequest]:
+    """Set the minimum level of charge to maintain."""
     return set_battery_soc_reserve(val)
 
 

@@ -1,13 +1,8 @@
 import asyncio
 import logging
-import os
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
-from datetime import datetime
 from typing import Callable, Dict, List, Optional, Tuple
-
-import aiofiles
-import arrow
 
 from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
