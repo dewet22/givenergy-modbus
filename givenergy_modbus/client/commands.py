@@ -104,9 +104,15 @@ def set_discharge_mode_to_match_demand() -> List[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 1)]
 
 
+@deprecated('Use set_battery_soc_reserve(val) instead')
 def set_shallow_charge(val: int) -> List[TransparentRequest]:
+    return set_battery_soc_reserve(val)
+
+
+def set_battery_soc_reserve(val: int) -> List[TransparentRequest]:
     """Set the minimum level of charge to maintain."""
     # TODO what are valid values? 4-100?
+    val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f'Minimum SOC / shallow charge ({val}) must be in [4-100]%')
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, val)]
@@ -114,6 +120,7 @@ def set_shallow_charge(val: int) -> List[TransparentRequest]:
 
 def set_battery_charge_limit(val: int) -> List[TransparentRequest]:
     """Set the battery charge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
+    val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%')
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_CHARGE_LIMIT, val)]
@@ -121,6 +128,7 @@ def set_battery_charge_limit(val: int) -> List[TransparentRequest]:
 
 def set_battery_discharge_limit(val: int) -> List[TransparentRequest]:
     """Set the battery discharge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
+    val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%')
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)]
@@ -129,6 +137,7 @@ def set_battery_discharge_limit(val: int) -> List[TransparentRequest]:
 def set_battery_power_reserve(val: int) -> List[TransparentRequest]:
     """Set the battery power reserve to maintain."""
     # TODO what are valid values?
+    val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f'Battery power reserve ({val}) must be in [4-100]%')
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
@@ -212,7 +221,7 @@ def set_mode_dynamic() -> List[TransparentRequest]:
     and minimise the amount of energy drawn from the grid.
     """
     # r27=1 r110=4 r59=0
-    return set_discharge_mode_to_match_demand() + set_shallow_charge(4) + set_enable_discharge(False)
+    return set_discharge_mode_to_match_demand() + set_battery_soc_reserve(4) + set_enable_discharge(False)
 
 
 def set_mode_storage(
@@ -236,7 +245,7 @@ def set_mode_storage(
         ret = set_discharge_mode_max_power()  # r27=0
     else:
         ret = set_discharge_mode_to_match_demand()  # r27=1
-    ret.extend(set_shallow_charge(100))  # r110=100
+    ret.extend(set_battery_soc_reserve(100))  # r110=100
     ret.extend(set_enable_discharge(True))  # r59=1
     ret.extend(set_discharge_slot_1(discharge_slot_1))  # r56=1600, r57=700
     if discharge_slot_2:
