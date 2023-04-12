@@ -320,14 +320,14 @@ def test_has_same_shape():
     assert r1 in test_set
     assert r2 in test_set
 
-    r = WriteHoldingRegisterResponse(register=2)
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2))
+    r = WriteHoldingRegisterResponse(register=2, value=0)
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0))
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10))
-    assert r.has_same_shape(WriteHoldingRegisterRequest(register=2)) is False
+    assert r.has_same_shape(WriteHoldingRegisterRequest(register=2, value=0)) is False
     assert r.has_same_shape(ReadInputRegistersResponse(register=2)) is False
     assert r.has_same_shape(ReadInputRegistersRequest(register=2)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, slave_address=3)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=1)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0, slave_address=3)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=1, value=0)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=3, value=10)) is False
 
     r1 = WriteHoldingRegisterResponse(register=2, value=42)

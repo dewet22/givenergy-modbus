@@ -142,7 +142,7 @@ class Unit(str, Enum):
     sanity_check: Callable
 
     NONE = ''
-    CHARGE_AH = 'Ah'
+    CHARGE_AH = 'Ah', lambda x: 0 <= x < 500
     CURRENT_A = 'A', lambda x: abs(x) < 200
     CURRENT_MA = 'mA', lambda x: abs(x) < 2000
     ENERGY_KWH = 'kWh', lambda x: x >= 0
@@ -152,6 +152,7 @@ class Unit(str, Enum):
     POWER_VA = 'VA', lambda x: abs(x) < 20000
     POWER_W = 'W', lambda x: abs(x) < 20000
     TEMPERATURE_C = '°C', lambda x: abs(x) < 200
+    TIME_H = 'h'
     TIME_M = 'min'
     TIME_MS = 'ms'
     TIME_S = 'sec'
@@ -161,7 +162,8 @@ class Unit(str, Enum):
         """Allows indexing by register index."""
         obj = str.__new__(cls, str(value))
         obj._value_ = value
-        setattr(obj, 'sanity_check', sanity_check)  # the way to make mypy happy
+        # setattr(obj, 'sanity_check', sanity_check)  # the way to make mypy happy
+        obj.sanity_check = sanity_check
         return obj
 
 
@@ -228,6 +230,7 @@ T_TIME = DataType.TIME
 U_AMP = Unit.CURRENT_A
 U_AMPERE_HOUR = Unit.CHARGE_AH
 U_DEG_C = Unit.TEMPERATURE_C
+U_HOUR = Unit.TIME_H
 U_HZ = Unit.FREQUENCY_HZ
 U_KWH = Unit.ENERGY_KWH
 U_MILLIAMP = Unit.CURRENT_MA
@@ -509,8 +512,8 @@ class InputRegister(Register):
     E_INVERTER_OUT_DAY = (44, {'scaling': S_10, 'unit': U_KWH})
     E_INVERTER_OUT_TOTAL_H = (45, {'type': T_QUAD_H, 'scaling': S_10, 'unit': U_KWH})
     E_INVERTER_OUT_TOTAL_L = (46, {'type': T_QUAD_L, 'scaling': S_10, 'unit': U_KWH})
-    WORK_TIME_TOTAL_H = (47, {'type': T_QUAD_H, 'unit': U_SECONDS})
-    WORK_TIME_TOTAL_L = (48, {'type': T_QUAD_L, 'unit': U_SECONDS})
+    WORK_TIME_TOTAL_H = (47, {'type': T_QUAD_H, 'unit': U_HOUR})
+    WORK_TIME_TOTAL_L = (48, {'type': T_QUAD_L, 'unit': U_HOUR})
     SYSTEM_MODE = 49  # 0:offline, 1:grid-tied
     V_BATTERY = (50, {'scaling': S_100, 'unit': U_VOLT})
     I_BATTERY = (51, {'type': T_INT, 'scaling': S_100, 'unit': U_AMP})

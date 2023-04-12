@@ -67,7 +67,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             raise InvalidPduState('Register must be set', self)
         else:
             raise ValueError(f'Register type {type(register)} is unacceptable')
-        self.value = kwargs.get('value')
+        self.value = int(kwargs.get('value'))
 
     def __str__(self) -> str:
         if self.register is not None and self.value is not None:

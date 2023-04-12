@@ -91,7 +91,7 @@ class Client:
 
     async def watch_plant(
         self,
-        handler: Callable,
+        handler: Optional[Callable] = None,
         refresh_period: float = 15.0,
         max_batteries: int = 5,
         timeout: float = 1.0,
@@ -102,7 +102,8 @@ class Client:
         await self.connect()
         await self.refresh_plant(True, max_batteries=max_batteries)
         while True:
-            handler(self.plant)
+            if handler:
+                handler()
             await asyncio.sleep(refresh_period)
             if not passive:
                 reqs = commands.refresh_plant_data(False, self.plant.number_batteries)

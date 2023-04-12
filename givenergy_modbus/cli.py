@@ -11,7 +11,6 @@ from tabulate import tabulate
 
 from givenergy_modbus.client import Timeslot, commands
 from givenergy_modbus.client.client import Client
-from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.plant import Plant
 
 
@@ -166,7 +165,6 @@ def show_plant(ctx):
         click.echo(f'            {line}')
     # click.echo(pprint.pformat(p.inverter.dict(), indent=4))
 
-    b: Battery
     for i, b in enumerate(p.batteries):
         click.echo()
         click.echo(f'Battery #{i} (serial # {b.battery_serial_number}):')
