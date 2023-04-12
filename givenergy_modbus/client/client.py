@@ -22,6 +22,7 @@ class Client:
     plant: Plant
     # refresh_count: int = 0
     # debug_frames: Dict[str, Queue]
+    connected = False
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task
@@ -51,10 +52,12 @@ class Client:
         self.network_consumer_task = asyncio.create_task(self._task_network_consumer(), name='network_consumer')
         self.network_producer_task = asyncio.create_task(self._task_network_producer(), name='network_producer')
         # asyncio.create_task(self._task_dump_queues_to_files(), name='dump_queues_to_files'),
+        self.connected = True
         _logger.info(f'Connection established to {self.host}:{self.port}')
 
     async def close(self):
         """Disconnect from the remote host and clean up tasks and queues."""
+        self.connected = False
         if self.tx_queue:
             while not self.tx_queue.empty():
                 _, future = self.tx_queue.get_nowait()
