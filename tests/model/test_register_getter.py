@@ -24,6 +24,12 @@ class TestModel(BaseModel):
     inverter_firmware_version: str
     num_mppt: int
     num_phases: int
+    p_pv1: int
+    p_pv2: int
+    p_pv: int
+    e_pv1_day: float
+    e_pv2_day: float
+    e_pv_day: float
 
 
 class AttrDict(dict):
@@ -58,6 +64,10 @@ def test_get(register_cache):
                 'dsp_firmware_version': 299,
                 'arm_firmware_version': 959,
                 'num_mppt_and_num_phases': (6, 9),
+                'p_pv1': 694,
+                'p_pv2': 1320,
+                'e_pv1_day': 1201.1,
+                'e_pv2_day': 967.4,
             }
         )
     )
@@ -70,4 +80,10 @@ def test_get(register_cache):
         'inverter_firmware_version': 'D0.299-A0.959',
         'num_mppt': 6,
         'num_phases': 9,
+        'p_pv1': 694,
+        'p_pv2': 1320,
+        'p_pv': 2014,
+        'e_pv1_day': 1201.1,
+        'e_pv2_day': 967.4,
+        'e_pv_day': 2168.5,
     }

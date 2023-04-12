@@ -18,6 +18,7 @@ class RegisterGetter(GetterDict):
             if None in (serial1, serial2, serial3, serial4, serial5):
                 return None
             return ''.join([serial1, serial2, serial3, serial4, serial5])
+
         if key in ['num_mppt', 'num_phases']:
             obj = self.get('num_mppt_and_num_phases', None)
             if obj is None:
@@ -25,7 +26,7 @@ class RegisterGetter(GetterDict):
             elif key == 'num_mppt':
                 return obj[0]
             return obj[1]
-        # Some special cases first
+
         if key == 'system_time':
             year = self.get('system_time_year', None)
             month = self.get('system_time_month', None)
@@ -50,5 +51,11 @@ class RegisterGetter(GetterDict):
             if None in (dsp_firmware_version, arm_firmware_version):
                 return None
             return f'D0.{dsp_firmware_version}-A0.{arm_firmware_version}'
+
+        # PV power & energy aggregates
+        if key == 'p_pv':
+            return self.get('p_pv1') + self.get('p_pv2')
+        if key == 'e_pv_day':
+            return self.get('e_pv1_day') + self.get('e_pv2_day')
 
         return getattr(self._obj, key, default)

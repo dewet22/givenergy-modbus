@@ -58,6 +58,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'e_inverter_out_total': 172.5,
     'e_pv1_day': 0.4,
     'e_pv2_day': 0.6,
+    'e_pv_day': 1.0,
     'e_solar_diverter': 0.0,
     'enable_60hz_freq_mode': False,
     'enable_above_6kw_system': False,
@@ -132,6 +133,7 @@ EXPECTED_ACTUAL_DATA_DICT = {
     'p_load_demand': 515,
     'p_pv1': 117,
     'p_pv2': 128,
+    'p_pv': 245,
     'e_pv_total': 26.3,
     'pf_cmd_memory_state': True,
     'pf_inverter_out': -0.0469,
@@ -329,6 +331,7 @@ EXPECTED_INVERTER_DICT = {
     'e_inverter_out_total': 93.0,
     'e_pv1_day': 0.4,
     'e_pv2_day': 0.5,
+    'e_pv_day': 0.9,
     'e_solar_diverter': 0.0,
     'f_ac1': 49.9,
     'f_eps_backup': 49.86,
@@ -343,8 +346,9 @@ EXPECTED_INVERTER_DICT = {
     'p_grid_out': -342,
     'p_inverter_out': 0,
     'p_load_demand': 342,
-    'p_pv1': 0,
-    'p_pv2': 0,
+    'p_pv1': 4,
+    'p_pv2': 9,
+    'p_pv': 13,
     'e_pv_total': 15.9,
     'pf_inverter_out': -0.521,
     'system_mode': 1,
@@ -434,7 +438,11 @@ def test_has_expected_attributes():
             return
         values.add(val)
 
-    expected_attributes = {'inverter_firmware_version'}  # virtual fields
+    expected_attributes = {  # virtual fields
+        'inverter_firmware_version',
+        'e_pv_day',
+        'p_pv',
+    }
     for i in range(60):
         add_name(expected_attributes, HoldingRegister(i).name)
         add_name(expected_attributes, HoldingRegister(i + 60).name)
@@ -470,7 +478,7 @@ def test_from_orm_actual_data(register_cache_inverter_daytime_discharging_with_s
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.inverter_serial_number == 'SA1234G567'
     assert i.inverter_model == Model.Hybrid
-    assert len(i.json()) == 4883
+    assert len(i.json()) == 4913
     assert i.dict() == EXPECTED_ACTUAL_DATA_DICT
 
 

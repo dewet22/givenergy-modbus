@@ -192,6 +192,7 @@ class Inverter(GivEnergyBaseModel):
     e_inverter_in_total: float
     e_pv1_day: float
     e_pv2_day: float
+    e_pv_day: float  # virtual
     e_solar_diverter: float
     f_ac1: float
     f_eps_backup: float
@@ -208,6 +209,7 @@ class Inverter(GivEnergyBaseModel):
     p_load_demand: int
     p_pv1: int
     p_pv2: int
+    p_pv: int  # virtual
     e_pv_total: float
     pf_inverter_out: float
     temp_battery: float
