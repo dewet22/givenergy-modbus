@@ -1,7 +1,7 @@
 import logging
 import struct
 from abc import ABC
-from typing import Optional, Type
+from typing import Optional
 
 from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
 from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
@@ -92,7 +92,7 @@ class BasePDU(ABC):
         return pdu
 
     @classmethod
-    def lookup_main_function_decoder(cls, function_code: int) -> Type['BasePDU']:
+    def lookup_main_function_decoder(cls, function_code: int) -> type['BasePDU']:
         raise NotImplementedError()
 
     @classmethod
@@ -139,7 +139,7 @@ class ClientIncomingMessage(BasePDU, ABC):
     """Root of the hierarchy for PDUs clients are expected to receive and handle."""
 
     @classmethod
-    def lookup_main_function_decoder(cls, function_code: int) -> Type['ClientIncomingMessage']:
+    def lookup_main_function_decoder(cls, function_code: int) -> type['ClientIncomingMessage']:
         from givenergy_modbus.pdu import HeartbeatRequest, TransparentResponse
 
         if function_code == 1:
@@ -158,7 +158,7 @@ class ClientOutgoingMessage(BasePDU, ABC):
     """Root of the hierarchy for PDUs clients are expected to send to servers."""
 
     @classmethod
-    def lookup_main_function_decoder(cls, function_code: int) -> Type['ClientOutgoingMessage']:
+    def lookup_main_function_decoder(cls, function_code: int) -> type['ClientOutgoingMessage']:
         from givenergy_modbus.pdu import HeartbeatResponse, TransparentRequest
 
         if function_code == 1:

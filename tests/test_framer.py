@@ -1,6 +1,6 @@
 """Tests for GivEnergyModbusFramer."""
 import logging
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Optional, Union
 
 import pytest
 
@@ -60,8 +60,8 @@ EXCEPTION_RESPONSE_FRAME = (  # actual recorded response frame, to request above
 async def validate_decoding(
     framer: Framer,
     raw_frame: bytes,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     ex: Optional[ExceptionBase],
 ):
     results = []
@@ -81,8 +81,8 @@ async def validate_decoding(
 @pytest.mark.parametrize(PduTestCaseSig, SERVER_MESSAGES)
 async def test_server_decoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -94,8 +94,8 @@ async def test_server_decoding(
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
 async def test_client_decoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -104,7 +104,7 @@ async def test_client_decoding(
     await validate_decoding(ClientFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex)
 
 
-async def decode(framer_class: Type[Framer], buffer: str) -> Union[BasePDU, ExceptionBase]:
+async def decode(framer_class: type[Framer], buffer: str) -> Union[BasePDU, ExceptionBase]:
     results = []
     async for result in framer_class().decode(_h2b(buffer)):
         results.append(result)

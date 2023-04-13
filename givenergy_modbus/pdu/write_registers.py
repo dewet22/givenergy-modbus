@@ -1,6 +1,5 @@
 import logging
 from abc import ABC
-from typing import Set
 
 from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
 from givenergy_modbus.exceptions import InvalidPduState
@@ -10,7 +9,7 @@ from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequ
 _logger = logging.getLogger(__name__)
 
 # Canonical list of registers that are safe to write to.
-WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
+WRITE_SAFE_REGISTERS: set[HoldingRegister] = {
     HoldingRegister[x]
     for x in (
         'ACTIVE_POWER_RATE',
@@ -31,13 +30,14 @@ WRITE_SAFE_REGISTERS: Set[HoldingRegister] = {
         'ENABLE_CHARGE',
         'ENABLE_CHARGE_TARGET',
         'ENABLE_DISCHARGE',
-        'INVERTER_REBOOT',
+        'REBOOT',  # 163
         'SYSTEM_TIME_DAY',
         'SYSTEM_TIME_HOUR',
         'SYSTEM_TIME_MINUTE',
         'SYSTEM_TIME_MONTH',
         'SYSTEM_TIME_SECOND',
         'SYSTEM_TIME_YEAR',
+        'SOC_FORCE_ADJUST',
     )
 }
 

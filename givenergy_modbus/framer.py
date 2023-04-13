@@ -1,6 +1,7 @@
 import logging
 from abc import ABC
-from typing import AsyncIterator, Callable, Optional, Type, Union
+from collections.abc import AsyncIterator
+from typing import Callable, Optional, Type, Union
 
 from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
 from givenergy_modbus.pdu import BasePDU, ClientIncomingMessage, ServerIncomingMessage

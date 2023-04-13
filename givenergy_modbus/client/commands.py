@@ -1,6 +1,6 @@
 """High-level methods for interacting with a remote system."""
 
-from typing import List, Optional
+from typing import Optional
 
 from arrow import Arrow
 from typing_extensions import deprecated  # type: ignore[attr-defined]
@@ -15,9 +15,9 @@ from givenergy_modbus.pdu import (
 )
 
 
-def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> List[TransparentRequest]:
+def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
     """Refresh plant data."""
-    requests: List[TransparentRequest] = [
+    requests: list[TransparentRequest] = [
         ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=0x32),
         ReadInputRegistersRequest(base_register=180, register_count=60, slave_address=0x32),
     ]
@@ -32,7 +32,7 @@ def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries:
     return requests
 
 
-def disable_charge_target() -> List[TransparentRequest]:
+def disable_charge_target() -> list[TransparentRequest]:
     """Removes SOC limit and target 100% charging."""
     return [
         WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE_TARGET, False),
@@ -40,7 +40,7 @@ def disable_charge_target() -> List[TransparentRequest]:
     ]
 
 
-def set_charge_target(target_soc: int) -> List[TransparentRequest]:
+def set_charge_target(target_soc: int) -> list[TransparentRequest]:
     """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
     if not 4 <= target_soc <= 100:
         raise ValueError(f'Charge Target SOC ({target_soc}) must be in [4-100]%')
@@ -53,64 +53,69 @@ def set_charge_target(target_soc: int) -> List[TransparentRequest]:
     return ret
 
 
-def set_enable_charge(enabled: bool) -> List[TransparentRequest]:
+def set_enable_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
     return [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, enabled)]
 
 
-def set_enable_discharge(enabled: bool) -> List[TransparentRequest]:
+def set_enable_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
     return [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, enabled)]
 
 
-def set_inverter_reboot(enabled: bool) -> List[TransparentRequest]:
+def set_inverter_reboot(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
     if enabled:
-        return [WriteHoldingRegisterRequest(HoldingRegister.INVERTER_REBOOT, 100)]
+        return [WriteHoldingRegisterRequest(HoldingRegister(163), 100)]
     return []
 
 
+def set_calibrate_battery_soc() -> list[TransparentRequest]:
+    """Set the inverter to recalibrate the battery state of charge estimation."""
+    return [WriteHoldingRegisterRequest(HoldingRegister.SOC_FORCE_ADJUST, 1)]
+
+
 @deprecated('use set_enable_charge(True) instead')
-def enable_charge() -> List[TransparentRequest]:
+def enable_charge() -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
     return set_enable_charge(True)
 
 
 @deprecated('use set_enable_charge(False) instead')
-def disable_charge() -> List[TransparentRequest]:
+def disable_charge() -> list[TransparentRequest]:
     """Prevent the battery from charging at all."""
     return set_enable_charge(False)
 
 
 @deprecated('use set_enable_discharge(True) instead')
-def enable_discharge() -> List[TransparentRequest]:
+def enable_discharge() -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
     return set_enable_discharge(True)
 
 
 @deprecated('use set_enable_discharge(False) instead')
-def disable_discharge() -> List[TransparentRequest]:
+def disable_discharge() -> list[TransparentRequest]:
     """Prevent the battery from discharging at all."""
     return set_enable_discharge(False)
 
 
-def set_discharge_mode_max_power() -> List[TransparentRequest]:
+def set_discharge_mode_max_power() -> list[TransparentRequest]:
     """Set the battery discharge mode to maximum power, exporting to the grid if it exceeds load demand."""
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 0)]
 
 
-def set_discharge_mode_to_match_demand() -> List[TransparentRequest]:
+def set_discharge_mode_to_match_demand() -> list[TransparentRequest]:
     """Set the battery discharge mode to match demand, avoiding exporting power to the grid."""
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 1)]
 
 
 @deprecated('Use set_battery_soc_reserve(val) instead')
-def set_shallow_charge(val: int) -> List[TransparentRequest]:
+def set_shallow_charge(val: int) -> list[TransparentRequest]:
     """Set the minimum level of charge to maintain."""
     return set_battery_soc_reserve(val)
 
 
-def set_battery_soc_reserve(val: int) -> List[TransparentRequest]:
+def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
     """Set the minimum level of charge to maintain."""
     # TODO what are valid values? 4-100?
     val = int(val)
@@ -119,7 +124,7 @@ def set_battery_soc_reserve(val: int) -> List[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, val)]
 
 
-def set_battery_charge_limit(val: int) -> List[TransparentRequest]:
+def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery charge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
     val = int(val)
     if not 0 <= val <= 50:
@@ -127,7 +132,7 @@ def set_battery_charge_limit(val: int) -> List[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_CHARGE_LIMIT, val)]
 
 
-def set_battery_discharge_limit(val: int) -> List[TransparentRequest]:
+def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery discharge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
     val = int(val)
     if not 0 <= val <= 50:
@@ -135,7 +140,7 @@ def set_battery_discharge_limit(val: int) -> List[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)]
 
 
-def set_battery_power_reserve(val: int) -> List[TransparentRequest]:
+def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     """Set the battery power reserve to maintain."""
     # TODO what are valid values?
     val = int(val)
@@ -144,7 +149,7 @@ def set_battery_power_reserve(val: int) -> List[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
 
 
-def _set_charge_slot(discharge: bool, idx: int, slot: Optional[Timeslot]) -> List[TransparentRequest]:
+def _set_charge_slot(discharge: bool, idx: int, slot: Optional[Timeslot]) -> list[TransparentRequest]:
     hr_start, hr_end = (
         HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'],
         HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'],
@@ -161,47 +166,47 @@ def _set_charge_slot(discharge: bool, idx: int, slot: Optional[Timeslot]) -> Lis
         ]
 
 
-def set_charge_slot_1(timeslot: Timeslot) -> List[TransparentRequest]:
+def set_charge_slot_1(timeslot: Timeslot) -> list[TransparentRequest]:
     """Set first charge slot start & end times."""
     return _set_charge_slot(False, 1, timeslot)
 
 
-def reset_charge_slot_1() -> List[TransparentRequest]:
+def reset_charge_slot_1() -> list[TransparentRequest]:
     """Reset first charge slot to zero/disabled."""
     return _set_charge_slot(False, 1, None)
 
 
-def set_charge_slot_2(timeslot: Timeslot) -> List[TransparentRequest]:
+def set_charge_slot_2(timeslot: Timeslot) -> list[TransparentRequest]:
     """Set second charge slot start & end times."""
     return _set_charge_slot(False, 2, timeslot)
 
 
-def reset_charge_slot_2() -> List[TransparentRequest]:
+def reset_charge_slot_2() -> list[TransparentRequest]:
     """Reset second charge slot to zero/disabled."""
     return _set_charge_slot(False, 2, None)
 
 
-def set_discharge_slot_1(timeslot: Timeslot) -> List[TransparentRequest]:
+def set_discharge_slot_1(timeslot: Timeslot) -> list[TransparentRequest]:
     """Set first discharge slot start & end times."""
     return _set_charge_slot(True, 1, timeslot)
 
 
-def reset_discharge_slot_1() -> List[TransparentRequest]:
+def reset_discharge_slot_1() -> list[TransparentRequest]:
     """Reset first discharge slot to zero/disabled."""
     return _set_charge_slot(True, 1, None)
 
 
-def set_discharge_slot_2(timeslot: Timeslot) -> List[TransparentRequest]:
+def set_discharge_slot_2(timeslot: Timeslot) -> list[TransparentRequest]:
     """Set second discharge slot start & end times."""
     return _set_charge_slot(True, 2, timeslot)
 
 
-def reset_discharge_slot_2() -> List[TransparentRequest]:
+def reset_discharge_slot_2() -> list[TransparentRequest]:
     """Reset second discharge slot to zero/disabled."""
     return _set_charge_slot(True, 2, None)
 
 
-def set_system_date_time(dt: Arrow) -> List[TransparentRequest]:
+def set_system_date_time(dt: Arrow) -> list[TransparentRequest]:
     """Set the date & time of the inverter."""
     return [
         WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_YEAR, dt.year - 2000),
@@ -213,7 +218,7 @@ def set_system_date_time(dt: Arrow) -> List[TransparentRequest]:
     ]
 
 
-def set_mode_dynamic() -> List[TransparentRequest]:
+def set_mode_dynamic() -> list[TransparentRequest]:
     """Set system to Dynamic / Eco mode.
 
     This mode is designed to maximise use of solar generation. The battery will charge from excess solar
@@ -229,7 +234,7 @@ def set_mode_storage(
     discharge_slot_1: Timeslot = Timeslot.from_repr(1600, 700),
     discharge_slot_2: Optional[Timeslot] = None,
     discharge_for_export: bool = False,
-) -> List[TransparentRequest]:
+) -> list[TransparentRequest]:
     """Set system to storage mode with specific discharge slots(s).
 
     This mode stores excess solar generation during the day and holds that energy ready for use later in the day.

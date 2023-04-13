@@ -1,6 +1,5 @@
 import logging
 from abc import ABC
-from typing import Dict, List
 
 from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
 from givenergy_modbus.exceptions import InvalidPduState
@@ -76,7 +75,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.register_values: List[int] = kwargs.get('register_values', [])
+        self.register_values: list[int] = kwargs.get('register_values', [])
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -111,7 +110,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         # crc = CrcModbus().process(crc_builder.to_string()).final()
         # _logger.warning(f'supplied crc = {self.check}, calculated crc = {crc}')
 
-    def to_dict(self) -> Dict[int, int]:
+    def to_dict(self) -> dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
         return {k: v for k, v in enumerate(self.register_values, start=self.base_register)}
 

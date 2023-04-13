@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional
 
 import pytest
 
@@ -83,13 +83,13 @@ def test_str():
     with pytest.raises(InvalidPduState, match='Register must be set'):
         WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
-        '2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)'
+        '2:6/WriteHoldingRegisterResponse(HR(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, register=7, value=6)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(7)/ENABLE_AMMETER -> True/0x0006)'
+        '2:6/WriteHoldingRegisterResponse(ERROR HR(7)/ENABLE_AMMETER -> True/0x0006)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=18, value=5)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)'
+        '2:6/WriteHoldingRegisterResponse(ERROR HR(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)'
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
@@ -103,8 +103,8 @@ def test_str():
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_str_actual_messages(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -145,8 +145,8 @@ def test_cannot_change_function_code():
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_encoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -163,8 +163,8 @@ def test_encoding(
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_decoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -194,8 +194,8 @@ def test_decoding(
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_decoding_wrong_streams(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -259,7 +259,10 @@ def test_writable_registers_consistent():
     assert WRITE_SAFE_REGISTERS == write_safe_holding_registers
 
 
-@pytest.mark.parametrize('r', range(max(map(lambda x: x.value, HoldingRegister.__members__.values()))))
+@pytest.mark.parametrize(
+    'r',
+    range(max(map(lambda x: x.value, HoldingRegister.__members__.values()))),  # type: ignore[call-overload]
+)
 def test_non_writable_registers_raise(r: int):
     hr = HoldingRegister(r)
     if hr in WRITE_SAFE_REGISTERS:

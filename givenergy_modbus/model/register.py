@@ -1,6 +1,6 @@
 import logging
 from datetime import time
-from enum import Enum, auto, unique
+from enum import Enum, StrEnum, auto, unique
 from typing import Any, Callable, Optional
 
 from givenergy_modbus.exceptions import ExceptionBase
@@ -168,7 +168,7 @@ class Unit(str, Enum):
 
 
 @unique
-class Register(str, Enum):
+class Register(StrEnum):
     """Mixin to help easier access to register bank structures."""
 
     data_type: DataType
@@ -181,7 +181,7 @@ class Register(str, Enum):
         if data is None:
             data = {}
         obj = str.__new__(cls, f'{cls.__name__}({value})')
-        obj._value_ = value
+        obj._value_ = value  # type: ignore[assignment]
         obj.data_type = data.get('type', DataType.UINT16)
         obj.scaling_factor = data.get('scaling', ScalingFactor.UNITY)
         obj.physical_unit = data.get('unit', Unit.NONE)
@@ -249,27 +249,30 @@ S_1000 = ScalingFactor.MILLI
 
 
 class HoldingRegister(Register):
-    """Holding Register definitions."""
+    """Holding Register definitions; used by inverters."""
+
+    def __str__(self) -> str:
+        return f'HR({self.value})'
 
     DEVICE_TYPE_CODE = (0, {'type': T_HEX})  # 0x[01235]xxx where 2=Inv?, 5==EMS
-    INVERTER_MODULE_H = (1, {'type': T_QUAD_H})
-    INVERTER_MODULE_L = (2, {'type': T_QUAD_L})
+    MODULE_H = (1, {'type': T_QUAD_H})
+    MODULE_L = (2, {'type': T_QUAD_L})
     NUM_MPPT_AND_NUM_PHASES = (3, {'type': T_DOUBLE_BYTE})  # number of MPPTs and phases
     HOLDING_REG004 = 4
     HOLDING_REG005 = 5
     HOLDING_REG006 = 6
     ENABLE_AMMETER = 7, {'type': T_BOOL}
-    INVERTER_BATTERY_SERIAL_NUMBER_1_2 = (8, {'type': T_ASCII})
-    INVERTER_BATTERY_SERIAL_NUMBER_3_4 = (9, {'type': T_ASCII})
-    INVERTER_BATTERY_SERIAL_NUMBER_5_6 = (10, {'type': T_ASCII})
-    INVERTER_BATTERY_SERIAL_NUMBER_7_8 = (11, {'type': T_ASCII})
-    INVERTER_BATTERY_SERIAL_NUMBER_9_10 = (12, {'type': T_ASCII})
+    FIRST_BATTERY_SERIAL_NUMBER_1_2 = (8, {'type': T_ASCII})
+    FIRST_BATTERY_SERIAL_NUMBER_3_4 = (9, {'type': T_ASCII})
+    FIRST_BATTERY_SERIAL_NUMBER_5_6 = (10, {'type': T_ASCII})
+    FIRST_BATTERY_SERIAL_NUMBER_7_8 = (11, {'type': T_ASCII})
+    FIRST_BATTERY_SERIAL_NUMBER_9_10 = (12, {'type': T_ASCII})
     INVERTER_SERIAL_NUMBER_1_2 = (13, {'type': T_ASCII})
     INVERTER_SERIAL_NUMBER_3_4 = (14, {'type': T_ASCII})
     INVERTER_SERIAL_NUMBER_5_6 = (15, {'type': T_ASCII})
     INVERTER_SERIAL_NUMBER_7_8 = (16, {'type': T_ASCII})
     INVERTER_SERIAL_NUMBER_9_10 = (17, {'type': T_ASCII})
-    INVERTER_BATTERY_BMS_FIRMWARE_VERSION = 18
+    FIRST_BATTERY_BMS_FIRMWARE_VERSION = 18
     DSP_FIRMWARE_VERSION = 19
     ENABLE_CHARGE_TARGET = (20, {'type': T_BOOL, 'write_safe': True})
     ARM_FIRMWARE_VERSION = 21
@@ -282,7 +285,7 @@ class HoldingRegister(Register):
     ENABLE_60HZ_FREQ_MODE = (28, {'type': T_BOOL})  # 0:50hz
     # battery calibration stages (0:off  1:start/discharge  2:set lower limit  3:charge
     # 4:set upper limit  5:balance  6:set full capacity  7:finish)
-    SOC_FORCE_ADJUST = 29
+    SOC_FORCE_ADJUST = (29, {'type': T_INT, 'write_safe': True})
     INVERTER_MODBUS_ADDRESS = (30, {'type': T_BYTE})  # default 0x11
     CHARGE_SLOT_2_START = (31, {'type': T_TIME, 'write_safe': True})
     CHARGE_SLOT_2_END = (32, {'type': T_TIME, 'write_safe': True})
@@ -421,7 +424,7 @@ class HoldingRegister(Register):
     HOLDING_REG160 = 160
     HOLDING_REG161 = 161
     HOLDING_REG162 = 162
-    INVERTER_REBOOT = (163, {'unit': U_PERCENT, 'write_safe': True})  # 100= reboot
+    REBOOT = (163, {'unit': U_PERCENT, 'write_safe': True})  # 100 = reboot
     HOLDING_REG164 = 164
     HOLDING_REG165 = 165
     HOLDING_REG166 = 166
@@ -464,6 +467,9 @@ class HoldingRegister(Register):
 
 class InputRegister(Register):
     """Definitions of Input Registers, shared by Inverter and Battery devices."""
+
+    def __str__(self) -> str:
+        return f'IR({self.value})'
 
     INVERTER_STATUS = 0  # 0:waiting 1:normal 2:warning 3:fault 4:flash/fw update
     V_PV1 = (1, {'scaling': S_10, 'unit': U_VOLT})

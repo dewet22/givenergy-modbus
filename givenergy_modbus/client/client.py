@@ -109,8 +109,9 @@ class Client:
                 reqs = commands.refresh_plant_data(False, self.plant.number_batteries)
                 await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
 
-    async def one_shot_command(self, requests: List[TransparentRequest], timeout=1.5, retries=0) -> None:
+    async def one_shot_command(self, requests: list[TransparentRequest], timeout=1.5, retries=0) -> None:
         """Run a single set of requests and return."""
+        await self.connect()
         await self.execute(requests, timeout=timeout, retries=retries)
 
     async def _task_network_consumer(self):
@@ -173,7 +174,7 @@ class Client:
     #                             await str_file.write(item.hex() + '\n')
 
     def execute(
-        self, requests: List[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
+        self, requests: list[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
     ) -> 'Future[List[TransparentResponse]]':
         """Helper to perform multiple requests in bulk."""
         return asyncio.gather(

@@ -1,5 +1,4 @@
 import datetime
-from typing import Dict
 
 import pytest
 
@@ -14,7 +13,7 @@ from givenergy_modbus.model.register import (
 )
 
 # fmt: off
-INPUT_REGISTERS: Dict[int, int] = dict(enumerate([
+INPUT_REGISTERS: dict[int, int] = dict(enumerate([
     0, 14, 10, 70, 0, 2367, 0, 1832, 0, 0,  # 00x
     0, 0, 159, 4990, 0, 12, 4790, 4, 4, 5,  # 01x
     9, 0, 6, 0, 0, 0, 209, 0, 946, 0,  # 02x
@@ -42,7 +41,7 @@ INPUT_REGISTERS: Dict[int, int] = dict(enumerate([
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 22x
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 23x
 ]))
-HOLDING_REGISTERS: Dict[int, int] = dict(enumerate([
+HOLDING_REGISTERS: dict[int, int] = dict(enumerate([
     8193, 3, 2098, 513, 0, 50000, 3600, 1, 16967, 12594,  # 00x
     13108, 18229, 13879, 21313, 12594, 13108, 18229, 13879, 3005, 449,  # 01x
     1, 449, 2, 0, 32768, 30235, 6000, 1, 0, 0,  # 02x
@@ -325,8 +324,8 @@ def test_register_convert():
 
 def test_register_repr():
     """Ensure we can create human-readable forms of register values."""
-    assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(16706) == 'AB'
-    assert HoldingRegister['INVERTER_SERIAL_NUMBER_1_2'].repr(65) == '\x00A'
+    assert HoldingRegister(13).repr(16706) == 'AB'
+    assert HoldingRegister(13).repr(65) == '\x00A'
     assert HoldingRegister['CHARGE_SLOT_1_START'].repr(1234) == '12:34'
     assert InputRegister['V_AC1'].repr(15) == '1.50V'
     assert InputRegister['P_PV1'].repr(15) == '15W'

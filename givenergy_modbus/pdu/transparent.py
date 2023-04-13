@@ -1,6 +1,5 @@
 import logging
 from abc import ABC
-from typing import Type
 
 from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.pdu.base import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
@@ -95,7 +94,7 @@ class TransparentMessage(BasePDU, ABC):
         return decoder_class.decode_transparent_function(decoder, **attrs)
 
     @classmethod
-    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> Type['TransparentMessage']:
+    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type['TransparentMessage']:
         raise NotImplementedError()
 
     @classmethod
@@ -119,7 +118,7 @@ class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
     """Root of the hierarchy for Transparent Request PDUs."""
 
     @classmethod
-    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> Type['TransparentRequest']:
+    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type['TransparentRequest']:
         from givenergy_modbus.pdu import (
             ReadHoldingRegistersRequest,
             ReadInputRegistersRequest,
@@ -154,7 +153,7 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
         self._builder.add_serial_number(self.inverter_serial_number)
 
     @classmethod
-    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> Type['TransparentResponse']:
+    def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type['TransparentResponse']:
         from givenergy_modbus.pdu import (
             NullResponse,
             ReadHoldingRegistersResponse,

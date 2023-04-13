@@ -58,20 +58,20 @@ six = "*"
 test = ["astroid", "pytest"]
 
 [[package]]
-name = "astunparse"
-version = "1.6.3"
-description = "An AST unparser for Python"
+name = "autoflake"
+version = "2.0.2"
+description = "Removes unused imports and unused variables"
 category = "dev"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "astunparse-1.6.3-py2.py3-none-any.whl", hash = "sha256:c2652417f2c8b5bb325c885ae329bdf3f86424075c4fd1a128674bc6fba4b8e8"},
-    {file = "astunparse-1.6.3.tar.gz", hash = "sha256:5ad93a8456f0d084c3456d059fd9a92cce667963232cbf763eac3bc5b7940872"},
+    {file = "autoflake-2.0.2-py3-none-any.whl", hash = "sha256:a82d8efdcbbb7129a8a23238c529fb9d9919c562e26bb7963ea6890fbfff7d02"},
+    {file = "autoflake-2.0.2.tar.gz", hash = "sha256:e0164421ff13f805f08a023e249d84200bd00463d213b490906bfefa67e83830"},
 ]
 
 [package.dependencies]
-six = ">=1.6.1,<2.0"
-wheel = ">=0.23.0,<1.0"
+pyflakes = ">=3.0.0"
+tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 
 [[package]]
 name = "autopep8"
@@ -222,7 +222,7 @@ files = [
 name = "certifi"
 version = "2022.12.7"
 description = "Python package for providing Mozilla's CA Bundle."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 files = [
@@ -420,7 +420,7 @@ files = [
 name = "click"
 version = "8.1.3"
 description = "Composable command line interface toolkit"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
@@ -435,7 +435,7 @@ colorama = {version = "*", markers = "platform_system == \"Windows\""}
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
-category = "main"
+category = "dev"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
 files = [
@@ -808,25 +808,6 @@ perf = ["ipython"]
 testing = ["flake8 (<5)", "flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)", "pytest-perf (>=0.9.2)"]
 
 [[package]]
-name = "importlib-resources"
-version = "5.12.0"
-description = "Read resources from Python packages"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "importlib_resources-5.12.0-py3-none-any.whl", hash = "sha256:7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"},
-    {file = "importlib_resources-5.12.0.tar.gz", hash = "sha256:4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"},
-]
-
-[package.dependencies]
-zipp = {version = ">=3.1.0", markers = "python_version < \"3.10\""}
-
-[package.extras]
-docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
-testing = ["flake8 (<5)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
-
-[[package]]
 name = "iniconfig"
 version = "2.0.0"
 description = "brain-dead simple config-ini parsing"
@@ -983,7 +964,6 @@ files = [
 
 [package.dependencies]
 importlib-metadata = {version = ">=4.11.4", markers = "python_version < \"3.12\""}
-importlib-resources = {version = "*", markers = "python_version < \"3.9\""}
 "jaraco.classes" = "*"
 jeepney = {version = ">=0.4.2", markers = "sys_platform == \"linux\""}
 pywin32-ctypes = {version = ">=0.2.0", markers = "sys_platform == \"win32\""}
@@ -993,25 +973,6 @@ SecretStorage = {version = ">=3.2", markers = "sys_platform == \"linux\""}
 completion = ["shtab"]
 docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)"]
 testing = ["flake8 (<5)", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
-
-[[package]]
-name = "loguru"
-version = "0.6.0"
-description = "Python logging made (stupidly) simple"
-category = "main"
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "loguru-0.6.0-py3-none-any.whl", hash = "sha256:4e2414d534a2ab57573365b3e6d0234dfb1d84b68b7f3b948e6fb743860a77c3"},
-    {file = "loguru-0.6.0.tar.gz", hash = "sha256:066bd06758d0a513e9836fd9c6b5a75bfb3fd36841f4b996bc60b547a309d41c"},
-]
-
-[package.dependencies]
-colorama = {version = ">=0.3.4", markers = "sys_platform == \"win32\""}
-win32-setctime = {version = ">=1.0.0", markers = "sys_platform == \"win32\""}
-
-[package.extras]
-dev = ["Sphinx (>=4.1.1)", "black (>=19.10b0)", "colorama (>=0.3.4)", "docutils (==0.16)", "flake8 (>=3.7.7)", "isort (>=5.1.1)", "pytest (>=4.6.2)", "pytest-cov (>=2.7.1)", "sphinx-autobuild (>=0.7.1)", "sphinx-rtd-theme (>=0.4.3)", "tox (>=3.9.0)"]
 
 [[package]]
 name = "markdown"
@@ -1885,9 +1846,6 @@ files = [
     {file = "pytkdocs-0.16.1.tar.gz", hash = "sha256:e2ccf6dfe9dbbceb09818673f040f1a7c32ed0bffb2d709b06be6453c4026045"},
 ]
 
-[package.dependencies]
-astunparse = {version = ">=1.6", markers = "python_version < \"3.9\""}
-
 [package.extras]
 numpy-style = ["docstring_parser (>=0.7)"]
 
@@ -2112,20 +2070,19 @@ idna2008 = ["idna"]
 
 [[package]]
 name = "rich"
-version = "13.3.3"
+version = "13.3.4"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "dev"
 optional = false
 python-versions = ">=3.7.0"
 files = [
-    {file = "rich-13.3.3-py3-none-any.whl", hash = "sha256:540c7d6d26a1178e8e8b37e9ba44573a3cd1464ff6348b99ee7061b95d1c6333"},
-    {file = "rich-13.3.3.tar.gz", hash = "sha256:dc84400a9d842b3a9c5ff74addd8eb798d155f36c1c91303888e0a66850d2a15"},
+    {file = "rich-13.3.4-py3-none-any.whl", hash = "sha256:22b74cae0278fd5086ff44144d3813be1cedc9115bdfabbfefd86400cb88b20a"},
+    {file = "rich-13.3.4.tar.gz", hash = "sha256:b5d573e13605423ec80bdd0cd5f8541f7844a0e71a13f74cf454ccb2f490708b"},
 ]
 
 [package.dependencies]
 markdown-it-py = ">=2.2.0,<3.0.0"
 pygments = ">=2.13.0,<3.0.0"
-typing-extensions = {version = ">=4.0.0,<5.0", markers = "python_version < \"3.9\""}
 
 [package.extras]
 jupyter = ["ipywidgets (>=7.5.1,<9)"]
@@ -2145,48 +2102,6 @@ files = [
 [package.dependencies]
 cryptography = ">=2.0"
 jeepney = ">=0.6"
-
-[[package]]
-name = "sentry-sdk"
-version = "1.19.1"
-description = "Python client for Sentry (https://sentry.io)"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "sentry-sdk-1.19.1.tar.gz", hash = "sha256:7ae78bd921981a5010ab540d6bdf3b793659a4db8cccf7f16180702d48a80d84"},
-    {file = "sentry_sdk-1.19.1-py2.py3-none-any.whl", hash = "sha256:885a11c69df23e53eb281d003b9ff15a5bdfa43d8a2a53589be52104a1b4582f"},
-]
-
-[package.dependencies]
-certifi = "*"
-urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
-
-[package.extras]
-aiohttp = ["aiohttp (>=3.5)"]
-arq = ["arq (>=0.23)"]
-beam = ["apache-beam (>=2.12)"]
-bottle = ["bottle (>=0.12.13)"]
-celery = ["celery (>=3)"]
-chalice = ["chalice (>=1.16.0)"]
-django = ["django (>=1.8)"]
-falcon = ["falcon (>=1.4)"]
-fastapi = ["fastapi (>=0.79.0)"]
-flask = ["blinker (>=1.1)", "flask (>=0.11)"]
-grpcio = ["grpcio (>=1.21.1)"]
-httpx = ["httpx (>=0.16.0)"]
-huey = ["huey (>=2)"]
-opentelemetry = ["opentelemetry-distro (>=0.35b0)"]
-pure-eval = ["asttokens", "executing", "pure-eval"]
-pymongo = ["pymongo (>=3.1)"]
-pyspark = ["pyspark (>=2.4.4)"]
-quart = ["blinker (>=1.1)", "quart (>=0.16.1)"]
-rq = ["rq (>=0.6)"]
-sanic = ["sanic (>=0.8)"]
-sqlalchemy = ["sqlalchemy (>=1.2)"]
-starlette = ["starlette (>=0.19.1)"]
-starlite = ["starlite (>=1.48)"]
-tornado = ["tornado (>=5)"]
 
 [[package]]
 name = "setuptools"
@@ -2277,21 +2192,6 @@ files = [
 pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 
 [[package]]
-name = "tabulate"
-version = "0.9.0"
-description = "Pretty-print tabular data"
-category = "main"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f"},
-    {file = "tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c"},
-]
-
-[package.extras]
-widechars = ["wcwidth"]
-
-[[package]]
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
@@ -2317,21 +2217,21 @@ files = [
 
 [[package]]
 name = "tox"
-version = "4.4.11"
+version = "4.4.12"
 description = "tox is a generic virtualenv management and test command line tool"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "tox-4.4.11-py3-none-any.whl", hash = "sha256:6fa4dbd933d0e335b5392c81e9cd467630119b3669705dbad47814a93b6c9586"},
-    {file = "tox-4.4.11.tar.gz", hash = "sha256:cd88e41aef9c71f0ba02b6d7939f102760b192b63458fbe04dbbaed82f7bf5f5"},
+    {file = "tox-4.4.12-py3-none-any.whl", hash = "sha256:d4be558809d86fad13f4553976b0500352630a8fbfa39ea4b1ce3bd945ba680b"},
+    {file = "tox-4.4.12.tar.gz", hash = "sha256:740f5209d0dec19451b951ee5b1cce4a207acdc7357af84dbc8ec35bcf2c454e"},
 ]
 
 [package.dependencies]
 cachetools = ">=5.3"
 chardet = ">=5.1"
 colorama = ">=0.4.6"
-filelock = ">=3.10.7"
+filelock = ">=3.11"
 packaging = ">=23"
 platformdirs = ">=3.2"
 pluggy = ">=1"
@@ -2341,7 +2241,7 @@ virtualenv = ">=20.21"
 
 [package.extras]
 docs = ["furo (>=2023.3.27)", "sphinx (>=6.1.3)", "sphinx-argparse-cli (>=1.11)", "sphinx-autodoc-typehints (>=1.22,!=1.23.4)", "sphinx-copybutton (>=0.5.1)", "sphinx-inline-tabs (>=2022.1.2b11)", "sphinxcontrib-towncrier (>=0.2.1a0)", "towncrier (>=22.12)"]
-testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.3)", "devpi-process (>=0.3)", "diff-cover (>=7.5)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.13)", "psutil (>=5.9.4)", "pytest (>=7.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest-xdist (>=3.2.1)", "re-assert (>=1.1)", "time-machine (>=2.9)", "wheel (>=0.40)"]
+testing = ["build[virtualenv] (>=0.10)", "covdefaults (>=2.3)", "devpi-process (>=0.3)", "diff-cover (>=7.5)", "distlib (>=0.3.6)", "flaky (>=3.7)", "hatch-vcs (>=0.3)", "hatchling (>=1.14)", "psutil (>=5.9.4)", "pytest (>=7.2.2)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "pytest-xdist (>=3.2.1)", "re-assert (>=1.1)", "time-machine (>=2.9)", "wheel (>=0.40)"]
 
 [[package]]
 name = "traitlets"
@@ -2422,7 +2322,7 @@ files = [
 name = "urllib3"
 version = "1.26.15"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 files = [
@@ -2521,36 +2421,6 @@ files = [
 ]
 
 [[package]]
-name = "wheel"
-version = "0.40.0"
-description = "A built-package format for Python"
-category = "dev"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "wheel-0.40.0-py3-none-any.whl", hash = "sha256:d236b20e7cb522daf2390fa84c55eea81c5c30190f90f29ae2ca1ad8355bf247"},
-    {file = "wheel-0.40.0.tar.gz", hash = "sha256:cd1196f3faee2b31968d626e1731c94f99cbdb67cf5a46e4f5656cbee7738873"},
-]
-
-[package.extras]
-test = ["pytest (>=6.0.0)"]
-
-[[package]]
-name = "win32-setctime"
-version = "1.1.0"
-description = "A small Python utility to set file creation time on Windows"
-category = "main"
-optional = false
-python-versions = ">=3.5"
-files = [
-    {file = "win32_setctime-1.1.0-py3-none-any.whl", hash = "sha256:231db239e959c2fe7eb1d7dc129f11172354f98361c4fa2d6d2d7e278baa8aad"},
-    {file = "win32_setctime-1.1.0.tar.gz", hash = "sha256:15cf5750465118d6929ae4de4eb46e8edae9a5634350c01ba582df868e932cb2"},
-]
-
-[package.extras]
-dev = ["black (>=19.3b0)", "pytest (>=4.6.2)"]
-
-[[package]]
 name = "zipp"
 version = "3.15.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -2568,5 +2438,5 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.8.1,<3.12"
-content-hash = "a0f20d67e28fb810aaeb8f457f70d9f76d8257ae83869bf3d532213da195af49"
+python-versions = ">=3.9,<3.12"
+content-hash = "3dfba224773fcc053c54003f4bbcca65b476c82996764be01fd701a8d6a3900c"
