@@ -3,4 +3,4 @@
 
 __author__ = """Dewet Diener"""
 __email__ = 'givenergy-modbus@dewet.org'
-__version__ = '0.99.0'
+__version__ = '1.0.0'
