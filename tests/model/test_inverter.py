@@ -2,7 +2,7 @@ from unittest import skip
 
 import pytest
 
-from givenergy_modbus.model.inverter import Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import BatteryPowerMode, Inverter, Model, UsbDevice
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -82,12 +82,14 @@ def test_from_registers_empty():
         'first_battery_serial_number': '',
         'select_arm_chip': False,
         'grid_port_max_power_output': 0,
+        'battery_power_mode': BatteryPowerMode.EXPORT,
     }
     assert i.json() == (
-        '{"device_type_code": "0000", "model": -1, "module": "00000000", "first_battery_serial_number": "", '
-        '"serial_number": "", "dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", '
-        '"num_mppt": 0, "num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, "select_arm_chip": false, '
-        '"first_battery_bms_firmware_version": 0, "grid_port_max_power_output": 0, "enable_charge_target": false}'
+        '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
+        '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "num_mppt": 0, '
+        '"num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, "select_arm_chip": false, '
+        '"grid_port_max_power_output": 0, "first_battery_serial_number": "", "first_battery_bms_firmware_version": 0, '
+        '"battery_power_mode": 0, "enable_charge_target": false}'
     )
 
 
@@ -102,7 +104,7 @@ def test_from_registers(register_cache):
         # 'battery_low_force_charge_time': 6,
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 4,
-        # 'battery_power_mode': 1,
+        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
         # 'battery_soc_reserve': 4,
         # 'battery_type': 1,
         # 'battery_voltage_adjust': 0,
@@ -295,11 +297,11 @@ def test_from_registers(register_cache):
     with pytest.raises(TypeError, match="'Inverter' object is not subscriptable"):
         i['serial_number']
     assert i.json() == (
-        '{"device_type_code": "2001", "model": 2, "module": "00030832", "first_battery_serial_number": "BG1234G567", '
-        '"serial_number": "SA1234G567", "dsp_firmware_version": 449, "arm_firmware_version": 449, '
-        '"firmware_version": "D0.449-A0.449", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
-        '"enable_ammeter": true, "select_arm_chip": false, "first_battery_bms_firmware_version": 3005, '
-        '"grid_port_max_power_output": 6000, "enable_charge_target": true}'
+        '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
+        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
+        '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
+        '"grid_port_max_power_output": 6000, "first_battery_serial_number": "BG1234G567", '
+        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": true}'
     )
 
 
@@ -316,7 +318,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'battery_low_force_charge_time': 6,
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 68,
-        # 'battery_power_mode': 1,
+        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
         # 'battery_soc_reserve': 4,
         # 'battery_type': 1,
         # 'battery_voltage_adjust': 0,
@@ -504,9 +506,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         'usb_device_inserted': UsbDevice.DISK,
     }
     assert i.json() == (
-        '{"device_type_code": "2001", "model": 2, "module": "00030832", "first_battery_serial_number": "BG1234G567", '
-        '"serial_number": "SA1234G567", "dsp_firmware_version": 449, "arm_firmware_version": 449, '
-        '"firmware_version": "D0.449-A0.449", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
-        '"enable_ammeter": true, "select_arm_chip": false, "first_battery_bms_firmware_version": 3005, '
-        '"grid_port_max_power_output": 6000, "enable_charge_target": false}'
+        '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
+        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
+        '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
+        '"grid_port_max_power_output": 6000, "first_battery_serial_number": "BG1234G567", '
+        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": false}'
     )

@@ -198,6 +198,7 @@ class Register(str, Enum):
     def _missing_(cls, value: object) -> Optional[Enum]:
         if isinstance(value, str):
             return cls._member_map_.get(value, None)
+        return None
 
     def convert(self, raw_val: int):
         """Convert val to its true representation as determined by the register type."""

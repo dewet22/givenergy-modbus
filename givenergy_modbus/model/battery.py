@@ -5,7 +5,7 @@ from givenergy_modbus.model.register import InputRegister as IR
 class Battery(GivEnergyBaseModel):
     """Structured format for BMS attributes."""
 
-    v_cell_01: float
+    v_cell_01: float  # = confloat(gt=0, lt=5.0)
     v_cell_02: float
     v_cell_03: float
     v_cell_04: float

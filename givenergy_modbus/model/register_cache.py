@@ -26,7 +26,7 @@ class RegisterCache(DefaultDict[Register, int]):
         super().__init__(lambda: 0, registers)
 
     def json(self) -> str:
-        """Return JSON representation of the register cache, suitable for using with `from_json()`."""  # noqa: D402
+        """Return JSON representation of the register cache, suitable for using with `from_json()`."""  # noqa: D402,D202,E501
 
         class RegisterCacheEncoder(JSONEncoder):
             """Custom JSONEncoder to work around Register behaviour.

@@ -5,7 +5,7 @@ import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import BatteryPowerMode, Inverter, Model, UsbDevice
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -905,7 +905,7 @@ def test_from_actual():
         # 'battery_low_force_charge_time': 6,
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 57,
-        # 'battery_power_mode': 1,
+        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
         # 'battery_soc_reserve': 4,
         # 'battery_type': 1,
         # 'battery_voltage_adjust': 0,

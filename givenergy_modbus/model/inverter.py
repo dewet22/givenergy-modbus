@@ -38,6 +38,18 @@ class UsbDevice(IntEnum):
         return cls.UNKNOWN
 
 
+class BatteryPowerMode(IntEnum):
+    """Battery discharge strategy."""
+
+    UNKNOWN = -1
+    EXPORT = 0
+    SELF_CONSUMPTION = 1
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
+
+
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
@@ -45,7 +57,6 @@ class Inverter(GivEnergyBaseModel):
     device_type_code: str
     model: Model
     module: str
-    first_battery_serial_number: str
     serial_number: str
     dsp_firmware_version: int
     arm_firmware_version: int
@@ -57,7 +68,6 @@ class Inverter(GivEnergyBaseModel):
     usb_device_inserted: UsbDevice
     enable_ammeter: bool
     select_arm_chip: bool
-    first_battery_bms_firmware_version: int
     # inverter_modbus_address: int
     # modbus_version: float
     # system_time: Computed[datetime.datetime]
@@ -137,8 +147,9 @@ class Inverter(GivEnergyBaseModel):
     # local_command_test: bool
     #
     # # Battery configuration
-    # first_battery_serial_number: str
-    # first_battery_bms_firmware_version: int
+    first_battery_serial_number: str
+    first_battery_bms_firmware_version: int
+    battery_power_mode: BatteryPowerMode
     # enable_bms_read: bool
     # battery_type: int
     # battery_nominal_capacity: float
@@ -150,7 +161,6 @@ class Inverter(GivEnergyBaseModel):
     # enable_discharge: bool
     # enable_charge: bool
     enable_charge_target: bool
-    # battery_power_mode: int
     # soc_force_adjust: int
     #
     # charge_slot_1: tuple[datetime.time, datetime.time]
@@ -277,6 +287,7 @@ class Inverter(GivEnergyBaseModel):
             usb_device_inserted=UsbDevice(register_cache[HR(22)]),
             select_arm_chip=bool(register_cache[HR(23)]),
             grid_port_max_power_output=register_cache[HR(26)],
+            battery_power_mode=BatteryPowerMode(register_cache[HR(27)]),
         )
 
     # @computed('charge_slot_1')
