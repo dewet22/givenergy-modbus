@@ -169,16 +169,16 @@ class Inverter(GivEnergyBaseModel):
     first_battery_bms_firmware_version: int
     battery_power_mode: BatteryPowerMode
     bms_firmware_version: int
-    # enable_bms_read: bool
+    enable_bms_read: bool
     battery_type: BatteryType
     battery_capacity: int
     enable_auto_judge_battery_type: bool
     pv_start_voltage: float
-    # v_battery_under_protection_limit: float
-    # v_battery_over_protection_limit: float
+    battery_low_voltage_protection_limit: float
+    battery_high_voltage_protection_limit: float
     #
     enable_discharge: bool
-    # enable_charge: bool
+    enable_charge: bool
     enable_charge_target: bool
     battery_calibration_stage: BatteryCalibrationStage
     #
@@ -189,12 +189,12 @@ class Inverter(GivEnergyBaseModel):
     charge_soc: int
     discharge_soc: int
     #
-    # battery_low_force_charge_time: int
-    # battery_soc_reserve: int
-    # battery_charge_limit: int
-    # battery_discharge_limit: int
-    # island_check_continue: int
-    # battery_discharge_min_power_reserve: int
+    battery_low_force_charge_time: int
+    battery_soc_reserve: int
+    battery_charge_limit: int
+    battery_discharge_limit: int
+    island_check_continue: int
+    battery_discharge_min_power_reserve: int
     # charge_target_soc: int
     # charge_soc_stop_2: int
     # discharge_soc_stop_2: int
@@ -340,9 +340,20 @@ class Inverter(GivEnergyBaseModel):
             pv_start_voltage=rc[HR(60)] / 10,
             start_countdown_timer=rc[HR(61)],
             restart_delay_time=rc[HR(62)],
-            # skipping protection settings 63-93
+            # skip protection settings 63-93
             charge_slot_1=rc.to_timeslot(HR(94), HR(95)),
+            enable_charge=bool(rc[HR(96)]),
+            battery_low_voltage_protection_limit=rc[HR(97)] / 100,
+            battery_high_voltage_protection_limit=rc[HR(98)] / 100,
+            # skip voltage adjustment settings 99-107
+            battery_low_force_charge_time=rc[HR(108)],
+            enable_bms_read=bool(rc[HR(109)]),
+            battery_soc_reserve=rc[HR(110)],
+            battery_charge_limit=rc[HR(111)],
+            battery_discharge_limit=rc[HR(112)],
             enable_buzzer=bool(rc[HR(113)]),
+            battery_discharge_min_power_reserve=rc[HR(114)],
+            island_check_continue=rc[HR(115)],
         )
 
     # @computed('p_pv')
