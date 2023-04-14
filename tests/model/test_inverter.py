@@ -2,7 +2,7 @@ from unittest import skip
 
 import pytest
 
-from givenergy_modbus.model.inverter import BatteryPowerMode, Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import BatteryCalibrationStage, BatteryPowerMode, Inverter, Model, UsbDevice
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -84,13 +84,15 @@ def test_from_registers_empty():
         'grid_port_max_power_output': 0,
         'battery_power_mode': BatteryPowerMode.EXPORT,
         'enable_60hz_freq_mode': False,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
     }
     assert i.json() == (
         '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
         '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "num_mppt": 0, '
         '"num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, "select_arm_chip": false, '
         '"grid_port_max_power_output": 0, "enable_60hz_freq_mode": false, "first_battery_serial_number": "", '
-        '"first_battery_bms_firmware_version": 0, "battery_power_mode": 0, "enable_charge_target": false}'
+        '"first_battery_bms_firmware_version": 0, "battery_power_mode": 0, "enable_charge_target": false, '
+        '"battery_calibration_stage": 0}'
     )
 
 
@@ -235,7 +237,7 @@ def test_from_registers(register_cache):
         # 'reverse_418_meter_direct': False,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
-        # 'soc_force_adjust': 0,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
         # 'system_time': datetime.datetime(2022, 1, 1, 23, 57, 19),
@@ -303,7 +305,7 @@ def test_from_registers(register_cache):
         '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
         '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
         '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": true}'
+        '"battery_power_mode": 1, "enable_charge_target": true, "battery_calibration_stage": 0}'
     )
 
 
@@ -456,7 +458,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
         'select_arm_chip': False,
-        # 'soc_force_adjust': 0,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
         # 'system_time': datetime.datetime(2022, 1, 11, 11, 51, 46),
@@ -513,5 +515,5 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
         '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
         '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": false}'
+        '"battery_power_mode": 1, "enable_charge_target": false, "battery_calibration_stage": 0}'
     )

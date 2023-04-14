@@ -5,7 +5,7 @@ import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import BatteryPowerMode, Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import BatteryCalibrationStage, BatteryPowerMode, Inverter, Model, UsbDevice
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -1035,7 +1035,7 @@ def test_from_actual():
         # 'reverse_418_meter_direct': False,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
-        # 'soc_force_adjust': 0,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
         # 'system_time': datetime.datetime(2022, 4, 27, 23, 29, 18),

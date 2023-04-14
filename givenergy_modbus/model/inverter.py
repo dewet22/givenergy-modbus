@@ -50,6 +50,24 @@ class BatteryPowerMode(IntEnum):
         return cls.UNKNOWN
 
 
+class BatteryCalibrationStage(IntEnum):
+    """Battery calibration stages."""
+
+    UNKNOWN = -1
+    OFF = 0
+    DISCHARGE = 1
+    SET_LOWER_LIMIT = 2
+    CHARGE = 3
+    SET_UPPER_LIMIT = 4
+    BALANCE = 5
+    SET_FULL_CAPACITY = 6
+    FINISH = 7
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
+
+
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
@@ -161,7 +179,7 @@ class Inverter(GivEnergyBaseModel):
     # enable_discharge: bool
     # enable_charge: bool
     enable_charge_target: bool
-    # soc_force_adjust: int
+    battery_calibration_stage: BatteryCalibrationStage
     #
     # charge_slot_1: tuple[datetime.time, datetime.time]
     # charge_slot_2: tuple[datetime.time, datetime.time]
@@ -289,6 +307,7 @@ class Inverter(GivEnergyBaseModel):
             grid_port_max_power_output=register_cache[HR(26)],
             battery_power_mode=BatteryPowerMode(register_cache[HR(27)]),
             enable_60hz_freq_mode=bool(register_cache[HR(28)]),
+            battery_calibration_stage=BatteryCalibrationStage(register_cache[HR(29)]),
         )
 
     # @computed('charge_slot_1')
