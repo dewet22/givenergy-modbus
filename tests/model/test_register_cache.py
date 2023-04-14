@@ -5,6 +5,7 @@ import pytest
 
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.model import TimeSlot
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
 
@@ -156,3 +157,30 @@ def test_to_uint32():
     )
     assert 0x3456210F == rc.to_uint32(HoldingRegister(14), InputRegister(17))
     assert 0 == rc.to_uint32(InputRegister(22), InputRegister(23))
+
+
+def test_to_datetime():
+    registers = {
+        HoldingRegister(14): 1,
+        HoldingRegister(16): 2,
+        InputRegister(13): 3,
+        InputRegister(15): 4,
+        InputRegister(17): 5,
+        HoldingRegister(19): 6,
+    }
+    rc = RegisterCache(registers)
+    assert datetime.datetime(2001, 2, 3, 4, 5, 6) == rc.to_datetime(*registers.keys())
+    assert datetime.datetime(2000, 1, 1, 0, 0, 0) == rc.to_datetime(
+        InputRegister(22), InputRegister(23), InputRegister(24), InputRegister(25), InputRegister(26), InputRegister(27)
+    )
+
+
+def test_to_timeslot():
+    rc = RegisterCache(
+        registers={
+            HoldingRegister(14): 1030,
+            InputRegister(17): 2359,
+        }
+    )
+    assert TimeSlot.from_components(10, 30, 23, 59) == rc.to_timeslot(HoldingRegister(14), InputRegister(17))
+    assert TimeSlot.from_components(0, 0, 0, 0) == rc.to_timeslot(InputRegister(22), InputRegister(23))

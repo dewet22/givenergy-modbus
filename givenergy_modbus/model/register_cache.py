@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 from json import JSONEncoder
@@ -89,6 +90,10 @@ class RegisterCache(DefaultDict[Register, int]):
     def to_uint32(self, high_register: Register, low_register: Register) -> int:
         """Combine two registers into an unsigned 32-bit integer."""
         return (self[high_register] << 16) + self[low_register]
+
+    def to_datetime(self, y: Register, m: Register, d: Register, h: Register, min: Register, s: Register):
+        """Combine 6 registers into a datetime, with safe defaults for zeroes."""
+        return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
 
     def to_timeslot(self, start: Register, end: Register) -> TimeSlot:
         """Combine two registers into a time slot."""
