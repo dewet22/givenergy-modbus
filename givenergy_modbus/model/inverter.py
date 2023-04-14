@@ -1,3 +1,4 @@
+import datetime
 import logging
 from enum import IntEnum
 
@@ -89,7 +90,7 @@ class Inverter(GivEnergyBaseModel):
     usb_device_inserted: UsbDevice
     enable_ammeter: bool
     select_arm_chip: bool
-    # system_time: Computed[datetime.datetime]
+    system_time: datetime.datetime
     # inverter_state: tuple[int, int]
     #
     # meter_type: int
@@ -312,6 +313,14 @@ class Inverter(GivEnergyBaseModel):
             modbus_address=register_cache[HR(30)],
             charge_slot_2=register_cache.to_timeslot(HR(31), HR(32)),
             modbus_version=f'{register_cache[HR(34)] / 100:0.2f}',
+            system_time=datetime.datetime(
+                register_cache[HR(35)] + 2000,
+                register_cache.get(HR(36), 1),
+                register_cache.get(HR(37), 1),
+                register_cache[HR(38)],
+                register_cache[HR(39)],
+                register_cache[HR(40)],
+            ),
         )
 
     # @computed('charge_slot_1')

@@ -1040,7 +1040,7 @@ def test_from_actual():
         'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
-        # 'system_time': datetime.datetime(2022, 4, 27, 23, 29, 18),
+        'system_time': datetime.datetime(2022, 4, 27, 23, 29, 18),
         # 'temp_battery': 19.0,
         # 'temp_charger': 31.8,
         # 'temp_fault_value': 0.0,
