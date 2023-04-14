@@ -4,8 +4,8 @@ from asyncio import StreamReader
 
 import pytest
 
-from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.client.client import Client
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 

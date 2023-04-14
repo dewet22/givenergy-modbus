@@ -2,9 +2,9 @@ from unittest import skip
 
 import pytest
 
-from givenergy_modbus.model import RegisterCache
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.register import InputRegister
+from givenergy_modbus.model.register_cache import RegisterCache
 
 EXPECTED_BATTERY_DICT = {
     'bms_firmware_version': 3005,

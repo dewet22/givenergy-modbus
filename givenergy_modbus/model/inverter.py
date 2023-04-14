@@ -1,8 +1,7 @@
 import datetime
 import logging
 
-from givenergy_modbus.client import TimeSlot
-from givenergy_modbus.model import DefaultUnknownIntEnum, GivEnergyBaseModel
+from givenergy_modbus.model import DefaultUnknownIntEnum, GivEnergyBaseModel, TimeSlot
 from givenergy_modbus.model.register import HoldingRegister as HR
 from givenergy_modbus.model.register_cache import RegisterCache
 

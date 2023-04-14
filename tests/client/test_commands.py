@@ -1,7 +1,8 @@
 import arrow
 import pytest
 
-from givenergy_modbus.client import TimeSlot, commands
+from givenergy_modbus.client import commands
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 

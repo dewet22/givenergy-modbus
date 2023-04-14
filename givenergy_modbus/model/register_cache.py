@@ -3,8 +3,8 @@ import logging
 from json import JSONEncoder
 from typing import Any, DefaultDict, Optional
 
-from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.exceptions import ExceptionBase
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
 
 _logger = logging.getLogger(__name__)

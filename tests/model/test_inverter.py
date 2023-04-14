@@ -4,14 +4,14 @@ from unittest import skip
 
 import pytest
 
-from givenergy_modbus.client import TimeSlot
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     Inverter,
+    MeterType,
     Model,
     UsbDevice,
-    MeterType,
 )
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
