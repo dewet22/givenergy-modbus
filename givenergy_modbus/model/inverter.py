@@ -119,8 +119,8 @@ class Inverter(GivEnergyBaseModel):
     reactive_power_rate: int
     power_factor: int
     # power_factor_function_model: int
-    # inverter_start_time: int
-    # inverter_restart_delay_time: int
+    start_countdown_timer: int
+    restart_delay_time: int
     #
     # # Fault conditions
     # dci_1_i: float
@@ -171,20 +171,20 @@ class Inverter(GivEnergyBaseModel):
     bms_firmware_version: int
     # enable_bms_read: bool
     battery_type: BatteryType
-    # battery_nominal_capacity: float
-    # enable_auto_judge_battery_type: bool
-    # v_pv_input_start: float
+    battery_capacity: int
+    enable_auto_judge_battery_type: bool
+    pv_start_voltage: float
     # v_battery_under_protection_limit: float
     # v_battery_over_protection_limit: float
     #
-    # enable_discharge: bool
+    enable_discharge: bool
     # enable_charge: bool
     enable_charge_target: bool
     battery_calibration_stage: BatteryCalibrationStage
     #
-    # charge_slot_1: tuple[datetime.time, datetime.time]
+    charge_slot_1: TimeSlot
     charge_slot_2: TimeSlot
-    # discharge_slot_1: tuple[datetime.time, datetime.time]
+    discharge_slot_1: TimeSlot
     discharge_slot_2: TimeSlot
     charge_soc: int
     discharge_soc: int
@@ -332,6 +332,16 @@ class Inverter(GivEnergyBaseModel):
             enable_inverter=bool((state := rc.to_duint8(HR(53)))[1]),
             enable_inverter_auto_restart=bool(state[0]),
             battery_type=BatteryType(rc[HR(54)]),
+            battery_capacity=rc[HR(55)],
+            discharge_slot_1=rc.to_timeslot(HR(56), HR(57)),
+            enable_auto_judge_battery_type=bool(rc[HR(58)]),
+            enable_discharge=bool(rc[HR(59)]),
+            # 60
+            pv_start_voltage=rc[HR(60)] / 10,
+            start_countdown_timer=rc[HR(61)],
+            restart_delay_time=rc[HR(62)],
+            # skipping protection settings 63-93
+            charge_slot_1=rc.to_timeslot(HR(94), HR(95)),
             enable_buzzer=bool(rc[HR(113)]),
         )
 
