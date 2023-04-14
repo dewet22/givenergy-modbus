@@ -68,6 +68,19 @@ class BatteryType(DefaultUnknownIntEnum):
     LITHIUM = 1
 
 
+class PowerFactorFunctionModel(DefaultUnknownIntEnum):
+    """Power Factor function model."""
+
+    UNKNOWN = -1
+    PF_1 = 0
+    PF_BY_SET = 1
+    DEFAULT_PF_LINE = 2
+    USER_PF_LINE = 3
+    UNDER_EXCITED_INDUCTIVE_REACTIVE_POWER = 4
+    OVER_EXCITED_CAPACITIVE_REACTIVE_POWER = 5
+    QV_MODEL = 6
+
+
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
@@ -100,11 +113,23 @@ class Inverter(GivEnergyBaseModel):
     reverse_115_meter: bool
     reverse_418_meter: bool
     enable_buzzer: bool
-    # enable_above_6kw_system: bool
-    # enable_frequency_derating: bool
-    # enable_low_voltage_fault_ride_through: bool
-    # enable_spi: bool
-    #
+    enable_low_voltage_fault_ride_through: bool
+    enable_frequency_derating: bool
+    enable_above_6kw_system: bool
+    start_system_auto_test: bool
+    enable_spi: bool
+
+    # pf_cmd_memory_state: bool
+    # pf_limit_lp1_lp: int
+    # pf_limit_lp1_pf: float
+    # pf_limit_lp2_lp: int
+    # pf_limit_lp2_pf: float
+    # pf_limit_lp3_lp: int
+    # pf_limit_lp3_pf: float
+    # pf_limit_lp4_lp: int
+    # pf_limit_lp4_pf: float
+    frequency_load_limit_rate: int
+
     # pv1_voltage_adjust: int
     # pv2_voltage_adjust: int
     # grid_r_voltage_adjust: int
@@ -114,14 +139,14 @@ class Inverter(GivEnergyBaseModel):
     # battery_voltage_adjust: int
     # pv1_power_adjust: int
     # pv2_power_adjust: int
-    #
+
     active_power_rate: int
     reactive_power_rate: int
     power_factor: int
-    # power_factor_function_model: int
+    power_factor_function_model: PowerFactorFunctionModel
     start_countdown_timer: int
     restart_delay_time: int
-    #
+
     # # Fault conditions
     # dci_1_i: float
     # dci_1_time: int
@@ -162,9 +187,9 @@ class Inverter(GivEnergyBaseModel):
     #
     # iso1: int
     # iso2: int
-    # local_command_test: bool
-    #
-    # # Battery configuration
+    local_command_test: bool
+
+    # Battery configuration
     first_battery_serial_number: str
     first_battery_bms_firmware_version: int
     battery_power_mode: BatteryPowerMode
@@ -176,31 +201,31 @@ class Inverter(GivEnergyBaseModel):
     pv_start_voltage: float
     battery_low_voltage_protection_limit: float
     battery_high_voltage_protection_limit: float
-    #
+
     enable_discharge: bool
     enable_charge: bool
     enable_charge_target: bool
     battery_calibration_stage: BatteryCalibrationStage
-    #
+
     charge_slot_1: TimeSlot
     charge_slot_2: TimeSlot
     discharge_slot_1: TimeSlot
     discharge_slot_2: TimeSlot
     charge_soc: int
     discharge_soc: int
-    #
+
     battery_low_force_charge_time: int
     battery_soc_reserve: int
     battery_charge_limit: int
     battery_discharge_limit: int
     island_check_continue: int
     battery_discharge_min_power_reserve: int
-    # charge_target_soc: int
-    # charge_soc_stop_2: int
-    # discharge_soc_stop_2: int
-    # charge_soc_stop_1: int
-    # discharge_soc_stop_1: int
-    #
+    charge_target_soc: int
+    charge_soc_stop_2: int
+    discharge_soc_stop_2: int
+    charge_soc_stop_1: int
+    discharge_soc_stop_1: int
+
     # inverter_status: int
     # system_mode: int
     # inverter_countdown: int
@@ -260,32 +285,27 @@ class Inverter(GivEnergyBaseModel):
     # v_pv1: float
     # v_pv2: float
     #
-    # pf_cmd_memory_state: bool
-    # pf_limit_lp1_lp: int
-    # pf_limit_lp1_pf: float
-    # pf_limit_lp2_lp: int
-    # pf_limit_lp2_pf: float
-    # pf_limit_lp3_lp: int
-    # pf_limit_lp3_pf: float
-    # pf_limit_lp4_lp: int
-    # pf_limit_lp4_pf: float
-    # frequency_load_limit_rate: int
-    #
     # real_v_f_value: float
     # remote_bms_restart: bool
     # safety_time_limit: float
     # safety_v_f_limit: float
-    # start_system_auto_test: bool
     # test_treat_time: int
     # test_treat_value: float
     # test_value: float
     # user_code: int
     # v_10_min_protection: float
-    #
-    # variable_address: int
-    # variable_value: int
-    #
-    # # inverter_reboot: int
+
+    threephase_balance_mode: int
+    threephase_abc: int
+    threephase_balance_1: int
+    threephase_balance_2: int
+    threephase_balance_3: int
+
+    enable_battery_on_pv_or_grid: bool
+    debug_inverter: int
+    enable_ups_mode: bool
+    enable_g100_limit_switch: bool
+    enable_battery_cable_impedance_alarm: bool
 
     @classmethod
     def from_registers(cls, rc: RegisterCache) -> 'Inverter':
@@ -354,6 +374,30 @@ class Inverter(GivEnergyBaseModel):
             enable_buzzer=bool(rc[HR(113)]),
             battery_discharge_min_power_reserve=rc[HR(114)],
             island_check_continue=rc[HR(115)],
+            charge_target_soc=rc[HR(116)],  # requires enable_charge_target
+            charge_soc_stop_2=rc[HR(117)],
+            discharge_soc_stop_2=rc[HR(118)],
+            charge_soc_stop_1=rc[HR(119)],
+            discharge_soc_stop_1=rc[HR(120)],
+            local_command_test=bool(rc[HR(121)]),
+            power_factor_function_model=PowerFactorFunctionModel(rc[HR(122)]),
+            frequency_load_limit_rate=rc[HR(123)],
+            enable_low_voltage_fault_ride_through=bool(rc[HR(124)]),
+            enable_frequency_derating=bool(rc[HR(125)]),
+            enable_above_6kw_system=bool(rc[HR(126)]),
+            start_system_auto_test=bool(rc[HR(127)]),
+            enable_spi=bool(rc[HR(128)]),
+            # skip PF configuration and protection settings 129-166
+            threephase_balance_mode=rc[HR(167)],
+            threephase_abc=rc[HR(168)],
+            threephase_balance_1=rc[HR(169)],
+            threephase_balance_2=rc[HR(170)],
+            threephase_balance_3=rc[HR(171)],
+            enable_battery_on_pv_or_grid=bool(rc[HR(175)]),
+            debug_inverter=rc[HR(176)],
+            enable_ups_mode=bool(rc[HR(177)]),
+            enable_g100_limit_switch=bool(rc[HR(178)]),
+            enable_battery_cable_impedance_alarm=bool(rc[HR(179)]),
         )
 
     # @computed('p_pv')
