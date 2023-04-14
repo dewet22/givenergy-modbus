@@ -1,6 +1,6 @@
 import logging
 from datetime import time
-from enum import Enum, StrEnum, auto, unique
+from enum import Enum, auto, unique
 from typing import Any, Callable, Optional
 
 from givenergy_modbus.exceptions import ExceptionBase
@@ -168,7 +168,7 @@ class Unit(str, Enum):
 
 
 @unique
-class Register(StrEnum):
+class Register(str, Enum):
     """Mixin to help easier access to register bank structures."""
 
     data_type: DataType
