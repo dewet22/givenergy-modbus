@@ -56,8 +56,8 @@ def test_plant(
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
     plant.register_caches[0x32] = RegisterCache()
-    plant.register_caches[0x32].update_with_validate(register_cache_inverter_daytime_discharging_with_solar_generation)
-    plant.register_caches[0x32].update_with_validate(register_cache_battery_daytime_discharging)
+    plant.register_caches[0x32].update(register_cache_inverter_daytime_discharging_with_solar_generation)
+    plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
     i = Inverter.from_registers(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == 'SA1234G567'

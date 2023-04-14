@@ -120,8 +120,8 @@ def json_battery_missing() -> str:
 def register_cache() -> RegisterCache:
     """Ensure we can instantiate a RegisterCache and set registers in it."""
     i = RegisterCache()
-    i.update_with_validate({HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()})
-    i.update_with_validate({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
+    i.update({HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()})
+    i.update({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
     return i
 
 

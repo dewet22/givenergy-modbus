@@ -58,17 +58,13 @@ class Plant(GivEnergyBaseModel):
         self.data_adapter_serial_number = pdu.data_adapter_serial_number
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
-            self.register_caches[slave_address].update_with_validate(
-                {HoldingRegister(k): v for k, v in pdu.to_dict().items()}
-            )
+            self.register_caches[slave_address].update({HoldingRegister(k): v for k, v in pdu.to_dict().items()})
         elif isinstance(pdu, ReadInputRegistersResponse):
-            self.register_caches[slave_address].update_with_validate(
-                {InputRegister(k): v for k, v in pdu.to_dict().items()}
-            )
+            self.register_caches[slave_address].update({InputRegister(k): v for k, v in pdu.to_dict().items()})
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == HoldingRegister(0):
                 _logger.warning(f'Ignoring, likely corrupt: {pdu}')
-            self.register_caches[slave_address].update_with_validate({pdu.register: pdu.value})
+            self.register_caches[slave_address].update({pdu.register: pdu.value})
 
     @property
     def inverter(self) -> Inverter:
