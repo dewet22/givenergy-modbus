@@ -990,7 +990,7 @@ def test_from_actual():
         # 'i_pv1': 0.0,
         # 'i_pv2': 0.0,
         # 'inverter_countdown': 0,
-        # 'inverter_modbus_address': 17,
+        'modbus_address': 0x11,
         # 'inverter_reboot': 0,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,

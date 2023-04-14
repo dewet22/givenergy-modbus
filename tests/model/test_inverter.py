@@ -85,14 +85,15 @@ def test_from_registers_empty():
         'battery_power_mode': BatteryPowerMode.EXPORT,
         'enable_60hz_freq_mode': False,
         'battery_calibration_stage': BatteryCalibrationStage.OFF,
+        'modbus_address': 0,
     }
     assert i.json() == (
         '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
-        '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "num_mppt": 0, '
-        '"num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 0, "enable_60hz_freq_mode": false, "first_battery_serial_number": "", '
-        '"first_battery_bms_firmware_version": 0, "battery_power_mode": 0, "enable_charge_target": false, '
-        '"battery_calibration_stage": 0}'
+        '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "modbus_address": 0, '
+        '"num_mppt": 0, "num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, '
+        '"select_arm_chip": false, "grid_port_max_power_output": 0, "enable_60hz_freq_mode": false, '
+        '"first_battery_serial_number": "", "first_battery_bms_firmware_version": 0, "battery_power_mode": 0, '
+        '"enable_charge_target": false, "battery_calibration_stage": 0}'
     )
 
 
@@ -192,7 +193,7 @@ def test_from_registers(register_cache):
         # 'i_pv1': 0.0,
         # 'i_pv2': 0.0,
         # 'inverter_countdown': 30,
-        # 'inverter_modbus_address': 17,
+        'modbus_address': 0x11,
         # 'inverter_reboot': 0,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,
@@ -301,9 +302,9 @@ def test_from_registers(register_cache):
         i['serial_number']
     assert i.json() == (
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
-        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
-        '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
+        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
+        '"modbus_address": 17, "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, '
+        '"select_arm_chip": false, "grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
         '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
         '"battery_power_mode": 1, "enable_charge_target": true, "battery_calibration_stage": 0}'
     )
@@ -412,7 +413,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'i_pv1': 0.3,
         # 'i_pv2': 0.3,
         # 'inverter_countdown': 0,
-        # 'inverter_modbus_address': 17,
+        'modbus_address': 0x11,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,
         # 'inverter_state': (0, 1),
@@ -511,9 +512,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
     }
     assert i.json() == (
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
-        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
-        '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
+        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
+        '"modbus_address": 17, "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, '
+        '"select_arm_chip": false, "grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
         '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
         '"battery_power_mode": 1, "enable_charge_target": false, "battery_calibration_stage": 0}'
     )

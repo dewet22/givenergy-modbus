@@ -79,6 +79,7 @@ class Inverter(GivEnergyBaseModel):
     dsp_firmware_version: int
     arm_firmware_version: int
     firmware_version: str
+    modbus_address: int
 
     # Installation configuration
     num_mppt: int
@@ -86,7 +87,6 @@ class Inverter(GivEnergyBaseModel):
     usb_device_inserted: UsbDevice
     enable_ammeter: bool
     select_arm_chip: bool
-    # inverter_modbus_address: int
     # modbus_version: float
     # system_time: Computed[datetime.datetime]
     # inverter_state: tuple[int, int]
@@ -308,6 +308,7 @@ class Inverter(GivEnergyBaseModel):
             battery_power_mode=BatteryPowerMode(register_cache[HR(27)]),
             enable_60hz_freq_mode=bool(register_cache[HR(28)]),
             battery_calibration_stage=BatteryCalibrationStage(register_cache[HR(29)]),
+            modbus_address=register_cache[HR(30)],
         )
 
     # @computed('charge_slot_1')
