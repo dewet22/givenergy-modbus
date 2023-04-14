@@ -958,7 +958,7 @@ def test_from_actual():
         # 'enable_buzzer': False,
         # 'enable_charge': True,
         # 'enable_discharge': False,
-        # 'enable_drm_rj45_port': True,
+        'enable_drm_rj45_port': True,
         # 'enable_frequency_derating': True,
         # 'enable_low_voltage_fault_ride_through': False,
         # 'enable_spi': True,

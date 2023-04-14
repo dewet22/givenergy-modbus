@@ -96,12 +96,12 @@ class Inverter(GivEnergyBaseModel):
     # meter_type: int
     # reverse_115_meter_direct: bool
     # reverse_418_meter_direct: bool
-    # enable_drm_rj45_port: bool
     # ct_adjust: int
     # enable_buzzer: bool
     #
     grid_port_max_power_output: int
     enable_60hz_freq_mode: bool
+    enable_drm_rj45_port: bool
     # enable_above_6kw_system: bool
     # enable_frequency_derating: bool
     # enable_low_voltage_fault_ride_through: bool
@@ -321,56 +321,9 @@ class Inverter(GivEnergyBaseModel):
                 register_cache[HR(39)],
                 register_cache[HR(40)],
             ),
+            enable_drm_rj45_port=bool(register_cache[HR(41)]),
         )
 
-    # @computed('charge_slot_1')
-    # def compute_charge_slot_1(
-    #     charge_slot_1_start: datetime.time, charge_slot_1_end: datetime.time, **kwargs
-    # ) -> tuple[datetime.time, datetime.time]:
-    #     """Computes the charge slot 1."""
-    #     return charge_slot_1_start, charge_slot_1_end
-    #
-    # @computed('charge_slot_2')
-    # def compute_discharge_slot_2(
-    #     charge_slot_2_start: datetime.time, charge_slot_2_end: datetime.time, **kwargs
-    # ) -> tuple[datetime.time, datetime.time]:
-    #     """Computes the charge slot 2."""
-    #     return charge_slot_2_start, charge_slot_2_end
-    #
-    # @computed('discharge_slot_1')
-    # def compute_discharge_slot_1(
-    #     discharge_slot_1_start: datetime.time, discharge_slot_1_end: datetime.time, **kwargs
-    # ) -> tuple[datetime.time, datetime.time]:
-    #     """Computes the discharge slot 1."""
-    #     return discharge_slot_1_start, discharge_slot_1_end
-    #
-    # @computed('discharge_slot_2')
-    # def compute_discharge_slot_2(
-    #     discharge_slot_2_start: datetime.time, discharge_slot_2_end: datetime.time, **kwargs
-    # ) -> tuple[datetime.time, datetime.time]:
-    #     """Computes the discharge slot 2."""
-    #     return discharge_slot_2_start, discharge_slot_2_end
-    #
-    # @computed('system_time')
-    # def compute_system_time(
-    #     system_time_year: int,
-    #     system_time_month: int,
-    #     system_time_day: int,
-    #     system_time_hour: int,
-    #     system_time_minute: int,
-    #     system_time_second: int,
-    #     **kwargs,
-    # ) -> datetime.datetime:
-    #     """Computes the system time."""
-    #     return datetime.datetime(
-    #         system_time_year + 2000,
-    #         system_time_month,
-    #         system_time_day,
-    #         system_time_hour,
-    #         system_time_minute,
-    #         system_time_second,
-    #     )
-    #
     # @computed('p_pv')
     # def compute_p_pv(p_pv1: int, p_pv2: int, **kwargs) -> int:
     #     """Computes the discharge slot 2."""
