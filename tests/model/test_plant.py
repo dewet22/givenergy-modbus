@@ -7,7 +7,14 @@ import pytest
 from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import BatteryCalibrationStage, BatteryPowerMode, Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import (
+    BatteryCalibrationStage,
+    BatteryPowerMode,
+    Inverter,
+    Model,
+    UsbDevice,
+    MeterType,
+)
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -920,7 +927,7 @@ def test_from_actual():
         # 'charge_status': 5,
         # 'charge_target_soc': 100,
         # 'charger_warning_code': 0,
-        # 'ct_adjust': 2,
+        'reverse_ct': True,
         # 'dci_1_i': 0.0,
         # 'dci_1_time': 0,
         # 'dci_2_i': 0.0,
@@ -955,7 +962,7 @@ def test_from_actual():
         # 'enable_above_6kw_system': False,
         # 'enable_auto_judge_battery_type': True,
         # 'enable_bms_read': True,
-        # 'enable_buzzer': False,
+        'enable_buzzer': False,
         # 'enable_charge': True,
         # 'enable_discharge': False,
         'enable_drm_rj45_port': True,
@@ -996,14 +1003,15 @@ def test_from_actual():
         # 'inverter_reboot': 0,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,
-        # 'inverter_state': (0, 1),
+        'enable_inverter': True,
+        'enable_inverter_auto_restart': False,
         # 'inverter_status': 1,
         # 'island_check_continue': 0,
         # 'iso1': 0,
         # 'iso2': 0,
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
-        # 'meter_type': 1,
+        'meter_type': MeterType.EM115,
         'modbus_version': '1.40',
         # 'p_battery': 1075,
         # 'p_eps_backup': 0,
@@ -1033,8 +1041,8 @@ def test_from_actual():
         # 'reactive_power_rate': 0,
         # 'real_v_f_value': 0.0,
         # 'remote_bms_restart': False,
-        # 'reverse_115_meter_direct': False,
-        # 'reverse_418_meter_direct': False,
+        'reverse_115_meter': False,
+        'reverse_418_meter': False,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
         'battery_calibration_stage': BatteryCalibrationStage.OFF,

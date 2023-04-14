@@ -1,16 +1,15 @@
 import datetime
 import logging
-from enum import IntEnum
 
 from givenergy_modbus.client import TimeSlot
-from givenergy_modbus.model import GivEnergyBaseModel
+from givenergy_modbus.model import DefaultUnknownIntEnum, GivEnergyBaseModel
 from givenergy_modbus.model.register import HoldingRegister as HR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 _logger = logging.getLogger(__name__)
 
 
-class Model(IntEnum):
+class Model(DefaultUnknownIntEnum):
     """Known models of inverters."""
 
     UNKNOWN = -1
@@ -22,12 +21,8 @@ class Model(IntEnum):
     GATEWAY = 7
     ALL_IN_ONE = 8
 
-    @classmethod
-    def _missing_(cls, value):
-        return cls.UNKNOWN
 
-
-class UsbDevice(IntEnum):
+class UsbDevice(DefaultUnknownIntEnum):
     """USB devices that can be inserted into inverters."""
 
     UNKNOWN = -1
@@ -35,24 +30,16 @@ class UsbDevice(IntEnum):
     WIFI = 1
     DISK = 2
 
-    @classmethod
-    def _missing_(cls, value):
-        return cls.UNKNOWN
 
-
-class BatteryPowerMode(IntEnum):
+class BatteryPowerMode(DefaultUnknownIntEnum):
     """Battery discharge strategy."""
 
     UNKNOWN = -1
     EXPORT = 0
     SELF_CONSUMPTION = 1
 
-    @classmethod
-    def _missing_(cls, value):
-        return cls.UNKNOWN
 
-
-class BatteryCalibrationStage(IntEnum):
+class BatteryCalibrationStage(DefaultUnknownIntEnum):
     """Battery calibration stages."""
 
     UNKNOWN = -1
@@ -65,9 +52,13 @@ class BatteryCalibrationStage(IntEnum):
     SET_FULL_CAPACITY = 6
     FINISH = 7
 
-    @classmethod
-    def _missing_(cls, value):
-        return cls.UNKNOWN
+
+class MeterType(DefaultUnknownIntEnum):
+    """Installed meter type."""
+
+    UNKNOWN = -1
+    CT_OR_EM418 = 0
+    EM115 = 1
 
 
 class Inverter(GivEnergyBaseModel):
@@ -91,17 +82,17 @@ class Inverter(GivEnergyBaseModel):
     enable_ammeter: bool
     select_arm_chip: bool
     system_time: datetime.datetime
-    # inverter_state: tuple[int, int]
-    #
-    # meter_type: int
-    # reverse_115_meter_direct: bool
-    # reverse_418_meter_direct: bool
-    # ct_adjust: int
-    # enable_buzzer: bool
-    #
+    enable_inverter: bool
+    enable_inverter_auto_restart: bool
+
     grid_port_max_power_output: int
     enable_60hz_freq_mode: bool
     enable_drm_rj45_port: bool
+    reverse_ct: bool
+    meter_type: int
+    reverse_115_meter: bool
+    reverse_418_meter: bool
+    enable_buzzer: bool
     # enable_above_6kw_system: bool
     # enable_frequency_derating: bool
     # enable_low_voltage_fault_ride_through: bool
@@ -322,6 +313,13 @@ class Inverter(GivEnergyBaseModel):
                 register_cache[HR(40)],
             ),
             enable_drm_rj45_port=bool(register_cache[HR(41)]),
+            enable_inverter=bool((state := register_cache.to_duint8(HR(53)))[1]),
+            enable_inverter_auto_restart=bool(state[0]),
+            reverse_ct=bool(register_cache[HR(42)]),
+            meter_type=MeterType(register_cache[HR(47)]),
+            reverse_115_meter=bool(register_cache[HR(48)]),
+            reverse_418_meter=bool(register_cache[HR(49)]),
+            enable_buzzer=bool(register_cache[HR(113)]),
         )
 
     # @computed('p_pv')

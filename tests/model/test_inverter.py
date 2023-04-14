@@ -1,10 +1,18 @@
 import datetime
+import json
 from unittest import skip
 
 import pytest
 
 from givenergy_modbus.client import TimeSlot
-from givenergy_modbus.model.inverter import BatteryCalibrationStage, BatteryPowerMode, Inverter, Model, UsbDevice
+from givenergy_modbus.model.inverter import (
+    BatteryCalibrationStage,
+    BatteryPowerMode,
+    Inverter,
+    Model,
+    UsbDevice,
+    MeterType,
+)
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -64,50 +72,62 @@ def test_has_expected_attributes():
     )
 
 
+def fix_complex_json_fields(d: dict) -> None:
+    d['system_time'] = d['system_time'].isoformat()
+    d['charge_slot_2'] = {
+        'start': d['charge_slot_2'].start.isoformat(),
+        'end': d['charge_slot_2'].end.isoformat(),
+    }
+
+
 def test_from_registers_empty():
     """Ensure an empty object cannot be instantiated/validated because of missing data for virtual attributes."""
     i = Inverter.from_registers(RegisterCache())
-    assert i.dict() == {
-        'serial_number': '',
-        'device_type_code': '0000',
-        'model': Model.UNKNOWN,
-        'module': '00000000',
-        'dsp_firmware_version': 0,
+    expected_dict = {
         'arm_firmware_version': 0,
-        'firmware_version': 'D0.0-A0.0',
-        'num_mppt': 0,
-        'num_phases': 0,
-        'usb_device_inserted': UsbDevice.NONE,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
+        'battery_power_mode': BatteryPowerMode.EXPORT,
+        'charge_slot_2': TimeSlot(start=datetime.time(0, 0), end=datetime.time(0, 0)),
+        'device_type_code': '0000',
+        'dsp_firmware_version': 0,
+        'enable_60hz_freq_mode': False,
         'enable_ammeter': False,
+        'enable_buzzer': False,
         'enable_charge_target': False,
+        'enable_drm_rj45_port': False,
+        'enable_inverter': False,
+        'enable_inverter_auto_restart': False,
+        'firmware_version': 'D0.0-A0.0',
         'first_battery_bms_firmware_version': 0,
         'first_battery_serial_number': '',
-        'select_arm_chip': False,
         'grid_port_max_power_output': 0,
-        'battery_power_mode': BatteryPowerMode.EXPORT,
-        'enable_60hz_freq_mode': False,
-        'battery_calibration_stage': BatteryCalibrationStage.OFF,
+        'meter_type': MeterType.CT_OR_EM418,
         'modbus_address': 0,
-        'charge_slot_2': TimeSlot(start=datetime.time(0, 0), end=datetime.time(0, 0)),
         'modbus_version': '0.00',
+        'model': Model.UNKNOWN,
+        'module': '00000000',
+        'num_mppt': 0,
+        'num_phases': 0,
+        'reverse_115_meter': False,
+        'reverse_418_meter': False,
+        'reverse_ct': False,
+        'select_arm_chip': False,
+        'serial_number': '',
         'system_time': datetime.datetime(2000, 1, 1, 0, 0, 0),
-        "enable_drm_rj45_port": False,
+        'usb_device_inserted': UsbDevice.NONE,
     }
-    assert i.json() == (
-        '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
-        '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "modbus_address": 0, '
-        '"modbus_version": "0.00", "num_mppt": 0, "num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, '
-        '"select_arm_chip": false, "system_time": "2000-01-01T00:00:00", "grid_port_max_power_output": 0, '
-        '"enable_60hz_freq_mode": false, "enable_drm_rj45_port": false, "first_battery_serial_number": "", '
-        '"first_battery_bms_firmware_version": 0, "battery_power_mode": 0, "enable_charge_target": false, '
-        '"battery_calibration_stage": 0, "charge_slot_2": {"start": "00:00:00", "end": "00:00:00"}}'
-    )
+
+    assert i.dict() == expected_dict
+    json_dict = json.loads(i.json())
+    assert json_dict.keys() == expected_dict.keys()
+    fix_complex_json_fields(expected_dict)
+    assert json_dict == expected_dict
 
 
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of inverter data."""
     i = Inverter.from_registers(register_cache)
-    assert i.dict() == {
+    expected_dict = {
         # 'active_power_rate': 100,
         # 'battery_charge_limit': 50,
         # 'battery_discharge_limit': 50,
@@ -115,20 +135,17 @@ def test_from_registers(register_cache):
         # 'battery_low_force_charge_time': 6,
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 4,
-        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
         # 'battery_soc_reserve': 4,
         # 'battery_type': 1,
         # 'battery_voltage_adjust': 0,
         # 'bms_chip_version': 101,
         # 'charge_and_discharge_soc': (0, 0),
         # 'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
-        'charge_slot_2': TimeSlot(datetime.time(0, 0), datetime.time(0, 4)),
         # 'charge_soc_stop_1': 0,
         # 'charge_soc_stop_2': 0,
         # 'charge_status': 0,
         # 'charge_target_soc': 100,
         # 'charger_warning_code': 0,
-        # 'ct_adjust': 2,
         # 'dci_1_i': 0.0,
         # 'dci_1_time': 0,
         # 'dci_2_i': 0.0,
@@ -159,14 +176,11 @@ def test_from_registers(register_cache):
         # 'e_pv_day': 0.9,
         # 'e_pv_total': 15.9,
         # 'e_solar_diverter': 0.0,
-        'enable_60hz_freq_mode': False,
         # 'enable_above_6kw_system': False,
         # 'enable_auto_judge_battery_type': True,
         # 'enable_bms_read': True,
-        # 'enable_buzzer': False,
         # 'enable_charge': True,
         # 'enable_discharge': False,
-        'enable_drm_rj45_port': True,
         # 'enable_frequency_derating': False,
         # 'enable_low_voltage_fault_ride_through': False,
         # 'enable_spi': False,
@@ -200,19 +214,15 @@ def test_from_registers(register_cache):
         # 'i_pv1': 0.0,
         # 'i_pv2': 0.0,
         # 'inverter_countdown': 30,
-        'modbus_address': 0x11,
         # 'inverter_reboot': 0,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,
-        # 'inverter_state': (0, 1),
         # 'inverter_status': 0,
         # 'island_check_continue': 0,
         # 'iso1': 0,
         # 'iso2': 0,
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
-        # 'meter_type': 1,
-        'modbus_version': '1.40',
         # 'p_battery': 0,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 680,
@@ -241,14 +251,10 @@ def test_from_registers(register_cache):
         # 'reactive_power_rate': 0,
         # 'real_v_f_value': 0.0,
         # 'remote_bms_restart': False,
-        # 'reverse_115_meter_direct': False,
-        # 'reverse_418_meter_direct': False,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
-        'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
-        'system_time': datetime.datetime(2022, 1, 1, 23, 57, 19),
         # 'temp_battery': 17.0,
         # 'temp_charger': 22.3,
         # 'temp_fault_value': 0.0,
@@ -286,20 +292,35 @@ def test_from_registers(register_cache):
         # 'variable_value': 30235,
         # 'work_time_total': 213,
         'arm_firmware_version': 449,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
+        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
+        'charge_slot_2': TimeSlot(datetime.time(0, 0), datetime.time(0, 4)),
         'device_type_code': '2001',
         'dsp_firmware_version': 449,
+        'enable_60hz_freq_mode': False,
         'enable_ammeter': True,
+        'enable_buzzer': False,
         'enable_charge_target': True,
+        'enable_drm_rj45_port': True,
+        'enable_inverter': True,
+        'enable_inverter_auto_restart': False,
         'firmware_version': 'D0.449-A0.449',
         'first_battery_bms_firmware_version': 3005,
         'first_battery_serial_number': 'BG1234G567',
         'grid_port_max_power_output': 6000,
+        'meter_type': MeterType.EM115,
+        'modbus_address': 0x11,
+        'modbus_version': '1.40',
         'model': Model.HYBRID,
         'module': '00030832',
         'num_mppt': 2,
         'num_phases': 1,
+        'reverse_115_meter': False,
+        'reverse_418_meter': False,
+        'reverse_ct': True,
         'select_arm_chip': False,
         'serial_number': 'SA1234G567',
+        'system_time': datetime.datetime(2022, 1, 1, 23, 57, 19),
         'usb_device_inserted': UsbDevice.DISK,
     }
     assert i.serial_number == 'SA1234G567'
@@ -307,16 +328,12 @@ def test_from_registers(register_cache):
     assert getattr(i, 'serial_number') == 'SA1234G567'
     with pytest.raises(TypeError, match="'Inverter' object is not subscriptable"):
         i['serial_number']
-    assert i.json() == (
-        '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
-        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
-        '"modbus_address": 17, "modbus_version": "1.40", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
-        '"enable_ammeter": true, "select_arm_chip": false, "system_time": "2022-01-01T23:57:19", '
-        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, "enable_drm_rj45_port": true, '
-        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": true, "battery_calibration_stage": 0, '
-        '"charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
-    )
+
+    assert i.dict() == expected_dict
+    json_dict = json.loads(i.json())
+    assert json_dict.keys() == expected_dict.keys()
+    fix_complex_json_fields(expected_dict)
+    assert json_dict == expected_dict
 
 
 def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
@@ -324,7 +341,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
     i = Inverter.from_registers(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == 'SA1234G567'
     assert i.model == Model.HYBRID
-    assert i.dict() == {
+    expected_dict = {
         # 'active_power_rate': 100,
         # 'battery_charge_limit': 50,
         # 'battery_discharge_limit': 50,
@@ -332,20 +349,17 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'battery_low_force_charge_time': 6,
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 68,
-        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
         # 'battery_soc_reserve': 4,
         # 'battery_type': 1,
         # 'battery_voltage_adjust': 0,
         # 'bms_chip_version': 101,
         # 'charge_and_discharge_soc': (0, 0),
         # 'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
-        'charge_slot_2': TimeSlot(datetime.time(0, 0), datetime.time(0, 4)),
         # 'charge_soc_stop_1': 0,
         # 'charge_soc_stop_2': 0,
         # 'charge_status': 5,
         # 'charge_target_soc': 100,
         # 'charger_warning_code': 0,
-        # 'ct_adjust': 2,
         # 'dci_1_i': 0.0,
         # 'dci_1_time': 0,
         # 'dci_2_i': 0.0,
@@ -376,16 +390,11 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'e_pv_day': 1.0,
         # 'e_pv_total': 26.3,
         # 'e_solar_diverter': 0.0,
-        'enable_60hz_freq_mode': False,
         # 'enable_above_6kw_system': False,
-        'enable_ammeter': True,
         # 'enable_auto_judge_battery_type': True,
         # 'enable_bms_read': True,
-        # 'enable_buzzer': False,
         # 'enable_charge': True,
-        'enable_charge_target': False,
         # 'enable_discharge': False,
-        'enable_drm_rj45_port': True,
         # 'enable_frequency_derating': True,
         # 'enable_low_voltage_fault_ride_through': False,
         # 'enable_spi': True,
@@ -403,15 +412,12 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'f_ac_low_out_time': 24,
         # 'f_eps_backup': 49.92,
         # 'fault_code': 0,
-        'first_battery_bms_firmware_version': 3005,
-        'first_battery_serial_number': 'BG1234G567',
         # 'frequency_load_limit_rate': 24,
         # 'gfci_1_i': 0.0,
         # 'gfci_1_time': 0,
         # 'gfci_2_i': 0.0,
         # 'gfci_2_time': 0,
         # 'gfci_fault_value': 0.0,
-        'grid_port_max_power_output': 6000,
         # 'grid_power_adjust': 0,
         # 'grid_r_voltage_adjust': 0,
         # 'grid_s_voltage_adjust': 0,
@@ -422,18 +428,14 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'i_pv1': 0.3,
         # 'i_pv2': 0.3,
         # 'inverter_countdown': 0,
-        'modbus_address': 0x11,
         # 'inverter_restart_delay_time': 30,
         # 'inverter_start_time': 30,
-        # 'inverter_state': (0, 1),
         # 'inverter_status': 1,
         # 'island_check_continue': 0,
         # 'iso1': 0,
         # 'iso2': 0,
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
-        # 'meter_type': 1,
-        'modbus_version': '1.40',
         # 'p_battery': 360,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 554,
@@ -463,15 +465,10 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'real_v_f_value': 0.0,
         # 'reboot': 0,
         # 'remote_bms_restart': False,
-        # 'reverse_115_meter_direct': False,
-        # 'reverse_418_meter_direct': False,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
-        'select_arm_chip': False,
-        'battery_calibration_stage': BatteryCalibrationStage.OFF,
         # 'start_system_auto_test': False,
         # 'system_mode': 1,
-        'system_time': datetime.datetime(2022, 1, 11, 11, 51, 46),
         # 'temp_battery': 16.0,
         # 'temp_charger': 24.1,
         # 'temp_fault_value': 0.0,
@@ -509,23 +506,39 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'variable_value': 30235,
         # 'work_time_total': 385,
         'arm_firmware_version': 449,
+        'battery_calibration_stage': BatteryCalibrationStage.OFF,
+        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
+        'charge_slot_2': TimeSlot(datetime.time(0, 0), datetime.time(0, 4)),
         'device_type_code': '2001',
         'dsp_firmware_version': 449,
+        'enable_60hz_freq_mode': False,
+        'enable_ammeter': True,
+        'enable_buzzer': False,
+        'enable_charge_target': False,
+        'enable_drm_rj45_port': True,
+        'enable_inverter': True,
+        'enable_inverter_auto_restart': False,
         'firmware_version': 'D0.449-A0.449',
+        'first_battery_bms_firmware_version': 3005,
+        'first_battery_serial_number': 'BG1234G567',
+        'grid_port_max_power_output': 6000,
+        'meter_type': MeterType.EM115,
+        'modbus_address': 0x11,
+        'modbus_version': '1.40',
         'model': Model.HYBRID,
         'module': '00030832',
         'num_mppt': 2,
         'num_phases': 1,
+        'reverse_115_meter': False,
+        'reverse_418_meter': False,
+        'reverse_ct': True,
+        'select_arm_chip': False,
         'serial_number': 'SA1234G567',
+        'system_time': datetime.datetime(2022, 1, 11, 11, 51, 46),
         'usb_device_inserted': UsbDevice.DISK,
     }
-    assert i.json() == (
-        '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
-        '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
-        '"modbus_address": 17, "modbus_version": "1.40", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
-        '"enable_ammeter": true, "select_arm_chip": false, "system_time": "2022-01-11T11:51:46", '
-        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, "enable_drm_rj45_port": true, '
-        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": false, "battery_calibration_stage": 0, '
-        '"charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
-    )
+    assert i.dict() == expected_dict
+    json_dict = json.loads(i.json())
+    assert json_dict.keys() == expected_dict.keys()
+    fix_complex_json_fields(expected_dict)
+    assert json_dict == expected_dict
