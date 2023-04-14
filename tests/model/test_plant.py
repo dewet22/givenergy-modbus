@@ -1,8 +1,10 @@
+import datetime
 import json
 from typing import Any, Optional
 
 import pytest
 
+from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import BatteryCalibrationStage, BatteryPowerMode, Inverter, Model, UsbDevice
@@ -912,7 +914,7 @@ def test_from_actual():
         # 'bms_chip_version': 101,
         # 'charge_and_discharge_soc': (0, 0),
         # 'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
-        # 'charge_slot_2': (datetime.time(0, 0), datetime.time(0, 4)),
+        'charge_slot_2': TimeSlot(datetime.time(0, 0), datetime.time(0, 4)),
         # 'charge_soc_stop_1': 0,
         # 'charge_soc_stop_2': 0,
         # 'charge_status': 5,

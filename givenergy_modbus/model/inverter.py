@@ -1,6 +1,7 @@
 import logging
 from enum import IntEnum
 
+from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.register import HoldingRegister as HR
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -182,7 +183,7 @@ class Inverter(GivEnergyBaseModel):
     battery_calibration_stage: BatteryCalibrationStage
     #
     # charge_slot_1: tuple[datetime.time, datetime.time]
-    # charge_slot_2: tuple[datetime.time, datetime.time]
+    charge_slot_2: TimeSlot
     # discharge_slot_1: tuple[datetime.time, datetime.time]
     # discharge_slot_2: tuple[datetime.time, datetime.time]
     # charge_and_discharge_soc: tuple[int, int]
@@ -309,6 +310,7 @@ class Inverter(GivEnergyBaseModel):
             enable_60hz_freq_mode=bool(register_cache[HR(28)]),
             battery_calibration_stage=BatteryCalibrationStage(register_cache[HR(29)]),
             modbus_address=register_cache[HR(30)],
+            charge_slot_2=register_cache.to_timeslot(HR(31), HR(32)),
         )
 
     # @computed('charge_slot_1')

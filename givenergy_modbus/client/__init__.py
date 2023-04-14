@@ -8,7 +8,7 @@ _logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Timeslot:
+class TimeSlot:
     """Dataclass to represent a time slot, with a start and end time."""
 
     start: time
@@ -22,10 +22,12 @@ class Timeslot:
     @classmethod
     def from_repr(cls, start: Union[int, str], end: Union[int, str]):
         """Converts from human-readable/ASCII representation: '0034' -> 00:34."""
-        start = str(start)
+        if isinstance(start, int):
+            start = f'{start:04d}'
         start_hour = int(start[:-2])
         start_minute = int(start[-2:])
-        end = str(end)
+        if isinstance(end, int):
+            end = f'{end:04d}'
         end_hour = int(end[:-2])
         end_minute = int(end[-2:])
         return cls(time(start_hour, start_minute), time(end_hour, end_minute))

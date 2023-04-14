@@ -4,7 +4,7 @@ from asyncio import StreamReader
 
 import pytest
 
-from givenergy_modbus.client import Timeslot
+from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
@@ -45,32 +45,31 @@ async def test_expected_response():
 
 
 def test_timeslot():
-    ts = Timeslot(datetime.time(4, 5), datetime.time(9, 8))
-    assert ts == Timeslot(start=datetime.time(4, 5), end=datetime.time(9, 8))
-    assert ts == Timeslot(datetime.time(4, 5), datetime.time(9, 8))
-    assert ts == Timeslot.from_components(4, 5, 9, 8)
-    assert ts == Timeslot.from_repr(405, 908)
-    assert ts == Timeslot.from_repr('405', '908')
-    with pytest.raises(ValueError, match='invalid literal'):
-        Timeslot.from_repr(2, 2)
+    ts = TimeSlot(datetime.time(4, 5), datetime.time(9, 8))
+    assert ts == TimeSlot(start=datetime.time(4, 5), end=datetime.time(9, 8))
+    assert ts == TimeSlot(datetime.time(4, 5), datetime.time(9, 8))
+    assert ts == TimeSlot.from_components(4, 5, 9, 8)
+    assert ts == TimeSlot.from_repr(405, 908)
+    assert ts == TimeSlot.from_repr('405', '908')
+    assert TimeSlot(datetime.time(0, 2), datetime.time(0, 2)) == TimeSlot.from_repr(2, 2)
     with pytest.raises(ValueError, match='hour must be in 0..23'):
-        Timeslot.from_repr(999999, 999999)
+        TimeSlot.from_repr(999999, 999999)
     with pytest.raises(ValueError, match='minute must be in 0..59'):
-        Timeslot.from_repr(999, 888)
+        TimeSlot.from_repr(999, 888)
     with pytest.raises(ValueError, match='hour must be in 0..23'):
-        Timeslot.from_components(99, 88, 77, 66)
+        TimeSlot.from_components(99, 88, 77, 66)
     with pytest.raises(ValueError, match='minute must be in 0..59'):
-        Timeslot.from_components(11, 22, 11, 66)
+        TimeSlot.from_components(11, 22, 11, 66)
 
-    ts = Timeslot(datetime.time(12, 34), datetime.time(23, 45))
-    assert ts == Timeslot(start=datetime.time(12, 34), end=datetime.time(23, 45))
-    assert ts == Timeslot(datetime.time(12, 34), datetime.time(23, 45))
-    assert ts == Timeslot.from_components(12, 34, 23, 45)
-    assert ts == Timeslot.from_repr(1234, 2345)
-    assert ts == Timeslot.from_repr('1234', '2345')
+    ts = TimeSlot(datetime.time(12, 34), datetime.time(23, 45))
+    assert ts == TimeSlot(start=datetime.time(12, 34), end=datetime.time(23, 45))
+    assert ts == TimeSlot(datetime.time(12, 34), datetime.time(23, 45))
+    assert ts == TimeSlot.from_components(12, 34, 23, 45)
+    assert ts == TimeSlot.from_repr(1234, 2345)
+    assert ts == TimeSlot.from_repr('1234', '2345')
     with pytest.raises(ValueError, match='hour must be in 0..23'):
-        assert ts == Timeslot.from_components(43, 21, 54, 32)
+        assert ts == TimeSlot.from_components(43, 21, 54, 32)
     with pytest.raises(ValueError, match='hour must be in 0..23'):
-        assert ts == Timeslot.from_repr(4321, 5432)
+        assert ts == TimeSlot.from_repr(4321, 5432)
     with pytest.raises(ValueError, match='hour must be in 0..23'):
-        assert ts == Timeslot.from_repr('4321', '5432')
+        assert ts == TimeSlot.from_repr('4321', '5432')

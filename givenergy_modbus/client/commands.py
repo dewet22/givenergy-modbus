@@ -5,7 +5,7 @@ from typing import Optional
 from arrow import Arrow
 from typing_extensions import deprecated  # type: ignore[attr-defined]
 
-from givenergy_modbus.client import Timeslot
+from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
@@ -149,7 +149,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
 
 
-def _set_charge_slot(discharge: bool, idx: int, slot: Optional[Timeslot]) -> list[TransparentRequest]:
+def _set_charge_slot(discharge: bool, idx: int, slot: Optional[TimeSlot]) -> list[TransparentRequest]:
     hr_start, hr_end = (
         HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'],
         HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'],
@@ -166,7 +166,7 @@ def _set_charge_slot(discharge: bool, idx: int, slot: Optional[Timeslot]) -> lis
         ]
 
 
-def set_charge_slot_1(timeslot: Timeslot) -> list[TransparentRequest]:
+def set_charge_slot_1(timeslot: TimeSlot) -> list[TransparentRequest]:
     """Set first charge slot start & end times."""
     return _set_charge_slot(False, 1, timeslot)
 
@@ -176,7 +176,7 @@ def reset_charge_slot_1() -> list[TransparentRequest]:
     return _set_charge_slot(False, 1, None)
 
 
-def set_charge_slot_2(timeslot: Timeslot) -> list[TransparentRequest]:
+def set_charge_slot_2(timeslot: TimeSlot) -> list[TransparentRequest]:
     """Set second charge slot start & end times."""
     return _set_charge_slot(False, 2, timeslot)
 
@@ -186,7 +186,7 @@ def reset_charge_slot_2() -> list[TransparentRequest]:
     return _set_charge_slot(False, 2, None)
 
 
-def set_discharge_slot_1(timeslot: Timeslot) -> list[TransparentRequest]:
+def set_discharge_slot_1(timeslot: TimeSlot) -> list[TransparentRequest]:
     """Set first discharge slot start & end times."""
     return _set_charge_slot(True, 1, timeslot)
 
@@ -196,7 +196,7 @@ def reset_discharge_slot_1() -> list[TransparentRequest]:
     return _set_charge_slot(True, 1, None)
 
 
-def set_discharge_slot_2(timeslot: Timeslot) -> list[TransparentRequest]:
+def set_discharge_slot_2(timeslot: TimeSlot) -> list[TransparentRequest]:
     """Set second discharge slot start & end times."""
     return _set_charge_slot(True, 2, timeslot)
 
@@ -231,8 +231,8 @@ def set_mode_dynamic() -> list[TransparentRequest]:
 
 
 def set_mode_storage(
-    discharge_slot_1: Timeslot = Timeslot.from_repr(1600, 700),
-    discharge_slot_2: Optional[Timeslot] = None,
+    discharge_slot_1: TimeSlot = TimeSlot.from_repr(1600, 700),
+    discharge_slot_2: Optional[TimeSlot] = None,
     discharge_for_export: bool = False,
 ) -> list[TransparentRequest]:
     """Set system to storage mode with specific discharge slots(s).

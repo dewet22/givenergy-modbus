@@ -1,7 +1,7 @@
 import arrow
 import pytest
 
-from givenergy_modbus.client import Timeslot, commands
+from givenergy_modbus.client import TimeSlot, commands
 from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 
@@ -73,7 +73,7 @@ async def test_set_battery_discharge_mode():
 async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, hour2: int, min2: int):
     """Ensure we can set charge time slots correctly."""
     # test set and reset functions for the relevant {action} and {slot}
-    messages = getattr(commands, f'set_{action}_slot_{slot}')(Timeslot.from_components(hour1, min1, hour2, min2))
+    messages = getattr(commands, f'set_{action}_slot_{slot}')(TimeSlot.from_components(hour1, min1, hour2, min2))
     hr_start = HoldingRegister[f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_START']
     hr_end = HoldingRegister[f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_END']
     assert messages == [
@@ -98,7 +98,7 @@ async def test_set_mode_dynamic():
 
 async def test_set_mode_storage():
     """Ensure we can set the inverter to a storage mode with discharge slots."""
-    assert commands.set_mode_storage(Timeslot.from_components(1, 2, 3, 4)) == [
+    assert commands.set_mode_storage(TimeSlot.from_components(1, 2, 3, 4)) == [
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 1),
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True),
@@ -108,7 +108,7 @@ async def test_set_mode_storage():
         WriteHoldingRegisterRequest(HoldingRegister.DISCHARGE_SLOT_2_END, 0),
     ]
 
-    assert commands.set_mode_storage(Timeslot.from_components(5, 6, 7, 8), Timeslot.from_components(9, 10, 11, 12)) == [
+    assert commands.set_mode_storage(TimeSlot.from_components(5, 6, 7, 8), TimeSlot.from_components(9, 10, 11, 12)) == [
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 1),
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True),
@@ -118,7 +118,7 @@ async def test_set_mode_storage():
         WriteHoldingRegisterRequest(HoldingRegister.DISCHARGE_SLOT_2_END, 1112),
     ]
 
-    assert commands.set_mode_storage(Timeslot.from_repr(1314, 1516), discharge_for_export=True) == [
+    assert commands.set_mode_storage(TimeSlot.from_repr(1314, 1516), discharge_for_export=True) == [
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 0),
         WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, True),

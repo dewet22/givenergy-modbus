@@ -3,6 +3,7 @@ import logging
 from json import JSONEncoder
 from typing import Any, DefaultDict, Optional
 
+from givenergy_modbus.client import TimeSlot
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
 
@@ -88,3 +89,7 @@ class RegisterCache(DefaultDict[Register, int]):
     def to_uint32(self, high_register: Register, low_register: Register) -> int:
         """Combine two registers into an unsigned 32-bit integer."""
         return (self[high_register] << 16) + self[low_register]
+
+    def to_timeslot(self, start: Register, end: Register) -> TimeSlot:
+        """Combine two registers into a time slot."""
+        return TimeSlot.from_repr(self[start], self[end])
