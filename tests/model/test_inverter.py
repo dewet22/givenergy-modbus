@@ -83,13 +83,14 @@ def test_from_registers_empty():
         'select_arm_chip': False,
         'grid_port_max_power_output': 0,
         'battery_power_mode': BatteryPowerMode.EXPORT,
+        'enable_60hz_freq_mode': False,
     }
     assert i.json() == (
         '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
         '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "num_mppt": 0, '
         '"num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 0, "first_battery_serial_number": "", "first_battery_bms_firmware_version": 0, '
-        '"battery_power_mode": 0, "enable_charge_target": false}'
+        '"grid_port_max_power_output": 0, "enable_60hz_freq_mode": false, "first_battery_serial_number": "", '
+        '"first_battery_bms_firmware_version": 0, "battery_power_mode": 0, "enable_charge_target": false}'
     )
 
 
@@ -148,7 +149,7 @@ def test_from_registers(register_cache):
         # 'e_pv_day': 0.9,
         # 'e_pv_total': 15.9,
         # 'e_solar_diverter': 0.0,
-        # 'enable_60hz_freq_mode': False,
+        'enable_60hz_freq_mode': False,
         # 'enable_above_6kw_system': False,
         # 'enable_auto_judge_battery_type': True,
         # 'enable_bms_read': True,
@@ -300,8 +301,9 @@ def test_from_registers(register_cache):
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
         '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
         '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 6000, "first_battery_serial_number": "BG1234G567", '
-        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": true}'
+        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
+        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
+        '"battery_power_mode": 1, "enable_charge_target": true}'
     )
 
 
@@ -362,7 +364,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'e_pv_day': 1.0,
         # 'e_pv_total': 26.3,
         # 'e_solar_diverter': 0.0,
-        # 'enable_60hz_freq_mode': False,
+        'enable_60hz_freq_mode': False,
         # 'enable_above_6kw_system': False,
         'enable_ammeter': True,
         # 'enable_auto_judge_battery_type': True,
@@ -509,6 +511,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
         '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", "num_mppt": 2, '
         '"num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, "select_arm_chip": false, '
-        '"grid_port_max_power_output": 6000, "first_battery_serial_number": "BG1234G567", '
-        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": false}'
+        '"grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
+        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
+        '"battery_power_mode": 1, "enable_charge_target": false}'
     )

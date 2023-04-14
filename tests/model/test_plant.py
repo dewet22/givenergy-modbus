@@ -949,7 +949,7 @@ def test_from_actual():
         # 'e_pv_day': 35.4,
         # 'e_pv_total': 1192.9,
         # 'e_solar_diverter': 0.0,
-        # 'enable_60hz_freq_mode': False,
+        'enable_60hz_freq_mode': False,
         # 'enable_above_6kw_system': False,
         # 'enable_auto_judge_battery_type': True,
         # 'enable_bms_read': True,

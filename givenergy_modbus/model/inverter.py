@@ -81,7 +81,7 @@ class Inverter(GivEnergyBaseModel):
     # enable_buzzer: bool
     #
     grid_port_max_power_output: int
-    # enable_60hz_freq_mode: bool
+    enable_60hz_freq_mode: bool
     # enable_above_6kw_system: bool
     # enable_frequency_derating: bool
     # enable_low_voltage_fault_ride_through: bool
@@ -288,6 +288,7 @@ class Inverter(GivEnergyBaseModel):
             select_arm_chip=bool(register_cache[HR(23)]),
             grid_port_max_power_output=register_cache[HR(26)],
             battery_power_mode=BatteryPowerMode(register_cache[HR(27)]),
+            enable_60hz_freq_mode=bool(register_cache[HR(28)]),
         )
 
     # @computed('charge_slot_1')
