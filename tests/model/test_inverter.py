@@ -8,6 +8,7 @@ from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
+    BatteryType,
     Inverter,
     MeterType,
     Model,
@@ -78,6 +79,10 @@ def fix_complex_json_fields(d: dict) -> None:
         'start': d['charge_slot_2'].start.isoformat(),
         'end': d['charge_slot_2'].end.isoformat(),
     }
+    d['discharge_slot_2'] = {
+        'start': d['discharge_slot_2'].start.isoformat(),
+        'end': d['discharge_slot_2'].end.isoformat(),
+    }
 
 
 def test_from_registers_empty():
@@ -87,7 +92,8 @@ def test_from_registers_empty():
         'arm_firmware_version': 0,
         'battery_calibration_stage': BatteryCalibrationStage.OFF,
         'battery_power_mode': BatteryPowerMode.EXPORT,
-        'charge_slot_2': TimeSlot(start=datetime.time(0, 0), end=datetime.time(0, 0)),
+        'charge_slot_2': TimeSlot.from_repr(0, 0),
+        'discharge_slot_2': TimeSlot.from_repr(0, 0),
         'device_type_code': '0000',
         'dsp_firmware_version': 0,
         'enable_60hz_freq_mode': False,
@@ -115,6 +121,13 @@ def test_from_registers_empty():
         'serial_number': '',
         'system_time': datetime.datetime(2000, 1, 1, 0, 0, 0),
         'usb_device_inserted': UsbDevice.NONE,
+        'charge_soc': 0,
+        'discharge_soc': 0,
+        'bms_firmware_version': 0,
+        'active_power_rate': 0,
+        'power_factor': -1,
+        'reactive_power_rate': 0,
+        'battery_type': BatteryType.LEAD_ACID,
     }
 
     assert i.dict() == expected_dict
@@ -128,7 +141,7 @@ def test_from_registers(register_cache):
     """Ensure we can return a dict view of inverter data."""
     i = Inverter.from_registers(register_cache)
     expected_dict = {
-        # 'active_power_rate': 100,
+        'active_power_rate': 100,
         # 'battery_charge_limit': 50,
         # 'battery_discharge_limit': 50,
         # 'battery_discharge_min_power_reserve': 4,
@@ -136,10 +149,11 @@ def test_from_registers(register_cache):
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 4,
         # 'battery_soc_reserve': 4,
-        # 'battery_type': 1,
+        'battery_type': BatteryType.LITHIUM,
         # 'battery_voltage_adjust': 0,
-        # 'bms_chip_version': 101,
-        # 'charge_and_discharge_soc': (0, 0),
+        'bms_firmware_version': 101,
+        'charge_soc': 0,
+        'discharge_soc': 0,
         # 'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
         # 'charge_soc_stop_1': 0,
         # 'charge_soc_stop_2': 0,
@@ -152,7 +166,7 @@ def test_from_registers(register_cache):
         # 'dci_2_time': 0,
         # 'dci_fault_value': 0.0,
         # 'discharge_slot_1': (datetime.time(0, 0), datetime.time(0, 0)),
-        # 'discharge_slot_2': (datetime.time(0, 0), datetime.time(0, 0)),
+        'discharge_slot_2': TimeSlot.from_repr(0, 0),
         # 'discharge_soc_stop_1': 0,
         # 'discharge_soc_stop_2': 0,
         # 'e_battery_charge_day': 9.0,
@@ -242,13 +256,13 @@ def test_from_registers(register_cache):
         # 'pf_limit_lp3_pf': -1.0,
         # 'pf_limit_lp4_lp': 0,
         # 'pf_limit_lp4_pf': -1.0,
-        # 'power_factor': -1,
+        'power_factor': -1,
         # 'power_factor_function_model': 0,
         # 'pv1_power_adjust': 0,
         # 'pv1_voltage_adjust': 0,
         # 'pv2_power_adjust': 0,
         # 'pv2_voltage_adjust': 0,
-        # 'reactive_power_rate': 0,
+        'reactive_power_rate': 0,
         # 'real_v_f_value': 0.0,
         # 'remote_bms_restart': False,
         # 'safety_time_limit': 0.0,
@@ -342,7 +356,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
     assert i.serial_number == 'SA1234G567'
     assert i.model == Model.HYBRID
     expected_dict = {
-        # 'active_power_rate': 100,
+        'active_power_rate': 100,
         # 'battery_charge_limit': 50,
         # 'battery_discharge_limit': 50,
         # 'battery_discharge_min_power_reserve': 4,
@@ -350,10 +364,11 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'battery_nominal_capacity': 160.0,
         # 'battery_percent': 68,
         # 'battery_soc_reserve': 4,
-        # 'battery_type': 1,
+        'battery_type': BatteryType.LITHIUM,
         # 'battery_voltage_adjust': 0,
-        # 'bms_chip_version': 101,
-        # 'charge_and_discharge_soc': (0, 0),
+        'bms_firmware_version': 101,
+        'charge_soc': 0,
+        'discharge_soc': 0,
         # 'charge_slot_1': (datetime.time(0, 30), datetime.time(4, 30)),
         # 'charge_soc_stop_1': 0,
         # 'charge_soc_stop_2': 0,
@@ -366,7 +381,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'dci_2_time': 0,
         # 'dci_fault_value': 0.0,
         # 'discharge_slot_1': (datetime.time(0, 0), datetime.time(0, 0)),
-        # 'discharge_slot_2': (datetime.time(0, 0), datetime.time(0, 0)),
+        'discharge_slot_2': TimeSlot.from_repr(0, 0),
         # 'discharge_soc_stop_1': 0,
         # 'discharge_soc_stop_2': 0,
         # 'e_battery_charge_day': 9.1,
@@ -455,13 +470,13 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'pf_limit_lp3_pf': 1.0,
         # 'pf_limit_lp4_lp': 255,
         # 'pf_limit_lp4_pf': 1.0,
-        # 'power_factor': -1,
+        'power_factor': -1,
         # 'power_factor_function_model': 0,
         # 'pv1_power_adjust': 0,
         # 'pv1_voltage_adjust': 0,
         # 'pv2_power_adjust': 0,
         # 'pv2_voltage_adjust': 0,
-        # 'reactive_power_rate': 0,
+        'reactive_power_rate': 0,
         # 'real_v_f_value': 0.0,
         # 'reboot': 0,
         # 'remote_bms_restart': False,

@@ -60,6 +60,14 @@ class MeterType(DefaultUnknownIntEnum):
     EM115 = 1
 
 
+class BatteryType(DefaultUnknownIntEnum):
+    """Installed battery type."""
+
+    UNKNOWN = -1
+    LEAD_ACID = 0
+    LITHIUM = 1
+
+
 class Inverter(GivEnergyBaseModel):
     """Structured format for all inverter attributes."""
 
@@ -107,9 +115,9 @@ class Inverter(GivEnergyBaseModel):
     # pv1_power_adjust: int
     # pv2_power_adjust: int
     #
-    # active_power_rate: int
-    # reactive_power_rate: int
-    # power_factor: int
+    active_power_rate: int
+    reactive_power_rate: int
+    power_factor: int
     # power_factor_function_model: int
     # inverter_start_time: int
     # inverter_restart_delay_time: int
@@ -160,8 +168,9 @@ class Inverter(GivEnergyBaseModel):
     first_battery_serial_number: str
     first_battery_bms_firmware_version: int
     battery_power_mode: BatteryPowerMode
+    bms_firmware_version: int
     # enable_bms_read: bool
-    # battery_type: int
+    battery_type: BatteryType
     # battery_nominal_capacity: float
     # enable_auto_judge_battery_type: bool
     # v_pv_input_start: float
@@ -176,8 +185,9 @@ class Inverter(GivEnergyBaseModel):
     # charge_slot_1: tuple[datetime.time, datetime.time]
     charge_slot_2: TimeSlot
     # discharge_slot_1: tuple[datetime.time, datetime.time]
-    # discharge_slot_2: tuple[datetime.time, datetime.time]
-    # charge_and_discharge_soc: tuple[int, int]
+    discharge_slot_2: TimeSlot
+    charge_soc: int
+    discharge_soc: int
     #
     # battery_low_force_charge_time: int
     # battery_soc_reserve: int
@@ -308,12 +318,20 @@ class Inverter(GivEnergyBaseModel):
             modbus_version=f'{rc[HR(34)] / 100:0.2f}',
             system_time=rc.to_datetime(HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
             enable_drm_rj45_port=bool(rc[HR(41)]),
-            enable_inverter=bool((state := rc.to_duint8(HR(53)))[1]),
-            enable_inverter_auto_restart=bool(state[0]),
             reverse_ct=bool(rc[HR(42)]),
+            charge_soc=(c_d_soc := rc.to_duint8(HR(43)))[0],
+            discharge_soc=c_d_soc[1],
+            discharge_slot_2=rc.to_timeslot(HR(44), HR(45)),
+            bms_firmware_version=rc[HR(46)],
             meter_type=MeterType(rc[HR(47)]),
             reverse_115_meter=bool(rc[HR(48)]),
             reverse_418_meter=bool(rc[HR(49)]),
+            active_power_rate=rc[HR(50)],
+            reactive_power_rate=rc[HR(51)],
+            power_factor=rc[HR(52)] / 10000 - 1,
+            enable_inverter=bool((state := rc.to_duint8(HR(53)))[1]),
+            enable_inverter_auto_restart=bool(state[0]),
+            battery_type=BatteryType(rc[HR(54)]),
             enable_buzzer=bool(rc[HR(113)]),
         )
 

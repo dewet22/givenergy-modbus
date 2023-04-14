@@ -3,9 +3,9 @@ from unittest import skip
 
 import pytest
 
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.model import TimeSlot
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
 
