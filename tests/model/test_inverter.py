@@ -89,11 +89,12 @@ def test_from_registers_empty():
         'battery_calibration_stage': BatteryCalibrationStage.OFF,
         'modbus_address': 0,
         'charge_slot_2': TimeSlot(start=datetime.time(0, 0), end=datetime.time(0, 0)),
+        'modbus_version': '0.00',
     }
     assert i.json() == (
         '{"device_type_code": "0000", "model": -1, "module": "00000000", "serial_number": "", '
         '"dsp_firmware_version": 0, "arm_firmware_version": 0, "firmware_version": "D0.0-A0.0", "modbus_address": 0, '
-        '"num_mppt": 0, "num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, '
+        '"modbus_version": "0.00", "num_mppt": 0, "num_phases": 0, "usb_device_inserted": 0, "enable_ammeter": false, '
         '"select_arm_chip": false, "grid_port_max_power_output": 0, "enable_60hz_freq_mode": false, '
         '"first_battery_serial_number": "", "first_battery_bms_firmware_version": 0, "battery_power_mode": 0, '
         '"enable_charge_target": false, "battery_calibration_stage": 0, '
@@ -209,7 +210,7 @@ def test_from_registers(register_cache):
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
         # 'meter_type': 1,
-        # 'modbus_version': 1.4,
+        'modbus_version': '1.40',
         # 'p_battery': 0,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 680,
@@ -307,11 +308,11 @@ def test_from_registers(register_cache):
     assert i.json() == (
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
         '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
-        '"modbus_address": 17, "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, '
-        '"select_arm_chip": false, "grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
-        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": true, "battery_calibration_stage": 0, '
-        '"charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
+        '"modbus_address": 17, "modbus_version": "1.40", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
+        '"enable_ammeter": true, "select_arm_chip": false, "grid_port_max_power_output": 6000, '
+        '"enable_60hz_freq_mode": false, "first_battery_serial_number": "BG1234G567", '
+        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": true, '
+        '"battery_calibration_stage": 0, "charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
     )
 
 
@@ -429,7 +430,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
         # 'meter_type': 1,
-        # 'modbus_version': 1.4,
+        'modbus_version': '1.40',
         # 'p_battery': 360,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 554,
@@ -518,9 +519,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
     assert i.json() == (
         '{"device_type_code": "2001", "model": 2, "module": "00030832", "serial_number": "SA1234G567", '
         '"dsp_firmware_version": 449, "arm_firmware_version": 449, "firmware_version": "D0.449-A0.449", '
-        '"modbus_address": 17, "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, "enable_ammeter": true, '
-        '"select_arm_chip": false, "grid_port_max_power_output": 6000, "enable_60hz_freq_mode": false, '
-        '"first_battery_serial_number": "BG1234G567", "first_battery_bms_firmware_version": 3005, '
-        '"battery_power_mode": 1, "enable_charge_target": false, "battery_calibration_stage": 0, '
-        '"charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
+        '"modbus_address": 17, "modbus_version": "1.40", "num_mppt": 2, "num_phases": 1, "usb_device_inserted": 2, '
+        '"enable_ammeter": true, "select_arm_chip": false, "grid_port_max_power_output": 6000, '
+        '"enable_60hz_freq_mode": false, "first_battery_serial_number": "BG1234G567", '
+        '"first_battery_bms_firmware_version": 3005, "battery_power_mode": 1, "enable_charge_target": false, '
+        '"battery_calibration_stage": 0, "charge_slot_2": {"start": "00:00:00", "end": "00:04:00"}}'
     )

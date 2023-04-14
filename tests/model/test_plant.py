@@ -1004,7 +1004,7 @@ def test_from_actual():
         # 'iso_fault_value': 0.0,
         # 'local_command_test': False,
         # 'meter_type': 1,
-        # 'modbus_version': 1.4,
+        'modbus_version': '1.40',
         # 'p_battery': 1075,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 654,

@@ -81,6 +81,7 @@ class Inverter(GivEnergyBaseModel):
     arm_firmware_version: int
     firmware_version: str
     modbus_address: int
+    modbus_version: str
 
     # Installation configuration
     num_mppt: int
@@ -88,7 +89,6 @@ class Inverter(GivEnergyBaseModel):
     usb_device_inserted: UsbDevice
     enable_ammeter: bool
     select_arm_chip: bool
-    # modbus_version: float
     # system_time: Computed[datetime.datetime]
     # inverter_state: tuple[int, int]
     #
@@ -311,6 +311,7 @@ class Inverter(GivEnergyBaseModel):
             battery_calibration_stage=BatteryCalibrationStage(register_cache[HR(29)]),
             modbus_address=register_cache[HR(30)],
             charge_slot_2=register_cache.to_timeslot(HR(31), HR(32)),
+            modbus_version=f'{register_cache[HR(34)] / 100:0.2f}',
         )
 
     # @computed('charge_slot_1')
