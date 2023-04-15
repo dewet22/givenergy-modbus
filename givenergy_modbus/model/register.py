@@ -1,7 +1,10 @@
 import logging
 from datetime import time
-from enum import Enum, auto, unique
+from enum import Enum, auto
 from typing import Any, Callable, Optional
+
+from aenum import Enum as _Enum
+from aenum import extend_enum, unique
 
 from givenergy_modbus.exceptions import ExceptionBase
 
@@ -168,7 +171,7 @@ class Unit(str, Enum):
 
 
 @unique
-class Register(str, Enum):
+class Register(str, _Enum):
     """Mixin to help easier access to register bank structures."""
 
     data_type: DataType
@@ -198,6 +201,11 @@ class Register(str, Enum):
     def _missing_(cls, value: object) -> Optional[Enum]:
         if isinstance(value, str):
             return cls._member_map_.get(value, None)
+        if isinstance(value, int):
+            name = f'{cls.__name__[0]}R{value:04d}'
+            extend_enum(cls, name, value)
+            return cls._member_map_.get(name, None)
+
         return None
 
     def convert(self, raw_val: int):
@@ -258,9 +266,6 @@ class HoldingRegister(Register):
     MODULE_H = (1, {'type': T_QUAD_H})
     MODULE_L = (2, {'type': T_QUAD_L})
     NUM_MPPT_AND_NUM_PHASES = (3, {'type': T_DOUBLE_BYTE})  # number of MPPTs and phases
-    HOLDING_REG004 = 4
-    HOLDING_REG005 = 5
-    HOLDING_REG006 = 6
     ENABLE_AMMETER = 7, {'type': T_BOOL}
     FIRST_BATTERY_SERIAL_NUMBER_1_2 = (8, {'type': T_ASCII})
     FIRST_BATTERY_SERIAL_NUMBER_3_4 = (9, {'type': T_ASCII})
@@ -407,62 +412,19 @@ class HoldingRegister(Register):
     CEI021_Q_LOCK_OUT_POWER = (143, {'unit': U_PERCENT})
     CEI021_LOCK_IN_GRID_VOLTAGE = (144, {'scaling': S_10, 'unit': U_VOLT})
     CEI021_LOCK_OUT_GRID_VOLTAGE = (145, {'scaling': S_10, 'unit': U_VOLT})
-    HOLDING_REG146 = 146
-    HOLDING_REG147 = 147
-    HOLDING_REG148 = 148
-    HOLDING_REG149 = 149
-    HOLDING_REG150 = 150
-    HOLDING_REG151 = 151
-    HOLDING_REG152 = 152
-    HOLDING_REG153 = 153
-    HOLDING_REG154 = 154
-    HOLDING_REG155 = 155
-    HOLDING_REG156 = 156
-    HOLDING_REG157 = 157
-    HOLDING_REG158 = 158
-    HOLDING_REG159 = 159
-    HOLDING_REG160 = 160
-    HOLDING_REG161 = 161
-    HOLDING_REG162 = 162
     REBOOT = (163, {'unit': U_PERCENT, 'write_safe': True})  # 100 = reboot
-    HOLDING_REG164 = 164
-    HOLDING_REG165 = 165
-    HOLDING_REG166 = 166
-    HOLDING_REG167 = 167
-    HOLDING_REG168 = 168
-    HOLDING_REG169 = 169
-    HOLDING_REG170 = 170
-    HOLDING_REG171 = 171
-    HOLDING_REG172 = 172
-    HOLDING_REG173 = 173
-    HOLDING_REG174 = 174
-    HOLDING_REG175 = 175
-    HOLDING_REG176 = 176
-    HOLDING_REG177 = 177
-    HOLDING_REG178 = 178
-    HOLDING_REG179 = 179
-    HOLDING_REG180 = 180
-    HOLDING_REG181 = 181
-    HOLDING_REG182 = 182
-    HOLDING_REG183 = 183
-    HOLDING_REG184 = 184
-    HOLDING_REG185 = 185
-    HOLDING_REG186 = 186
-    HOLDING_REG187 = 187
-    HOLDING_REG188 = 188
-    HOLDING_REG189 = 189
-    HOLDING_REG190 = 190
-    HOLDING_REG191 = 191
-    HOLDING_REG192 = 192
-    HOLDING_REG193 = 193
-    HOLDING_REG194 = 194
-    HOLDING_REG195 = 195
-    HOLDING_REG196 = 196
-    HOLDING_REG197 = 197
-    HOLDING_REG198 = 198
-    HOLDING_REG199 = 199
-    HOLDING_REG200 = 200
-    HOLDING_REG201 = 201
+    ENABLE_STANDARD_SELF_CONSUMPTION_LOGIC = 199
+    CMD_BMS_FLASH_UPDATE = 200
+    PV_POWER_SETTING_H = 4107
+    PV_POWER_SETTING_L = 4108
+    E_BATTERY_DISCHARGE_TOTAL_2_H = 4109
+    E_BATTERY_DISCHARGE_TOTAL_2_L = 4110
+    E_BATTERY_CHARGE_TOTAL_2_H = 4111
+    E_BATTERY_CHARGE_TOTAL_2_L = 4112
+    E_BATTERY_DISCHARGE_TODAY_3 = 4113
+    E_BATTERY_CHARGE_TODAY_3 = 4114
+    E_INVERTER_EXPORT_TOTAL_H = 4141
+    E_INVERTER_EXPORT_TOTAL_L = 4142
 
 
 class InputRegister(Register):
@@ -580,111 +542,18 @@ class InputRegister(Register):
     TEMP_MIN = 104, {'scaling': S_10, 'unit': U_DEG_C}
     E_DISCHARGE_TOTAL = 105, {'scaling': S_10, 'unit': U_KWH}
     E_CHARGE_TOTAL = 106, {'scaling': S_10, 'unit': U_KWH}
-    INPUT_REG107 = 107
-    INPUT_REG108 = 108
-    INPUT_REG109 = 109
     BATTERY_SERIAL_NUMBER_1_2 = 110, {'type': T_ASCII}
     BATTERY_SERIAL_NUMBER_3_4 = 111, {'type': T_ASCII}
     BATTERY_SERIAL_NUMBER_5_6 = 112, {'type': T_ASCII}
     BATTERY_SERIAL_NUMBER_7_8 = 113, {'type': T_ASCII}
     BATTERY_SERIAL_NUMBER_9_10 = 114, {'type': T_ASCII}
     USB_INSERTED = 115, {'type': T_BITFIELD}  # 0X08 = true; 0X00 = false
-    INPUT_REG116 = 116
-    INPUT_REG117 = 117
-    INPUT_REG118 = 118
-    INPUT_REG119 = 119
-
-    INPUT_REG120 = 120
-    INPUT_REG121 = 121
-    INPUT_REG122 = 122
-    INPUT_REG123 = 123
-    INPUT_REG124 = 124
-    INPUT_REG125 = 125
-    INPUT_REG126 = 126
-    INPUT_REG127 = 127
-    INPUT_REG128 = 128
-    INPUT_REG129 = 129
-    INPUT_REG130 = 130
-    INPUT_REG131 = 131
-    INPUT_REG132 = 132
-    INPUT_REG133 = 133
-    INPUT_REG134 = 134
-    INPUT_REG135 = 135
-    INPUT_REG136 = 136
-    INPUT_REG137 = 137
-    INPUT_REG138 = 138
-    INPUT_REG139 = 139
-    INPUT_REG140 = 140
-    INPUT_REG141 = 141
-    INPUT_REG142 = 142
-    INPUT_REG143 = 143
-    INPUT_REG144 = 144
-    INPUT_REG145 = 145
-    INPUT_REG146 = 146
-    INPUT_REG147 = 147
-    INPUT_REG148 = 148
-    INPUT_REG149 = 149
-    INPUT_REG150 = 150
-    INPUT_REG151 = 151
-    INPUT_REG152 = 152
-    INPUT_REG153 = 153
-    INPUT_REG154 = 154
-    INPUT_REG155 = 155
-    INPUT_REG156 = 156
-    INPUT_REG157 = 157
-    INPUT_REG158 = 158
-    INPUT_REG159 = 159
-    INPUT_REG160 = 160
-    INPUT_REG161 = 161
-    INPUT_REG162 = 162
-    INPUT_REG163 = 163
-    INPUT_REG164 = 164
-    INPUT_REG165 = 165
-    INPUT_REG166 = 166
-    INPUT_REG167 = 167
-    INPUT_REG168 = 168
-    INPUT_REG169 = 169
-    INPUT_REG170 = 170
-    INPUT_REG171 = 171
-    INPUT_REG172 = 172
-    INPUT_REG173 = 173
-    INPUT_REG174 = 174
-    INPUT_REG175 = 175
-    INPUT_REG176 = 176
-    INPUT_REG177 = 177
-    INPUT_REG178 = 178
-    INPUT_REG179 = 179
 
     E_BATTERY_DISCHARGE_TOTAL = (180, {'scaling': S_10, 'unit': U_KWH})
     E_BATTERY_CHARGE_TOTAL = (181, {'scaling': S_10, 'unit': U_KWH})
     E_BATTERY_DISCHARGE_DAY_2 = (182, {'scaling': S_10, 'unit': U_KWH})
     E_BATTERY_CHARGE_DAY_2 = (183, {'scaling': S_10, 'unit': U_KWH})
-    INPUT_REG184 = 184
-    INPUT_REG185 = 185
-    INPUT_REG186 = 186
-    INPUT_REG187 = 187
-    INPUT_REG188 = 188
-    INPUT_REG189 = 189
-    INPUT_REG190 = 190
-    INPUT_REG191 = 191
-    INPUT_REG192 = 192
-    INPUT_REG193 = 193
-    INPUT_REG194 = 194
-    INPUT_REG195 = 195
-    INPUT_REG196 = 196
-    INPUT_REG197 = 197
-    INPUT_REG198 = 198
-    INPUT_REG199 = 199
-    INPUT_REG200 = 200
     REMOTE_BMS_RESTART = (201, {'type': T_BOOL})
-    INPUT_REG202 = 202
-    INPUT_REG203 = 203
-    INPUT_REG204 = 204
-    INPUT_REG205 = 205
-    INPUT_REG206 = 206
-    INPUT_REG207 = 207
-    INPUT_REG208 = 208
-    INPUT_REG209 = 209
     ISO_FAULT_VALUE = (210, {'scaling': S_10, 'unit': U_VOLT})
     GFCI_FAULT_VALUE = (211, {'unit': U_MILLIAMP})
     DCI_FAULT_VALUE = (212, {'scaling': S_100, 'unit': U_AMP})
@@ -692,29 +561,15 @@ class InputRegister(Register):
     V_AC_FAULT_VALUE = (214, {'scaling': S_10, 'unit': U_VOLT})
     F_AC_FAULT_VALUE = (215, {'scaling': S_100, 'unit': U_HZ})
     TEMP_FAULT_VALUE = (216, {'scaling': S_10, 'unit': U_DEG_C})
-    INPUT_REG217 = 217
-    INPUT_REG218 = 218
-    INPUT_REG219 = 219
-    INPUT_REG220 = 220
-    INPUT_REG221 = 221
-    INPUT_REG222 = 222
-    INPUT_REG223 = 223
-    INPUT_REG224 = 224
     AUTO_TEST_PROCESS_OR_AUTO_TEST_STEP = (225, {'type': T_BITFIELD})
     AUTO_TEST_RESULT = 226
     AUTO_TEST_STOP_STEP = 227
-    INPUT_REG228 = 228
     SAFETY_V_F_LIMIT = (229, {'scaling': S_10, 'unit': U_VOLT})
     SAFETY_TIME_LIMIT = (230, {'unit': U_MILLISECONDS})
     REAL_V_F_VALUE = (231, {'scaling': S_10, 'unit': U_VOLT})
     TEST_VALUE = (232, {'scaling': S_10, 'unit': U_VOLT})
     TEST_TREAT_VALUE = (233, {'scaling': S_10, 'unit': U_VOLT})
     TEST_TREAT_TIME = (234, {'unit': U_MILLISECONDS})
-    INPUT_REG235 = 235
-    INPUT_REG236 = 236
-    INPUT_REG237 = 237
-    INPUT_REG238 = 238
-    INPUT_REG239 = 239
     # V_AC1_M3 = (240, {'scaling': S_10, 'unit': U_VOLT})
     # V_AC2_M3 = (241, {'scaling': S_10, 'unit': U_VOLT})
     # V_AC3_M3 = (242, {'scaling': S_10, 'unit': U_VOLT})

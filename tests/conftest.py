@@ -231,7 +231,7 @@ _server_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HR(179)/HOLDING_REG179 -> 2000/0x07d0)',
+        '2:6/WriteHoldingRegisterRequest(HR(179)/HR0179 -> 2000/0x07d0)',
         WriteHoldingRegisterRequest,
         {
             'register': HoldingRegister(179),
@@ -244,7 +244,23 @@ _server_messages: PduTestCases = [
         },
         b'YY\x00\x01\x00\x1c\x01\x02',
         b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xb3\x07\xd0' b'\x81\xee',
-        InvalidPduState(r'HR\(179\)/HOLDING_REG179 is not safe to write to', None),
+        InvalidPduState(r'HR\(179\)/HR0179 is not safe to write to', None),
+    ),
+    (
+        '2:6/WriteHoldingRegisterRequest(HR(199)/ENABLE_STANDARD_SELF_CONSUMPTION_LOGIC -> 2000/0x07d0)',
+        WriteHoldingRegisterRequest,
+        {
+            'register': HoldingRegister(199),
+            'value': 2000,
+            'check': 0x81EE,
+            'data_adapter_serial_number': 'AB1234G567',
+            'error': False,
+            'padding': 8,
+            'slave_address': 0x32,
+        },
+        b'YY\x00\x01\x00\x1c\x01\x02',
+        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xc7\x07\xd0' b'\x81\xee',
+        InvalidPduState(r'HR\(199\)/ENABLE_STANDARD_SELF_CONSUMPTION_LOGIC is not safe to write to', None),
     ),
     (
         '2:6/WriteHoldingRegisterRequest(HR(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',

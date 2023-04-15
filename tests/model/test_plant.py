@@ -14,8 +14,8 @@ from givenergy_modbus.model.inverter import (
     Inverter,
     MeterType,
     Model,
-    UsbDevice,
     PowerFactorFunctionModel,
+    UsbDevice,
 )
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register
@@ -106,6 +106,13 @@ async def test_update(
     """Ensure we can update a Plant from PDU Response messages."""
     pdu = pdu_class(**constructor_kwargs)
     assert plant.register_caches == {0x32: {}}
+    orig_plant_dict = plant.dict()
+    assert orig_plant_dict == {
+        'register_caches': {0x32: {}},
+        'inverter_serial_number': '',
+        'data_adapter_serial_number': '',
+    }
+    assert plant.json() == json.dumps(orig_plant_dict)
 
     plant.update(pdu)  # type: ignore[arg-type]
 
@@ -119,11 +126,13 @@ async def test_update(
     assert set(d['register_caches'].keys()) == expected_caches_keys
 
     if isinstance(pdu, ReadRegistersResponse):
+        assert d != orig_plant_dict
         register_type: type[Register]
         if isinstance(pdu, ReadInputRegistersResponse):
             register_type = InputRegister
         else:
             register_type = HoldingRegister
+        assert len(plant.register_caches[pdu.slave_address]) > 30
         assert plant.register_caches[pdu.slave_address] == {
             register_type(k): v for k, v in enumerate(pdu.register_values, start=pdu.base_register)
         }
@@ -132,6 +141,7 @@ async def test_update(
         }
         assert len(j) > 1400
     elif isinstance(pdu, WriteHoldingRegisterResponse):
+        assert d != orig_plant_dict
         assert d['register_caches'][pdu.slave_address] == {pdu.register: pdu.value}
         assert j == ''.join(
             [
@@ -1113,6 +1123,14 @@ def test_from_actual():
         'enable_ups_mode': False,
         'enable_g100_limit_switch': False,
         'enable_battery_cable_impedance_alarm': False,
+        'enable_standard_self_consumption_logic': False,
+        'cmd_bms_flash_update': False,
+        'pv_power_setting': 0.0,
+        'e_battery_discharge_total_2': 0.0,
+        'e_battery_charge_total_2': 0.0,
+        'e_battery_discharge_today_3': 0.0,
+        'e_battery_charge_today_3': 0.0,
+        'e_inverter_export_total': 0.0,
     }
 
     assert p.number_batteries == 1

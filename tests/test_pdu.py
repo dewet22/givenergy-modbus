@@ -261,7 +261,7 @@ def test_writable_registers_consistent():
 
 @pytest.mark.parametrize(
     'r',
-    range(max(map(lambda x: x.value, HoldingRegister.__members__.values()))),  # type: ignore[call-overload]
+    map(lambda x: x.value, HoldingRegister.__members__.values()),  # type: ignore[call-overload]
 )
 def test_non_writable_registers_raise(r: int):
     hr = HoldingRegister(r)

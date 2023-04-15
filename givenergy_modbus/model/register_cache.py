@@ -57,12 +57,17 @@ class RegisterCache(DefaultDict[Register, int]):
             for k, v in object_dict.items():
                 if k.find('(') > 0:
                     reg, idx = k.split('(', maxsplit=1)
-                    ret[lookup[reg](int(idx[:-1]))] = v
+                    idx = idx[:-1]
                 elif k.find(':') > 0:
                     reg, idx = k.split(':', maxsplit=1)
-                    ret[lookup[reg](int(idx))] = v
                 else:
                     raise ValueError(f'{k} is not a valid Register type')
+                try:
+                    reg = lookup[reg](int(idx))
+                except ValueError:
+                    # unknown register, discard silently
+                    continue
+                ret[reg] = v
             return ret
 
         return cls(registers=(json.loads(data, object_hook=register_object_hook)))

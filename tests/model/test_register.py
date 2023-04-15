@@ -86,9 +86,9 @@ def test_lookup():
     assert RegisterTest(RegisterTest.ONE.value) == RegisterTest.ONE
     assert RegisterTest[RegisterTest.ONE.name] == RegisterTest.ONE
 
-    with pytest.raises(TypeError, match='[Cc]annot extend [<]?enum'):
+    with pytest.raises(TypeError, match='[Cc]annot extend [<]?[a]?enum'):
         RegisterTest(0, DataType.UINT16)
-    with pytest.raises(TypeError, match='[Cc]annot extend [<]?enum'):
+    with pytest.raises(TypeError, match='[Cc]annot extend [<]?[a]?enum'):
         RegisterTest(9999, DataType.UINT16)
 
 
@@ -434,3 +434,8 @@ def test_unit_is_sane_value():
     assert_sane(200, False)
     assert_sane(250, False)
     assert_not_sane(256, False)
+
+
+def test_member_map():
+    assert HoldingRegister(9999) == HoldingRegister.HR9999
+    assert InputRegister(9999) == InputRegister.IR9999

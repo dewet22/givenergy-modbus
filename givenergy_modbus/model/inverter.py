@@ -118,6 +118,8 @@ class Inverter(GivEnergyBaseModel):
     enable_above_6kw_system: bool
     start_system_auto_test: bool
     enable_spi: bool
+    enable_standard_self_consumption_logic: bool
+    cmd_bms_flash_update: bool
 
     # pf_cmd_memory_state: bool
     # pf_limit_lp1_lp: int
@@ -307,6 +309,13 @@ class Inverter(GivEnergyBaseModel):
     enable_g100_limit_switch: bool
     enable_battery_cable_impedance_alarm: bool
 
+    pv_power_setting: int
+    e_battery_discharge_total_2: int
+    e_battery_charge_total_2: int
+    e_battery_discharge_today_3: int
+    e_battery_charge_today_3: int
+    e_inverter_export_total: int
+
     @classmethod
     def from_registers(cls, rc: RegisterCache) -> 'Inverter':
         """Constructor parsing registers directly."""
@@ -378,6 +387,7 @@ class Inverter(GivEnergyBaseModel):
             charge_soc_stop_2=rc[HR(117)],
             discharge_soc_stop_2=rc[HR(118)],
             charge_soc_stop_1=rc[HR(119)],
+            # 120
             discharge_soc_stop_1=rc[HR(120)],
             local_command_test=bool(rc[HR(121)]),
             power_factor_function_model=PowerFactorFunctionModel(rc[HR(122)]),
@@ -398,6 +408,16 @@ class Inverter(GivEnergyBaseModel):
             enable_ups_mode=bool(rc[HR(177)]),
             enable_g100_limit_switch=bool(rc[HR(178)]),
             enable_battery_cable_impedance_alarm=bool(rc[HR(179)]),
+            # 180
+            enable_standard_self_consumption_logic=bool(rc[HR(199)]),
+            cmd_bms_flash_update=bool(rc[HR(200)]),
+            # 4080
+            pv_power_setting=rc.to_uint32(HR(4107), HR(4108)),
+            e_battery_discharge_total_2=rc.to_uint32(HR(4109), HR(4110)),
+            e_battery_charge_total_2=rc.to_uint32(HR(4111), HR(4112)),
+            e_battery_discharge_today_3=rc[HR(4113)],
+            e_battery_charge_today_3=rc[HR(4114)],
+            e_inverter_export_total=rc.to_uint32(HR(4141), HR(4142)),
         )
 
     # @computed('p_pv')

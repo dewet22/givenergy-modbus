@@ -151,8 +151,8 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 def _set_charge_slot(discharge: bool, idx: int, slot: Optional[TimeSlot]) -> list[TransparentRequest]:
     hr_start, hr_end = (
-        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'],
-        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'],
+        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'],  # type: ignore[misc,valid-type]
+        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'],  # type: ignore[misc,valid-type]
     )
     if slot:
         return [

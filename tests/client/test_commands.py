@@ -75,8 +75,13 @@ async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, h
     """Ensure we can set charge time slots correctly."""
     # test set and reset functions for the relevant {action} and {slot}
     messages = getattr(commands, f'set_{action}_slot_{slot}')(TimeSlot.from_components(hour1, min1, hour2, min2))
-    hr_start = HoldingRegister[f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_START']
-    hr_end = HoldingRegister[f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_END']
+
+    hr_start = HoldingRegister[  # type: ignore[misc,valid-type]
+        f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_START'
+    ]
+    hr_end = HoldingRegister[  # type: ignore[misc,valid-type]
+        f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_END'
+    ]
     assert messages == [
         WriteHoldingRegisterRequest(hr_start, 100 * hour1 + min1),
         WriteHoldingRegisterRequest(hr_end, 100 * hour2 + min2),

@@ -12,8 +12,8 @@ from givenergy_modbus.model.inverter import (
     Inverter,
     MeterType,
     Model,
-    UsbDevice,
     PowerFactorFunctionModel,
+    UsbDevice,
 )
 from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -164,6 +164,14 @@ def test_from_registers_empty():
         'enable_ups_mode': False,
         'enable_g100_limit_switch': False,
         'enable_battery_cable_impedance_alarm': False,
+        'cmd_bms_flash_update': False,
+        'e_battery_charge_today_3': 0,
+        'e_battery_charge_total_2': 0,
+        'e_battery_discharge_today_3': 0,
+        'e_battery_discharge_total_2': 0,
+        'e_inverter_export_total': 0,
+        'enable_standard_self_consumption_logic': False,
+        'pv_power_setting': 0,
     }
 
     assert i.dict() == expected_dict
@@ -382,6 +390,14 @@ def test_from_registers(register_cache):
         'enable_ups_mode': False,
         'enable_g100_limit_switch': False,
         'enable_battery_cable_impedance_alarm': False,
+        'cmd_bms_flash_update': False,
+        'e_battery_charge_today_3': 0,
+        'e_battery_charge_total_2': 0,
+        'e_battery_discharge_today_3': 0,
+        'e_battery_discharge_total_2': 0,
+        'e_inverter_export_total': 0,
+        'enable_standard_self_consumption_logic': False,
+        'pv_power_setting': 0,
     }
     assert i.serial_number == 'SA1234G567'
     assert i.model == Model.HYBRID
@@ -607,6 +623,14 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         'enable_ups_mode': False,
         'enable_g100_limit_switch': False,
         'enable_battery_cable_impedance_alarm': False,
+        'cmd_bms_flash_update': False,
+        'e_battery_charge_today_3': 0,
+        'e_battery_charge_total_2': 0,
+        'e_battery_discharge_today_3': 0,
+        'e_battery_discharge_total_2': 0,
+        'e_inverter_export_total': 0,
+        'enable_standard_self_consumption_logic': False,
+        'pv_power_setting': 0,
     }
     assert i.dict() == expected_dict
     json_dict = json.loads(i.json())
