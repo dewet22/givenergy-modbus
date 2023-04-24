@@ -34,7 +34,6 @@ aiofiles = "^0.8.0"
 arrow = "^1.2.2"
 crccheck = "^1.1"
 pydantic = "^1.10.7"
-pymodbus = "^2.5.3"
 python = ">=3.9,<3.12"
 aenum = "^3.1.12"
 

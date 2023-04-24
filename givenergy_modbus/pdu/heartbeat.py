@@ -34,7 +34,7 @@ class HeartbeatMessage(BasePDU, ABC):
 
     @classmethod
     def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'HeartbeatMessage':
-        attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
+        attrs['data_adapter_serial_number'] = decoder.decode_string(10)
         attrs['data_adapter_type'] = decoder.decode_8bit_uint()
         return cls(**attrs)
 
@@ -63,7 +63,7 @@ class HeartbeatResponse(HeartbeatMessage, ClientOutgoingMessage, ABC):
     def decode(self, data: bytes):
         """Decode response PDU message and populate instance attributes."""
         decoder = PayloadDecoder(data)
-        self.data_adapter_serial_number = decoder.decode_serial_number()
+        self.data_adapter_serial_number = decoder.decode_string(10)
         self.data_adapter_type = decoder.decode_8bit_uint()
         _logger.debug(f'Successfully decoded {len(data)} bytes')
 

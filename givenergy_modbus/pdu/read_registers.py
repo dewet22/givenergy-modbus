@@ -57,7 +57,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.base_register)
         crc_builder.add_16bit_uint(self.register_count)
-        self.check = crc_builder.calculate_crc()
+        self.check = crc_builder.crc
         self._builder.add_16bit_uint(self.check)
 
     def ensure_valid_state(self):

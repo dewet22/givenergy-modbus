@@ -128,7 +128,7 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
         crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.register.value)
         crc_builder.add_16bit_uint(self.value)
-        self.check = crc_builder.calculate_crc()
+        self.check = crc_builder.crc
         self._builder.add_16bit_uint(self.check)
 
     def expected_response(self):

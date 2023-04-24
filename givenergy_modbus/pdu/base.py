@@ -41,10 +41,10 @@ class BasePDU(ABC):
         """Encode PDU message from instance attributes."""
         self.ensure_valid_state()
         self._builder = PayloadEncoder()
-        self._builder.add_serial_number(self.data_adapter_serial_number)
+        self._builder.add_string(self.data_adapter_serial_number, 10)
         self._encode_function_data()
         # self._update_check_code()
-        inner_frame = self._builder.to_string()
+        inner_frame = self._builder.payload
         mbap_header = struct.pack('>HHHBB', 0x5959, 0x1, len(inner_frame) + 2, 0x1, self.function_code)
         self.raw_frame = mbap_header + inner_frame
         return self.raw_frame
@@ -80,8 +80,8 @@ class BasePDU(ABC):
             pdu.ensure_valid_state()
         except InvalidPduState:
             raise
-        except Exception as e:
-            raise InvalidFrame(str(e), data)
+        # except Exception as e:
+        #     raise InvalidFrame(str(e), data)
 
         if not decoder.decoding_complete:
             _logger.error(

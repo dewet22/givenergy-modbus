@@ -1699,29 +1699,6 @@ markdown = ">=3.2"
 pyyaml = "*"
 
 [[package]]
-name = "pymodbus"
-version = "2.5.3"
-description = "A fully featured modbus protocol stack in python"
-category = "main"
-optional = false
-python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
-files = [
-    {file = "pymodbus-2.5.3-py2.py3-none-any.whl", hash = "sha256:6f91403294a73b5a1616a11309f93c0b782115c09379438ef7ebc5bdf86182e9"},
-    {file = "pymodbus-2.5.3.tar.gz", hash = "sha256:5ef68c1a109bdb467c830ef003ef2db6494349a5248e4af946fe21c9eefe7e74"},
-]
-
-[package.dependencies]
-pyserial = ">=3.4"
-six = ">=1.15.0"
-
-[package.extras]
-documents = ["humanfriendly", "sphinx (>=1.1.3)", "sphinx-rtd-theme"]
-quality = ["coverage (>=3.5.3)", "mock (>=1.0.0)", "nose (>=1.2.1)", "pep8 (>=1.3.3)"]
-repl = ["aiohttp (>=3.7.3)", "click (>=7.0)", "click (>=7.0)", "prompt-toolkit (==2.0.4)", "prompt-toolkit (>=3.0.8)", "pygments (>=2.2.0)", "pygments (>=2.2.0)", "pyserial-asyncio (>=0.5)"]
-tornado = ["tornado (==4.5.3)"]
-twisted = ["Twisted[conch,serial] (>=20.3.0)", "Twisted[conch] (>=20.3.0)"]
-
-[[package]]
 name = "pyproject-api"
 version = "1.5.1"
 description = "API to interact with the python pyproject.toml based projects"
@@ -1740,21 +1717,6 @@ tomli = {version = ">=2.0.1", markers = "python_version < \"3.11\""}
 [package.extras]
 docs = ["furo (>=2022.12.7)", "sphinx (>=6.1.3)", "sphinx-autodoc-typehints (>=1.22,!=1.23.4)"]
 testing = ["covdefaults (>=2.2.2)", "importlib-metadata (>=6)", "pytest (>=7.2.1)", "pytest-cov (>=4)", "pytest-mock (>=3.10)", "virtualenv (>=20.17.1)", "wheel (>=0.38.4)"]
-
-[[package]]
-name = "pyserial"
-version = "3.5"
-description = "Python Serial Port Extension"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pyserial-3.5-py2.py3-none-any.whl", hash = "sha256:c4451db6ba391ca6ca299fb3ec7bae67a5c55dde170964c7a14ceefec02f2cf0"},
-    {file = "pyserial-3.5.tar.gz", hash = "sha256:3c77e014170dfffbd816e6ffc205e9842efb10be9f58ec16d3e8675b4925cddb"},
-]
-
-[package.extras]
-cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
@@ -2452,4 +2414,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "cf3ec984b7c1167d1672030b2d1c96152c1705ae6d576943f92602fe35f6e258"
+content-hash = "f4c140be57b0f83b6754c26a154f4ae10331d2ad4ad0aa919597f9322cbef8b7"

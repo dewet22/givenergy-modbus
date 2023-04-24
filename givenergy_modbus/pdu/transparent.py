@@ -76,7 +76,7 @@ class TransparentMessage(BasePDU, ABC):
 
     @classmethod
     def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> 'TransparentMessage':
-        attrs['data_adapter_serial_number'] = decoder.decode_serial_number()
+        attrs['data_adapter_serial_number'] = decoder.decode_string(10)
         attrs['padding'] = decoder.decode_64bit_uint()
         attrs['slave_address'] = decoder.decode_8bit_uint()
         transparent_function_code = decoder.decode_8bit_uint()
@@ -88,7 +88,7 @@ class TransparentMessage(BasePDU, ABC):
         attrs['error'] = error
 
         if issubclass(cls, TransparentResponse):
-            attrs['inverter_serial_number'] = decoder.decode_serial_number()
+            attrs['inverter_serial_number'] = decoder.decode_string(10)
 
         decoder_class = cls.lookup_transparent_function_decoder(transparent_function_code)
         return decoder_class.decode_transparent_function(decoder, **attrs)
@@ -150,7 +150,7 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
 
     def _encode_function_data(self):
         super()._encode_function_data()
-        self._builder.add_serial_number(self.inverter_serial_number)
+        self._builder.add_string(self.inverter_serial_number, 10)
 
     @classmethod
     def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type['TransparentResponse']:
