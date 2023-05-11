@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable, Union
 
 from pydantic.utils import GetterDict
 
-from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import Register
+
+if TYPE_CHECKING:
+    from givenergy_modbus.model import TimeSlot
 
 
 class DataType:
@@ -30,7 +32,7 @@ class DataType:
             return (high_val << 16) + low_val
 
     @staticmethod
-    def timeslot(start_time: int, end_time: int) -> TimeSlot:
+    def timeslot(start_time: int, end_time: int) -> 'TimeSlot':
         """Interpret register as a time slot."""
         if start_time is not None and end_time is not None:
             return TimeSlot.from_repr(start_time, end_time)

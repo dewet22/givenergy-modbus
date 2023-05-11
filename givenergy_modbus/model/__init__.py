@@ -6,7 +6,9 @@ from datetime import time
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, create_model
+
+from givenergy_modbus.model.inverter import InverterConfig, InverterRegisterGetter
 
 if TYPE_CHECKING:
     from givenergy_modbus.model.register_cache import RegisterCache
@@ -67,3 +69,6 @@ class TimeSlot:
 # Inverter = inverter.Inverter
 # Battery = battery.Battery
 # RegisterCache = register_cache.RegisterCache
+Inverter = create_model(
+    'Inverter', __config__=InverterConfig, **InverterRegisterGetter.to_fields(), **{'model': 'Foo'}
+)  # type: ignore[call-overload]

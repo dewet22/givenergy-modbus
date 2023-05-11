@@ -1,4 +1,6 @@
-from givenergy_modbus.model.register import HR, IR
+import json
+
+from givenergy_modbus.model.register import HR, IR, RegisterEncoder
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -58,11 +60,12 @@ def test_register():
     assert {HR(0): 1, IR(1): 2} == {HR(0): 1, IR(1): 2}
     assert {HR(0): 1, IR(1): 2} != {HR(1): 1, IR(2): 2}
 
-    assert str(HR(22)) == 'HR(22)'
-    assert str(IR(99)) == 'IR(99)'
+    assert str(HR(22)) == 'HR_22'
+    assert str(IR(99)) == 'IR_99'
+    assert json.dumps(HR(22), cls=RegisterEncoder) == '"HR_22"'
+    assert json.dumps(IR(56), cls=RegisterEncoder) == '"IR_56"'
 
-    assert (
-        str({HR(0): 1234, HR(1): 0x4321, HR(2): 0xABCD, IR(0): 2})
-        == '{HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}'
+    assert str({HR(0): 1234, HR(1): 0x4321, HR(2): 0xABCD, IR(0): 2}) == (
+        '{HR_0: 1234, HR_1: 17185, HR_2: 43981, IR_0: 2}'
     )
-    # assert json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}) == ''
+    assert json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder) == ''

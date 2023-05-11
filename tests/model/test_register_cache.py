@@ -1,7 +1,4 @@
 import datetime
-from unittest import skip
-
-import pytest
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HR, IR
@@ -14,70 +11,6 @@ def test_register_cache(register_cache):
     expected = {HR(k): v for k, v in HOLDING_REGISTERS.items()}
     expected.update({IR(k): v for k, v in INPUT_REGISTERS.items()})
     assert register_cache == expected
-
-
-@skip('might not be needed any more')
-def test_attributes(register_cache):
-    """Ensure we can instantiate a RegisterCache and derive correct attributes from it."""
-    for k in (
-        'serial_number',
-        'model',
-        'first_battery_serial_number',
-        'system_time',
-        'charge_slot_1',
-        'charge_slot_2',
-        'discharge_slot_1',
-        'discharge_slot_2',
-    ):
-        with pytest.raises(KeyError, match=k):
-            getattr(register_cache, k)
-        # with pytest.raises(KeyError, match=k):
-        assert register_cache[k] is None
-        assert register_cache.get(k) is None
-
-    assert register_cache.device_type_code == '2001'
-    assert register_cache.module == 198706
-    assert register_cache.bms_firmware_version == 3005
-    assert register_cache.dsp_firmware_version == 449
-    assert register_cache.arm_firmware_version == 449
-    assert register_cache.enable_charge_target
-    # assert register_cache.system_time == datetime.datetime(2022, 1, 1, 23, 57, 19)
-
-    # time slots are BCD-encoded: 30 == 00:30, 430 == 04:30
-    assert register_cache.charge_slot_1_start == datetime.time(0, 30)
-    assert register_cache.charge_slot_1_end == datetime.time(4, 30)
-    # assert register_cache.charge_slot_1 == (datetime.time(0, 30), datetime.time(4, 30))
-    assert register_cache.charge_slot_2_start == datetime.time(0, 0)
-    assert register_cache.charge_slot_2_end == datetime.time(0, 4)
-    # assert register_cache.charge_slot_2 == (datetime.time(0, 0), datetime.time(0, 4))
-    assert register_cache.discharge_slot_1_start == datetime.time(0, 0)
-    assert register_cache.discharge_slot_1_end == datetime.time(0, 0)
-    # assert register_cache.discharge_slot_1 == (datetime.time(0, 0), datetime.time(0, 0))
-    assert register_cache.discharge_slot_2_start == datetime.time(0, 0)
-    assert register_cache.discharge_slot_2_end == datetime.time(0, 0)
-    # assert register_cache.discharge_slot_2 == (datetime.time(0, 0), datetime.time(0, 0))
-
-    assert register_cache.v_pv1 == 1.4
-    assert register_cache.v_pv2 == 1.0
-    assert register_cache.v_p_bus == 7.0
-    assert register_cache.v_n_bus == 0.0
-    assert register_cache.v_ac1 == 236.7
-    assert register_cache.p_grid_out == -342
-
-    assert register_cache.e_pv1_day == 0.4
-    assert register_cache.e_pv2_day == 0.5
-    assert register_cache.e_grid_out_total_l == 0.6
-
-    assert register_cache.battery_percent == 4
-    assert register_cache.e_battery_discharge_total == 169.6
-    assert register_cache.e_battery_charge_total == 174.4
-
-    assert register_cache.e_battery_throughput_total_h == 0
-    assert register_cache.e_battery_throughput_total_l == 183.2
-    assert register_cache.e_battery_throughput_total == 183.2
-
-    assert register_cache.v_cell_01 == 3.117
-    assert register_cache.v_cell_16 == 3.119
 
 
 def test_to_from_json():

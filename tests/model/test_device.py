@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Callable
 
-from pydantic import BaseConfig, BaseModel, create_model
+from pydantic import BaseConfig, create_model
 
 from givenergy_modbus.model.device import DataType as DT
 from givenergy_modbus.model.device import DeviceRegisterGetter
@@ -91,6 +91,18 @@ class FooRegisterGetter(DeviceRegisterGetter):
     }
 
 
+class FooConfig(BaseConfig):
+    orm_mode = True
+    getter_dict = FooRegisterGetter
+
+
+Foo = create_model(
+    'Foo',
+    __config__=FooConfig,
+    **FooRegisterGetter.to_fields(),
+)  # type: ignore[call-overload]
+
+
 def test_foo():
     def foo(pre_conv: Callable, post_conv: Callable, *r: int):
         return post_conv([pre_conv(i) for i in r])
@@ -112,12 +124,6 @@ def test_getter():
 
 
 def test_device():
-    class FooConfig(BaseConfig):
-        orm_mode = True
-        getter_dict = FooRegisterGetter
-
-    Foo = create_model('Foo', __config__=FooConfig, **FooRegisterGetter.to_fields())
-
     assert Foo.schema()['properties'] == {
         'device_type_code': {'title': 'Device Type Code', 'type': 'string'},
         'model': {'$ref': '#/definitions/Model'},
@@ -140,6 +146,11 @@ def test_device():
         'serial_number': 'SA1234G567',
         'status': FooStatus.WAITING,
     }
+    assert d.json() == (
+        '{"device_type_code": "2001", "model": "2", "module": "00030832", "num_mppt": '
+        '2, "num_phases": 1, "enable_ammeter": true, "serial_number": "SA1234G567", '
+        '"status": 0}'
+    )
     assert d.validate(d.dict())
 
     assert d.schema()['properties'] == {
@@ -162,21 +173,15 @@ def test_device():
         'serial_number=None status=None'
     )
 
-
-def test_validators():
-    class Foo(BaseModel):
-        class Config(BaseConfig):
-            orm_mode = True
-            getter_dict = FooRegisterGetter
-
-    Foo = create_model(
-        'Foo',
-        __config__=Foo.Config,
-        # __pre_root_validators__=[determine_model],
-        **FooRegisterGetter.to_fields(),
+    assert Foo().json() == (
+        '{"device_type_code": null, "model": null, "module": null, "num_mppt": null, "num_phases": null, '
+        '"enable_ammeter": null, "serial_number": null, "status": null}'
     )
 
-    assert Foo.from_orm({HR(0): 8193}).dict() == {
+
+def test_validators():
+    f = Foo.from_orm({HR(0): 8193})
+    assert f.dict() == {
         'device_type_code': '2001',
         'model': Model.BAT,
         'module': None,
@@ -186,7 +191,14 @@ def test_validators():
         'serial_number': None,
         'status': None,
     }
-    assert Foo(device_type_code='2001').dict() == {
+    assert f.json() == (
+        '{"device_type_code": "2001", "model": "2", "module": null, "num_mppt": null, '
+        '"num_phases": null, "enable_ammeter": null, "serial_number": null, "status": '
+        'null}'
+    )
+
+    f = Foo(device_type_code='2001')
+    assert f.dict() == {
         'device_type_code': '2001',
         'model': None,
         'module': None,
@@ -196,3 +208,8 @@ def test_validators():
         'serial_number': None,
         'status': None,
     }
+    assert f.json() == (
+        '{"device_type_code": "2001", "model": null, "module": null, "num_mppt": '
+        'null, "num_phases": null, "enable_ammeter": null, "serial_number": null, '
+        '"status": null}'
+    )

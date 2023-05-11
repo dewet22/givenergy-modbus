@@ -1,13 +1,27 @@
 import datetime
 import json
-import logging
 from json import JSONEncoder
-from typing import Any, DefaultDict, Optional
+from typing import TYPE_CHECKING, Any, DefaultDict, Optional
 
-from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HR, IR, Register
 
-_logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from givenergy_modbus.model import TimeSlot
+
+
+class RegisterCacheEncoder(JSONEncoder):
+    """Custom JSONEncoder to work around Register behaviour.
+
+    This is a workaround to force register keys to render themselves as strings instead of
+    relying on the internal identity by default (due to the Register Enum extending str).
+    """
+
+    def default(self, o: Any):
+        """Custom JSON encoder to treat RegisterCaches specially."""
+        if isinstance(o, RegisterCache):
+            return {str(k): v for k, v in o.items()}
+        else:
+            return super().default(o)
 
 
 class RegisterCache(DefaultDict[Register, int]):
@@ -19,22 +33,7 @@ class RegisterCache(DefaultDict[Register, int]):
         super().__init__(lambda: 0, registers)
 
     def json(self) -> str:
-        """Return JSON representation of the register cache, suitable for using with `from_json()`."""  # noqa: D402,D202,E501
-
-        class RegisterCacheEncoder(JSONEncoder):
-            """Custom JSONEncoder to work around Register behaviour.
-
-            This is a workaround to force register keys to render themselves as strings instead of
-            relying on the internal identity by default (due to the Register Enum extending str).
-            """
-
-            def encode(self, o: Any) -> str:
-                """Custom JSON encoder to treat RegisterCaches specially."""
-                if isinstance(o, RegisterCache):
-                    return super().encode({str(k): v for k, v in o.items()})
-                else:
-                    return super().encode(o)
-
+        """Return JSON representation of the register cache, to mirror `from_json()`."""  # noqa: D402,D202,E501
         return json.dumps(self, cls=RegisterCacheEncoder)
 
     @classmethod
@@ -91,6 +90,6 @@ class RegisterCache(DefaultDict[Register, int]):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
         return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
 
-    def to_timeslot(self, start: Register, end: Register) -> TimeSlot:
+    def to_timeslot(self, start: Register, end: Register) -> 'TimeSlot':
         """Combine two registers into a time slot."""
         return TimeSlot.from_repr(self[start], self[end])

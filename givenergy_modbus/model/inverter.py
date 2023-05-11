@@ -1,14 +1,12 @@
-import logging
 from enum import IntEnum
 
-from pydantic import BaseConfig, create_model
+from pydantic import BaseConfig
 
 from givenergy_modbus.model.device import DataType as DT
 from givenergy_modbus.model.device import DeviceRegisterGetter
 from givenergy_modbus.model.device import RegisterDefinition as Def
-from givenergy_modbus.model.register import HR, IR
-
-_logger = logging.getLogger(__name__)
+from givenergy_modbus.model.register import HR, IR, Register, RegisterEncoder
+from givenergy_modbus.model.register_cache import RegisterCache, RegisterCacheEncoder
 
 
 class Model(IntEnum):
@@ -216,11 +214,10 @@ class InverterConfig(BaseConfig):
 
     orm_mode = True
     getter_dict = InverterRegisterGetter
-
-
-Inverter = create_model(
-    'Inverter', __config__=InverterConfig, **InverterRegisterGetter.to_fields(), **{'model': 'Foo'}
-)  # type: ignore[call-overload]
+    json_encoders = {
+        RegisterCache: RegisterCacheEncoder.encode,
+        Register: RegisterEncoder.encode,
+    }
 
 
 # class Inverter(GivEnergyBaseModel):

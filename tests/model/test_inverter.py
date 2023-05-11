@@ -3,12 +3,11 @@ import json
 
 import pytest
 
-from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model import Inverter, TimeSlot
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
-    Inverter,
     MeterType,
     Model,
     PowerFactorFunctionModel,
