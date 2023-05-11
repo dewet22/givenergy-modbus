@@ -120,6 +120,7 @@ class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
     @classmethod
     def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type['TransparentRequest']:
         from givenergy_modbus.pdu import (
+            ReadBatteryInputRegistersRequest,
             ReadHoldingRegistersRequest,
             ReadInputRegistersRequest,
             WriteHoldingRegisterRequest,
@@ -131,11 +132,13 @@ class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
             return ReadInputRegistersRequest
         elif transparent_function_code == 6:
             return WriteHoldingRegisterRequest
+        elif transparent_function_code == 0x16:
+            return ReadBatteryInputRegistersRequest
         else:
             raise NotImplementedError(f'TransparentRequest function #{transparent_function_code} decoder')
 
     def expected_response(self) -> 'TransparentResponse':
-        """Create a template of a correctly shaped Response expected for this Requeste."""
+        """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 
 

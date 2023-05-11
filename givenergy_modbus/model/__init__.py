@@ -19,6 +19,7 @@ class GivEnergyBaseModel(BaseModel):
         allow_mutation = False
         frozen = True
         use_enum_values = True
+        orm_mode = True
 
     @classmethod
     def from_registers(cls, register_cache: RegisterCache):
@@ -31,7 +32,7 @@ class DefaultUnknownIntEnum(IntEnum):
 
     @classmethod
     def _missing_(cls, value):
-        return cls.UNKNOWN  # must be defined in subclasses because of Enum limits
+        return cls.UNKNOWN  # type: ignore[attr-defined] # must be defined in subclasses because of Enum limits
 
 
 @dataclass

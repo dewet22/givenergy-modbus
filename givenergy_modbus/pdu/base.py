@@ -68,8 +68,8 @@ class BasePDU(ABC):
             raise InvalidFrame(f'Header length {header_len} != remaining frame length {remaining_frame_len}', data)
 
         u_id = decoder.decode_8bit_uint()
-        if u_id != 0x01:
-            raise InvalidFrame(f'Unit ID 0x{u_id:02x} != 0x01', data)
+        if u_id not in (0x00, 0x01):
+            raise InvalidFrame(f'Unit ID 0x{u_id:02x} != 0x00/0x01', data)
 
         function_code = decoder.decode_8bit_uint()
         decoder_class = cls.lookup_main_function_decoder(function_code)

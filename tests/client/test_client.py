@@ -6,14 +6,13 @@ import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
 
 async def test_expected_response():
     client = Client(host='foo', port=4321)
     assert client.expected_responses == {}
-    req = WriteHoldingRegisterRequest(register=HoldingRegister(35), value=20)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
     client.reader = StreamReader()
     network_consumer = asyncio.create_task(client._task_network_consumer())
 
@@ -27,9 +26,7 @@ async def test_expected_response():
     tx_fut.set_result(True)
 
     # simulate receiving a response, which enables the consumer task to mark response_future as done
-    client.reader.feed_data(
-        WriteHoldingRegisterResponse(inverter_serial_number='', register=HoldingRegister(35), value=20).encode()
-    )
+    client.reader.feed_data(WriteHoldingRegisterResponse(inverter_serial_number='', register=35, value=20).encode())
     client.reader.feed_eof()
 
     # check the response

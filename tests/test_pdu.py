@@ -3,8 +3,8 @@ from typing import Any, Optional
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame
+from givenergy_modbus.model.register import HR
 from givenergy_modbus.pdu import (
     BasePDU,
     ClientIncomingMessage,
@@ -25,7 +25,6 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
 from tests.conftest import ALL_MESSAGES, PduTestCaseSig
 
 
@@ -78,18 +77,18 @@ def test_str():
         '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=0 register_count=0)'
     )
 
-    with pytest.raises(InvalidPduState, match='Register must be set'):
+    with pytest.raises(TypeError, match="missing 2 required positional arguments: 'register' and 'value'"):
         WriteHoldingRegisterRequest(foo=1)
-    with pytest.raises(InvalidPduState, match='Register must be set'):
+    with pytest.raises(TypeError, match="missing 2 required positional arguments: 'register' and 'value'"):
         WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
-        '2:6/WriteHoldingRegisterResponse(HR(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)'
+        '2:6/WriteHoldingRegisterResponse(18 -> 7/0x0007)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, register=7, value=6)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HR(7)/ENABLE_AMMETER -> True/0x0006)'
+        '2:6/WriteHoldingRegisterResponse(ERROR 7 -> 6/0x0006)'
     )
     assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=18, value=5)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HR(18)/FIRST_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)'
+        '2:6/WriteHoldingRegisterResponse(ERROR 18 -> 5/0x0005)'
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
@@ -229,7 +228,7 @@ def test_decoding_wrong_streams(
 @pytest.mark.skip('Needs more thinking')
 def test_writable_registers_equality():
     req = WriteHoldingRegisterRequest(register=4, value=22)
-    assert req.register == HoldingRegister(4)
+    assert req.register == HR(4)
     assert str(req) == '2:6/WriteHoldingRegisterRequest(HoldingRegister(4)/HOLDING_REG004 -> 22/0x0016)'
     assert req == WriteHoldingRegisterRequest(register=4, value=22)
     assert req != WriteHoldingRegisterRequest(register=4, value=32)
@@ -237,39 +236,16 @@ def test_writable_registers_equality():
     assert req != WriteHoldingRegisterResponse(register=4, value=22)
 
     req = WriteHoldingRegisterResponse(register=5, value=33)
-    assert req.register == HoldingRegister(5)
+    assert req.register == HR(5)
     assert str(req) == '2:6/WriteHoldingRegisterResponse(HoldingRegister(5)/HOLDING_REG005 -> 33/0x0021)'
     assert req != WriteHoldingRegisterRequest(register=5, value=22)
 
     req = WriteHoldingRegisterResponse(register=6, value=55, error=True)
-    assert req.register == HoldingRegister(6)
+    assert req.register == HR(6)
     assert str(req) == '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(6)/HOLDING_REG006 -> 55/0x0037)'
     assert req != WriteHoldingRegisterRequest(register=6, value=55)
     assert req == WriteHoldingRegisterResponse(register=6, value=55)
     assert req == WriteHoldingRegisterResponse(register=6, value=55, error=True)
-
-
-def test_writable_registers_consistent():
-    """Ensure HoldingRegisters declared write-safe match the WriteHoldingRegisterRequest allow list."""
-    write_safe_holding_registers = set()
-    for r in HoldingRegister.__members__.values():
-        if r.write_safe:
-            write_safe_holding_registers.add(r)
-
-    assert WRITE_SAFE_REGISTERS == write_safe_holding_registers
-
-
-@pytest.mark.parametrize(
-    'r',
-    map(lambda x: x.value, HoldingRegister.__members__.values()),  # type: ignore[call-overload]
-)
-def test_non_writable_registers_raise(r: int):
-    hr = HoldingRegister(r)
-    if hr in WRITE_SAFE_REGISTERS:
-        WriteHoldingRegisterRequest(register=hr, value=22).ensure_valid_state()
-    else:
-        with pytest.raises(InvalidPduState, match=f'{hr.name} is not safe to write to'):
-            WriteHoldingRegisterRequest(register=hr, value=22).ensure_valid_state()
 
 
 def test_read_registers_response_as_dict():

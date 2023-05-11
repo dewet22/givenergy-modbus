@@ -4,19 +4,10 @@ import logging
 from json import JSONEncoder
 from typing import Any, DefaultDict, Optional
 
-from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
+from givenergy_modbus.model.register import HR, IR, Register
 
 _logger = logging.getLogger(__name__)
-
-
-class RegisterCacheUpdateFailed(ExceptionBase):
-    """Exception raised when a register cache rejects an update due to invalid registers."""
-
-    def __init__(self, errors: list[RegisterError]) -> None:
-        self.errors = errors
-        super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})')
 
 
 class RegisterCache(DefaultDict[Register, int]):
@@ -52,7 +43,7 @@ class RegisterCache(DefaultDict[Register, int]):
 
         def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
-            lookup = {'HR': HoldingRegister, 'IR': InputRegister}
+            lookup = {'HR': HR, 'IR': IR}
             ret = {}
             for k, v in object_dict.items():
                 if k.find('(') > 0:
@@ -63,11 +54,10 @@ class RegisterCache(DefaultDict[Register, int]):
                 else:
                     raise ValueError(f'{k} is not a valid Register type')
                 try:
-                    reg = lookup[reg](int(idx))
+                    ret[lookup[reg](int(idx))] = v
                 except ValueError:
                     # unknown register, discard silently
                     continue
-                ret[reg] = v
             return ret
 
         return cls(registers=(json.loads(data, object_hook=register_object_hook)))
@@ -76,17 +66,18 @@ class RegisterCache(DefaultDict[Register, int]):
 
     def to_string(self, *registers: Register) -> str:
         """Combine registers into an ASCII string."""
-        values = [self[r] for r in registers]
-        if all(values):
-            return ''.join(v.to_bytes(2, byteorder='big').decode(encoding='latin1') for v in values)
-        return ''
+        s = ''.join([self[r].to_bytes(2, byteorder='big').decode(encoding='latin1') for r in registers])
+        return ''.join(filter(str.isalnum, s)).upper()
 
     def to_hex_string(self, *registers: Register) -> str:
         """Render a register as a 2-byte hexadecimal value."""
-        ret = ''
-        for r in registers:
-            ret += f'{self[r]:04x}'
-        return ''.join(filter(str.isalnum, ret)).upper()
+        values = [f'{self[r]:04x}' for r in registers]
+        if all(values):
+            ret = ''
+            for r in registers:
+                ret += f'{self[r]:04x}'
+            return ''.join(filter(str.isalnum, ret)).upper()
+        return ''
 
     def to_duint8(self, *registers: Register) -> tuple[int, ...]:
         """Split registers into two unsigned 8-bit integers each."""

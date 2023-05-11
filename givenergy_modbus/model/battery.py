@@ -1,5 +1,5 @@
 from givenergy_modbus.model import GivEnergyBaseModel
-from givenergy_modbus.model.register import InputRegister as IR
+from givenergy_modbus.model.register import IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 

@@ -8,7 +8,6 @@ from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.model.register_cache import RegisterCacheUpdateFailed
 from givenergy_modbus.pdu import HeartbeatRequest, TransparentRequest, TransparentResponse, WriteHoldingRegisterResponse
 
 _logger = logging.getLogger(__name__)
@@ -140,11 +139,11 @@ class Client:
                 future = self.expected_responses.get(message.shape_hash(), None)
                 if future and not future.done():
                     future.set_result(message)
-                try:
-                    self.plant.update(message)
-                except RegisterCacheUpdateFailed as e:
-                    # await self.debug_frames['error'].put(frame)
-                    _logger.debug(f'Ignoring {message}: {e}')
+                # try:
+                self.plant.update(message)
+                # except RegisterCacheUpdateFailed as e:
+                #     # await self.debug_frames['error'].put(frame)
+                #     _logger.debug(f'Ignoring {message}: {e}')
         _logger.critical('network_consumer reader at EOF, cannot continue')
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):

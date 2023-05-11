@@ -11,6 +11,9 @@ from givenergy_modbus.pdu.base import (
 from givenergy_modbus.pdu.heartbeat import HeartbeatMessage, HeartbeatRequest, HeartbeatResponse
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import (
+    ReadBatteryInputRegisters,
+    ReadBatteryInputRegistersRequest,
+    ReadBatteryInputRegistersResponse,
     ReadHoldingRegisters,
     ReadHoldingRegistersRequest,
     ReadHoldingRegistersResponse,
@@ -42,6 +45,9 @@ __all__ = [
     'ReadInputRegisters',
     'ReadInputRegistersRequest',
     'ReadInputRegistersResponse',
+    'ReadBatteryInputRegisters',
+    'ReadBatteryInputRegistersRequest',
+    'ReadBatteryInputRegistersResponse',
     'ReadRegistersMessage',
     'ReadRegistersRequest',
     'ReadRegistersResponse',

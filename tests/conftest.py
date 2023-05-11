@@ -4,7 +4,7 @@ from typing import Optional, Union
 import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
-from givenergy_modbus.model.register import HoldingRegister, InputRegister
+from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     BasePDU,
@@ -120,8 +120,8 @@ def json_battery_missing() -> str:
 def register_cache() -> RegisterCache:
     """Ensure we can instantiate a RegisterCache and set registers in it."""
     i = RegisterCache()
-    i.update({HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()})
-    i.update({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
+    i.update({HR(k): v for k, v in HOLDING_REGISTERS.items()})
+    i.update({IR(k): v for k, v in INPUT_REGISTERS.items()})
     return i
 
 
@@ -152,7 +152,7 @@ def register_cache_battery_missing(json_battery_missing) -> RegisterCache:
 
 
 PDUType = type[BasePDU]
-CtorKwargs = dict[str, Union[int, str, list[int]]]
+CtorKwargs = dict[str, Union[int, str, list[int], Register]]
 MbapHeader = bytes
 InnerFrame = bytes
 ExceptionThrown = Optional[ExceptionBase]
@@ -231,10 +231,10 @@ _server_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HR(179)/HR0179 -> 2000/0x07d0)',
+        '2:6/WriteHoldingRegisterRequest(179 -> 2000/0x07d0)',
         WriteHoldingRegisterRequest,
         {
-            'register': HoldingRegister(179),
+            'register': 179,
             'value': 2000,
             'check': 0x81EE,
             'data_adapter_serial_number': 'AB1234G567',
@@ -244,13 +244,13 @@ _server_messages: PduTestCases = [
         },
         b'YY\x00\x01\x00\x1c\x01\x02',
         b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xb3\x07\xd0' b'\x81\xee',
-        InvalidPduState(r'HR\(179\)/HR0179 is not safe to write to', None),
+        InvalidPduState(r'HR\(179\) is not safe to write to', None),
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HR(199)/ENABLE_STANDARD_SELF_CONSUMPTION_LOGIC -> 2000/0x07d0)',
+        '2:6/WriteHoldingRegisterRequest(199 -> 2000/0x07d0)',
         WriteHoldingRegisterRequest,
         {
-            'register': HoldingRegister(199),
+            'register': 199,
             'value': 2000,
             'check': 0x81EE,
             'data_adapter_serial_number': 'AB1234G567',
@@ -260,13 +260,13 @@ _server_messages: PduTestCases = [
         },
         b'YY\x00\x01\x00\x1c\x01\x02',
         b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xc7\x07\xd0' b'\x81\xee',
-        InvalidPduState(r'HR\(199\)/ENABLE_STANDARD_SELF_CONSUMPTION_LOGIC is not safe to write to', None),
+        InvalidPduState(r'HR\(199\) is not safe to write to', None),
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HR(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',
+        '2:6/WriteHoldingRegisterRequest(20 -> 1/0x0001)',
         WriteHoldingRegisterRequest,
         {
-            'register': HoldingRegister(0x14),
+            'register': 0x14,
             'value': 1,
             'check': 0xC42D,
             'data_adapter_serial_number': 'AB1234G567',
@@ -367,12 +367,12 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterResponse(HR(35)/SYSTEM_TIME_YEAR -> 8764/0x223c)',
+        '2:6/WriteHoldingRegisterResponse(35 -> 8764/0x223c)',
         WriteHoldingRegisterResponse,
         {
             'check': 0x8E4B,
             'inverter_serial_number': 'SA1234G567',
-            'register': HoldingRegister(0x0023),
+            'register': 0x0023,
             'value': 0x223C,
             'data_adapter_serial_number': 'WF1234G567',
             'padding': 0x8A,

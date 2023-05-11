@@ -6,13 +6,43 @@ from arrow import Arrow
 from typing_extensions import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.register import HoldingRegister
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
     TransparentRequest,
     WriteHoldingRegisterRequest,
 )
+
+
+class RegisterMap:
+    """Mapping of holding register function to location."""
+
+    ENABLE_CHARGE_TARGET = 20
+    BATTERY_POWER_MODE = 27
+    SOC_FORCE_ADJUST = 29
+    CHARGE_SLOT_2_START = 31
+    CHARGE_SLOT_2_END = 32
+    SYSTEM_TIME_YEAR = 35
+    SYSTEM_TIME_MONTH = 36
+    SYSTEM_TIME_DAY = 37
+    SYSTEM_TIME_HOUR = 38
+    SYSTEM_TIME_MINUTE = 39
+    SYSTEM_TIME_SECOND = 40
+    DISCHARGE_SLOT_2_START = 44
+    DISCHARGE_SLOT_2_END = 45
+    ACTIVE_POWER_RATE = 50
+    DISCHARGE_SLOT_1_START = 56
+    DISCHARGE_SLOT_1_END = 57
+    ENABLE_DISCHARGE = 59
+    CHARGE_SLOT_1_START = 94
+    CHARGE_SLOT_1_END = 95
+    ENABLE_CHARGE = 96
+    BATTERY_SOC_RESERVE = 110
+    BATTERY_CHARGE_LIMIT = 111
+    BATTERY_DISCHARGE_LIMIT = 112
+    BATTERY_DISCHARGE_MIN_POWER_RESERVE = 114
+    CHARGE_TARGET_SOC = 116
+    REBOOT = 163
 
 
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
@@ -35,8 +65,8 @@ def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries:
 def disable_charge_target() -> list[TransparentRequest]:
     """Removes SOC limit and target 100% charging."""
     return [
-        WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE_TARGET, False),
-        WriteHoldingRegisterRequest(HoldingRegister.CHARGE_TARGET_SOC, 100),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
 
@@ -48,31 +78,29 @@ def set_charge_target(target_soc: int) -> list[TransparentRequest]:
     if target_soc == 100:
         ret.extend(disable_charge_target())
     else:
-        ret.append(WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE_TARGET, True))
-        ret.append(WriteHoldingRegisterRequest(HoldingRegister.CHARGE_TARGET_SOC, target_soc))
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True))
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc))
     return ret
 
 
 def set_enable_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_CHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, enabled)]
 
 
 def set_enable_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(HoldingRegister.ENABLE_DISCHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, enabled)]
 
 
-def set_inverter_reboot(enabled: bool) -> list[TransparentRequest]:
-    """Enable the battery to discharge, depending on the mode and slots set."""
-    if enabled:
-        return [WriteHoldingRegisterRequest(HoldingRegister(163), 100)]
-    return []
+def set_inverter_reboot() -> list[TransparentRequest]:
+    """Restart the inverter."""
+    return [WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100)]
 
 
 def set_calibrate_battery_soc() -> list[TransparentRequest]:
     """Set the inverter to recalibrate the battery state of charge estimation."""
-    return [WriteHoldingRegisterRequest(HoldingRegister.SOC_FORCE_ADJUST, 1)]
+    return [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
 
 
 @deprecated('use set_enable_charge(True) instead')
@@ -101,12 +129,12 @@ def disable_discharge() -> list[TransparentRequest]:
 
 def set_discharge_mode_max_power() -> list[TransparentRequest]:
     """Set the battery discharge mode to maximum power, exporting to the grid if it exceeds load demand."""
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 0)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 0)]
 
 
 def set_discharge_mode_to_match_demand() -> list[TransparentRequest]:
     """Set the battery discharge mode to match demand, avoiding exporting power to the grid."""
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_POWER_MODE, 1)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1)]
 
 
 @deprecated('Use set_battery_soc_reserve(val) instead')
@@ -121,7 +149,7 @@ def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
     val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f'Minimum SOC / shallow charge ({val}) must be in [4-100]%')
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_SOC_RESERVE, val)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, val)]
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
@@ -129,7 +157,7 @@ def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
     val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f'Specified Charge Limit ({val}%) is not in [0-50]%')
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_CHARGE_LIMIT, val)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, val)]
 
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
@@ -137,7 +165,7 @@ def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
     val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f'Specified Discharge Limit ({val}%) is not in [0-50]%')
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_LIMIT, val)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, val)]
 
 
 def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
@@ -146,13 +174,13 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f'Battery power reserve ({val}) must be in [4-100]%')
-    return [WriteHoldingRegisterRequest(HoldingRegister.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
 
 
 def _set_charge_slot(discharge: bool, idx: int, slot: Optional[TimeSlot]) -> list[TransparentRequest]:
     hr_start, hr_end = (
-        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'],  # type: ignore[misc,valid-type]
-        HoldingRegister[f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'],  # type: ignore[misc,valid-type]
+        getattr(RegisterMap, f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_START'),
+        getattr(RegisterMap, f'{"DIS" if discharge else ""}CHARGE_SLOT_{idx}_END'),
     )
     if slot:
         return [
@@ -209,12 +237,12 @@ def reset_discharge_slot_2() -> list[TransparentRequest]:
 def set_system_date_time(dt: Arrow) -> list[TransparentRequest]:
     """Set the date & time of the inverter."""
     return [
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_YEAR, dt.year - 2000),
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_MONTH, dt.month),
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_DAY, dt.day),
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_HOUR, dt.hour),
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_MINUTE, dt.minute),
-        WriteHoldingRegisterRequest(HoldingRegister.SYSTEM_TIME_SECOND, dt.second),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_YEAR, dt.year - 2000),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MONTH, dt.month),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_DAY, dt.day),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_HOUR, dt.hour),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MINUTE, dt.minute),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_SECOND, dt.second),
     ]
 
 

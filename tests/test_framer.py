@@ -274,3 +274,100 @@ async def test_decode_frames_bulk(caplog):
         i += 1
     assert i == len(CLIENT_MESSAGES)
     assert framer._buffer == b'bar'
+
+
+async def test_inverter_boot(caplog):
+    """Test a buffer of good messages without noise."""
+    # fmt: off
+    messages = [  # starting with client
+        # HeartbeatRequest(data_adapter_serial_number=WF2125G316 data_adapter_type=1)
+        '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
+        '31 36 01',
+
+        # ReadHoldingRegistersRequest(slave_address=0x11 base_register=0)
+        '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 08 11 03 00 00 00 3c'
+        '47 4b',
+
+        # ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)
+        '59 59 00 01 00 9e 01 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 8a 11 03 53 41 32 31'
+        '31 34 47 30 34 37 00 00  00 3c 20 01 00 03 08 32'
+        '02 01 00 00 c3 50 0e 10  00 01 42 47 32 31 33 34'
+        '47 30 30 37 53 41 32 31  31 34 47 30 34 37 0b bf'
+        '01 c1 00 01 01 c1 00 02  00 00 80 00 76 1b 17 70'
+        '00 01 00 00 00 00 00 11  00 00 00 04 00 07 00 8c'
+        '00 17 00 04 00 1c 00 0c  00 0f 00 24 00 01 00 03'
+        '00 00 00 00 00 00 00 65  00 01 00 00 00 00 00 64'
+        '00 00 00 00 00 01 00 01  00 a0 00 00 00 00 00 01'
+        '00 00 25 1c',
+
+        # HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)
+        '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
+        '31 36 01'
+        # ReadBatteryInputRegistersRequest(slave_address=0x01 base_register=60)
+        '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 08 01 16 00 3c 00 3c'
+        '88 14',
+
+        # ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)
+        '59 59 00 01 00 9e 01 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 8a 11 03 53 41 32 31'
+        '31 34 47 30 34 37 00 00  00 3c 20 01 00 03 08 32'
+        '02 01 00 00 c3 50 0e 10  00 01 42 47 32 31 33 34'
+        '47 30 30 37 53 41 32 31  31 34 47 30 34 37 0b bf'
+        '01 c1 00 01 01 c1 00 02  00 00 80 00 76 1b 17 70'
+        '00 01 00 00 00 00 00 11  00 00 00 04 00 07 00 8c'
+        '00 17 00 04 00 1c 00 0c  00 0f 00 25 00 01 00 03'
+        '00 00 00 00 00 00 00 65  00 01 00 00 00 00 00 64'
+        '00 00 00 00 00 01 00 01  00 a0 00 00 00 00 00 01'
+        '00 00 2d b0',
+
+        # ReadBatteryInputRegistersRequest(slave_address=0x02 base_register=60)
+        '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 08 02 16 00 3c 00 3c'
+        '88 27',
+
+        # HeartbeatRequest
+        '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
+        '31 36 01',
+
+        # ReadBatteryInputRegistersRequest(slave_address=0x03 base_register=60)
+        '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 08 03 16 00 3c 00 3c'
+        '89 f6 '
+        # HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)
+        '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
+        '31 36 01 '
+        # ReadBatteryInputRegistersRequest(slave_address=0x04 base_register=60)
+        '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
+        '31 36 00 00 00 00 00 00  00 08 04 16 00 3c 00 3c'
+        '88 41 ',
+    ]
+    # fmt: on
+    results = []
+
+    i = 0
+    for m in messages:
+        if i % 2 == 0:
+            async for result in ClientFramer().decode(bytes.fromhex(m)):
+                results.append(result)
+        else:
+            async for result in ServerFramer().decode(bytes.fromhex(m)):
+                results.append(result)
+        i += 1
+
+    assert caplog.records == []
+    assert [str(c) for c in results] == [
+        '1/HeartbeatRequest(data_adapter_serial_number=WF2125G316 data_adapter_type=1)',
+        '2:3/ReadHoldingRegistersRequest(slave_address=0x11 base_register=0)',
+        '2:3/ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)',
+        '1/HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)',
+        '2:22/ReadBatteryInputRegistersRequest(slave_address=0x01 base_register=60)',
+        '2:3/ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)',
+        '2:22/ReadBatteryInputRegistersRequest(slave_address=0x02 base_register=60)',
+        '1/HeartbeatRequest(data_adapter_serial_number=WF2125G316 data_adapter_type=1)',
+        '2:22/ReadBatteryInputRegistersRequest(slave_address=0x03 base_register=60)',
+        '1/HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)',
+        '2:22/ReadBatteryInputRegistersRequest(slave_address=0x04 base_register=60)',
+    ]

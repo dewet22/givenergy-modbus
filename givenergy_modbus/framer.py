@@ -128,7 +128,7 @@ class Framer(ABC):
 
             # sanity check the rest of the MBAP header
             hdr_len, u_id, f_id = int.from_bytes(self._buffer[4:6], byteorder='big'), self._buffer[6], self._buffer[7]
-            if hdr_len > 300 or u_id != 1 or f_id not in (1, 2):
+            if hdr_len > 300 or u_id not in (0, 1) or f_id not in (1, 2):
                 _logger.warning(
                     f'Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), '
                     f'discarding candidate frame and resuming search'

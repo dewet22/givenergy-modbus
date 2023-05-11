@@ -1,9 +1,6 @@
-from unittest import skip
-
 import pytest
 
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.register import InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 
 EXPECTED_BATTERY_DICT = {
@@ -47,28 +44,6 @@ EXPECTED_BATTERY_DICT = {
     'v_out': 50.029,
     'warning': (0, 0),
 }
-
-
-@skip('might not be needed any more')
-def test_has_expected_attributes():
-    """Ensure registers mapped to Batteries/BMS are represented in the model."""
-    expected_attributes = set()
-    for i in range(60):
-        name = InputRegister(i + 60).name.lower()
-        if name.endswith('_h'):
-            continue
-        elif name.endswith('_l'):
-            name = name[:-2]
-        elif name.startswith('status_') or name.startswith('warning_'):
-            pass
-        elif name.endswith('_1_2'):
-            name = name[:-4]
-        elif name.endswith('_3_4') or name.endswith('_5_6') or name.endswith('_7_8') or name.endswith('_9_10'):
-            continue
-        elif name.startswith('input_reg'):
-            continue
-        expected_attributes.add(name)
-    assert expected_attributes == set(Battery.__fields__.keys())
 
 
 def test_from_registers(register_cache):
@@ -132,6 +107,7 @@ def test_empty():
     """Ensure we cannot instantiate from empty data."""
     with pytest.raises(ValueError, match=r'\d validation error[s]? for Battery'):
         Battery()
+    assert Battery.__validators__ == {}
     # with pytest.raises(ValueError, match=r'\d validation error[s]? for Battery'):
     b = Battery.from_registers(RegisterCache({}))
     assert b.serial_number == ''

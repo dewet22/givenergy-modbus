@@ -1,6 +1,5 @@
 import datetime
 import json
-from unittest import skip
 
 import pytest
 
@@ -15,63 +14,32 @@ from givenergy_modbus.model.inverter import (
     PowerFactorFunctionModel,
     UsbDevice,
 )
-from givenergy_modbus.model.register import HoldingRegister, InputRegister
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
-@skip('might not be needed any more')
-def test_has_expected_attributes():
-    """Ensure registers mapped to Batteries/BMS are represented in the model."""
-    keys_to_ignore = {
-        'reboot',
+def test_inverter():
+    assert Inverter().dict() == {
+        'device_type_code': None,
+        'module': None,
+        'num_mppt': None,
+        'num_phases': None,
+        'enable_ammeter': None,
+        'first_battery_serial_number': None,
+        'serial_number': None,
+        'first_battery_bms_firmware_version': None,
+        'dsp_firmware_version': None,
+        'enable_charge_target': None,
+        'arm_firmware_version': None,
+        'usb_device_inserted': None,
+        'select_arm_chip': None,
+        'grid_port_max_power_output': None,
+        'battery_power_mode': None,
+        'enable_60hz_freq_mode': None,
+        'battery_calibration_stage': None,
+        'modbus_address': None,
+        'charge_slot_2': None,
+        'status': None,
     }
-    suffixes_to_strip = {'_l', '_start', '_1_2', '_month'}
-    suffixes_to_ignore = {'_h', '_end', '_3_4', '_5_6', '_7_8', '_9_10'}
-    prefixes_to_leave_untouched = {'status_', 'warning_', 'v_pv_input_start'}
-    prefixes_to_ignore = {'input_reg', 'holding_reg', 'cei021_', 'auto_test_', 'system_time_'}
-
-    def add_name(values: set, val: str):
-        val = val.lower()
-        for key in keys_to_ignore:
-            if val == key:
-                return
-        for pfx in prefixes_to_leave_untouched:
-            if val.startswith(pfx):
-                values.add(val)
-                return
-        for pfx in prefixes_to_ignore:
-            if val.startswith(pfx):
-                return
-        for sfx in suffixes_to_strip:
-            if val.endswith(sfx):
-                values.add(val[: -len(sfx)])
-                return
-        for sfx in suffixes_to_ignore:
-            if val.endswith(sfx):
-                return
-        if val == 'num_mppt_and_num_phases':
-            values.add('num_mppt')
-            values.add('num_phases')
-            return
-        values.add(val)
-
-    expected_attributes = {  # computed fields
-        'firmware_version',
-        'system_time',
-        'e_pv_day',
-        'p_pv',
-    }
-    for i in range(60):
-        add_name(expected_attributes, HoldingRegister(i).name)
-        add_name(expected_attributes, HoldingRegister(i + 60).name)
-        add_name(expected_attributes, HoldingRegister(i + 120).name)
-        add_name(expected_attributes, InputRegister(i).name)
-        add_name(expected_attributes, InputRegister(i + 120).name)
-        add_name(expected_attributes, InputRegister(i + 180).name)
-        # add_name(expected_attributes, InputRegister(i+240).name)
-    assert expected_attributes == set(Inverter.schema()['properties'].keys()).difference(
-        set(Inverter.__exclude_fields__.keys())
-    )
 
 
 def fix_complex_json_fields(d: dict) -> None:
@@ -82,96 +50,97 @@ def fix_complex_json_fields(d: dict) -> None:
 
 def test_from_registers_empty():
     """Ensure an empty object cannot be instantiated/validated because of missing data for virtual attributes."""
-    i = Inverter.from_registers(RegisterCache())
+    i = Inverter.from_orm(RegisterCache())
     expected_dict = {
+        'active_power_rate': 0,
         'arm_firmware_version': 0,
         'battery_calibration_stage': BatteryCalibrationStage.OFF,
-        'battery_power_mode': BatteryPowerMode.EXPORT,
-        'charge_slot_1': TimeSlot.from_repr(0, 0),
-        'charge_slot_2': TimeSlot.from_repr(0, 0),
-        'discharge_slot_1': TimeSlot.from_repr(0, 0),
-        'discharge_slot_2': TimeSlot.from_repr(0, 0),
-        'device_type_code': '0000',
-        'dsp_firmware_version': 0,
-        'enable_60hz_freq_mode': False,
-        'enable_ammeter': False,
-        'enable_buzzer': False,
-        'enable_charge_target': False,
-        'enable_drm_rj45_port': False,
-        'enable_inverter': False,
-        'enable_inverter_auto_restart': False,
-        'firmware_version': 'D0.0-A0.0',
-        'first_battery_bms_firmware_version': 0,
-        'first_battery_serial_number': '',
-        'grid_port_max_power_output': 0,
-        'meter_type': MeterType.CT_OR_EM418,
-        'modbus_address': 0,
-        'modbus_version': '0.00',
-        'model': Model.UNKNOWN,
-        'module': '00000000',
-        'num_mppt': 0,
-        'num_phases': 0,
-        'reverse_115_meter': False,
-        'reverse_418_meter': False,
-        'reverse_ct': False,
-        'select_arm_chip': False,
-        'serial_number': '',
-        'system_time': datetime.datetime(2000, 1, 1, 0, 0, 0),
-        'usb_device_inserted': UsbDevice.NONE,
-        'charge_soc': 0,
-        'discharge_soc': 0,
-        'bms_firmware_version': 0,
-        'active_power_rate': 0,
-        'power_factor': -1,
-        'reactive_power_rate': 0,
-        'battery_type': BatteryType.LEAD_ACID,
         'battery_capacity': 0,
-        'enable_auto_judge_battery_type': False,
-        'enable_discharge': False,
-        'enable_charge': False,
-        'pv_start_voltage': 0.0,
-        'restart_delay_time': 0,
-        'start_countdown_timer': 0,
-        'battery_high_voltage_protection_limit': 0.0,
-        'battery_low_voltage_protection_limit': 0.0,
-        'battery_low_force_charge_time': 0,
-        'enable_bms_read': False,
-        'battery_soc_reserve': 0,
         'battery_charge_limit': 0,
         'battery_discharge_limit': 0,
         'battery_discharge_min_power_reserve': 0,
-        'island_check_continue': 0,
-        'charge_target_soc': 0,
+        'battery_high_voltage_protection_limit': 0.0,
+        'battery_low_force_charge_time': 0,
+        'battery_low_voltage_protection_limit': 0.0,
+        'battery_power_mode': BatteryPowerMode.EXPORT,
+        'battery_soc_reserve': 0,
+        'battery_type': BatteryType.LEAD_ACID,
+        'bms_firmware_version': 0,
+        'charge_slot_1': TimeSlot.from_repr(0, 0),
+        'charge_slot_2': TimeSlot.from_repr(0, 0),
+        'charge_soc': 0,
         'charge_soc_stop_1': 0,
         'charge_soc_stop_2': 0,
+        'charge_target_soc': 0,
+        'cmd_bms_flash_update': False,
+        'debug_inverter': 0,
+        'device_type_code': None,
+        'discharge_slot_1': TimeSlot.from_repr(0, 0),
+        'discharge_slot_2': TimeSlot.from_repr(0, 0),
+        'discharge_soc': 0,
         'discharge_soc_stop_1': 0,
         'discharge_soc_stop_2': 0,
-        'power_factor_function_model': PowerFactorFunctionModel.PF_1,
-        'local_command_test': False,
-        'frequency_load_limit_rate': 0,
-        'enable_low_voltage_fault_ride_through': False,
-        'enable_frequency_derating': False,
-        'enable_above_6kw_system': False,
-        'start_system_auto_test': False,
-        'enable_spi': False,
-        'threephase_abc': 0,
-        'threephase_balance_1': 0,
-        'threephase_balance_2': 0,
-        'threephase_balance_3': 0,
-        'threephase_balance_mode': 0,
-        'enable_battery_on_pv_or_grid': False,
-        'debug_inverter': 0,
-        'enable_ups_mode': False,
-        'enable_g100_limit_switch': False,
-        'enable_battery_cable_impedance_alarm': False,
-        'cmd_bms_flash_update': False,
+        'dsp_firmware_version': 0,
         'e_battery_charge_today_3': 0,
         'e_battery_charge_total_2': 0,
         'e_battery_discharge_today_3': 0,
         'e_battery_discharge_total_2': 0,
         'e_inverter_export_total': 0,
+        'enable_60hz_freq_mode': False,
+        'enable_above_6kw_system': False,
+        'enable_ammeter': None,
+        'enable_auto_judge_battery_type': False,
+        'enable_battery_cable_impedance_alarm': False,
+        'enable_battery_on_pv_or_grid': False,
+        'enable_bms_read': False,
+        'enable_buzzer': False,
+        'enable_charge': False,
+        'enable_charge_target': False,
+        'enable_discharge': False,
+        'enable_drm_rj45_port': False,
+        'enable_frequency_derating': False,
+        'enable_g100_limit_switch': False,
+        'enable_inverter': False,
+        'enable_inverter_auto_restart': False,
+        'enable_low_voltage_fault_ride_through': False,
+        'enable_spi': False,
         'enable_standard_self_consumption_logic': False,
+        'enable_ups_mode': False,
+        'firmware_version': 'D0.0-A0.0',
+        'first_battery_bms_firmware_version': 0,
+        'first_battery_serial_number': '',
+        'frequency_load_limit_rate': 0,
+        'grid_port_max_power_output': 0,
+        'island_check_continue': 0,
+        'local_command_test': False,
+        'meter_type': MeterType.CT_OR_EM418,
+        'modbus_address': 0,
+        'modbus_version': '0.00',
+        'model': None,
+        'module': None,
+        'num_mppt': None,
+        'num_phases': None,
+        'power_factor': -1,
+        'power_factor_function_model': PowerFactorFunctionModel.PF_1,
         'pv_power_setting': 0,
+        'pv_start_voltage': 0.0,
+        'reactive_power_rate': 0,
+        'restart_delay_time': 0,
+        'reverse_115_meter': False,
+        'reverse_418_meter': False,
+        'reverse_ct': False,
+        'select_arm_chip': False,
+        'serial_number': None,
+        'start_countdown_timer': 0,
+        'start_system_auto_test': False,
+        'status': None,
+        'system_time': datetime.datetime(2000, 1, 1, 0, 0, 0),
+        'threephase_abc': 0,
+        'threephase_balance_1': 0,
+        'threephase_balance_2': 0,
+        'threephase_balance_3': 0,
+        'threephase_balance_mode': 0,
+        'usb_device_inserted': UsbDevice.NONE,
     }
 
     assert i.dict() == expected_dict
@@ -183,7 +152,7 @@ def test_from_registers_empty():
 
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of inverter data."""
-    i = Inverter.from_registers(register_cache)
+    i = Inverter.from_orm(register_cache)
     expected_dict = {
         'active_power_rate': 100,
         'battery_charge_limit': 50,
@@ -414,7 +383,7 @@ def test_from_registers(register_cache):
 
 def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can instantiate an Inverter from actual register data."""
-    i = Inverter.from_registers(register_cache_inverter_daytime_discharging_with_solar_generation)
+    i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == 'SA1234G567'
     assert i.model == Model.HYBRID
     expected_dict = {
