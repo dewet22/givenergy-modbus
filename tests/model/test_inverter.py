@@ -6,13 +6,10 @@ from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
-    BatteryType,
     Inverter,
-    MeterType,
-    Model,
-    PowerFactorFunctionModel,
-    UsbDevice,
     InverterStatus,
+    Model,
+    UsbDevice,
 )
 from givenergy_modbus.model.register_cache import RegisterCache
 

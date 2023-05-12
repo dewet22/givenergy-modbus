@@ -1,7 +1,6 @@
 import datetime
 import json
-from json import JSONEncoder
-from typing import TYPE_CHECKING, Any, DefaultDict, Optional
+from typing import TYPE_CHECKING, DefaultDict, Optional
 
 from givenergy_modbus.model.register import HR, IR, Register
 

@@ -1,4 +1,3 @@
-import datetime
 import json
 from typing import Any, Optional
 
@@ -10,13 +9,10 @@ from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
-    BatteryType,
     Inverter,
-    MeterType,
-    Model,
-    PowerFactorFunctionModel,
-    UsbDevice,
     InverterStatus,
+    Model,
+    UsbDevice,
 )
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HR, IR, Register

@@ -1,4 +1,4 @@
-from enum import IntEnum, Enum
+from enum import IntEnum, StrEnum
 
 from pydantic import BaseConfig, create_model
 
@@ -8,7 +8,7 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 from givenergy_modbus.model.register import RegisterGetter
 
 
-class Model(Enum):
+class Model(StrEnum):
     """Known models of inverters."""
 
     HYBRID = '2'
@@ -20,7 +20,7 @@ class Model(Enum):
     ALL_IN_ONE = '8'
 
     @classmethod
-    def _missing_(cls, key: str):
+    def _missing_(cls, key):
         """Pick model from the first digit of the device type code."""
         return cls(key[0])
 
