@@ -3,10 +3,10 @@ from typing import Callable
 
 from pydantic import BaseConfig, create_model
 
-from givenergy_modbus.model.device import DataType as DT
-from givenergy_modbus.model.device import DeviceRegisterGetter
-from givenergy_modbus.model.device import RegisterDefinition as Def
 from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.model.register import DataType as DT
+from givenergy_modbus.model.register import RegisterDefinition as Def
+from givenergy_modbus.model.register import RegisterGetter
 
 # fmt: off
 HOLDING_REGISTERS: dict[HR, int] = {HR(i): v for i, v in enumerate([
@@ -78,7 +78,7 @@ class Model(Enum):
         return cls(key[0])
 
 
-class FooRegisterGetter(DeviceRegisterGetter):
+class FooRegisterGetter(RegisterGetter):
     REGISTER_LUT = {
         'device_type_code': Def(DT.hex, None, HR(0)),
         'model': Def(DT.hex, Model, HR(0)),
@@ -100,6 +100,7 @@ Foo = create_model(
     'Foo',
     __config__=FooConfig,
     **FooRegisterGetter.to_fields(),
+    computed_field=(int, None),
 )  # type: ignore[call-overload]
 
 
@@ -125,6 +126,7 @@ def test_getter():
 
 def test_device():
     assert Foo.schema()['properties'] == {
+        'computed_field': {'title': 'Computed Field', 'type': 'integer'},
         'device_type_code': {'title': 'Device Type Code', 'type': 'string'},
         'model': {'$ref': '#/definitions/Model'},
         'enable_ammeter': {'title': 'Enable Ammeter', 'type': 'boolean'},
@@ -137,6 +139,7 @@ def test_device():
 
     d = Foo.from_orm(REGISTERS)
     assert d.dict() == {
+        'computed_field': None,
         'device_type_code': '2001',
         'model': Model.BAT,
         'module': '00030832',
@@ -149,11 +152,12 @@ def test_device():
     assert d.json() == (
         '{"device_type_code": "2001", "model": "2", "module": "00030832", "num_mppt": '
         '2, "num_phases": 1, "enable_ammeter": true, "serial_number": "SA1234G567", '
-        '"status": 0}'
+        '"status": 0, "computed_field": null}'
     )
     assert d.validate(d.dict())
 
     assert d.schema()['properties'] == {
+        'computed_field': {'title': 'Computed Field', 'type': 'integer'},
         'device_type_code': {'title': 'Device Type Code', 'type': 'string'},
         'model': {'$ref': '#/definitions/Model'},
         'enable_ammeter': {'title': 'Enable Ammeter', 'type': 'boolean'},
@@ -166,22 +170,23 @@ def test_device():
 
     assert str(Foo.from_orm({})) == (
         'device_type_code=None model=None module=None num_mppt=None num_phases=None enable_ammeter=None '
-        'serial_number=None status=None'
+        'serial_number=None status=None computed_field=None'
     )
     assert str(Foo()) == (
         'device_type_code=None model=None module=None num_mppt=None num_phases=None enable_ammeter=None '
-        'serial_number=None status=None'
+        'serial_number=None status=None computed_field=None'
     )
 
     assert Foo().json() == (
         '{"device_type_code": null, "model": null, "module": null, "num_mppt": null, "num_phases": null, '
-        '"enable_ammeter": null, "serial_number": null, "status": null}'
+        '"enable_ammeter": null, "serial_number": null, "status": null, "computed_field": null}'
     )
 
 
 def test_validators():
     f = Foo.from_orm({HR(0): 8193})
     assert f.dict() == {
+        'computed_field': None,
         'device_type_code': '2001',
         'model': Model.BAT,
         'module': None,
@@ -194,11 +199,12 @@ def test_validators():
     assert f.json() == (
         '{"device_type_code": "2001", "model": "2", "module": null, "num_mppt": null, '
         '"num_phases": null, "enable_ammeter": null, "serial_number": null, "status": '
-        'null}'
+        'null, "computed_field": null}'
     )
 
     f = Foo(device_type_code='2001')
     assert f.dict() == {
+        'computed_field': None,
         'device_type_code': '2001',
         'model': None,
         'module': None,
@@ -211,5 +217,5 @@ def test_validators():
     assert f.json() == (
         '{"device_type_code": "2001", "model": null, "module": null, "num_mppt": '
         'null, "num_phases": null, "enable_ammeter": null, "serial_number": null, '
-        '"status": null}'
+        '"status": null, "computed_field": null}'
     )

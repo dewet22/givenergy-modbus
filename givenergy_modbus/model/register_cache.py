@@ -92,4 +92,6 @@ class RegisterCache(DefaultDict[Register, int]):
 
     def to_timeslot(self, start: Register, end: Register) -> 'TimeSlot':
         """Combine two registers into a time slot."""
+        from givenergy_modbus.model import TimeSlot
+
         return TimeSlot.from_repr(self[start], self[end])

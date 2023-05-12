@@ -1,8 +1,9 @@
 import logging
 from typing import Any
 
-from givenergy_modbus.model import GivEnergyBaseModel, Inverter
+from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache, RegisterCacheEncoder
 from givenergy_modbus.pdu import (

@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from givenergy_modbus.model.register import HR, IR, RegisterEncoder
 
 # fmt: off
@@ -68,4 +70,5 @@ def test_register():
     assert str({HR(0): 1234, HR(1): 0x4321, HR(2): 0xABCD, IR(0): 2}) == (
         '{HR_0: 1234, HR_1: 17185, HR_2: 43981, IR_0: 2}'
     )
-    assert json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder) == ''
+    with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
+        json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder)

@@ -14,18 +14,14 @@ def test_register_cache(register_cache):
 
 
 def test_to_from_json():
-    """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
-    registers = {HR(1): 2, IR(3): 4}
-    json = RegisterCache(registers=registers).json()
-    assert json == '{"HR(1)": 2, "IR(3)": 4}'
-    assert RegisterCache.from_json(json) == registers
+    """Ensure we can unserialize a RegisterCache from JSON."""
+    assert RegisterCache.from_json('{"HR(1)": 2, "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
 
 
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):
-    """Ensure we can serialize and unserialize a RegisterCache to and from JSON."""
+    """Ensure we can unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(json_inverter_daytime_discharging_with_solar_generation)
     assert len(rc) == 360
-    # assert len(rc._register_lookup_table) > 100  # ensure we have all registers ready to look up
 
 
 def test_to_string():

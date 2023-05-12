@@ -1,24 +1,28 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 
-from pydantic import BaseConfig
+from pydantic import BaseConfig, create_model
 
-from givenergy_modbus.model.device import DataType as DT
-from givenergy_modbus.model.device import DeviceRegisterGetter
-from givenergy_modbus.model.device import RegisterDefinition as Def
-from givenergy_modbus.model.register import HR, IR, Register, RegisterEncoder
-from givenergy_modbus.model.register_cache import RegisterCache, RegisterCacheEncoder
+from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.model.register import DataType as DT
+from givenergy_modbus.model.register import RegisterDefinition as Def
+from givenergy_modbus.model.register import RegisterGetter
 
 
-class Model(IntEnum):
+class Model(Enum):
     """Known models of inverters."""
 
-    HYBRID = 2
-    AC = 3
-    HYBRID_3PH = 4
-    AC_3PH = 6
-    EMS = 5
-    GATEWAY = 7
-    ALL_IN_ONE = 8
+    HYBRID = '2'
+    AC = '3'
+    HYBRID_3PH = '4'
+    AC_3PH = '6'
+    EMS = '5'
+    GATEWAY = '7'
+    ALL_IN_ONE = '8'
+
+    @classmethod
+    def _missing_(cls, key: str):
+        """Pick model from the first digit of the device type code."""
+        return cls(key[0])
 
 
 class UsbDevice(IntEnum):
@@ -85,12 +89,13 @@ class InverterStatus(IntEnum):
     FLASHING_FIRMWARE = 4
 
 
-class InverterRegisterGetter(DeviceRegisterGetter):
+class InverterRegisterGetter(RegisterGetter):
     """Structured format for all inverter attributes."""
 
     REGISTER_LUT = {
         # Holding Registers, block 0-59
         'device_type_code': Def(DT.hex, None, HR(0)),
+        'model': Def(DT.hex, Model, HR(0)),
         'module': Def(DT.uint32, (DT.hex, 8), HR(1), HR(2)),
         'num_mppt': Def((DT.duint8, 0), None, HR(3)),
         'num_phases': Def((DT.duint8, 1), None, HR(3)),
@@ -103,7 +108,7 @@ class InverterRegisterGetter(DeviceRegisterGetter):
         'enable_charge_target': Def(DT.bool, None, HR(20)),
         'arm_firmware_version': Def(DT.uint16, None, HR(21)),
         'usb_device_inserted': Def(DT.uint16, UsbDevice, HR(22)),
-        'select_arm_chip': Def(DT.bool, UsbDevice, HR(23)),
+        'select_arm_chip': Def(DT.bool, None, HR(23)),
         # variable_address=rc[HR(24)],
         # variable_value=rc[HR(25)],
         'grid_port_max_power_output': Def(DT.uint16, None, HR(26)),
@@ -214,10 +219,6 @@ class InverterConfig(BaseConfig):
 
     orm_mode = True
     getter_dict = InverterRegisterGetter
-    json_encoders = {
-        RegisterCache: RegisterCacheEncoder.encode,
-        Register: RegisterEncoder.encode,
-    }
 
 
 # class Inverter(GivEnergyBaseModel):
@@ -568,3 +569,8 @@ class InverterConfig(BaseConfig):
 #     # def compute_e_pv_day(e_pv1_day: float, e_pv2_day: float, **kwargs) -> float:
 #     #     """Computes the discharge slot 2."""
 #     #     return e_pv1_day + e_pv2_day
+
+Inverter = create_model(
+    'Inverter', __config__=InverterConfig, **InverterRegisterGetter.to_fields()
+)  # type: ignore[call-overload]
+# , **{'model': 'Foo'}
