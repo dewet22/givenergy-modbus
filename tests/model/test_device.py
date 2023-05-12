@@ -1,10 +1,10 @@
 from enum import Enum
-from typing import Callable
+from typing import Callable, Optional
 
 from pydantic import BaseConfig, create_model
 
 from givenergy_modbus.model.register import HR, IR
-from givenergy_modbus.model.register import DataType as DT
+from givenergy_modbus.model.register import Converter as DT
 from givenergy_modbus.model.register import RegisterDefinition as Def
 from givenergy_modbus.model.register import RegisterGetter
 
@@ -119,7 +119,7 @@ def test_getter():
         'num_mppt': (int, None),
         'num_phases': (int, None),
         'enable_ammeter': (bool, None),
-        'serial_number': (str, None),
+        'serial_number': (Optional[str], None),
         'status': (FooStatus, None),
     }
 

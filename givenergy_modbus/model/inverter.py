@@ -3,7 +3,7 @@ from enum import IntEnum, StrEnum
 from pydantic import BaseConfig, create_model
 
 from givenergy_modbus.model.register import HR, IR
-from givenergy_modbus.model.register import DataType as DT
+from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 from givenergy_modbus.model.register import RegisterGetter
 
@@ -93,61 +93,61 @@ class InverterRegisterGetter(RegisterGetter):
     """Structured format for all inverter attributes."""
 
     REGISTER_LUT = {
+        #
         # Holding Registers, block 0-59
-        'device_type_code': Def(DT.hex, None, HR(0)),
-        'model': Def(DT.hex, Model, HR(0)),
-        'module': Def(DT.uint32, (DT.hex, 8), HR(1), HR(2)),
-        'num_mppt': Def((DT.duint8, 0), None, HR(3)),
-        'num_phases': Def((DT.duint8, 1), None, HR(3)),
+        #
+        'device_type_code': Def(C.hex, None, HR(0)),
+        'model': Def(C.hex, Model, HR(0)),
+        'module': Def(C.uint32, (C.hex, 8), HR(1), HR(2)),
+        'num_mppt': Def((C.duint8, 0), None, HR(3)),
+        'num_phases': Def((C.duint8, 1), None, HR(3)),
         # HR(4-6) unused
-        'enable_ammeter': Def(DT.bool, None, HR(7)),
-        'first_battery_serial_number': Def(DT.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
-        'serial_number': Def(DT.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
-        'first_battery_bms_firmware_version': Def(DT.uint16, None, HR(18)),
-        'dsp_firmware_version': Def(DT.uint16, None, HR(19)),
-        'enable_charge_target': Def(DT.bool, None, HR(20)),
-        'arm_firmware_version': Def(DT.uint16, None, HR(21)),
-        'usb_device_inserted': Def(DT.uint16, InverterUsbDevice, HR(22)),
-        'select_arm_chip': Def(DT.bool, None, HR(23)),
-        # variable_address=rc[HR(24)],
-        # variable_value=rc[HR(25)],
-        'grid_port_max_power_output': Def(DT.uint16, None, HR(26)),
-        'battery_power_mode': Def(DT.uint16, BatteryPowerMode, HR(27)),
-        'enable_60hz_freq_mode': Def(DT.bool, None, HR(28)),
-        'battery_calibration_stage': Def(DT.uint16, BatteryCalibrationStage, HR(29)),
-        'modbus_address': Def(DT.uint16, None, HR(30)),
-        'charge_slot_2': Def(DT.timeslot, None, HR(31), HR(32)),
-        # user_code=rc[HR(33)],
+        'enable_ammeter': Def(C.bool, None, HR(7)),
+        'first_battery_serial_number': Def(C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
+        'serial_number': Def(C.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
+        'first_battery_bms_firmware_version': Def(C.uint16, None, HR(18)),
+        'dsp_firmware_version': Def(C.uint16, None, HR(19)),
+        'enable_charge_target': Def(C.bool, None, HR(20)),
+        'arm_firmware_version': Def(C.uint16, None, HR(21)),
+        'firmware_version': Def(C.firmware_version, None, HR(19), HR(21)),
+        'usb_device_inserted': Def(C.uint16, InverterUsbDevice, HR(22)),
+        'select_arm_chip': Def(C.bool, None, HR(23)),
+        'variable_address': Def(C.uint16, None, HR(24)),
+        'variable_value': Def(C.uint16, None, HR(25)),
+        'grid_port_max_power_output': Def(C.uint16, None, HR(26)),
+        'battery_power_mode': Def(C.uint16, BatteryPowerMode, HR(27)),
+        'enable_60hz_freq_mode': Def(C.bool, None, HR(28)),
+        'battery_calibration_stage': Def(C.uint16, BatteryCalibrationStage, HR(29)),
+        'modbus_address': Def(C.uint16, None, HR(30)),
+        'charge_slot_2': Def(C.timeslot, None, HR(31), HR(32)),
+        'user_code': Def(C.uint16, None, HR(33)),
+        'modbus_version': Def(C.centi, (C.fstr, '0.2f'), HR(34)),
+        'system_time': Def(C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
+        'enable_drm_rj45_port': Def(C.bool, None, HR(41)),
+        'enable_reversed_ct_clamp': Def(C.bool, None, HR(42)),
+        'charge_soc': Def((C.duint8, 0), None, HR(43)),
+        'discharge_soc': Def((C.duint8, 1), None, HR(43)),
+        'discharge_slot_2': Def(C.timeslot, None, HR(44), HR(45)),
+        'bms_firmware_version': Def(C.uint16, None, HR(46)),
+        'meter_type': Def(C.uint16, MeterType, HR(47)),
+        'enable_reversed_115_meter': Def(C.bool, None, HR(48)),
+        'enable_reversed_418_meter': Def(C.bool, None, HR(49)),
+        'active_power_rate': Def(C.uint16, None, HR(50)),
+        'reactive_power_rate': Def(C.uint16, None, HR(51)),
+        'power_factor': Def(C.uint16, None, HR(52)),  # /10_000 - 1
+        'enable_inverter_auto_restart': Def((C.duint8, 0), C.bool, HR(53)),
+        'enable_inverter': Def((C.duint8, 1), C.bool, HR(53)),
+        'battery_type': Def(C.uint16, BatteryType, HR(54)),
+        'battery_capacity': Def(C.uint16, None, HR(55)),
+        'discharge_slot_1': Def(C.timeslot, None, HR(56), HR(57)),
+        'enable_auto_judge_battery_type': Def(C.bool, None, HR(58)),
+        'enable_discharge': Def(C.bool, None, HR(59)),
+        #
         # Input Registers, block 0-59
-        'status': Def(DT.uint16, InverterStatus, IR(0)),
+        #
+        'status': Def(C.uint16, InverterStatus, IR(0)),
     }
 
-    # def from_registers(cls, rc: RegisterCache) -> 'Inverter':
-    #     """Constructor parsing registers directly."""
-    #     return Inverter(
-    #         # firmware_version=f'D0.{dsp_fw}-A0.{arm_fw}',
-
-    #         modbus_version=f'{rc[HR(34)] / 100:0.2f}',
-    #         system_time=rc.to_datetime(HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
-    #         enable_drm_rj45_port=bool(rc[HR(41)]),
-    #         reverse_ct=bool(rc[HR(42)]),
-    #         charge_soc=(c_d_soc := rc.to_duint8(HR(43)))[0],
-    #         discharge_soc=c_d_soc[1],
-    #         discharge_slot_2=rc.to_timeslot(HR(44), HR(45)),
-    #         bms_firmware_version=rc[HR(46)],
-    #         meter_type=MeterType(rc[HR(47)]),
-    #         reverse_115_meter=bool(rc[HR(48)]),
-    #         reverse_418_meter=bool(rc[HR(49)]),
-    #         active_power_rate=rc[HR(50)],
-    #         reactive_power_rate=rc[HR(51)],
-    #         power_factor=rc[HR(52)] / 10000 - 1,
-    #         enable_inverter=bool((state := rc.to_duint8(HR(53)))[1]),
-    #         enable_inverter_auto_restart=bool(state[0]),
-    #         battery_type=BatteryType(rc[HR(54)]),
-    #         battery_capacity=rc[HR(55)],
-    #         discharge_slot_1=rc.to_timeslot(HR(56), HR(57)),
-    #         enable_auto_judge_battery_type=bool(rc[HR(58)]),
-    #         enable_discharge=bool(rc[HR(59)]),
     #         # 60
     #         pv_start_voltage=rc[HR(60)] / 10,
     #         start_countdown_timer=rc[HR(61)],
@@ -248,7 +248,7 @@ class InverterConfig(BaseConfig):
 #     grid_port_max_power_output: int
 #     enable_60hz_freq_mode: bool
 #     enable_drm_rj45_port: bool
-#     reverse_ct: bool
+#     enable_reversed_ct_clamp: bool
 #     meter_type: int
 #     reverse_115_meter: bool
 #     reverse_418_meter: bool
@@ -487,7 +487,7 @@ class InverterConfig(BaseConfig):
 #             modbus_version=f'{rc[HR(34)] / 100:0.2f}',
 #             system_time=rc.to_datetime(HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
 #             enable_drm_rj45_port=bool(rc[HR(41)]),
-#             reverse_ct=bool(rc[HR(42)]),
+#             enable_reversed_ct_clamp=bool(rc[HR(42)]),
 #             charge_soc=(c_d_soc := rc.to_duint8(HR(43)))[0],
 #             discharge_soc=c_d_soc[1],
 #             discharge_slot_2=rc.to_timeslot(HR(44), HR(45)),

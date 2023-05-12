@@ -3,7 +3,7 @@ from enum import IntEnum
 from pydantic import BaseConfig, create_model
 
 from givenergy_modbus.model.register import IR
-from givenergy_modbus.model.register import DataType as DT
+from givenergy_modbus.model.register import Converter as DT
 from givenergy_modbus.model.register import RegisterDefinition as Def
 from givenergy_modbus.model.register import RegisterGetter
 

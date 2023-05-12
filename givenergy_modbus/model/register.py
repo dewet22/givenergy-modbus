@@ -1,13 +1,14 @@
 from dataclasses import dataclass
+from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
 from pydantic.utils import GetterDict
 
 from givenergy_modbus.model import TimeSlot
 
 
-class DataType:
+class Converter:
     """Type of data register represents. Encoding is always big-endian."""
 
     @staticmethod
@@ -42,7 +43,7 @@ class DataType:
             return bool(val)
 
     @staticmethod
-    def string(*vals: int) -> str:
+    def string(*vals: int) -> Optional[str]:
         """Represent one or more registers as a concatenated string."""
         if vals is not None and None not in vals:
             return (
@@ -51,7 +52,20 @@ class DataType:
                 .replace('\x00', '')
                 .upper()
             )
-        return ''
+        return None
+
+    @staticmethod
+    def fstr(val, fmt) -> Optional[str]:
+        """Render a value using a format string."""
+        if val is not None:
+            return f'{val:{fmt}}'
+        return None
+
+    @staticmethod
+    def firmware_version(dsp_version: int, arm_version: int) -> Optional[str]:
+        """Represent ARM & DSP firmware versions in the same format as the dashboard."""
+        if dsp_version is not None and arm_version is not None:
+            return f'D0.{dsp_version}-A0.{arm_version}'
 
     @staticmethod
     def hex(val: int, width: int = 4) -> str:
@@ -76,6 +90,13 @@ class DataType:
         """Represent a register value as a float in 1/10 units."""
         if val is not None:
             return val / 10
+
+    @staticmethod
+    def datetime(year, month, day, hour, min, sec) -> Optional[datetime]:
+        """Compose a datetime from 6 registers."""
+        if None not in [year, month, day, hour, min, sec]:
+            return datetime(year + 2000, month, day, hour, min, sec)
+        return None
 
 
 @dataclass(init=False)
