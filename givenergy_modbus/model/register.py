@@ -45,7 +45,12 @@ class DataType:
     def string(*vals: int) -> str:
         """Represent one or more registers as a concatenated string."""
         if vals is not None and None not in vals:
-            return b''.join((v or 0).to_bytes(2, byteorder='big') for v in vals).decode(encoding='latin1').upper()
+            return (
+                b''.join(v.to_bytes(2, byteorder='big') for v in vals)
+                .decode(encoding='latin1')
+                .replace('\x00', '')
+                .upper()
+            )
         return ''
 
     @staticmethod
@@ -53,6 +58,12 @@ class DataType:
         """Represent a register value as a 4-character hex string."""
         if val is not None:
             return f'{val:0{width}x}'
+
+    @staticmethod
+    def milli(val: int) -> float:
+        """Represent a register value as a float in 1/1000 units."""
+        if val is not None:
+            return val / 1000
 
 
 @dataclass(init=False)

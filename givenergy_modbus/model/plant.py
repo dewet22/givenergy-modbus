@@ -67,7 +67,8 @@ class Plant(GivEnergyBaseModel):
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f'Ignoring, likely corrupt: {pdu}')
-            self.register_caches[slave_address].update({HR(pdu.register): pdu.value})
+            else:
+                self.register_caches[slave_address].update({HR(pdu.register): pdu.value})
 
     @property
     def inverter(self) -> Inverter:
