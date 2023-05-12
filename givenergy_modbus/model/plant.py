@@ -5,7 +5,7 @@ from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
 from givenergy_modbus.model.register import HR, IR
-from givenergy_modbus.model.register_cache import RegisterCache, RegisterCacheEncoder
+from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
     NullResponse,
@@ -28,9 +28,6 @@ class Plant(GivEnergyBaseModel):
     class Config:  # noqa: D106
         allow_mutation = True
         frozen = False
-        json_encoders = {
-            RegisterCache: RegisterCacheEncoder.encode,
-        }
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)

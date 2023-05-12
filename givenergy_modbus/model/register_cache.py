@@ -9,21 +9,6 @@ if TYPE_CHECKING:
     from givenergy_modbus.model import TimeSlot
 
 
-class RegisterCacheEncoder(JSONEncoder):
-    """Custom JSONEncoder to work around Register behaviour.
-
-    This is a workaround to force register keys to render themselves as strings instead of
-    relying on the internal identity by default (due to the Register Enum extending str).
-    """
-
-    def default(self, o: Any):
-        """Custom JSON encoder to treat RegisterCaches specially."""
-        if isinstance(o, RegisterCache):
-            return {str(k): v for k, v in o.items()}
-        else:
-            return super().default(o)
-
-
 class RegisterCache(DefaultDict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
@@ -34,7 +19,7 @@ class RegisterCache(DefaultDict[Register, int]):
 
     def json(self) -> str:
         """Return JSON representation of the register cache, to mirror `from_json()`."""  # noqa: D402,D202,E501
-        return json.dumps(self, cls=RegisterCacheEncoder)
+        return json.dumps(self)
 
     @classmethod
     def from_json(cls, data: str) -> 'RegisterCache':
