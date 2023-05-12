@@ -65,6 +65,18 @@ class DataType:
         if val is not None:
             return val / 1000
 
+    @staticmethod
+    def centi(val: int) -> float:
+        """Represent a register value as a float in 1/100 units."""
+        if val is not None:
+            return val / 100
+
+    @staticmethod
+    def deci(val: int) -> float:
+        """Represent a register value as a float in 1/10 units."""
+        if val is not None:
+            return val / 10
+
 
 @dataclass(init=False)
 class RegisterDefinition:

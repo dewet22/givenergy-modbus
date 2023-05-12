@@ -8,8 +8,8 @@ from givenergy_modbus.model.inverter import (
     BatteryPowerMode,
     Inverter,
     InverterStatus,
+    InverterUsbDevice,
     Model,
-    UsbDevice,
 )
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -355,7 +355,7 @@ def test_from_registers(register_cache):
         'select_arm_chip': False,
         'serial_number': 'SA1234G567',
         'status': InverterStatus.WAITING,
-        'usb_device_inserted': UsbDevice.DISK,
+        'usb_device_inserted': InverterUsbDevice.DISK,
     }
     assert i.serial_number == 'SA1234G567'
     assert i.model == Model.HYBRID
@@ -585,6 +585,6 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         'select_arm_chip': False,
         'serial_number': 'SA1234G567',
         'status': InverterStatus.NORMAL,
-        'usb_device_inserted': UsbDevice.DISK,
+        'usb_device_inserted': InverterUsbDevice.DISK,
     }
     assert i.dict() == expected_dict

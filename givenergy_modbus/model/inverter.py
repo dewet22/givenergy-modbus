@@ -25,7 +25,7 @@ class Model(StrEnum):
         return cls(key[0])
 
 
-class UsbDevice(IntEnum):
+class InverterUsbDevice(IntEnum):
     """USB devices that can be inserted into inverters."""
 
     NONE = 0
@@ -107,7 +107,7 @@ class InverterRegisterGetter(RegisterGetter):
         'dsp_firmware_version': Def(DT.uint16, None, HR(19)),
         'enable_charge_target': Def(DT.bool, None, HR(20)),
         'arm_firmware_version': Def(DT.uint16, None, HR(21)),
-        'usb_device_inserted': Def(DT.uint16, UsbDevice, HR(22)),
+        'usb_device_inserted': Def(DT.uint16, InverterUsbDevice, HR(22)),
         'select_arm_chip': Def(DT.bool, None, HR(23)),
         # variable_address=rc[HR(24)],
         # variable_value=rc[HR(25)],
