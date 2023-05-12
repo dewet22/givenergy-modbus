@@ -143,33 +143,36 @@ class InverterRegisterGetter(RegisterGetter):
         'enable_auto_judge_battery_type': Def(C.bool, None, HR(58)),
         'enable_discharge': Def(C.bool, None, HR(59)),
         #
+        # Holding Registers, block 60-119
+        #
+        'v_pv_start': Def(C.uint16, C.deci, HR(60)),
+        'start_countdown_timer': Def(C.uint16, None, HR(61)),
+        'restart_delay_time': Def(C.uint16, None, HR(62)),
+        # skip protection settings HR(63-93)
+        'charge_slot_1': Def(C.timeslot, None, HR(94), HR(95)),
+        'enable_charge': Def(C.bool, None, HR(96)),
+        'battery_low_voltage_protection_limit': Def(C.uint16, C.centi, HR(97)),
+        'battery_high_voltage_protection_limit': Def(C.uint16, C.centi, HR(98)),
+        # skip voltage adjustment settings 99-107
+        'battery_low_force_charge_time': Def(C.uint16, None, HR(108)),
+        'enable_bms_read': Def(C.bool, None, HR(109)),
+        'battery_soc_reserve': Def(C.uint16, None, HR(110)),
+        'battery_charge_limit': Def(C.uint16, None, HR(111)),
+        'battery_discharge_limit': Def(C.uint16, None, HR(112)),
+        'enable_buzzer': Def(C.bool, None, HR(113)),
+        'battery_discharge_min_power_reserve': Def(C.uint16, None, HR(114)),
+        # 'island_check_continue': Def(C.uint16, None, HR(115)),
+        'charge_target_soc': Def(C.uint16, None, HR(116)),  # requires enable_charge_target
+        'charge_soc_stop_2': Def(C.uint16, None, HR(117)),
+        'discharge_soc_stop_2': Def(C.uint16, None, HR(118)),
+        'charge_soc_stop_1': Def(C.uint16, None, HR(119)),
+        #
         # Input Registers, block 0-59
         #
         'status': Def(C.uint16, InverterStatus, IR(0)),
     }
 
     #         # 60
-    #         pv_start_voltage=rc[HR(60)] / 10,
-    #         start_countdown_timer=rc[HR(61)],
-    #         restart_delay_time=rc[HR(62)],
-    #         # skip protection settings 63-93
-    #         charge_slot_1=rc.to_timeslot(HR(94), HR(95)),
-    #         enable_charge=bool(rc[HR(96)]),
-    #         battery_low_voltage_protection_limit=rc[HR(97)] / 100,
-    #         battery_high_voltage_protection_limit=rc[HR(98)] / 100,
-    #         # skip voltage adjustment settings 99-107
-    #         battery_low_force_charge_time=rc[HR(108)],
-    #         enable_bms_read=bool(rc[HR(109)]),
-    #         battery_soc_reserve=rc[HR(110)],
-    #         battery_charge_limit=rc[HR(111)],
-    #         battery_discharge_limit=rc[HR(112)],
-    #         enable_buzzer=bool(rc[HR(113)]),
-    #         battery_discharge_min_power_reserve=rc[HR(114)],
-    #         island_check_continue=rc[HR(115)],
-    #         charge_target_soc=rc[HR(116)],  # requires enable_charge_target
-    #         charge_soc_stop_2=rc[HR(117)],
-    #         discharge_soc_stop_2=rc[HR(118)],
-    #         charge_soc_stop_1=rc[HR(119)],
     #         # 120
     #         discharge_soc_stop_1=rc[HR(120)],
     #         local_command_test=bool(rc[HR(121)]),
