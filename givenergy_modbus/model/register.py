@@ -41,6 +41,7 @@ class Converter:
         """Interpret register as a bool."""
         if val is not None:
             return bool(val)
+        return None
 
     @staticmethod
     def string(*vals: int) -> Optional[str]:

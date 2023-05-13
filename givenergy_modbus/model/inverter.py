@@ -167,33 +167,35 @@ class InverterRegisterGetter(RegisterGetter):
         'discharge_soc_stop_2': Def(C.uint16, None, HR(118)),
         'charge_soc_stop_1': Def(C.uint16, None, HR(119)),
         #
+        # Holding Registers, block 120-179
+        #
+        'discharge_soc_stop_1': Def(C.uint16, None, HR(120)),
+        'enable_local_command_test': Def(C.bool, None, HR(121)),
+        'power_factor_function_model': Def(C.uint16, PowerFactorFunctionModel, HR(122)),
+        'frequency_load_limit_rate': Def(C.uint16, None, HR(123)),
+        'enable_low_voltage_fault_ride_through': Def(C.bool, None, HR(124)),
+        'enable_frequency_derating': Def(C.bool, None, HR(125)),
+        'enable_above_6kw_system': Def(C.bool, None, HR(126)),
+        'start_system_auto_test': Def(C.bool, None, HR(127)),
+        'enable_spi': Def(C.bool, None, HR(128)),
+        # skip PF configuration and protection settings 129-166
+        'threephase_balance_mode': Def(C.uint16, None, HR(167)),
+        'threephase_abc': Def(C.uint16, None, HR(168)),
+        'threephase_balance_1': Def(C.uint16, None, HR(169)),
+        'threephase_balance_2': Def(C.uint16, None, HR(170)),
+        'threephase_balance_3': Def(C.uint16, None, HR(171)),
+        # HR(172-174) unused
+        'enable_battery_on_pv_or_grid': Def(C.bool, None, HR(175)),
+        'debug_inverter': Def(C.uint16, None, HR(176)),
+        'enable_ups_mode': Def(C.bool, None, HR(177)),
+        'enable_g100_limit_switch': Def(C.bool, None, HR(178)),
+        'enable_battery_cable_impedance_alarm': Def(C.bool, None, HR(179)),
+        #
         # Input Registers, block 0-59
         #
         'status': Def(C.uint16, InverterStatus, IR(0)),
     }
 
-    #         # 60
-    #         # 120
-    #         discharge_soc_stop_1=rc[HR(120)],
-    #         local_command_test=bool(rc[HR(121)]),
-    #         power_factor_function_model=PowerFactorFunctionModel(rc[HR(122)]),
-    #         frequency_load_limit_rate=rc[HR(123)],
-    #         enable_low_voltage_fault_ride_through=bool(rc[HR(124)]),
-    #         enable_frequency_derating=bool(rc[HR(125)]),
-    #         enable_above_6kw_system=bool(rc[HR(126)]),
-    #         start_system_auto_test=bool(rc[HR(127)]),
-    #         enable_spi=bool(rc[HR(128)]),
-    #         # skip PF configuration and protection settings 129-166
-    #         threephase_balance_mode=rc[HR(167)],
-    #         threephase_abc=rc[HR(168)],
-    #         threephase_balance_1=rc[HR(169)],
-    #         threephase_balance_2=rc[HR(170)],
-    #         threephase_balance_3=rc[HR(171)],
-    #         enable_battery_on_pv_or_grid=bool(rc[HR(175)]),
-    #         debug_inverter=rc[HR(176)],
-    #         enable_ups_mode=bool(rc[HR(177)]),
-    #         enable_g100_limit_switch=bool(rc[HR(178)]),
-    #         enable_battery_cable_impedance_alarm=bool(rc[HR(179)]),
     #         # 180
     #         enable_standard_self_consumption_logic=bool(rc[HR(199)]),
     #         cmd_bms_flash_update=bool(rc[HR(200)]),
