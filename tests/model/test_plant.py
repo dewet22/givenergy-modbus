@@ -6,18 +6,19 @@ import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.battery import Battery, BatteryUsbDevice
+from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.battery import UsbDevice as BatteryUsbDevice
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
     Inverter,
-    InverterStatus,
-    InverterUsbDevice,
     MeterType,
     Model,
     PowerFactorFunctionModel,
+    Status,
 )
+from givenergy_modbus.model.inverter import UsbDevice as InverterUsbDevice
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -1132,7 +1133,7 @@ def test_from_actual():
         'reactive_power_rate': 0,
         'select_arm_chip': False,
         'serial_number': 'SA1234G567',
-        'status': InverterStatus.NORMAL,
+        'status': Status.NORMAL,
         'system_time': datetime(2022, 4, 27, 23, 29, 18),
         'usb_device_inserted': InverterUsbDevice.DISK,
         'user_code': 7,

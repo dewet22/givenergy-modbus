@@ -25,7 +25,7 @@ class Model(StrEnum):
         return cls(key[0])
 
 
-class InverterUsbDevice(IntEnum):
+class UsbDevice(IntEnum):
     """USB devices that can be inserted into inverters."""
 
     NONE = 0
@@ -79,14 +79,14 @@ class PowerFactorFunctionModel(IntEnum):
     QV_MODEL = 6
 
 
-class InverterStatus(IntEnum):
+class Status(IntEnum):
     """Inverter status."""
 
     WAITING = 0
     NORMAL = 1
     WARNING = 2
     FAULT = 3
-    FLASHING_FIRMWARE = 4
+    FLASHING_FIRMWARE_UPDATE = 4
 
 
 class InverterRegisterGetter(RegisterGetter):
@@ -110,7 +110,7 @@ class InverterRegisterGetter(RegisterGetter):
         'enable_charge_target': Def(C.bool, None, HR(20)),
         'arm_firmware_version': Def(C.uint16, None, HR(21)),
         'firmware_version': Def(C.firmware_version, None, HR(19), HR(21)),
-        'usb_device_inserted': Def(C.uint16, InverterUsbDevice, HR(22)),
+        'usb_device_inserted': Def(C.uint16, UsbDevice, HR(22)),
         'select_arm_chip': Def(C.bool, None, HR(23)),
         'variable_address': Def(C.uint16, None, HR(24)),
         'variable_value': Def(C.uint16, None, HR(25)),
@@ -210,7 +210,7 @@ class InverterRegisterGetter(RegisterGetter):
         #
         # Input Registers, block 0-59
         #
-        'status': Def(C.uint16, InverterStatus, IR(0)),
+        'status': Def(C.uint16, Status, IR(0)),
     }
 
     # @computed('p_pv')

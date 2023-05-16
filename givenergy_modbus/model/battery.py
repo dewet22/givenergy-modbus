@@ -8,7 +8,7 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 from givenergy_modbus.model.register import RegisterGetter
 
 
-class BatteryUsbDevice(IntEnum):
+class UsbDevice(IntEnum):
     """USB devices that can be inserted into batteries."""
 
     NONE = 0
@@ -66,7 +66,7 @@ class BatteryRegisterGetter(RegisterGetter):
         't_min': Def(DT.deci, None, IR(104)),
         # IR(105-109) unused
         'serial_number': Def(DT.string, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
-        'usb_device_inserted': Def(DT.uint16, BatteryUsbDevice, IR(115)),
+        'usb_device_inserted': Def(DT.uint16, UsbDevice, IR(115)),
         # IR(116-119) unused
     }
 

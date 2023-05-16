@@ -1,4 +1,4 @@
-from givenergy_modbus.model.battery import Battery, BatteryUsbDevice
+from givenergy_modbus.model.battery import Battery, UsbDevice
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
@@ -28,7 +28,7 @@ def test_from_registers(register_cache):
         't_cells_09_12': 17.1,
         't_max': 17.4,
         't_min': 16.7,
-        'usb_device_inserted': BatteryUsbDevice.DISK,
+        'usb_device_inserted': UsbDevice.DISK,
         'v_cell_01': 3.117,
         'v_cell_02': 3.124,
         'v_cell_03': 3.129,
@@ -78,7 +78,7 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
         't_cells_09_12': 16.5,
         't_max': 16.8,
         't_min': 15.7,
-        'usb_device_inserted': BatteryUsbDevice.DISK,
+        'usb_device_inserted': UsbDevice.DISK,
         'v_cell_01': 3.232,
         'v_cell_02': 3.237,
         'v_cell_03': 3.235,
@@ -131,7 +131,7 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
         't_cells_13_16': 0.0,
         't_max': 0.0,
         't_min': 0.0,
-        'usb_device_inserted': BatteryUsbDevice.NONE,
+        'usb_device_inserted': UsbDevice.NONE,
         'v_cell_01': 0.0,
         'v_cell_02': 0.0,
         'v_cell_03': 0.0,
