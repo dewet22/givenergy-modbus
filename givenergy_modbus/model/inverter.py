@@ -27,6 +27,7 @@ class Model(str, Enum):
             'EA': cls.Gen2,
             'SA': cls.Hybrid,
             'SD': cls.Hybrid,
+            'FA': cls.Hybrid,
         }
         prefix = serial_number[:2]
         if prefix in serial_prefix_to_models_lut:
