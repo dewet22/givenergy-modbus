@@ -44,16 +44,6 @@ jobs:
           version: ${{ steps.tag_name.outputs.current_version }}
           path: ./CHANGELOG.md
 
-      - name: Build documentation
-        run: |
-          poetry run mkdocs build
-
-      - name: Publish documentation
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
-          publish_dir: ./site
-
       - name: Build wheels and source tarball
         run: >-
           poetry build
@@ -76,3 +66,13 @@ jobs:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip_existing: true
+
+      - name: Build documentation
+        run: |
+          poetry run mkdocs build
+
+      - name: Publish documentation
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          publish_dir: ./site
