@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from pydantic import ConfigDict
+
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import Inverter
@@ -21,16 +23,14 @@ _logger = logging.getLogger(__name__)
 class Plant(GivEnergyBaseModel):
     """Representation of a complete GivEnergy plant."""
 
+    model_config = ConfigDict(frozen=False, use_enum_values=True, arbitrary_types_allowed=True)
+
     register_caches: dict[int, RegisterCache] = {}
     inverter_serial_number: str = ""
     data_adapter_serial_number: str = ""
 
-    class Config:  # noqa: D106
-        allow_mutation = True
-        frozen = False
-
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
+    def model_post_init(self, __context: Any) -> None:
+        """Ensure a default register cache is always present."""
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
 
@@ -73,7 +73,7 @@ class Plant(GivEnergyBaseModel):
     @property
     def inverter(self) -> Inverter:
         """Return Inverter model for the Plant."""
-        return Inverter.from_orm(self.register_caches[0x32])
+        return Inverter.from_register_cache(self.register_caches[0x32])
 
     @property
     def number_batteries(self) -> int:
@@ -81,7 +81,7 @@ class Plant(GivEnergyBaseModel):
         i = 0
         for i in range(6):
             try:
-                assert Battery.from_orm(self.register_caches[i + 0x32]).is_valid()
+                assert Battery.from_register_cache(self.register_caches[i + 0x32]).is_valid()
             except (KeyError, AssertionError):
                 break
         return i
@@ -89,4 +89,4 @@ class Plant(GivEnergyBaseModel):
     @property
     def batteries(self) -> list[Battery]:
         """Return Battery models for the Plant."""
-        return [Battery.from_orm(self.register_caches[i + 0x32]) for i in range(self.number_batteries)]
+        return [Battery.from_register_cache(self.register_caches[i + 0x32]) for i in range(self.number_batteries)]

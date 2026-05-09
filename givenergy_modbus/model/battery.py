@@ -1,6 +1,6 @@
 from enum import IntEnum
 
-from pydantic import BaseConfig, create_model
+from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.register import IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as DT
@@ -70,18 +70,20 @@ class BatteryRegisterGetter(RegisterGetter):
     }
 
 
-class BatteryConfig(BaseConfig):
-    """Pydantic configuration for the Battery class."""
-
-    orm_mode = True
-    getter_dict = BatteryRegisterGetter
-
-
-_Battery = create_model("Battery", __config__=BatteryConfig, **BatteryRegisterGetter.to_fields())  # type: ignore[call-overload]
+_BatteryBase = create_model(
+    "Battery",
+    __config__=ConfigDict(frozen=True, use_enum_values=True),
+    **BatteryRegisterGetter.to_fields(),
+)
 
 
-class Battery(_Battery):  # type: ignore[misc,valid-type]
-    """Add some utility methods to the base pydantic class."""
+class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
+    """GivEnergy battery data model."""
+
+    @classmethod
+    def from_register_cache(cls, register_cache) -> "Battery":
+        """Construct a Battery from a RegisterCache."""
+        return cls.model_validate(BatteryRegisterGetter(register_cache).build())
 
     def is_valid(self) -> bool:
         """Try to detect if a battery exists based on its attributes."""

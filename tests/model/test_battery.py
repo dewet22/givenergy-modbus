@@ -4,7 +4,7 @@ from givenergy_modbus.model.register_cache import RegisterCache
 
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of battery data."""
-    assert Battery.from_orm(register_cache).dict() == {
+    assert Battery.from_register_cache(register_cache).model_dump() == {
         "bms_firmware_version": 3005,
         "cap_design": 160.0,
         "cap_design2": 160.0,
@@ -54,7 +54,7 @@ def test_from_registers(register_cache):
 
 def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
     """Ensure we can instantiate an instance of battery data from actual registers."""
-    assert Battery.from_orm(register_cache_battery_daytime_discharging).dict() == {
+    assert Battery.from_register_cache(register_cache_battery_daytime_discharging).model_dump() == {
         "bms_firmware_version": 3005,
         "cap_design": 160.0,
         "cap_design2": 160.0,
@@ -104,10 +104,10 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
 
 def test_from_registers_unsure_data(register_cache_battery_unsure):
     """Test case of battery registers returned for non-existent slave."""
-    b = Battery.from_orm(register_cache_battery_unsure)
+    b = Battery.from_register_cache(register_cache_battery_unsure)
     assert b.serial_number == ""
     assert b.is_valid() is False
-    assert b.dict() == {
+    assert b.model_dump() == {
         "bms_firmware_version": 0,
         "cap_calibrated": 0.0,
         "cap_design": 0.0,
@@ -158,15 +158,15 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
 def test_empty():
     """Ensure we can instantiate from empty data."""
     b1 = Battery()
-    b2 = Battery.from_orm(RegisterCache({}))
+    b2 = Battery.from_register_cache(RegisterCache({}))
     assert b1.serial_number is None
     assert b1.is_valid() is False
     assert b2.serial_number is None
     assert b2.is_valid() is False
 
     assert (
-        b1.dict()
-        == b2.dict()
+        b1.model_dump()
+        == b2.model_dump()
         == {
             "bms_firmware_version": None,
             "cap_calibrated": None,

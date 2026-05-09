@@ -7,6 +7,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2023-04-??
+
+Complete refactoring of the library – moving away from the error-prone send-and-wait synchronous messaging to an
+asyncio-based message queue system. Incoming messages are processed in a separate task and connected back to their
+requesting messages using Futures so that command results can be awaited.
+
+### Changed
+
+- ⚠️ Breaking change: the complete API has been rejigged so dependent consumers will need to update.
+- ⚠️ Removed support for Python 3.7 and 3.8. The former is EOL and the latter is 4 versions behind already. I can
+     feasibly only support the latest three versions.
+
 ## [0.10.1] - 2022-03-03
 
 ### Fixed

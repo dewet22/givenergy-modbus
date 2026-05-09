@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Callable, Optional, Union
-
-from pydantic.utils import GetterDict
+from typing import Any, Callable, Optional, Union, get_type_hints
 
 from givenergy_modbus.model import TimeSlot
 
@@ -37,7 +35,7 @@ class Converter:
             return TimeSlot.from_repr(start_time, end_time)
 
     @staticmethod
-    def bool(val: int) -> bool:
+    def bool(val: int) -> "bool":
         """Interpret register as a bool."""
         if val is not None:
             return bool(val)
@@ -93,7 +91,7 @@ class Converter:
             return val / 10
 
     @staticmethod
-    def datetime(year, month, day, hour, min, sec) -> Optional[datetime]:
+    def datetime(year, month, day, hour, min, sec) -> "Optional[datetime]":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
             return datetime(year + 2000, month, day, hour, min, sec)
@@ -117,47 +115,65 @@ class RegisterDefinition:
         return hash(self.registers)
 
 
-class RegisterGetter(GetterDict):
+class RegisterGetter:
     """Specifies how device attributes are derived from raw register values."""
 
     REGISTER_LUT: dict[str, RegisterDefinition]
 
+    def __init__(self, obj: Any) -> None:
+        self._obj = obj
+
     def get(self, key: str, default: Any = None) -> Any:
         """Return a named register's value, after pre- and post-conversion."""
         try:
-            r = self.REGISTER_LUT[key]
+            defn = self.REGISTER_LUT[key]
         except KeyError:
             return default
 
-        regs = [self._obj.get(r) for r in r.registers]
+        regs = [self._obj.get(reg) for reg in defn.registers]
 
         if None in regs:
             return None
 
-        if r.pre_conv:
-            if isinstance(r.pre_conv, tuple):
-                args = regs + list(r.pre_conv[1:])
-                val = r.pre_conv[0](*args)
+        if defn.pre_conv:
+            if isinstance(defn.pre_conv, tuple):
+                args = regs + list(defn.pre_conv[1:])
+                val = defn.pre_conv[0](*args)
             else:
-                val = r.pre_conv(*regs)
+                val = defn.pre_conv(*regs)
         else:
             val = regs
 
-        if r.post_conv:
-            if isinstance(r.post_conv, tuple):
-                return r.post_conv[0](val, *r.post_conv[1:])
+        if defn.post_conv:
+            if isinstance(defn.post_conv, tuple):
+                return defn.post_conv[0](val, *defn.post_conv[1:])
             else:
-                return r.post_conv(val)
+                return defn.post_conv(val)
         return val
+
+    def build(self) -> dict[str, Any]:
+        """Resolve all fields in REGISTER_LUT against the wrapped cache."""
+        return {key: self.get(key) for key in self.REGISTER_LUT}
 
     @classmethod
     def to_fields(cls) -> dict[str, tuple[Any, None]]:
         """Determine a pydantic fields definition for the class."""
 
         def infer_return_type(obj: Any):
-            if hasattr(obj, "__annotations__") and (ret := obj.__annotations__.get("return", None)):
-                return ret
-            return obj  # assume it is a class/type already?
+            if isinstance(obj, staticmethod):
+                obj = obj.__func__
+            if callable(obj) and not isinstance(obj, type):
+                # Use get_type_hints() to resolve annotations in the correct module scope.
+                # Direct __annotations__ access fails under PEP 649 (Python 3.14+) when
+                # a method name shadows a builtin (e.g. Converter.bool shadows bool).
+                try:
+                    hints = get_type_hints(obj)
+                    if ret := hints.get("return"):
+                        return ret
+                except Exception:
+                    pass
+                return Any
+            return obj  # assume it is a class/type already
 
         def return_type(v: RegisterDefinition):
             if v.post_conv:
@@ -172,9 +188,7 @@ class RegisterGetter(GetterDict):
                     return infer_return_type(v.pre_conv)
             return Any
 
-        register_fields = {k: (return_type(v), None) for k, v in cls.REGISTER_LUT.items()}
-
-        return register_fields
+        return {k: (Optional[return_type(v)], None) for k, v in cls.REGISTER_LUT.items()}
 
 
 class RegisterEncoder(JSONEncoder):

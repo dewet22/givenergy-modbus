@@ -19,11 +19,11 @@ from givenergy_modbus.model.register_cache import RegisterCache
 
 def test_inverter():
     i1 = Inverter()
-    i2 = Inverter.from_orm(RegisterCache())
+    i2 = Inverter.from_register_cache(RegisterCache())
 
     assert (
-        i1.dict()
-        == i2.dict()
+        i1.model_dump()
+        == i2.model_dump()
         == {
             "active_power_rate": None,
             "arm_firmware_version": None,
@@ -123,14 +123,14 @@ def test_inverter():
 
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of inverter data."""
-    i = Inverter.from_orm(register_cache)
+    i = Inverter.from_register_cache(register_cache)
     assert i.serial_number == "SA1234G567"
     assert i.model == Model.HYBRID
     assert getattr(i, "serial_number") == "SA1234G567"
     with pytest.raises(TypeError, match="'Inverter' object is not subscriptable"):
         i["serial_number"]
 
-    assert i.dict() == {
+    assert i.model_dump() == {
         "battery_charge_limit": 50,
         "battery_discharge_limit": 50,
         "battery_discharge_min_power_reserve": 4,
@@ -350,10 +350,10 @@ def test_from_registers(register_cache):
 
 def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can instantiate an Inverter from actual register data."""
-    i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
+    i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == "SA1234G567"
     assert i.model == Model.HYBRID
-    assert i.dict() == {
+    assert i.model_dump() == {
         "battery_charge_limit": 50,
         "battery_discharge_limit": 50,
         "battery_discharge_min_power_reserve": 4,

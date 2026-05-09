@@ -1,6 +1,6 @@
 from enum import IntEnum, StrEnum
 
-from pydantic import BaseConfig, create_model
+from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
@@ -223,11 +223,17 @@ class InverterRegisterGetter(RegisterGetter):
     #     return e_pv1_day + e_pv2_day
 
 
-class InverterConfig(BaseConfig):
-    """Pydantic configuration for the Inverter class."""
+_InverterBase = create_model(
+    "Inverter",
+    __config__=ConfigDict(frozen=True, use_enum_values=True),
+    **InverterRegisterGetter.to_fields(),
+)
 
-    orm_mode = True
-    getter_dict = InverterRegisterGetter
 
+class Inverter(_InverterBase):  # type: ignore[valid-type,misc]
+    """GivEnergy inverter data model."""
 
-Inverter = create_model("Inverter", __config__=InverterConfig, **InverterRegisterGetter.to_fields())  # type: ignore[call-overload]
+    @classmethod
+    def from_register_cache(cls, register_cache) -> "Inverter":
+        """Construct an Inverter from a RegisterCache."""
+        return cls.model_validate(InverterRegisterGetter(register_cache).build())

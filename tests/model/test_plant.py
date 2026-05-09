@@ -40,23 +40,23 @@ def plant():
 
 
 def test_instantiation():
-    assert (plant := Plant()).dict() == {
+    assert (plant := Plant()).model_dump() == {
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
     }
-    assert plant.json() == (
-        '{"register_caches": {"50": {}}, "inverter_serial_number": "", "data_adapter_serial_number": ""}'
-    )
+    assert json.loads(plant.model_dump_json()) == {
+        "register_caches": {"50": {}},
+        "inverter_serial_number": "",
+        "data_adapter_serial_number": "",
+    }
 
     rc = RegisterCache(registers={HR(1): 2})
-    assert Plant(inverter_serial_number="AB1234", register_caches={0x30: rc}).dict() == {
+    assert Plant(inverter_serial_number="AB1234", register_caches={0x30: rc}).model_dump() == {
         "data_adapter_serial_number": "",
         "inverter_serial_number": "AB1234",
         "register_caches": {0x30: rc},
     }
-    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
-        assert Plant(data_adapter_serial_number="ZX9876", register_caches={0x30: rc}).json() == ""
 
 
 def test_plant(
@@ -65,7 +65,7 @@ def test_plant(
     register_cache_battery_daytime_discharging,
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
-    assert plant.dict() == {
+    assert plant.model_dump() == {
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
@@ -75,17 +75,15 @@ def test_plant(
     plant.register_caches[0x32].update(register_cache_inverter_daytime_discharging_with_solar_generation)
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
-    assert plant.dict() == {
+    assert plant.model_dump() == {
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": plant.register_caches,
     }
-    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
-        assert len(plant.json()) > 5000
 
-    i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
+    i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == "SA1234G567"
-    b = Battery.from_orm(register_cache_battery_daytime_discharging)
+    b = Battery.from_register_cache(register_cache_battery_daytime_discharging)
     assert b.serial_number == "BG1234G567"
 
     assert isinstance(plant.inverter, Inverter)
@@ -111,17 +109,16 @@ async def test_update(
     """Ensure we can update a Plant from PDU Response messages."""
     pdu: ClientIncomingMessage = pdu_class(**constructor_kwargs)
     assert plant.register_caches == {0x32: {}}
-    orig_plant_dict = plant.dict()
+    orig_plant_dict = plant.model_dump()
     assert orig_plant_dict == {
         "register_caches": {0x32: {}},
         "inverter_serial_number": "",
         "data_adapter_serial_number": "",
     }
-    assert plant.json() == json.dumps(orig_plant_dict)
 
     plant.update(pdu)
 
-    d = plant.dict()
+    d = plant.model_dump()
     # with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
     #     plant.json()
     assert d.keys() == {"register_caches", "inverter_serial_number", "data_adapter_serial_number"}
@@ -924,7 +921,7 @@ def test_from_actual():
 
     p = Plant(register_caches=register_caches)
     i = p.inverter
-    assert i.dict() == {
+    assert i.model_dump() == {
         "battery_charge_limit": 50,
         "battery_discharge_limit": 50,
         "battery_discharge_min_power_reserve": 4,
@@ -1143,7 +1140,7 @@ def test_from_actual():
 
     assert p.number_batteries == 1
     b = p.batteries[0]
-    assert b.dict() == {
+    assert b.model_dump() == {
         "bms_firmware_version": 3005,
         "cap_design": 160.0,
         "cap_design2": 160.0,

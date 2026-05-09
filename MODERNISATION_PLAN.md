@@ -45,40 +45,24 @@ The `getting-ready-for-1.0` branch contains a large refactoring that has been do
 
 ---
 
-## Phase 3 — Pydantic v2 migration
+## Phase 3 — Pydantic v2 migration ✅ DONE
 
 **Problem:** The model layer uses Pydantic v1 APIs removed in v2, and pydantic v1 is incompatible with Python 3.14.
 
-Specific v1 APIs in use:
-- `pydantic.utils.GetterDict` — removed
-- `BaseConfig` with `orm_mode`, `allow_mutation`, `frozen` — replaced by `ConfigDict`
-- `create_model(..., __config__=...)` — API changed
-- `Model.from_orm(register_cache)` — renamed to `Model.model_validate(..., from_attributes=True)`
+**Completed changes:**
+- `model/register.py`: Removed `GetterDict` base from `RegisterGetter`; rewrote as standalone class with explicit `__init__`, `build()`, and `get()` methods; added `Optional` wrapping in `to_fields()`; fixed `infer_return_type` to use `get_type_hints()` for Python 3.14 PEP 749 compatibility; added string annotations `-> "bool"` and `-> "Optional[datetime]"` on `Converter` methods to avoid class-scope name shadowing in lazy annotation evaluation
+- `model/__init__.py`: Replaced `@dataclass` on `TimeSlot` with a plain class implementing `__init__`, `__eq__`, `__repr__`, and `__get_pydantic_core_schema__` — pydantic v2 ignores `__get_pydantic_core_schema__` on `@dataclass` types, so this was required to preserve `TimeSlot` instances in `model_dump()`
+- `model/inverter.py`: Replaced `InverterConfig(BaseConfig)` + v1 `create_model`; now uses `__config__=ConfigDict(frozen=True, use_enum_values=True)`; added `from_register_cache()` classmethod
+- `model/battery.py`: Same pattern as inverter
+- `model/plant.py`: Replaced inner `class Config` with `model_config = ConfigDict(frozen=False, use_enum_values=True, arbitrary_types_allowed=True)`; replaced `__init__` override with `model_post_init`; replaced `from_orm()` with `from_register_cache()`
+- `tests/model/test_device.py`: Full rewrite — removed `BaseConfig`/`FooConfig`, updated `create_model`, updated all `from_orm` → `model_validate(getter.build())`, `.dict()` → `.model_dump()`, `.json()` → `json.loads(.model_dump_json())`, `.schema()` → `.model_json_schema()`, test_getter assertions updated for `Optional[X]` return types
+- `tests/model/test_battery.py`, `test_inverter.py`, `test_plant.py`: Updated all `from_orm` → `from_register_cache`, `.dict()` → `.model_dump()`, `.json()` → `.model_dump_json()`
 
-**Approach:**
+**Key Python 3.14 findings:**
+- PEP 749 (accepted for 3.14) causes lazy annotation evaluation in class scope. Methods named after builtins (`Converter.bool`, `Converter.datetime`) have their `->` return annotations resolved to themselves rather than the builtin at access time. Fix: use string literals `-> "bool"` and `-> "Optional[datetime]"`.
+- Pydantic v2 ignores `__get_pydantic_core_schema__` on stdlib `@dataclass` types; must use a plain class instead.
 
-The `RegisterGetter` (a `GetterDict` subclass) resolves field values from a `RegisterCache` by walking the `REGISTER_LUT`. Since `GetterDict` is gone in v2, replace the ORM protocol entirely with an explicit classmethod:
-
-```python
-# Before (v1)
-Inverter.from_orm(register_cache)
-
-# After (v2)
-InverterRegisterGetter.build(register_cache)  # returns Inverter instance
-```
-
-`build()` iterates `REGISTER_LUT`, calls the same pre/post conversion logic, produces a plain `dict`, and passes it to `Inverter.model_validate(values)`.
-
-**File-by-file changes:**
-- `givenergy_modbus/model/register.py`: remove `GetterDict` import and `RegisterGetter` base; rewrite `RegisterGetter` as a standalone class with a `build(cache) -> dict` method; remove `RegisterEncoder` (unused)
-- `givenergy_modbus/model/inverter.py`: replace `InverterConfig(BaseConfig)` + `create_model` with a plain `class Inverter(BaseModel)` with `model_config = ConfigDict(frozen=True)`; add `from_register_cache` classmethod
-- `givenergy_modbus/model/battery.py`: same pattern as inverter
-- `givenergy_modbus/model/__init__.py`: replace `class Config` inner class with `model_config = ConfigDict(...)`; remove v1 `allow_mutation`/`frozen` usage
-- `givenergy_modbus/model/plant.py`: replace `from_orm` calls with `from_register_cache`; update `Config` inner class
-- `tests/model/test_device.py`: update to use new API
-- All other test files: update any `from_orm` calls
-
-**Risk:** High. This is the most invasive change. The test suite for inverter/plant is extensive (`test_inverter.py`: 684 lines, `test_plant.py`: 1191 lines) and will act as a good regression guard. Also unblocks running any tests on Python 3.14.
+**Result:** All 182 tests pass. `ruff check` clean.
 
 ---
 

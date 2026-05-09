@@ -1,7 +1,8 @@
+import json
 from enum import Enum
 from typing import Callable, Optional
 
-from pydantic import BaseConfig, create_model
+from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as DT
@@ -90,16 +91,11 @@ class FooRegisterGetter(RegisterGetter):
     }
 
 
-class FooConfig(BaseConfig):
-    orm_mode = True
-    getter_dict = FooRegisterGetter
-
-
 Foo = create_model(
     "Foo",
-    __config__=FooConfig,
+    __config__=ConfigDict(),
     **FooRegisterGetter.to_fields(),
-    computed_field=(int, None),
+    computed_field=(Optional[int], None),
 )  # type: ignore[call-overload]
 
 
@@ -112,32 +108,32 @@ def test_foo():
 
 def test_getter():
     assert FooRegisterGetter.to_fields() == {
-        "device_type_code": (str, None),
-        "model": (Model, None),
-        "module": (str, None),
-        "num_mppt": (int, None),
-        "num_phases": (int, None),
-        "enable_ammeter": (bool, None),
+        "device_type_code": (Optional[str], None),
+        "model": (Optional[Model], None),
+        "module": (Optional[str], None),
+        "num_mppt": (Optional[int], None),
+        "num_phases": (Optional[int], None),
+        "enable_ammeter": (Optional[bool], None),
         "serial_number": (Optional[str], None),
-        "status": (FooStatus, None),
+        "status": (Optional[FooStatus], None),
     }
 
 
 def test_device():
-    assert Foo.schema()["properties"] == {
-        "computed_field": {"title": "Computed Field", "type": "integer"},
-        "device_type_code": {"title": "Device Type Code", "type": "string"},
-        "model": {"$ref": "#/definitions/Model"},
-        "enable_ammeter": {"title": "Enable Ammeter", "type": "boolean"},
-        "module": {"title": "Module", "type": "string"},
-        "serial_number": {"title": "Serial Number", "type": "string"},
-        "status": {"$ref": "#/definitions/FooStatus"},
-        "num_mppt": {"title": "Num Mppt", "type": "integer"},
-        "num_phases": {"title": "Num Phases", "type": "integer"},
+    assert set(Foo.model_json_schema()["properties"]) == {
+        "computed_field",
+        "device_type_code",
+        "model",
+        "enable_ammeter",
+        "module",
+        "serial_number",
+        "status",
+        "num_mppt",
+        "num_phases",
     }
 
-    d = Foo.from_orm(REGISTERS)
-    assert d.dict() == {
+    d = Foo.model_validate(FooRegisterGetter(REGISTERS).build())
+    assert d.model_dump() == {
         "computed_field": None,
         "device_type_code": "2001",
         "model": Model.BAT,
@@ -148,43 +144,61 @@ def test_device():
         "serial_number": "SA1234G567",
         "status": FooStatus.WAITING,
     }
-    assert d.json() == (
-        '{"device_type_code": "2001", "model": "2", "module": "00030832", "num_mppt": '
-        '2, "num_phases": 1, "enable_ammeter": true, "serial_number": "SA1234G567", '
-        '"status": 0, "computed_field": null}'
-    )
-    assert d.validate(d.dict())
+    assert json.loads(d.model_dump_json()) == {
+        "device_type_code": "2001",
+        "model": "2",
+        "module": "00030832",
+        "num_mppt": 2,
+        "num_phases": 1,
+        "enable_ammeter": True,
+        "serial_number": "SA1234G567",
+        "status": 0,
+        "computed_field": None,
+    }
+    assert Foo.model_validate(d.model_dump())
 
-    assert d.schema()["properties"] == {
-        "computed_field": {"title": "Computed Field", "type": "integer"},
-        "device_type_code": {"title": "Device Type Code", "type": "string"},
-        "model": {"$ref": "#/definitions/Model"},
-        "enable_ammeter": {"title": "Enable Ammeter", "type": "boolean"},
-        "module": {"title": "Module", "type": "string"},
-        "num_mppt": {"title": "Num Mppt", "type": "integer"},
-        "num_phases": {"title": "Num Phases", "type": "integer"},
-        "serial_number": {"title": "Serial Number", "type": "string"},
-        "status": {"$ref": "#/definitions/FooStatus"},
+    assert set(Foo.model_json_schema()["properties"]) == {
+        "computed_field",
+        "device_type_code",
+        "model",
+        "enable_ammeter",
+        "module",
+        "num_mppt",
+        "num_phases",
+        "serial_number",
+        "status",
     }
 
-    assert str(Foo.from_orm({})) == (
-        "device_type_code=None model=None module=None num_mppt=None num_phases=None enable_ammeter=None "
-        "serial_number=None status=None computed_field=None"
-    )
-    assert str(Foo()) == (
-        "device_type_code=None model=None module=None num_mppt=None num_phases=None enable_ammeter=None "
-        "serial_number=None status=None computed_field=None"
-    )
+    empty = Foo.model_validate(FooRegisterGetter({}).build())
+    assert empty.model_dump() == {
+        "device_type_code": None,
+        "model": None,
+        "module": None,
+        "num_mppt": None,
+        "num_phases": None,
+        "enable_ammeter": None,
+        "serial_number": None,
+        "status": None,
+        "computed_field": None,
+    }
+    assert Foo().model_dump() == empty.model_dump()
 
-    assert Foo().json() == (
-        '{"device_type_code": null, "model": null, "module": null, "num_mppt": null, "num_phases": null, '
-        '"enable_ammeter": null, "serial_number": null, "status": null, "computed_field": null}'
-    )
+    assert json.loads(Foo().model_dump_json()) == {
+        "device_type_code": None,
+        "model": None,
+        "module": None,
+        "num_mppt": None,
+        "num_phases": None,
+        "enable_ammeter": None,
+        "serial_number": None,
+        "status": None,
+        "computed_field": None,
+    }
 
 
 def test_validators():
-    f = Foo.from_orm({HR(0): 8193})
-    assert f.dict() == {
+    f = Foo.model_validate(FooRegisterGetter({HR(0): 8193}).build())
+    assert f.model_dump() == {
         "computed_field": None,
         "device_type_code": "2001",
         "model": Model.BAT,
@@ -195,14 +209,20 @@ def test_validators():
         "serial_number": None,
         "status": None,
     }
-    assert f.json() == (
-        '{"device_type_code": "2001", "model": "2", "module": null, "num_mppt": null, '
-        '"num_phases": null, "enable_ammeter": null, "serial_number": null, "status": '
-        'null, "computed_field": null}'
-    )
+    assert json.loads(f.model_dump_json()) == {
+        "device_type_code": "2001",
+        "model": "2",
+        "module": None,
+        "num_mppt": None,
+        "num_phases": None,
+        "enable_ammeter": None,
+        "serial_number": None,
+        "status": None,
+        "computed_field": None,
+    }
 
     f = Foo(device_type_code="2001")
-    assert f.dict() == {
+    assert f.model_dump() == {
         "computed_field": None,
         "device_type_code": "2001",
         "model": None,
@@ -213,8 +233,14 @@ def test_validators():
         "serial_number": None,
         "status": None,
     }
-    assert f.json() == (
-        '{"device_type_code": "2001", "model": null, "module": null, "num_mppt": '
-        'null, "num_phases": null, "enable_ammeter": null, "serial_number": null, '
-        '"status": null, "computed_field": null}'
-    )
+    assert json.loads(f.model_dump_json()) == {
+        "device_type_code": "2001",
+        "model": None,
+        "module": None,
+        "num_mppt": None,
+        "num_phases": None,
+        "enable_ammeter": None,
+        "serial_number": None,
+        "status": None,
+        "computed_field": None,
+    }
