@@ -7,7 +7,8 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
-Cloud. It provides a custom asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
+Cloud. Inspired by and originally built on [pymodbus](https://pymodbus.readthedocs.io/), it now provides its own
+asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
 
 > ⚠️ This project makes no representations as to its completeness or correctness. You use it at your own risk — if your
 > inverter mysteriously explodes because you accidentally set the `BOOMTIME` register or you consume a MWh of
