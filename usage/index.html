@@ -378,6 +378,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#watching-for-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watching for updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serialisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serialisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -502,6 +552,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#basic-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#watching-for-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Watching for updates
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serialisation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Serialisation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -527,8 +627,129 @@
   <h1>Usage</h1>
 
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">&para;</a></h2>
-<p>To use GivEnergy Modbus in a project</p>
-<div class="highlight"><pre><span></span><code>import givenergy_modbus
+<p>The client is async — all network operations must run inside an <code>asyncio</code> event loop.
+Commands are plain functions in <code>givenergy_modbus.client.commands</code> that return lists of
+requests, which you send via <code>one_shot_command</code> or <code>execute</code>.</p>
+<h3 id="basic-example">Basic example<a class="headerlink" href="#basic-example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">commands</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSlot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model.inverter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+
+    <span class="c1"># Write configuration to the device</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot_1</span><span class="p">(</span><span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">)))</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_mode_dynamic</span><span class="p">())</span>
+
+    <span class="c1"># Read current state</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plant</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">plant</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">inverter_serial_number</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>           <span class="c1"># e.g. Model.HYBRID</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">enable_charge_target</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">charge_slot_1</span><span class="p">)</span>   <span class="c1"># TimeSlot instance</span>
+
+    <span class="k">if</span> <span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">serial_number</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">soc</span><span class="p">)</span>
+
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+<h3 id="watching-for-updates">Watching for updates<a class="headerlink" href="#watching-for-updates" title="Permanent link">&para;</a></h3>
+<p>Use <code>watch_plant</code> to keep the plant state refreshed in the background:</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_update</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SOC: </span><span class="si">{</span><span class="n">client</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">soc</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">watch_plant</span><span class="p">(</span><span class="n">handler</span><span class="o">=</span><span class="n">on_update</span><span class="p">,</span> <span class="n">refresh_period</span><span class="o">=</span><span class="mf">15.0</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="available-commands">Available commands<a class="headerlink" href="#available-commands" title="Permanent link">&para;</a></h3>
+<p>All commands live in <code>givenergy_modbus.client.commands</code> and return
+<code>list[TransparentRequest]</code> for passing to <code>one_shot_command</code> or <code>execute</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_charge_target(soc)</code></td>
+<td>Stop charging when SOC reaches <code>soc</code>%</td>
+</tr>
+<tr>
+<td><code>disable_charge_target()</code></td>
+<td>Remove SOC limit, target 100%</td>
+</tr>
+<tr>
+<td><code>set_enable_charge(enabled)</code></td>
+<td>Enable or disable charging</td>
+</tr>
+<tr>
+<td><code>set_enable_discharge(enabled)</code></td>
+<td>Enable or disable discharging</td>
+</tr>
+<tr>
+<td><code>set_charge_slot_1(timeslot)</code></td>
+<td>Set charge slot 1 start/end times</td>
+</tr>
+<tr>
+<td><code>set_charge_slot_2(timeslot)</code></td>
+<td>Set charge slot 2 start/end times</td>
+</tr>
+<tr>
+<td><code>set_discharge_slot_1(timeslot)</code></td>
+<td>Set discharge slot 1 start/end times</td>
+</tr>
+<tr>
+<td><code>set_discharge_slot_2(timeslot)</code></td>
+<td>Set discharge slot 2 start/end times</td>
+</tr>
+<tr>
+<td><code>set_mode_dynamic()</code></td>
+<td>Dynamic/Eco mode — maximise self-consumption</td>
+</tr>
+<tr>
+<td><code>set_mode_storage(...)</code></td>
+<td>Storage mode with configurable discharge slots</td>
+</tr>
+<tr>
+<td><code>set_battery_soc_reserve(val)</code></td>
+<td>Minimum SOC to maintain</td>
+</tr>
+<tr>
+<td><code>set_battery_charge_limit(val)</code></td>
+<td>Charge power limit (0–50%)</td>
+</tr>
+<tr>
+<td><code>set_battery_discharge_limit(val)</code></td>
+<td>Discharge power limit (0–50%)</td>
+</tr>
+<tr>
+<td><code>set_system_date_time(dt)</code></td>
+<td>Set inverter clock</td>
+</tr>
+<tr>
+<td><code>set_inverter_reboot()</code></td>
+<td>Restart the inverter</td>
+</tr>
+</tbody>
+</table>
+<h3 id="serialisation">Serialisation<a class="headerlink" href="#serialisation" title="Permanent link">&para;</a></h3>
+<p>All model objects are pydantic v2 models:</p>
+<div class="highlight"><pre><span></span><code><span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span>       <span class="c1"># dict</span>
+<span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span>  <span class="c1"># JSON string</span>
 </code></pre></div>
 
 
