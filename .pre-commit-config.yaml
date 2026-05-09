@@ -19,7 +19,6 @@ repos:
       - id: debug-statements
       - id: check-docstring-first
       - id: check-added-large-files
-      - id: double-quote-string-fixer
       - id: fix-byte-order-marker
       - id: fix-encoding-pragma
         args: [ --remove ]
@@ -42,89 +41,28 @@ repos:
       - id: rst-inline-touching-normal
       - id: text-unicode-replacement-char
 
-#  - repo: https://github.com/asottile/yesqa
-#    rev: v1.4.0
-#    hooks:
-#      - id: yesqa
-#        additional_dependencies: &flake8_deps
-#          - flake8-annotations
-#          - flake8-broken-line
-#          - flake8-bugbear
-#          - flake8-comprehensions
-#          - flake8-eradicate
-#          - flake8-no-pep420
-#          - flake8-quotes
-#          - flake8-simplify
-#          - flake8-tidy-imports
-#          - flake8-type-checking
-#          - flake8-typing-imports
-#          - flake8-use-fstring
-#          - pep8-naming
-
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.4.0
     hooks:
       - id: pyupgrade
-        args: [ --py39-plus ]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        name: "isort (python)"
-        types: [ python ]
-#        args: [ "--add-import", "from __future__ import annotations", "--filter-files" ]
-        args: [ "--filter-files" ]
-      - id: isort
-        name: "isort (pyi)"
-        types: [ pyi ]
-        args: [ --lines-after-imports, "-1" ]
+        args: [ --py313-plus ]
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.2.4
     hooks:
       - id: codespell
-#        args:
-#           - --skip="*.lock"
-#          - --quiet-level=2
-#        exclude_types: [csv, json]
 
   - repo: https://github.com/MarcoGorelli/absolufy-imports
     rev: v0.3.1
     hooks:
       - id: absolufy-imports
 
-  - repo: https://github.com/PyCQA/autoflake
-    rev: v2.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
     hooks:
-    - id: autoflake
-      args:
-        - --in-place
-        - --remove-unused-variables
-        - --remove-all-unused-imports
-        - --expand-star-imports
-
-  - repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v2.0.2
-    hooks:
-    - id: autopep8
-
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-      - id: black
-        args:
-          - --quiet
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-docstrings
-          - pydocstyle
-          - flake8-typing-imports
-        # files: ^((givenergy_modbus|tests)/.+)?[^/]+\.py$
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.3.0
@@ -143,14 +81,9 @@ repos:
           - --quiet
           - --format=custom
           - --configfile=.bandit.yaml
-        # files: ^((givenergy_modbus|tests)/.+)?[^/]+\.py$
 
   - repo: https://github.com/python-poetry/poetry
     rev: 1.4.2
     hooks:
       - id: poetry-check
-#        verbose: true
       - id: poetry-lock
-#        verbose: true
-#      - id: poetry-export
-#        args: [ "-f", "requirements.txt", "-o", "requirements.txt" ]

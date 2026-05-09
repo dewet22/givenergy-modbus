@@ -11,7 +11,7 @@ _logger = logging.getLogger(__name__)
 PduProcessedCallback = Callable[[Optional[BasePDU], bytes], None]
 DataProcessedCallback = Callable[[Optional[BasePDU], bytes], None]
 
-HEADER_START_MARKER: bytes = bytes.fromhex('59590001')
+HEADER_START_MARKER: bytes = bytes.fromhex("59590001")
 
 
 class Framer(ABC):
@@ -76,8 +76,8 @@ class Framer(ABC):
       step count, but it is unclear how a response CRC is calculated or should be verified.
     """
 
-    _buffer: bytes = b''
-    pdu_class: 'Type[BasePDU]'
+    _buffer: bytes = b""
+    pdu_class: "Type[BasePDU]"
 
     async def decode(self, data: bytes) -> AsyncIterator[Union[BasePDU, ExceptionBase]]:
         """Receive incoming network data and attempt to decode frames into messages.
@@ -102,36 +102,36 @@ class Framer(ABC):
             # ensure the head of the buffer starts with a valid MBAP header
             frame_start_offset = self._buffer.find(HEADER_START_MARKER)
             if frame_start_offset < 0:
-                _logger.info('No frame header found, await more data')
+                _logger.info("No frame header found, await more data")
                 break
             elif frame_start_offset > 0:
                 # The next candidate frame header is not at the start of the buffer: skip forward to that position
                 _logger.warning(
-                    f'Candidate frame found {frame_start_offset} bytes into buffer, '
-                    f'discarding leading garbage: 0x{self._buffer[:frame_start_offset].hex()}'
+                    f"Candidate frame found {frame_start_offset} bytes into buffer, "
+                    f"discarding leading garbage: 0x{self._buffer[:frame_start_offset].hex()}"
                 )
                 self._buffer = self._buffer[frame_start_offset:]
                 continue
 
-            _logger.debug(f'Found next frame: 0x{self._buffer[:8].hex()}..., buffer_len={len(self._buffer)}')
+            _logger.debug(f"Found next frame: 0x{self._buffer[:8].hex()}..., buffer_len={len(self._buffer)}")
 
             # check that the current frame isn't invalid / weirdly truncated
             next_frame_start_offset = self._buffer.find(HEADER_START_MARKER, 1)
             if 0 < next_frame_start_offset < 18:
                 _logger.error(
-                    'Next frame start found implausibly near, current frame likely corrupt/invalid. '
-                    f'Skipping forward {next_frame_start_offset}b. '
-                    f'Buffer={len(self._buffer)}b: 0x{self._buffer.hex()}'
+                    "Next frame start found implausibly near, current frame likely corrupt/invalid. "
+                    f"Skipping forward {next_frame_start_offset}b. "
+                    f"Buffer={len(self._buffer)}b: 0x{self._buffer.hex()}"
                 )
                 self._buffer = self._buffer[next_frame_start_offset:]
                 continue
 
             # sanity check the rest of the MBAP header
-            hdr_len, u_id, f_id = int.from_bytes(self._buffer[4:6], byteorder='big'), self._buffer[6], self._buffer[7]
+            hdr_len, u_id, f_id = int.from_bytes(self._buffer[4:6], byteorder="big"), self._buffer[6], self._buffer[7]
             if hdr_len > 300 or u_id not in (0, 1) or f_id not in (1, 2):
                 _logger.warning(
-                    f'Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), '
-                    f'discarding candidate frame and resuming search'
+                    f"Unexpected header values found (len={hdr_len:04x}, u_id={u_id:02x}, f_id={f_id:02x}), "
+                    f"discarding candidate frame and resuming search"
                 )
                 self._buffer = self._buffer[4:]
                 continue
@@ -140,7 +140,7 @@ class Framer(ABC):
             frame_len = 6 + hdr_len
             if len(self._buffer) < frame_len:
                 _logger.debug(
-                    f'Buffer ({len(self._buffer)}b) insufficient for frame of length {frame_len}b, await more data'
+                    f"Buffer ({len(self._buffer)}b) insufficient for frame of length {frame_len}b, await more data"
                 )
                 break
 

@@ -21,21 +21,21 @@ class RegisterCache(DefaultDict[Register, int]):
         return json.dumps(self)
 
     @classmethod
-    def from_json(cls, data: str) -> 'RegisterCache':
+    def from_json(cls, data: str) -> "RegisterCache":
         """Instantiate a RegisterCache from its JSON form."""
 
         def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
-            lookup = {'HR': HR, 'IR': IR}
+            lookup = {"HR": HR, "IR": IR}
             ret = {}
             for k, v in object_dict.items():
-                if k.find('(') > 0:
-                    reg, idx = k.split('(', maxsplit=1)
+                if k.find("(") > 0:
+                    reg, idx = k.split("(", maxsplit=1)
                     idx = idx[:-1]
-                elif k.find(':') > 0:
-                    reg, idx = k.split(':', maxsplit=1)
+                elif k.find(":") > 0:
+                    reg, idx = k.split(":", maxsplit=1)
                 else:
-                    raise ValueError(f'{k} is not a valid Register type')
+                    raise ValueError(f"{k} is not a valid Register type")
                 try:
                     ret[lookup[reg](int(idx))] = v
                 except ValueError:
@@ -49,18 +49,18 @@ class RegisterCache(DefaultDict[Register, int]):
 
     def to_string(self, *registers: Register) -> str:
         """Combine registers into an ASCII string."""
-        s = ''.join([self[r].to_bytes(2, byteorder='big').decode(encoding='latin1') for r in registers])
-        return ''.join(filter(str.isalnum, s)).upper()
+        s = "".join([self[r].to_bytes(2, byteorder="big").decode(encoding="latin1") for r in registers])
+        return "".join(filter(str.isalnum, s)).upper()
 
     def to_hex_string(self, *registers: Register) -> str:
         """Render a register as a 2-byte hexadecimal value."""
-        values = [f'{self[r]:04x}' for r in registers]
+        values = [f"{self[r]:04x}" for r in registers]
         if all(values):
-            ret = ''
+            ret = ""
             for r in registers:
-                ret += f'{self[r]:04x}'
-            return ''.join(filter(str.isalnum, ret)).upper()
-        return ''
+                ret += f"{self[r]:04x}"
+            return "".join(filter(str.isalnum, ret)).upper()
+        return ""
 
     def to_duint8(self, *registers: Register) -> tuple[int, ...]:
         """Split registers into two unsigned 8-bit integers each."""
@@ -74,7 +74,7 @@ class RegisterCache(DefaultDict[Register, int]):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
         return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
 
-    def to_timeslot(self, start: Register, end: Register) -> 'TimeSlot':
+    def to_timeslot(self, start: Register, end: Register) -> "TimeSlot":
         """Combine two registers into a time slot."""
         from givenergy_modbus.model import TimeSlot
 

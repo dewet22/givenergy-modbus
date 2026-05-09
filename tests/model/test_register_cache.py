@@ -36,13 +36,13 @@ def test_to_string():
             IR(100): 1,
         }
     )
-    assert '' == rc.to_string()
-    assert 'SA1234G567' == rc.to_string(IR(13), HR(14), IR(15), HR(16), IR(17))
-    assert 'SA' == rc.to_string(IR(13))
-    assert '' == rc.to_string(IR(22))
-    assert '' == rc.to_string(IR(99))
-    assert '' == rc.to_string(IR(99), IR(100))
-    assert '' == rc.to_string(IR(100))
+    assert "" == rc.to_string()
+    assert "SA1234G567" == rc.to_string(IR(13), HR(14), IR(15), HR(16), IR(17))
+    assert "SA" == rc.to_string(IR(13))
+    assert "" == rc.to_string(IR(22))
+    assert "" == rc.to_string(IR(99))
+    assert "" == rc.to_string(IR(99), IR(100))
+    assert "" == rc.to_string(IR(100))
 
 
 def test_to_hex_string():
@@ -55,10 +55,10 @@ def test_to_hex_string():
             IR(17): 0x210F,
         }
     )
-    assert '' == rc.to_hex_string()
-    assert 'ABCD345698767890210F' == rc.to_hex_string(IR(13), HR(14), IR(15), HR(16), IR(17))
-    assert '3456' == rc.to_hex_string(HR(14))
-    assert '0000' == rc.to_hex_string(IR(22))
+    assert "" == rc.to_hex_string()
+    assert "ABCD345698767890210F" == rc.to_hex_string(IR(13), HR(14), IR(15), HR(16), IR(17))
+    assert "3456" == rc.to_hex_string(HR(14))
+    assert "0000" == rc.to_hex_string(IR(22))
 
 
 def test_to_duint8():

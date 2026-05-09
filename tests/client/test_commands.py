@@ -20,11 +20,11 @@ async def test_configure_charge_target():
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
-    with pytest.raises(ValueError, match=r'Charge Target SOC \(0\) must be in \[4-100\]\%'):
+    with pytest.raises(ValueError, match=r"Charge Target SOC \(0\) must be in \[4-100\]\%"):
         commands.set_charge_target(0)
-    with pytest.raises(ValueError, match=r'Charge Target SOC \(1\) must be in \[4-100\]\%'):
+    with pytest.raises(ValueError, match=r"Charge Target SOC \(1\) must be in \[4-100\]\%"):
         commands.set_charge_target(1)
-    with pytest.raises(ValueError, match=r'Charge Target SOC \(101\) must be in \[4-100\]\%'):
+    with pytest.raises(ValueError, match=r"Charge Target SOC \(101\) must be in \[4-100\]\%"):
         commands.set_charge_target(101)
 
     assert commands.disable_charge_target() == [
@@ -61,25 +61,25 @@ async def test_set_battery_discharge_mode():
     ]
 
 
-@pytest.mark.parametrize('action', ('charge', 'discharge'))
-@pytest.mark.parametrize('slot', (1, 2))
-@pytest.mark.parametrize('hour1', (0, 23))
-@pytest.mark.parametrize('min1', (0, 59))
-@pytest.mark.parametrize('hour2', (0, 23))
-@pytest.mark.parametrize('min2', (0, 59))
+@pytest.mark.parametrize("action", ("charge", "discharge"))
+@pytest.mark.parametrize("slot", (1, 2))
+@pytest.mark.parametrize("hour1", (0, 23))
+@pytest.mark.parametrize("min1", (0, 59))
+@pytest.mark.parametrize("hour2", (0, 23))
+@pytest.mark.parametrize("min2", (0, 59))
 async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, hour2: int, min2: int):
     """Ensure we can set charge time slots correctly."""
     # test set and reset functions for the relevant {action} and {slot}
-    messages = getattr(commands, f'set_{action}_slot_{slot}')(TimeSlot.from_components(hour1, min1, hour2, min2))
+    messages = getattr(commands, f"set_{action}_slot_{slot}")(TimeSlot.from_components(hour1, min1, hour2, min2))
 
-    hr_start = getattr(RegisterMap, f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_START')
-    hr_end = getattr(RegisterMap, f'{"CHARGE" if action == "charge" else "DISCHARGE"}_SLOT_{slot}_END')
+    hr_start = getattr(RegisterMap, f"{'CHARGE' if action == 'charge' else 'DISCHARGE'}_SLOT_{slot}_START")
+    hr_end = getattr(RegisterMap, f"{'CHARGE' if action == 'charge' else 'DISCHARGE'}_SLOT_{slot}_END")
     assert messages == [
         WriteHoldingRegisterRequest(hr_start, 100 * hour1 + min1),
         WriteHoldingRegisterRequest(hr_end, 100 * hour2 + min2),
     ]
 
-    assert getattr(commands, f'reset_{action}_slot_{slot}')() == [
+    assert getattr(commands, f"reset_{action}_slot_{slot}")() == [
         WriteHoldingRegisterRequest(hr_start, 0),
         WriteHoldingRegisterRequest(hr_end, 0),
     ]
@@ -145,9 +145,9 @@ async def test_set_charge_and_discharge_limits():
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 50, slave_address=0x11),
     ]
 
-    with pytest.raises(ValueError, match=r'Specified Charge Limit \(51%\) is not in \[0-50\]\%'):
+    with pytest.raises(ValueError, match=r"Specified Charge Limit \(51%\) is not in \[0-50\]\%"):
         commands.set_battery_charge_limit(51)
-    with pytest.raises(ValueError, match=r'Specified Discharge Limit \(51%\) is not in \[0-50\]\%'):
+    with pytest.raises(ValueError, match=r"Specified Discharge Limit \(51%\) is not in \[0-50\]\%"):
         commands.set_battery_discharge_limit(51)
 
 

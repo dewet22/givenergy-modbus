@@ -41,22 +41,22 @@ def plant():
 
 def test_instantiation():
     assert (plant := Plant()).dict() == {
-        'data_adapter_serial_number': '',
-        'inverter_serial_number': '',
-        'register_caches': {0x32: {}},
+        "data_adapter_serial_number": "",
+        "inverter_serial_number": "",
+        "register_caches": {0x32: {}},
     }
     assert plant.json() == (
         '{"register_caches": {"50": {}}, "inverter_serial_number": "", "data_adapter_serial_number": ""}'
     )
 
     rc = RegisterCache(registers={HR(1): 2})
-    assert Plant(inverter_serial_number='AB1234', register_caches={0x30: rc}).dict() == {
-        'data_adapter_serial_number': '',
-        'inverter_serial_number': 'AB1234',
-        'register_caches': {0x30: rc},
+    assert Plant(inverter_serial_number="AB1234", register_caches={0x30: rc}).dict() == {
+        "data_adapter_serial_number": "",
+        "inverter_serial_number": "AB1234",
+        "register_caches": {0x30: rc},
     }
-    with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
-        assert Plant(data_adapter_serial_number='ZX9876', register_caches={0x30: rc}).json() == ''
+    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
+        assert Plant(data_adapter_serial_number="ZX9876", register_caches={0x30: rc}).json() == ""
 
 
 def test_plant(
@@ -66,9 +66,9 @@ def test_plant(
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
     assert plant.dict() == {
-        'data_adapter_serial_number': '',
-        'inverter_serial_number': '',
-        'register_caches': {0x32: {}},
+        "data_adapter_serial_number": "",
+        "inverter_serial_number": "",
+        "register_caches": {0x32: {}},
     }
 
     # inject register values
@@ -76,17 +76,17 @@ def test_plant(
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
     assert plant.dict() == {
-        'data_adapter_serial_number': '',
-        'inverter_serial_number': '',
-        'register_caches': plant.register_caches,
+        "data_adapter_serial_number": "",
+        "inverter_serial_number": "",
+        "register_caches": plant.register_caches,
     }
-    with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
+    with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
         assert len(plant.json()) > 5000
 
     i = Inverter.from_orm(register_cache_inverter_daytime_discharging_with_solar_generation)
-    assert i.serial_number == 'SA1234G567'
+    assert i.serial_number == "SA1234G567"
     b = Battery.from_orm(register_cache_battery_daytime_discharging)
-    assert b.serial_number == 'BG1234G567'
+    assert b.serial_number == "BG1234G567"
 
     assert isinstance(plant.inverter, Inverter)
     assert plant.inverter == i
@@ -113,9 +113,9 @@ async def test_update(
     assert plant.register_caches == {0x32: {}}
     orig_plant_dict = plant.dict()
     assert orig_plant_dict == {
-        'register_caches': {0x32: {}},
-        'inverter_serial_number': '',
-        'data_adapter_serial_number': '',
+        "register_caches": {0x32: {}},
+        "inverter_serial_number": "",
+        "data_adapter_serial_number": "",
     }
     assert plant.json() == json.dumps(orig_plant_dict)
 
@@ -124,12 +124,12 @@ async def test_update(
     d = plant.dict()
     # with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
     #     plant.json()
-    assert d.keys() == {'register_caches', 'inverter_serial_number', 'data_adapter_serial_number'}
+    assert d.keys() == {"register_caches", "inverter_serial_number", "data_adapter_serial_number"}
 
     expected_caches_keys = {0x32}
     if isinstance(pdu, (ReadRegistersResponse, WriteHoldingRegisterResponse)):
         expected_caches_keys.add(pdu.slave_address)
-    assert set(d['register_caches'].keys()) == expected_caches_keys
+    assert set(d["register_caches"].keys()) == expected_caches_keys
 
     if isinstance(pdu, ReadRegistersResponse):
         assert d != orig_plant_dict
@@ -142,13 +142,13 @@ async def test_update(
         assert plant.register_caches[pdu.slave_address] == {
             register_type(k): v for k, v in enumerate(pdu.register_values, start=pdu.base_register)
         }
-        assert d['register_caches'][pdu.slave_address] == {
+        assert d["register_caches"][pdu.slave_address] == {
             register_type(k): v for k, v in enumerate(pdu.register_values, start=pdu.base_register)
         }
         # assert len(j) > 1400
     elif isinstance(pdu, WriteHoldingRegisterResponse):
         assert d != orig_plant_dict
-        assert d['register_caches'][pdu.slave_address] == {HR(pdu.register): pdu.value}
+        assert d["register_caches"][pdu.slave_address] == {HR(pdu.register): pdu.value}
         # assert j == ''.join(
         #     [
         #         '{"register_caches": {"',
@@ -161,7 +161,7 @@ async def test_update(
         #     ]
         # )
     elif isinstance(pdu, (NullResponse, HeartbeatRequest)):
-        assert d['register_caches'] == {k: {} for k in expected_caches_keys}
+        assert d["register_caches"] == {k: {} for k in expected_caches_keys}
         # assert j == json.dumps(
         #     {
         #         'register_caches': {k: {} for k in expected_caches_keys},
@@ -925,47 +925,47 @@ def test_from_actual():
     p = Plant(register_caches=register_caches)
     i = p.inverter
     assert i.dict() == {
-        'battery_charge_limit': 50,
-        'battery_discharge_limit': 50,
-        'battery_discharge_min_power_reserve': 4,
-        'battery_high_voltage_protection_limit': 58.5,
-        'battery_low_force_charge_time': 6,
-        'battery_low_voltage_protection_limit': 43.2,
+        "battery_charge_limit": 50,
+        "battery_discharge_limit": 50,
+        "battery_discharge_min_power_reserve": 4,
+        "battery_high_voltage_protection_limit": 58.5,
+        "battery_low_force_charge_time": 6,
+        "battery_low_voltage_protection_limit": 43.2,
         # 'battery_percent': 57,
-        'battery_soc_reserve': 4,
+        "battery_soc_reserve": 4,
         # 'battery_voltage_adjust': 0,
-        'charge_slot_1': TimeSlot.from_repr(30, 430),
-        'charge_soc_stop_1': 0,
-        'charge_soc_stop_2': 0,
+        "charge_slot_1": TimeSlot.from_repr(30, 430),
+        "charge_soc_stop_1": 0,
+        "charge_soc_stop_2": 0,
         # 'charge_status': 5,
-        'charge_target_soc': 100,
+        "charge_target_soc": 100,
         # 'charger_warning_code': 0,
-        'cmd_bms_flash_update': None,
+        "cmd_bms_flash_update": None,
         # 'dci_1_i': 0.0,
         # 'dci_1_time': 0,
         # 'dci_2_i': 0.0,
         # 'dci_2_time': 0,
         # 'dci_fault_value': 0.0,
-        'debug_inverter': 0,
-        'discharge_soc_stop_1': 0,
-        'discharge_soc_stop_2': 0,
+        "debug_inverter": 0,
+        "discharge_soc_stop_1": 0,
+        "discharge_soc_stop_2": 0,
         # 'e_battery_charge_day': 5.7,
         # 'e_battery_charge_day_2': 5.7,
-        'e_battery_charge_today': None,
+        "e_battery_charge_today": None,
         # 'e_battery_charge_total': 946.6,
-        'e_battery_charge_total2': None,
+        "e_battery_charge_total2": None,
         # 'e_battery_discharge_day': 5.9,
         # 'e_battery_discharge_day_2': 5.9,
-        'e_battery_discharge_today': None,
+        "e_battery_discharge_today": None,
         # 'e_battery_discharge_total': 906.1,
-        'e_battery_discharge_total2': None,
+        "e_battery_discharge_total2": None,
         # 'e_battery_throughput_total': 1852.7,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 12.3,
         # 'e_grid_in_total': 1978.3,
         # 'e_grid_out_day': 2.4,
         # 'e_grid_out_total': 163.9,
-        'e_inverter_export_total': None,
+        "e_inverter_export_total": None,
         # 'e_inverter_in_day': 4.3,
         # 'e_inverter_in_total': 721.1,
         # 'e_inverter_out_day': 38.0,
@@ -975,18 +975,18 @@ def test_from_actual():
         # 'e_pv_day': 35.4,
         # 'e_pv_total': 1192.9,
         # 'e_solar_diverter': 0.0,
-        'enable_above_6kw_system': False,
-        'enable_battery_cable_impedance_alarm': False,
-        'enable_battery_on_pv_or_grid': False,
-        'enable_bms_read': True,
-        'enable_buzzer': False,
-        'enable_charge': True,
-        'enable_frequency_derating': True,
-        'enable_g100_limit_switch': False,
-        'enable_low_voltage_fault_ride_through': False,
-        'enable_spi': True,
-        'enable_standard_self_consumption_logic': None,
-        'enable_ups_mode': False,
+        "enable_above_6kw_system": False,
+        "enable_battery_cable_impedance_alarm": False,
+        "enable_battery_on_pv_or_grid": False,
+        "enable_bms_read": True,
+        "enable_buzzer": False,
+        "enable_charge": True,
+        "enable_frequency_derating": True,
+        "enable_g100_limit_switch": False,
+        "enable_low_voltage_fault_ride_through": False,
+        "enable_spi": True,
+        "enable_standard_self_consumption_logic": None,
+        "enable_ups_mode": False,
         # 'f_ac1': 50.06,
         # 'f_ac_fault_value': 0.0,
         # 'f_ac_high_c': 52.0,
@@ -1001,7 +1001,7 @@ def test_from_actual():
         # 'f_ac_low_out_time': 24,
         # 'f_eps_backup': 50.04,
         # 'fault_code': 0,
-        'frequency_load_limit_rate': 24,
+        "frequency_load_limit_rate": 24,
         # 'gfci_1_i': 0.0,
         # 'gfci_1_time': 0,
         # 'gfci_2_i': 0.0,
@@ -1023,7 +1023,7 @@ def test_from_actual():
         # 'iso1': 0,
         # 'iso2': 0,
         # 'iso_fault_value': 0.0,
-        'enable_local_command_test': False,
+        "enable_local_command_test": False,
         # 'p_battery': 1075,
         # 'p_eps_backup': 0,
         # 'p_grid_apparent': 654,
@@ -1043,20 +1043,20 @@ def test_from_actual():
         # 'pf_limit_lp3_pf': 1.0,
         # 'pf_limit_lp4_lp': 255,
         # 'pf_limit_lp4_pf': 1.0,
-        'power_factor_function_model': PowerFactorFunctionModel.PF_1,
+        "power_factor_function_model": PowerFactorFunctionModel.PF_1,
         # 'pv1_power_adjust': 0,
         # 'pv1_voltage_adjust': 0,
         # 'pv2_power_adjust': 0,
         # 'pv2_voltage_adjust': 0,
-        'pv_power_setting': None,
-        'v_pv_start': 150.0,
+        "pv_power_setting": None,
+        "v_pv_start": 150.0,
         # 'real_v_f_value': 0.0,
         # 'remote_bms_restart': False,
-        'restart_delay_time': 30,
+        "restart_delay_time": 30,
         # 'safety_time_limit': 0.0,
         # 'safety_v_f_limit': 0.0,
-        'start_countdown_timer': 30,
-        'start_system_auto_test': False,
+        "start_countdown_timer": 30,
+        "start_system_auto_test": False,
         # 'system_mode': 1,
         # 'temp_battery': 19.0,
         # 'temp_charger': 31.8,
@@ -1065,11 +1065,11 @@ def test_from_actual():
         # 'test_treat_time': 0,
         # 'test_treat_value': 0.0,
         # 'test_value': 0.0,
-        'threephase_abc': 0,
-        'threephase_balance_1': 0,
-        'threephase_balance_2': 0,
-        'threephase_balance_3': 0,
-        'threephase_balance_mode': 0,
+        "threephase_abc": 0,
+        "threephase_balance_1": 0,
+        "threephase_balance_2": 0,
+        "threephase_balance_3": 0,
+        "threephase_balance_mode": 0,
         # 'user_code': 7,
         # 'v_10_min_protection': 274.0,
         # 'v_ac1': 240.4,
@@ -1093,99 +1093,99 @@ def test_from_actual():
         # 'v_pv2': 17.8,
         # 'v_pv_fault_value': 0.0,
         # 'work_time_total': 2754,
-        'active_power_rate': 100,
-        'arm_firmware_version': 449,
-        'battery_calibration_stage': BatteryCalibrationStage.OFF,
-        'battery_capacity': 160,
-        'battery_power_mode': BatteryPowerMode.SELF_CONSUMPTION,
-        'battery_type': BatteryType.LITHIUM,
-        'bms_firmware_version': 101,
-        'charge_slot_2': TimeSlot.from_repr(0, 4),
-        'charge_soc': 0,
-        'device_type_code': '2001',
-        'discharge_slot_1': TimeSlot.from_repr(0, 0),
-        'discharge_slot_2': TimeSlot.from_repr(0, 0),
-        'discharge_soc': 0,
-        'dsp_firmware_version': 449,
-        'enable_60hz_freq_mode': False,
-        'enable_ammeter': True,
-        'enable_auto_judge_battery_type': True,
-        'enable_charge_target': False,
-        'enable_discharge': False,
-        'enable_drm_rj45_port': True,
-        'enable_inverter': True,
-        'enable_inverter_auto_restart': False,
-        'enable_reversed_115_meter': False,
-        'enable_reversed_418_meter': False,
-        'enable_reversed_ct_clamp': True,
-        'firmware_version': 'D0.449-A0.449',
-        'first_battery_bms_firmware_version': 3005,
-        'first_battery_serial_number': 'BG1234G567',
-        'grid_port_max_power_output': 6000,
-        'meter_type': MeterType.EM115,
-        'modbus_address': 0x11,
-        'modbus_version': '1.40',
-        'model': Model.HYBRID,
-        'module': '00030832',
-        'num_mppt': 2,
-        'num_phases': 1,
-        'power_factor': 0,
-        'reactive_power_rate': 0,
-        'select_arm_chip': False,
-        'serial_number': 'SA1234G567',
-        'status': Status.NORMAL,
-        'system_time': datetime(2022, 4, 27, 23, 29, 18),
-        'usb_device_inserted': InverterUsbDevice.DISK,
-        'user_code': 7,
-        'variable_address': 32768,
-        'variable_value': 30235,
+        "active_power_rate": 100,
+        "arm_firmware_version": 449,
+        "battery_calibration_stage": BatteryCalibrationStage.OFF,
+        "battery_capacity": 160,
+        "battery_power_mode": BatteryPowerMode.SELF_CONSUMPTION,
+        "battery_type": BatteryType.LITHIUM,
+        "bms_firmware_version": 101,
+        "charge_slot_2": TimeSlot.from_repr(0, 4),
+        "charge_soc": 0,
+        "device_type_code": "2001",
+        "discharge_slot_1": TimeSlot.from_repr(0, 0),
+        "discharge_slot_2": TimeSlot.from_repr(0, 0),
+        "discharge_soc": 0,
+        "dsp_firmware_version": 449,
+        "enable_60hz_freq_mode": False,
+        "enable_ammeter": True,
+        "enable_auto_judge_battery_type": True,
+        "enable_charge_target": False,
+        "enable_discharge": False,
+        "enable_drm_rj45_port": True,
+        "enable_inverter": True,
+        "enable_inverter_auto_restart": False,
+        "enable_reversed_115_meter": False,
+        "enable_reversed_418_meter": False,
+        "enable_reversed_ct_clamp": True,
+        "firmware_version": "D0.449-A0.449",
+        "first_battery_bms_firmware_version": 3005,
+        "first_battery_serial_number": "BG1234G567",
+        "grid_port_max_power_output": 6000,
+        "meter_type": MeterType.EM115,
+        "modbus_address": 0x11,
+        "modbus_version": "1.40",
+        "model": Model.HYBRID,
+        "module": "00030832",
+        "num_mppt": 2,
+        "num_phases": 1,
+        "power_factor": 0,
+        "reactive_power_rate": 0,
+        "select_arm_chip": False,
+        "serial_number": "SA1234G567",
+        "status": Status.NORMAL,
+        "system_time": datetime(2022, 4, 27, 23, 29, 18),
+        "usb_device_inserted": InverterUsbDevice.DISK,
+        "user_code": 7,
+        "variable_address": 32768,
+        "variable_value": 30235,
     }
 
     assert p.number_batteries == 1
     b = p.batteries[0]
     assert b.dict() == {
-        'bms_firmware_version': 3005,
-        'cap_design': 160.0,
-        'cap_design2': 160.0,
-        'cap_calibrated': 192.02,
-        'num_cells': 16,
-        'num_cycles': 116,
-        'cap_remaining': 110.71,
-        'serial_number': 'BG1234G567',
-        'soc': 58,
-        'status_1': 0,
-        'status_2': 0,
-        'status_3': 14,
-        'status_4': 16,
-        'status_5': 1,
-        'status_6': 0,
-        'status_7': 0,
-        't_bms_mosfet': 25.5,
-        't_cells_01_04': 19.9,
-        't_cells_05_08': 18.6,
-        't_cells_09_12': 19.1,
-        't_cells_13_16': 18.2,
-        't_max': 19.9,
-        't_min': 18.6,
-        'usb_device_inserted': BatteryUsbDevice.DISK,
-        'v_cell_01': 3.221,
-        'v_cell_02': 3.224,
-        'v_cell_03': 3.219,
-        'v_cell_04': 3.217,
-        'v_cell_05': 3.217,
-        'v_cell_06': 3.216,
-        'v_cell_07': 3.221,
-        'v_cell_08': 3.217,
-        'v_cell_09': 3.225,
-        'v_cell_10': 3.222,
-        'v_cell_11': 3.221,
-        'v_cell_12': 3.221,
-        'v_cell_13': 3.222,
-        'v_cell_14': 3.229,
-        'v_cell_15': 3.227,
-        'v_cell_16': 3.225,
-        'v_cells_sum': 51.555,
-        'v_out': 51.548,
-        'warning_1': 0,
-        'warning_2': 0,
+        "bms_firmware_version": 3005,
+        "cap_design": 160.0,
+        "cap_design2": 160.0,
+        "cap_calibrated": 192.02,
+        "num_cells": 16,
+        "num_cycles": 116,
+        "cap_remaining": 110.71,
+        "serial_number": "BG1234G567",
+        "soc": 58,
+        "status_1": 0,
+        "status_2": 0,
+        "status_3": 14,
+        "status_4": 16,
+        "status_5": 1,
+        "status_6": 0,
+        "status_7": 0,
+        "t_bms_mosfet": 25.5,
+        "t_cells_01_04": 19.9,
+        "t_cells_05_08": 18.6,
+        "t_cells_09_12": 19.1,
+        "t_cells_13_16": 18.2,
+        "t_max": 19.9,
+        "t_min": 18.6,
+        "usb_device_inserted": BatteryUsbDevice.DISK,
+        "v_cell_01": 3.221,
+        "v_cell_02": 3.224,
+        "v_cell_03": 3.219,
+        "v_cell_04": 3.217,
+        "v_cell_05": 3.217,
+        "v_cell_06": 3.216,
+        "v_cell_07": 3.221,
+        "v_cell_08": 3.217,
+        "v_cell_09": 3.225,
+        "v_cell_10": 3.222,
+        "v_cell_11": 3.221,
+        "v_cell_12": 3.221,
+        "v_cell_13": 3.222,
+        "v_cell_14": 3.229,
+        "v_cell_15": 3.227,
+        "v_cell_16": 3.225,
+        "v_cells_sum": 51.555,
+        "v_out": 51.548,
+        "warning_1": 0,
+        "warning_2": 0,
     }

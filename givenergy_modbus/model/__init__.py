@@ -1,4 +1,5 @@
 """Data model."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,11 +52,11 @@ class TimeSlot:
     def from_repr(cls, start: int | str, end: int | str):
         """Converts from human-readable/ASCII representation: '0034' -> 00:34."""
         if isinstance(start, int):
-            start = f'{start:04d}'
+            start = f"{start:04d}"
         start_hour = int(start[:-2])
         start_minute = int(start[-2:])
         if isinstance(end, int):
-            end = f'{end:04d}'
+            end = f"{end:04d}"
         end_hour = int(end[:-2])
         end_minute = int(end[-2:])
         return cls(time(start_hour, start_minute), time(end_hour, end_minute))

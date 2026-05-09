@@ -16,16 +16,16 @@ class ReadRegistersMessage(TransparentMessage, ABC):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.base_register = kwargs.get('base_register', 0)
-        self.register_count = kwargs.get('register_count', 0)
+        self.base_register = kwargs.get("base_register", 0)
+        self.register_count = kwargs.get("register_count", 0)
 
     @classmethod
-    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> 'ReadRegistersMessage':
-        attrs['base_register'] = decoder.decode_16bit_uint()
-        attrs['register_count'] = decoder.decode_16bit_uint()
-        if issubclass(cls, ReadRegistersResponse) and not attrs.get('error', False):
-            attrs['register_values'] = [decoder.decode_16bit_uint() for _ in range(attrs['register_count'])]
-        attrs['check'] = decoder.decode_16bit_uint()
+    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> "ReadRegistersMessage":
+        attrs["base_register"] = decoder.decode_16bit_uint()
+        attrs["register_count"] = decoder.decode_16bit_uint()
+        if issubclass(cls, ReadRegistersResponse) and not attrs.get("error", False):
+            attrs["register_values"] = [decoder.decode_16bit_uint() for _ in range(attrs["register_count"])]
+        attrs["check"] = decoder.decode_16bit_uint()
         return cls(**attrs)
 
     def _extra_shape_hash_keys(self) -> tuple:
@@ -33,14 +33,14 @@ class ReadRegistersMessage(TransparentMessage, ABC):
 
     def _ensure_registers_spec_correct(self):
         if self.base_register is None:
-            raise InvalidPduState('Base register must be set', self)
+            raise InvalidPduState("Base register must be set", self)
         if self.base_register < 0 or 0xFFFF < self.base_register:
-            raise InvalidPduState('Base register must be an unsigned 16-bit int', self)
+            raise InvalidPduState("Base register must be an unsigned 16-bit int", self)
 
         if self.register_count is None:
-            raise InvalidPduState('Register count must be set', self)
+            raise InvalidPduState("Register count must be set", self)
         if self.register_count == 0 and not self.error:
-            _logger.warning(f'Register count of 0 does not make sense: {self}')
+            _logger.warning(f"Register count of 0 does not make sense: {self}")
 
 
 class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
@@ -65,9 +65,9 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self._ensure_registers_spec_correct()
 
         if self.register_count != 1 and self.base_register % 60 != 0:
-            _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
+            _logger.warning(f"Base register {self.base_register} not aligned on 60-byte boundary")
         if self.register_count <= 0 or 60 < self.register_count:
-            raise InvalidPduState('Register count must be in (0,60]', self)
+            raise InvalidPduState("Register count must be in (0,60]", self)
 
 
 class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
@@ -75,7 +75,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.register_values: list[int] = kwargs.get('register_values', [])
+        self.register_values: list[int] = kwargs.get("register_values", [])
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -93,13 +93,13 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
             #     _logger.warning(f'Base register {self.base_register} not aligned on 60-byte boundary')
             if self.register_count != len(self.register_values):
                 raise InvalidPduState(
-                    f'register_count={self.register_count} but len(register_values)={len(self.register_values)}.',
+                    f"register_count={self.register_count} but len(register_values)={len(self.register_values)}.",
                     self,
                 )
 
         expected_padding = 0x12 if self.error else 0x8A
         if self.padding != expected_padding:
-            _logger.debug(f'Expected padding 0x{expected_padding:02x}, found 0x{self.padding:02x} instead: {self}')
+            _logger.debug(f"Expected padding 0x{expected_padding:02x}, found 0x{self.padding:02x} instead: {self}")
 
         # FIXME how to test crc
         # crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
@@ -138,8 +138,8 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
             ).count(True)
             if count_known_bad_register_values > 5:
                 _logger.debug(
-                    f'Ignoring known suspicious update with {count_known_bad_register_values} known bad '
-                    f'register values {self}: {self.to_dict()}'
+                    f"Ignoring known suspicious update with {count_known_bad_register_values} known bad "
+                    f"register values {self}: {self.to_dict()}"
                 )
                 return True
         return False
