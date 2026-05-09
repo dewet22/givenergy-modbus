@@ -12,22 +12,22 @@ jobs:
   release:
     strategy:
       matrix:
-        python-version: ['3.11']
+        python-version: ['3.13']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Get version from tag
         id: tag_name
-        run: echo ::set-output name=current_version::${GITHUB_REF#refs/tags/v}
+        run: echo "current_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Poetry
         run: pipx install poetry
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: poetry

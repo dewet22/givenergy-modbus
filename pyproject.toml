@@ -130,7 +130,7 @@ commands =
 
 [testenv:format]
 commands =
-    poetry run ruff format givenergy_modbus tests
+    poetry run ruff format --check givenergy_modbus tests
 
 [testenv:lint]
 commands =
