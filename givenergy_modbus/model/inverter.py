@@ -8,13 +8,20 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 
 
 class Model(StrEnum):
-    """Known models of inverters."""
+    """Known models of inverters.
+
+    Values are the first digit of the device type code reported by the inverter.
+    Note: Gen 2 inverters with an 'EA' serial prefix were previously mapped via a
+    serial-prefix lookup table (removed in 1.0). Their device type code first digit
+    is unknown — if EA-prefix units report a code not listed here, _missing_ will
+    raise ValueError. A field report from a Gen 2 owner is needed to add support.
+    """
 
     HYBRID = "2"
     AC = "3"
     HYBRID_3PH = "4"
-    AC_3PH = "6"
     EMS = "5"
+    AC_3PH = "6"
     GATEWAY = "7"
     ALL_IN_ONE = "8"
 
