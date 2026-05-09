@@ -4,12 +4,12 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-_logger = logging.getLogger(__name__)
-
 from givenergy_modbus.model.register import HR, IR, Register
 
 if TYPE_CHECKING:
     from givenergy_modbus.model import TimeSlot
+
+_logger = logging.getLogger(__name__)
 
 
 class RegisterCache(defaultdict[Register, int]):

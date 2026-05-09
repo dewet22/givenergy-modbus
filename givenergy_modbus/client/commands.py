@@ -1,6 +1,7 @@
 """High-level methods for interacting with a remote system."""
 
 from datetime import datetime
+
 from typing_extensions import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
