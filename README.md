@@ -1,9 +1,11 @@
 # GivEnergy Modbus
 
-[![pypi](https://img.shields.io/pypi/v/givenergy-modbus.svg)](https://pypi.org/project/givenergy-modbus/)
-[![python](https://img.shields.io/pypi/pyversions/givenergy-modbus.svg)](https://pypi.org/project/givenergy-modbus/)
-[![Build Status](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml/badge.svg)](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml)
-[![codecov](https://codecov.io/gh/dewet22/givenergy-modbus/branch/main/graphs/badge.svg)](https://codecov.io/github/dewet22/givenergy-modbus)
+[![pypi](https://img.shields.io/pypi/v/givenergy-modbus)](https://pypi.org/project/givenergy-modbus/)
+[![python](https://img.shields.io/pypi/pyversions/givenergy-modbus)](https://pypi.org/project/givenergy-modbus/)
+[![GitHub branch status](https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main)](https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain)
+[![release workflow](https://img.shields.io/github/actions/workflow/status/dewet22/givenergy-modbus/release.yml)](https://github.com/dewet22/givenergy-modbus/actions/workflows/release.yml)
+[![codecov](https://img.shields.io/codecov/c/github/dewet22/givenergy-modbus)](https://codecov.io/github/dewet22/givenergy-modbus)
+![PyPI - License](https://img.shields.io/pypi/l/givenergy-modbus)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
