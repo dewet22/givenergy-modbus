@@ -807,7 +807,7 @@ articles, and such.</p>
 <ol>
 <li>Fork the <code>givenergy-modbus</code> repo on GitHub.</li>
 <li>
-<p>Clone your fork locally</p>
+<p>Clone your fork locally:</p>
 <div class="highlight"><pre><span></span><code>$ git clone git@github.com:your_name_here/givenergy-modbus.git
 </code></pre></div>
 </li>
@@ -817,6 +817,11 @@ articles, and such.</p>
 <li>
 <p>Install dependencies and start your virtualenv:</p>
 <div class="highlight"><pre><span></span><code>$ poetry install --with test --with docs --with dev
+</code></pre></div>
+</li>
+<li>
+<p>Install git hooks with <a href="https://prek.j178.dev">prek</a>:</p>
+<div class="highlight"><pre><span></span><code>$ prek install
 </code></pre></div>
 </li>
 <li>
@@ -849,7 +854,7 @@ $ git push origin name-of-your-bugfix-or-feature
 <li>If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.</li>
-<li>The pull request should work for Python 3.9 through 3.11. Check
+<li>The pull request should work for Python 3.13 and above. Check
    https://github.com/dewet22/givenergy-modbus/actions
    and make sure that the tests pass for all supported Python versions.</li>
 </ol>
@@ -858,14 +863,12 @@ $ git push origin name-of-your-bugfix-or-feature
 </code></pre></div>
 <p>To run a subset of tests.</p>
 <h3 id="deploying">Deploying<a class="headerlink" href="#deploying" title="Permanent link">&para;</a></h3>
-<p>A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in CHANGELOG.md).
-Then run:</p>
-<div class="highlight"><pre><span></span><code>$ poetry run bump2version patch # possible: major / minor / patch
-$ git push
-$ git push --tags
+<p>A reminder for the maintainers on how to deploy. Make sure all your changes are
+committed (including an entry in CHANGELOG.md). Then tag the release and push:</p>
+<div class="highlight"><pre><span></span><code>$ git tag v&lt;version&gt;
+$ git push origin v&lt;version&gt;
 </code></pre></div>
-<p>GitHub Actions will then deploy to PyPI if tests pass.</p>
+<p>GitHub Actions will deploy to PyPI and publish the docs automatically.</p>
 
 
 

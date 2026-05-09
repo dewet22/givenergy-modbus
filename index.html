@@ -603,14 +603,16 @@
   <h1>Home</h1>
 
 <h2 id="givenergy-modbus">GivEnergy Modbus<a class="headerlink" href="#givenergy-modbus" title="Permanent link">&para;</a></h2>
-<p><a href="https://pypi.org/project/givenergy-modbus/"><img alt="pypi" src="https://img.shields.io/pypi/v/givenergy-modbus.svg" /></a>
-<a href="https://pypi.org/project/givenergy-modbus/"><img alt="python" src="https://img.shields.io/pypi/pyversions/givenergy-modbus.svg" /></a>
-<a href="https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml"><img alt="Build Status" src="https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml/badge.svg" /></a>
-<a href="https://codecov.io/github/dewet22/givenergy-modbus"><img alt="codecov" src="https://codecov.io/gh/dewet22/givenergy-modbus/branch/main/graphs/badge.svg" /></a>
-<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg" /></a></p>
+<p><a href="https://pypi.org/project/givenergy-modbus/"><img alt="pypi" src="https://img.shields.io/pypi/v/givenergy-modbus" /></a>
+<a href="https://pypi.org/project/givenergy-modbus/"><img alt="python" src="https://img.shields.io/pypi/pyversions/givenergy-modbus" /></a>
+<a href="https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain"><img alt="GitHub branch status" src="https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main" /></a>
+<a href="https://github.com/dewet22/givenergy-modbus/actions/workflows/release.yml"><img alt="release workflow" src="https://img.shields.io/github/actions/workflow/status/dewet22/givenergy-modbus/release.yml" /></a>
+<a href="https://codecov.io/github/dewet22/givenergy-modbus"><img alt="codecov" src="https://img.shields.io/codecov/c/github/dewet22/givenergy-modbus" /></a>
+<img alt="PyPI - License" src="https://img.shields.io/pypi/l/givenergy-modbus" />
+<a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" /></a></p>
 <p>A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
-Cloud. This extends <a href="https://pymodbus.readthedocs.io/">pymodbus</a> by providing a custom framer, decoder and PDUs that are
-specific to the GivEnergy implementation.</p>
+Cloud. Inspired by and originally built on <a href="https://pymodbus.readthedocs.io/">pymodbus</a>, it now provides its own
+asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.</p>
 <blockquote>
 <p>⚠️ This project makes no representations as to its completeness or correctness. You use it at your own risk — if your
 inverter mysteriously explodes because you accidentally set the <code>BOOMTIME</code> register or you consume a MWh of
@@ -629,46 +631,52 @@ yourself in the foot, so as long as you use the client and its exposed methods, 
 <li>Writing data to holding registers that are deemed to be safe to set configuration on the inverter</li>
 </ul>
 <h3 id="how-to-use">How to use<a class="headerlink" href="#how-to-use" title="Permanent link">&para;</a></h3>
-<p>Use the provided client to interact with the device over the network, and register caches to build combined state of a
-device:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">GivEnergyClient</span>
+<p>The client is async. Use it inside an <code>asyncio</code> event loop; commands are plain functions that return request lists
+which you send via <code>one_shot_command</code> or <code>execute</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">commands</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSlot</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model.inverter</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model.plant</span><span class="w"> </span><span class="kn">import</span> <span class="n">Plant</span>
 
-<span class="n">client</span> <span class="o">=</span> <span class="n">GivEnergyClient</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 
-<span class="c1"># change configuration on the device:</span>
-<span class="n">client</span><span class="o">.</span><span class="n">enable_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">)</span>
-<span class="c1"># set a charging slot from 00:30 to 04:30</span>
-<span class="n">client</span><span class="o">.</span><span class="n">set_charge_slot_1</span><span class="p">((</span><span class="n">datetime</span><span class="o">.</span><span class="n">time</span><span class="p">(</span><span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">30</span><span class="p">),</span> <span class="n">datetime</span><span class="o">.</span><span class="n">time</span><span class="p">(</span><span class="n">hour</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">30</span><span class="p">)))</span>
-<span class="c1"># set the inverter to charge when there&#39;s excess, and discharge otherwise. it will also respect charging slots.</span>
-<span class="n">client</span><span class="o">.</span><span class="n">set_mode_dynamic</span><span class="p">()</span>
+    <span class="c1"># change configuration on the device:</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+    <span class="c1"># set a charging slot from 00:30 to 04:30</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot_1</span><span class="p">(</span><span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">)))</span>
+    <span class="c1"># set the inverter to charge from excess solar and discharge to meet demand</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_mode_dynamic</span><span class="p">())</span>
 
-<span class="n">p</span> <span class="o">=</span> <span class="n">Plant</span><span class="p">(</span><span class="n">number_batteries</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">inverter_serial_number</span> <span class="o">==</span> <span class="s1">&#39;SA1234G567&#39;</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">inverter_model</span> <span class="o">==</span> <span class="n">Model</span><span class="o">.</span><span class="n">Hybrid</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">v_pv1</span> <span class="o">==</span> <span class="mf">1.4</span>  <span class="c1"># V</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">e_battery_discharge_day</span> <span class="o">==</span> <span class="mf">8.1</span>  <span class="c1"># kWh</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">enable_charge_target</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">dict</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span>
-    <span class="s1">&#39;inverter_serial_number&#39;</span><span class="p">:</span> <span class="s1">&#39;SA1234G567&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;device_type_code&#39;</span><span class="p">:</span> <span class="s1">&#39;3001&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;charge_slot_1&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">time</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">datetime</span><span class="o">.</span><span class="n">time</span><span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
-    <span class="s1">&#39;f_ac1&#39;</span><span class="p">:</span> <span class="mf">49.98</span><span class="p">,</span>
-    <span class="o">...</span>
-<span class="p">}</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;{&quot;inverter_serial_number&quot;: &quot;SA1234G567&quot;, &quot;device_type_code&quot;: &quot;3001&quot;, ...&#39;</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plant</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">plant</span>
 
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">serial_number</span> <span class="o">==</span> <span class="s1">&#39;BG1234G567&#39;</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">v_battery_cell_01</span> <span class="o">==</span> <span class="mf">3.117</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dict</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span>
-    <span class="s1">&#39;bms_firmware_version&#39;</span><span class="p">:</span> <span class="mi">3005</span><span class="p">,</span>
-    <span class="s1">&#39;design_capacity&#39;</span><span class="p">:</span> <span class="mf">160.0</span><span class="p">,</span>
-    <span class="o">...</span>
-<span class="p">}</span>
-<span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">json</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;{&quot;battery_serial_number&quot;: &quot;BG1234G567&quot;, &quot;v_battery_cell_01&quot;: 3.117, ...&#39;</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter_serial_number</span> <span class="o">==</span> <span class="s1">&#39;SA1234G567&#39;</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model</span> <span class="o">==</span> <span class="n">Model</span><span class="o">.</span><span class="n">HYBRID</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">enable_charge_target</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">charge_slot_1</span> <span class="o">==</span> <span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span>
+        <span class="s1">&#39;serial_number&#39;</span><span class="p">:</span> <span class="s1">&#39;SA1234G567&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;device_type_code&#39;</span><span class="p">:</span> <span class="s1">&#39;3001&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;charge_slot_1&#39;</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;{&quot;serial_number&quot;: &quot;SA1234G567&quot;, &quot;device_type_code&quot;: &quot;3001&quot;, ...&#39;</span>
+
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">serial_number</span> <span class="o">==</span> <span class="s1">&#39;BG1234G567&#39;</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">v_cell_01</span> <span class="o">==</span> <span class="mf">3.117</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_dump</span><span class="p">()</span> <span class="o">==</span> <span class="p">{</span>
+        <span class="s1">&#39;bms_firmware_version&#39;</span><span class="p">:</span> <span class="mi">3005</span><span class="p">,</span>
+        <span class="s1">&#39;cap_design&#39;</span><span class="p">:</span> <span class="mf">160.0</span><span class="p">,</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+    <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">model_dump_json</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;{&quot;serial_number&quot;: &quot;BG1234G567&quot;, &quot;v_cell_01&quot;: 3.117, ...&#39;</span>
+
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
 <h3 id="credits">Credits<a class="headerlink" href="#credits" title="Permanent link">&para;</a></h3>
 <p>This package was created with <a href="https://github.com/audreyr/cookiecutter">Cookiecutter</a> and
