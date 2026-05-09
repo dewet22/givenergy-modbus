@@ -49,7 +49,7 @@ If you are proposing a feature:
 Ready to contribute? Here's how to set up `givenergy-modbus` for local development.
 
 1. Fork the `givenergy-modbus` repo on GitHub.
-2. Clone your fork locally
+2. Clone your fork locally:
 
     ```
     $ git clone git@github.com:your_name_here/givenergy-modbus.git
@@ -62,7 +62,13 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
     $ poetry install --with test --with docs --with dev
     ```
 
-5. Create a branch for local development:
+5. Install git hooks with [prek](https://prek.j178.dev):
+
+    ```
+    $ prek install
+    ```
+
+6. Create a branch for local development:
 
     ```
     $ git checkout -b name-of-your-bugfix-or-feature
@@ -70,14 +76,14 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
 
     Now you can make your changes locally.
 
-6. When you're done making changes, check that your changes pass the
+7. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
 
     ```
     $ poetry run tox
     ```
 
-7. Commit your changes and push your branch to GitHub:
+8. Commit your changes and push your branch to GitHub:
 
     ```
     $ git add .
@@ -85,7 +91,7 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
     $ git push origin name-of-your-bugfix-or-feature
     ```
 
-8. Submit a pull request through the GitHub website.
+9. Submit a pull request through the GitHub website.
 
 ## Pull Request Guidelines
 
@@ -95,7 +101,7 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.
-3. The pull request should work for Python 3.9 through 3.11. Check
+3. The pull request should work for Python 3.13 and above. Check
    https://github.com/dewet22/givenergy-modbus/actions
    and make sure that the tests pass for all supported Python versions.
 
@@ -107,17 +113,14 @@ $ poetry run pytest tests/test_givenergy_modbus.py
 
 To run a subset of tests.
 
-
 ## Deploying
 
-A reminder for the maintainers on how to deploy.
-Make sure all your changes are committed (including an entry in CHANGELOG.md).
-Then run:
+A reminder for the maintainers on how to deploy. Make sure all your changes are
+committed (including an entry in CHANGELOG.md). Then tag the release and push:
 
 ```
-$ poetry run bump2version patch # possible: major / minor / patch
-$ git push
-$ git push --tags
+$ git tag v<version>
+$ git push origin v<version>
 ```
 
-GitHub Actions will then deploy to PyPI if tests pass.
+GitHub Actions will deploy to PyPI and publish the docs automatically.
