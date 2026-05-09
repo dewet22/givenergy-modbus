@@ -11,6 +11,7 @@ on:
 jobs:
   release:
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.13']
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
@@ -37,6 +38,7 @@ jobs:
           poetry install --no-root --sync --with=test --with=docs
 
       - name: Get Changelog Entry
+        if: runner.os == 'Linux'
         id: changelog_reader
         uses: mindsers/changelog-reader-action@v2
         with:
@@ -49,6 +51,7 @@ jobs:
           poetry build
 
       - name: Create GitHub release
+        if: runner.os == 'Linux'
         id: create_release
         uses: softprops/action-gh-release@v2
         env:
@@ -60,6 +63,7 @@ jobs:
           prerelease: false
 
       - name: publish to PyPI
+        if: runner.os == 'Linux'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
@@ -67,10 +71,12 @@ jobs:
           skip-existing: true
 
       - name: Build documentation
+        if: runner.os == 'Linux'
         run: |
           poetry run mkdocs build
 
       - name: Publish documentation
+        if: runner.os == 'Linux'
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
