@@ -1,4 +1,5 @@
-import arrow
+from datetime import datetime
+
 import pytest
 
 from givenergy_modbus.client import commands
@@ -153,7 +154,7 @@ async def test_set_charge_and_discharge_limits():
 
 async def test_set_system_time():
     """Ensure set_system_time emits the correct requests."""
-    assert commands.set_system_date_time(arrow.get(year=2022, month=11, day=23, hour=4, minute=34, second=59)) == [
+    assert commands.set_system_date_time(datetime(2022, 11, 23, 4, 34, 59)) == [
         WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_YEAR, 22, slave_address=0x11),
         WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MONTH, 11, slave_address=0x11),
         WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_DAY, 23, slave_address=0x11),
