@@ -4,11 +4,10 @@
 [![python](https://img.shields.io/pypi/pyversions/givenergy-modbus.svg)](https://pypi.org/project/givenergy-modbus/)
 [![Build Status](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml/badge.svg)](https://github.com/dewet22/givenergy-modbus/actions/workflows/dev.yml)
 [![codecov](https://codecov.io/gh/dewet22/givenergy-modbus/branch/main/graphs/badge.svg)](https://codecov.io/github/dewet22/givenergy-modbus)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
-Cloud. This extends [pymodbus](https://pymodbus.readthedocs.io/) by providing a custom framer, decoder and PDUs that are
-specific to the GivEnergy implementation.
+Cloud. It provides a custom asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
 
 > ⚠️ This project makes no representations as to its completeness or correctness. You use it at your own risk — if your
 > inverter mysteriously explodes because you accidentally set the `BOOMTIME` register or you consume a MWh of
@@ -27,48 +26,54 @@ specific to the GivEnergy implementation.
 
 ## How to use
 
-Use the provided client to interact with the device over the network, and register caches to build combined state of a
-device:
+The client is async. Use it inside an `asyncio` event loop; commands are plain functions that return request lists
+which you send via `one_shot_command` or `execute`:
 
 ```python
-import datetime
-from givenergy_modbus.client import GivEnergyClient
+import asyncio
+from givenergy_modbus.client.client import Client
+from givenergy_modbus.client import commands
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import Model
-from givenergy_modbus.model.plant import Plant
 
-client = GivEnergyClient(host="192.168.99.99")
+async def main():
+    client = Client(host="192.168.99.99", port=8899)
+    await client.connect()
 
-# change configuration on the device:
-client.enable_charge_target(80)
-# set a charging slot from 00:30 to 04:30
-client.set_charge_slot_1((datetime.time(hour=0, minute=30), datetime.time(hour=4, minute=30)))
-# set the inverter to charge when there's excess, and discharge otherwise. it will also respect charging slots.
-client.set_mode_dynamic()
+    # change configuration on the device:
+    await client.one_shot_command(commands.set_charge_target(80))
+    # set a charging slot from 00:30 to 04:30
+    await client.one_shot_command(commands.set_charge_slot_1(TimeSlot.from_components(0, 30, 4, 30)))
+    # set the inverter to charge from excess solar and discharge to meet demand
+    await client.one_shot_command(commands.set_mode_dynamic())
 
-p = Plant(number_batteries=1)
-client.refresh_plant(p, full_refresh=True)
-assert p.inverter.inverter_serial_number == 'SA1234G567'
-assert p.inverter.inverter_model == Model.Hybrid
-assert p.inverter.v_pv1 == 1.4  # V
-assert p.inverter.e_battery_discharge_day == 8.1  # kWh
-assert p.inverter.enable_charge_target
-assert p.inverter.dict() == {
-    'inverter_serial_number': 'SA1234G567',
-    'device_type_code': '3001',
-    'charge_slot_1': (datetime.time(0, 30), datetime.time(7, 30)),
-    'f_ac1': 49.98,
-    ...
-}
-assert p.inverter.json() == '{"inverter_serial_number": "SA1234G567", "device_type_code": "3001", ...'
+    await client.refresh_plant(full_refresh=True)
+    plant = client.plant
 
-assert p.batteries[0].serial_number == 'BG1234G567'
-assert p.batteries[0].v_battery_cell_01 == 3.117
-assert p.batteries[0].dict() == {
-    'bms_firmware_version': 3005,
-    'design_capacity': 160.0,
-    ...
-}
-assert p.batteries[0].json() == '{"battery_serial_number": "BG1234G567", "v_battery_cell_01": 3.117, ...'
+    assert plant.inverter_serial_number == 'SA1234G567'
+    assert plant.inverter.model == Model.HYBRID
+    assert plant.inverter.enable_charge_target
+    assert plant.inverter.charge_slot_1 == TimeSlot.from_components(0, 30, 4, 30)
+    assert plant.inverter.model_dump() == {
+        'serial_number': 'SA1234G567',
+        'device_type_code': '3001',
+        'charge_slot_1': TimeSlot.from_components(0, 30, 4, 30),
+        ...
+    }
+    assert plant.inverter.model_dump_json() == '{"serial_number": "SA1234G567", "device_type_code": "3001", ...'
+
+    assert plant.batteries[0].serial_number == 'BG1234G567'
+    assert plant.batteries[0].v_cell_01 == 3.117
+    assert plant.batteries[0].model_dump() == {
+        'bms_firmware_version': 3005,
+        'cap_design': 160.0,
+        ...
+    }
+    assert plant.batteries[0].model_dump_json() == '{"serial_number": "BG1234G567", "v_cell_01": 3.117, ...'
+
+    await client.close()
+
+asyncio.run(main())
 ```
 
 ## Credits
