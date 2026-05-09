@@ -59,6 +59,14 @@ Complete modernisation of the library to Python 3.13+, pydantic v2, and a new as
 - `ReadRegistersResponse` decoding now caps `register_count` at 60 before allocating the register values
   list, preventing buffer exhaustion from a crafted response with an oversized count field.
 
+### Notes
+
+Socket Security was run against the full dependency diff introduced by this PR. All flagged packages
+(`cryptography`, `urllib3`, `setuptools`) are dev/build-only transitive dependencies — none are present
+in the published package's runtime install. The vulnerability score drops on `cryptography` (39→40, −9)
+and `urllib3` (1.26→2.0) reflect pre-existing advisories in those packages' own histories, not regressions
+introduced here. The library's runtime surface remains: `pydantic`, `crccheck`, `typing_extensions`.
+
 ## [0.10.1] - 2022-03-03
 
 ### Fixed
