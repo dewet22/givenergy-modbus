@@ -2,7 +2,6 @@ site_name: GivEnergy Modbus
 site_url: https://dewet22.github.io/givenergy-modbus
 repo_url: https://github.com/dewet22/givenergy-modbus
 repo_name: dewet22/givenergy-modbus
-#strict: true
 nav:
   - Home: index.md
   - Installation: installation.md
@@ -13,24 +12,35 @@ nav:
 theme:
   name: material
   language: en
-  #logo: assets/logo.png
   palette:
-    scheme: preference
-    primary: indigo
-    accent: indigo
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
   features:
     - navigation.indexes
     - navigation.instant
     - navigation.tabs.sticky
 markdown_extensions:
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.critic
   - pymdownx.caret
   - pymdownx.mark
   - pymdownx.tilde
-  - pymdownx.tabbed
+  - pymdownx.tabbed:
+      alternate_style: true
   - attr_list
   - pymdownx.arithmatex:
       generic: true
@@ -43,28 +53,16 @@ markdown_extensions:
   - toc:
       baselevel: 2
       permalink: true
-      slugify: !!python/name:pymdownx.slugs.uslugify
   - meta
 plugins:
   - include-markdown
   - search:
       lang: en
-  - mkdocstrings:
-      watch:
-        - givenergy_modbus
+  - mkdocstrings
 extra:
   social:
-    - icon: fontawesome/brands/twitter
-      link: https://twitter.com/dewet
-      name: Tweet
     - icon: fontawesome/brands/github
       link: https://github.com/dewet22/givenergy-modbus
       name: Github
     - icon: material/email
       link: "mailto:givenergy-modbus@dewet.org"
-  # to enable disqus, uncomment the following and put your disqus id below
-  # disqus: disqus_id
-# uncomment the following and put your google tracking id below to enable GA
-#google_analytics:
-  #- UA-xxx
-  #- auto

@@ -1,10 +1,12 @@
 import logging
-from typing import Any, Dict, Optional, Type
+import struct
+from typing import Any, Optional
 
 import pytest
 
+from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
-from givenergy_modbus.model.register import HoldingRegister
+from givenergy_modbus.model.register import HR
 from givenergy_modbus.pdu import (
     BasePDU,
     ClientIncomingMessage,
@@ -25,86 +27,85 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
 from tests.conftest import ALL_MESSAGES, PduTestCaseSig
 
 
 def test_str():
     """Ensure human-friendly string representations."""
     # ABCs before main function definitions
-    assert '/BasePDU(' not in str(BasePDU())
-    assert '/Request(' not in str(ClientIncomingMessage())
-    assert '/Response(' not in str(ClientOutgoingMessage())
-    assert str(BasePDU()).startswith('<givenergy_modbus.pdu.base.BasePDU object at ')
-    assert str(ClientIncomingMessage()).startswith('<givenergy_modbus.pdu.base.ClientIncomingMessage object at ')
-    assert str(ClientIncomingMessage(foo=1)).startswith('<givenergy_modbus.pdu.base.ClientIncomingMessage object at ')
+    assert "/BasePDU(" not in str(BasePDU())
+    assert "/Request(" not in str(ClientIncomingMessage())
+    assert "/Response(" not in str(ClientOutgoingMessage())
+    assert str(BasePDU()).startswith("<givenergy_modbus.pdu.base.BasePDU object at ")
+    assert str(ClientIncomingMessage()).startswith("<givenergy_modbus.pdu.base.ClientIncomingMessage object at ")
+    assert str(ClientIncomingMessage(foo=1)).startswith("<givenergy_modbus.pdu.base.ClientIncomingMessage object at ")
 
     # __str__() gets defined at the main function ABC
     assert str(HeartbeatMessage(foo=3, bar=6)) == (
-        '1/HeartbeatMessage(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
+        "1/HeartbeatMessage(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
     )
-    assert str(HeartbeatMessage(data_adapter_serial_number='xxx', data_adapter_type=33)) == (
-        '1/HeartbeatMessage(data_adapter_serial_number=xxx data_adapter_type=33)'
+    assert str(HeartbeatMessage(data_adapter_serial_number="xxx", data_adapter_type=33)) == (
+        "1/HeartbeatMessage(data_adapter_serial_number=xxx data_adapter_type=33)"
     )
     assert str(HeartbeatRequest(foo=3, bar=6)) == (
-        '1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
+        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
     )
-    assert str(HeartbeatResponse(data_adapter_serial_number='xxx', data_adapter_type=33)) == (
-        '1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)'
+    assert str(HeartbeatResponse(data_adapter_serial_number="xxx", data_adapter_type=33)) == (
+        "1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)"
     )
 
-    assert str(TransparentMessage(foo=3, bar=6)) == '2:_/TransparentMessage(slave_address=0x32)'
-    assert str(TransparentRequest(foo=3, bar=6)) == '2:_/TransparentRequest(slave_address=0x32)'
-    assert str(TransparentRequest(inner_function_code=44)) == '2:_/TransparentRequest(slave_address=0x32)'
-    assert str(TransparentResponse(foo=3, bar=6)) == '2:_/TransparentResponse(slave_address=0x32)'
-    assert str(TransparentResponse(inner_function_code=44)) == '2:_/TransparentResponse(slave_address=0x32)'
+    assert str(TransparentMessage(foo=3, bar=6)) == "2:_/TransparentMessage(slave_address=0x32)"
+    assert str(TransparentRequest(foo=3, bar=6)) == "2:_/TransparentRequest(slave_address=0x32)"
+    assert str(TransparentRequest(inner_function_code=44)) == "2:_/TransparentRequest(slave_address=0x32)"
+    assert str(TransparentResponse(foo=3, bar=6)) == "2:_/TransparentResponse(slave_address=0x32)"
+    assert str(TransparentResponse(inner_function_code=44)) == "2:_/TransparentResponse(slave_address=0x32)"
 
     assert str(ReadRegistersMessage()) == (
-        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)'
+        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)"
     )
     assert str(ReadRegistersMessage(foo=1)) == (
-        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)'
+        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)"
     )
     assert str(ReadRegistersMessage(base_register=50)) == (
-        '2:_/ReadRegistersMessage(slave_address=0x32 base_register=50 register_count=0)'
+        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=50 register_count=0)"
     )
 
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        '2:_/ReadRegistersRequest(slave_address=0x32 base_register=3 register_count=6)'
+        "2:_/ReadRegistersRequest(slave_address=0x32 base_register=3 register_count=6)"
     )
-    assert str(NullResponse(foo=1)) == '2:0/NullResponse(slave_address=0x32 nulls=[0]*62)'
+    assert str(NullResponse(foo=1)) == "2:0/NullResponse(slave_address=0x32 nulls=[0]*62)"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=0 register_count=0)'
+        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=0 register_count=0)"
     )
 
-    with pytest.raises(InvalidPduState, match='Register must be set'):
+    with pytest.raises(TypeError, match="missing 2 required positional arguments: 'register' and 'value'"):
         WriteHoldingRegisterRequest(foo=1)
-    with pytest.raises(InvalidPduState, match='Register must be set'):
+    with pytest.raises(TypeError, match="missing 2 required positional arguments: 'register' and 'value'"):
         WriteHoldingRegisterResponse(foo=1)
     assert str(WriteHoldingRegisterResponse(register=18, value=7)) == (
-        '2:6/WriteHoldingRegisterResponse(HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 7/0x0007)'
+        "2:6/WriteHoldingRegisterResponse(18 -> 7/0x0007)"
     )
     assert str(WriteHoldingRegisterResponse(error=True, register=7, value=6)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(7)/ENABLE_AMMETER -> True/0x0006)'
+        "2:6/WriteHoldingRegisterResponse(ERROR 7 -> 6/0x0006)"
     )
-    assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number='SA1234G567', register=18, value=5)) == (
-        '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(18)/INVERTER_BATTERY_BMS_FIRMWARE_VERSION -> 5/0x0005)'
+    assert str(WriteHoldingRegisterResponse(error=True, inverter_serial_number="SA1234G567", register=18, value=5)) == (
+        "2:6/WriteHoldingRegisterResponse(ERROR 18 -> 5/0x0005)"
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
-        '1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
+        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
     )
     assert str(HeartbeatResponse(foo=1)) == (
-        '1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)'
+        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
     )
 
 
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_str_actual_messages(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -125,12 +126,12 @@ def test_class_equivalence():
 
 def test_cannot_change_function_code():
     """Disabuse any use of function_code in PDU constructors."""
-    assert not hasattr(ClientIncomingMessage, 'function_code')
-    assert not hasattr(ClientIncomingMessage, 'function_code')
-    assert not hasattr(ClientIncomingMessage, 'transparent_function_code')
-    assert not hasattr(ClientIncomingMessage(), 'function_code')
-    assert not hasattr(ClientIncomingMessage(), 'function_code')
-    assert not hasattr(ClientIncomingMessage(), 'transparent_function_code')
+    assert not hasattr(ClientIncomingMessage, "function_code")
+    assert not hasattr(ClientIncomingMessage, "function_code")
+    assert not hasattr(ClientIncomingMessage, "transparent_function_code")
+    assert not hasattr(ClientIncomingMessage(), "function_code")
+    assert not hasattr(ClientIncomingMessage(), "function_code")
+    assert not hasattr(ClientIncomingMessage(), "transparent_function_code")
 
     assert ReadHoldingRegistersRequest(error=True).transparent_function_code == 3
 
@@ -145,8 +146,8 @@ def test_cannot_change_function_code():
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_encoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -163,8 +164,8 @@ def test_encoding(
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_decoding(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -184,7 +185,7 @@ def test_decoding(
         with pytest.raises(type(ex), match=ex.message):
             decoder(frame)
     else:
-        constructor_kwargs['raw_frame'] = mbap_header + inner_frame
+        constructor_kwargs["raw_frame"] = mbap_header + inner_frame
         pdu = decoder(frame)
         assert isinstance(pdu, pdu_class)
         assert pdu.__dict__ == constructor_kwargs
@@ -194,8 +195,8 @@ def test_decoding(
 @pytest.mark.parametrize(PduTestCaseSig, ALL_MESSAGES)
 def test_decoding_wrong_streams(
     str_repr: str,
-    pdu_class: Type[BasePDU],
-    constructor_kwargs: Dict[str, Any],
+    pdu_class: type[BasePDU],
+    constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
     ex: Optional[ExceptionBase],
@@ -210,63 +211,43 @@ def test_decoding_wrong_streams(
     else:
         decoder = ClientOutgoingMessage.decode_bytes
 
-    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
+    with pytest.raises(InvalidFrame, match="Transaction ID 0x[0-9a-f]{4} != 0x5959"):
         decoder(frame[2:])
     with pytest.raises(
-        InvalidFrame, match=f'Header length {len(frame) - 6} != remaining frame length {len(frame) - 8}'
+        InvalidFrame, match=f"Header length {len(frame) - 6} != remaining frame length {len(frame) - 8}"
     ):
         decoder(frame[:-2])
     with pytest.raises(
-        InvalidFrame, match=f'Header length {len(frame) - 6} != remaining frame length {len(frame) - 4}'
+        InvalidFrame, match=f"Header length {len(frame) - 6} != remaining frame length {len(frame) - 4}"
     ):
-        decoder(frame + b'\x22\x22')
-    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
+        decoder(frame + b"\x22\x22")
+    with pytest.raises(InvalidFrame, match="Transaction ID 0x[0-9a-f]{4} != 0x5959"):
         decoder(frame[-10:])
-    with pytest.raises(InvalidFrame, match='Transaction ID 0x[0-9a-f]{4} != 0x5959'):
+    with pytest.raises(InvalidFrame, match="Transaction ID 0x[0-9a-f]{4} != 0x5959"):
         decoder(frame[::-1])
 
 
-@pytest.mark.skip('Needs more thinking')
+@pytest.mark.skip("Needs more thinking")
 def test_writable_registers_equality():
     req = WriteHoldingRegisterRequest(register=4, value=22)
-    assert req.register == HoldingRegister(4)
-    assert str(req) == '2:6/WriteHoldingRegisterRequest(HoldingRegister(4)/HOLDING_REG004 -> 22/0x0016)'
+    assert req.register == HR(4)
+    assert str(req) == "2:6/WriteHoldingRegisterRequest(HoldingRegister(4)/HOLDING_REG004 -> 22/0x0016)"
     assert req == WriteHoldingRegisterRequest(register=4, value=22)
     assert req != WriteHoldingRegisterRequest(register=4, value=32)
     assert req != WriteHoldingRegisterRequest(register=5, value=22)
     assert req != WriteHoldingRegisterResponse(register=4, value=22)
 
     req = WriteHoldingRegisterResponse(register=5, value=33)
-    assert req.register == HoldingRegister(5)
-    assert str(req) == '2:6/WriteHoldingRegisterResponse(HoldingRegister(5)/HOLDING_REG005 -> 33/0x0021)'
+    assert req.register == HR(5)
+    assert str(req) == "2:6/WriteHoldingRegisterResponse(HoldingRegister(5)/HOLDING_REG005 -> 33/0x0021)"
     assert req != WriteHoldingRegisterRequest(register=5, value=22)
 
     req = WriteHoldingRegisterResponse(register=6, value=55, error=True)
-    assert req.register == HoldingRegister(6)
-    assert str(req) == '2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(6)/HOLDING_REG006 -> 55/0x0037)'
+    assert req.register == HR(6)
+    assert str(req) == "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(6)/HOLDING_REG006 -> 55/0x0037)"
     assert req != WriteHoldingRegisterRequest(register=6, value=55)
     assert req == WriteHoldingRegisterResponse(register=6, value=55)
     assert req == WriteHoldingRegisterResponse(register=6, value=55, error=True)
-
-
-def test_writable_registers_consistent():
-    """Ensure HoldingRegisters declared write-safe match the WriteHoldingRegisterRequest allow list."""
-    write_safe_holding_registers = set()
-    for r in HoldingRegister.__members__.values():
-        if r.write_safe:
-            write_safe_holding_registers.add(r)
-
-    assert WRITE_SAFE_REGISTERS == write_safe_holding_registers
-
-
-@pytest.mark.parametrize('r', range(max(map(lambda x: x.value, HoldingRegister.__members__.values()))))
-def test_non_writable_registers_raise(r: int):
-    hr = HoldingRegister(r)
-    if hr in WRITE_SAFE_REGISTERS:
-        WriteHoldingRegisterRequest(register=hr, value=22).ensure_valid_state()
-    else:
-        with pytest.raises(InvalidPduState, match=f'{hr.name} is not safe to write to'):
-            WriteHoldingRegisterRequest(register=hr, value=22).ensure_valid_state()
 
 
 def test_read_registers_response_as_dict():
@@ -274,18 +255,18 @@ def test_read_registers_response_as_dict():
     r = ReadHoldingRegistersResponse(base_register=100, register_count=10, register_values=list(range(10))[::-1])
     assert r.to_dict() == {100: 9, 101: 8, 102: 7, 103: 6, 104: 5, 105: 4, 106: 3, 107: 2, 108: 1, 109: 0}
 
-    r = ReadHoldingRegistersResponse(base_register=1000, register_count=10, register_values=['a'] * 10)
+    r = ReadHoldingRegistersResponse(base_register=1000, register_count=10, register_values=["a"] * 10)
     assert r.to_dict() == {
-        1000: 'a',
-        1001: 'a',
-        1002: 'a',
-        1003: 'a',
-        1004: 'a',
-        1005: 'a',
-        1006: 'a',
-        1007: 'a',
-        1008: 'a',
-        1009: 'a',
+        1000: "a",
+        1001: "a",
+        1002: "a",
+        1003: "a",
+        1004: "a",
+        1005: "a",
+        1006: "a",
+        1007: "a",
+        1008: "a",
+        1009: "a",
     }
 
 
@@ -320,14 +301,14 @@ def test_has_same_shape():
     assert r1 in test_set
     assert r2 in test_set
 
-    r = WriteHoldingRegisterResponse(register=2)
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2))
+    r = WriteHoldingRegisterResponse(register=2, value=0)
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0))
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10))
-    assert r.has_same_shape(WriteHoldingRegisterRequest(register=2)) is False
+    assert r.has_same_shape(WriteHoldingRegisterRequest(register=2, value=0)) is False
     assert r.has_same_shape(ReadInputRegistersResponse(register=2)) is False
     assert r.has_same_shape(ReadInputRegistersRequest(register=2)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, slave_address=3)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=1)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0, slave_address=3)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=1, value=0)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=3, value=10)) is False
 
     r1 = WriteHoldingRegisterResponse(register=2, value=42)
@@ -336,7 +317,7 @@ def test_has_same_shape():
     assert r1 != r2
 
 
-@pytest.mark.skip('Needs more thinking')
+@pytest.mark.skip("Needs more thinking")
 def test_hashing():
     r1 = WriteHoldingRegisterResponse(register=2, value=10)
     r2 = WriteHoldingRegisterResponse(register=2, value=10)
@@ -374,3 +355,37 @@ def test_expected_response():
     assert req.has_same_shape(res) is False
     assert req.expected_response().has_same_shape(res)
     assert res.has_same_shape(req) is False
+
+
+# ── Security fix tests ────────────────────────────────────────────────────────
+
+
+def test_write_register_value_bounds():
+    """ensure_valid_state must reject values outside [0, 0xFFFF]."""
+    with pytest.raises(InvalidPduState, match="must be an unsigned 16-bit int"):
+        WriteHoldingRegisterResponse(register=20, value=-1).ensure_valid_state()
+    with pytest.raises(InvalidPduState, match="must be an unsigned 16-bit int"):
+        WriteHoldingRegisterResponse(register=20, value=0x10000).ensure_valid_state()
+    # Boundary values must be accepted without raising.
+    WriteHoldingRegisterResponse(register=20, value=0).ensure_valid_state()
+    WriteHoldingRegisterResponse(register=20, value=0xFFFF).ensure_valid_state()
+
+
+def test_null_response_preserves_nulls_kwarg():
+    """NullResponse must store the supplied 'nulls' list, not silently use a default."""
+    custom = [1] + [0] * 61
+    assert NullResponse(nulls=custom).nulls == custom
+    assert NullResponse().nulls == [0] * 62
+
+
+def test_read_registers_response_caps_decode_at_60():
+    """A crafted register_count > 60 must not exhaust the decoder buffer."""
+    # Payload: base_register=0, register_count=100, then exactly 60 values, then check.
+    payload = struct.pack(">HH", 0, 100)
+    payload += struct.pack(">" + "H" * 60, *range(60))
+    payload += struct.pack(">H", 0)  # check
+    decoder = PayloadDecoder(payload)
+    result = ReadHoldingRegistersResponse.decode_transparent_function(decoder, error=False)
+    assert result.register_count == 100
+    assert len(result.register_values) == 60
+    assert result.register_values == list(range(60))

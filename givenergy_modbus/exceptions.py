@@ -24,3 +24,7 @@ class InvalidFrame(ExceptionBase):
     def __init__(self, message: str, frame: bytes) -> None:
         super().__init__(message=message)
         self.frame = frame
+
+
+class CommunicationError(ExceptionBase):
+    """Exception to indicate a communication error."""

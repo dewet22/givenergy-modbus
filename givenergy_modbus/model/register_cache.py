@@ -1,116 +1,86 @@
+import datetime
 import json
 import logging
-from json import JSONEncoder
-from typing import Any, Dict, List, Mapping
+from collections import defaultdict
+from typing import TYPE_CHECKING
 
-from givenergy_modbus.exceptions import ExceptionBase
-from givenergy_modbus.model.register import HoldingRegister, InputRegister, Register, RegisterError
+from givenergy_modbus.model.register import HR, IR, Register
+
+if TYPE_CHECKING:
+    from givenergy_modbus.model import TimeSlot
 
 _logger = logging.getLogger(__name__)
 
 
-class RegisterCacheUpdateFailed(ExceptionBase):
-    """Exception raised when a register cache rejects an update due to invalid registers."""
-
-    def __init__(self, errors: List[RegisterError]) -> None:
-        self.errors = errors
-        super().__init__(f'{len(errors)} invalid values ({", ".join([str(e) for e in errors])})')
-
-
-class RegisterCacheEncoder(JSONEncoder):
-    """Custom JSONEncoder to work around Register behaviour.
-
-    This is a workaround to force register keys to render themselves as strings instead of
-    relying on the internal identity by default (due to the Register Enum extending str).
-    """
-
-    def encode(self, o: Any) -> str:
-        """Custom JSON encoder to treat RegisterCaches specially."""
-        if isinstance(o, RegisterCache):
-            return super().encode({str(k): v for k, v in o.items()})
-        else:
-            return super().encode(o)
-
-
-class RegisterCache(Dict[Register, int]):
+class RegisterCache(defaultdict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
-    _register_lookup_table: Dict[str, Register]
-
-    def __init__(self, registers=None) -> None:
+    def __init__(self, registers: dict[Register, int] | None = None) -> None:
         if registers is None:
             registers = {}
-        super().__init__(registers)
-        self._register_lookup_table = {}
-        self._register_lookup_table.update(InputRegister._member_map_)  # type: ignore[arg-type]
-        self._register_lookup_table.update(HoldingRegister._member_map_)  # type: ignore[arg-type]
-
-    def __getattr__(self, item: str):
-        """Magic attributes that try to look up and convert register values."""
-        item_upper = item.upper()
-        if item_upper in self._register_lookup_table:
-            register = self._register_lookup_table[item_upper]
-            val = self[register]
-            return register.convert(val)
-        elif item_upper + '_H' in self._register_lookup_table and item_upper + '_L' in self._register_lookup_table:
-            register_h = self._register_lookup_table[item_upper + '_H']
-            register_l = self._register_lookup_table[item_upper + '_L']
-            val_h = self[register_h] << 16
-            val_l = self[register_l]
-            return register_l.convert(val_h + val_l)
-        raise KeyError(item)
-
-    def update_with_validate(self, m: Mapping[Register, int]) -> None:
-        """Given a Map of registers and values, validate before applying a bulk update."""
-        errors = []
-        for register, value in m.items():
-            try:
-                register.convert(value)
-            except RegisterError as e:
-                errors.append(e)
-        if errors:
-            raise RegisterCacheUpdateFailed(errors)
-        super().update(m)
+        super().__init__(lambda: 0, registers)
 
     def json(self) -> str:
-        """Return JSON representation of the register cache, suitable for using with `from_json()`."""  # noqa: D402
-        return json.dumps(self, cls=RegisterCacheEncoder)
+        """Return JSON representation of the register cache, to mirror `from_json()`."""  # noqa: D402,D202,E501
+        return json.dumps(self)
 
     @classmethod
-    def from_json(cls, data: str) -> 'RegisterCache':
+    def from_json(cls, data: str) -> "RegisterCache":
         """Instantiate a RegisterCache from its JSON form."""
 
-        def register_object_hook(object_dict: Dict[str, int]) -> Dict[Register, int]:
+        def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
-            lookup = {
-                'HR': HoldingRegister,
-                'IR': InputRegister,
-                'HoldingRegister': HoldingRegister,
-                'InputRegister': InputRegister,
-            }
+            lookup = {"HR": HR, "IR": IR}
             ret = {}
             for k, v in object_dict.items():
-                if k.find('(') > 0:
-                    reg, idx = k.split('(', maxsplit=1)
-                    ret[lookup[reg](int(idx[:-1]))] = v
-                elif k.find(':') > 0:
-                    reg, idx = k.split(':', maxsplit=1)
-                    ret[lookup[reg](int(idx))] = v
+                if k.find("(") > 0:
+                    reg, idx = k.split("(", maxsplit=1)
+                    idx = idx[:-1]
+                elif k.find(":") > 0:
+                    reg, idx = k.split(":", maxsplit=1)
                 else:
-                    raise ValueError(f'{k} is not a valid Register type')
+                    _logger.warning("Skipping unrecognised register key %r", k)
+                    continue
+                try:
+                    ret[lookup[reg](int(idx))] = v
+                except ValueError:
+                    # unknown register, discard silently
+                    continue
             return ret
 
         return cls(registers=(json.loads(data, object_hook=register_object_hook)))
 
-    def debug(self):
-        """Dump the internal state of registers and their value representations."""
-        class_name = ''
+    # helper methods to convert register data types
 
-        for r, v in self.items():
-            if class_name != r.__class__.__name__:
-                class_name = r.__class__.__name__
-                print('### ' + class_name + ' ' + '#' * 100)
-            print(
-                f'{r} {r.name:>35}: {r.repr(v):20}  |  '
-                f'{r.data_type.name:15}  {r.scaling_factor.name:5}  0x{v:04x}  {v:10}'
-            )
+    def to_string(self, *registers: Register) -> str:
+        """Combine registers into an ASCII string."""
+        s = "".join([self[r].to_bytes(2, byteorder="big").decode(encoding="latin1") for r in registers])
+        return "".join(filter(str.isalnum, s)).upper()
+
+    def to_hex_string(self, *registers: Register) -> str:
+        """Render a register as a 2-byte hexadecimal value."""
+        values = [f"{self[r]:04x}" for r in registers]
+        if all(values):
+            ret = ""
+            for r in registers:
+                ret += f"{self[r]:04x}"
+            return "".join(filter(str.isalnum, ret)).upper()
+        return ""
+
+    def to_duint8(self, *registers: Register) -> tuple[int, ...]:
+        """Split registers into two unsigned 8-bit integers each."""
+        return sum(((self[r] >> 8, self[r] & 0xFF) for r in registers), ())
+
+    def to_uint32(self, high_register: Register, low_register: Register) -> int:
+        """Combine two registers into an unsigned 32-bit integer."""
+        return (self[high_register] << 16) + self[low_register]
+
+    def to_datetime(self, y: Register, m: Register, d: Register, h: Register, min: Register, s: Register):
+        """Combine 6 registers into a datetime, with safe defaults for zeroes."""
+        return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
+
+    def to_timeslot(self, start: Register, end: Register) -> "TimeSlot":
+        """Combine two registers into a time slot."""
+        from givenergy_modbus.model import TimeSlot
+
+        return TimeSlot.from_repr(self[start], self[end])

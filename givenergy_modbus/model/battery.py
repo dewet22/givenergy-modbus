@@ -1,58 +1,95 @@
-from typing import Tuple
+from enum import IntEnum
 
-from givenergy_modbus.model import GivEnergyBaseModel
+from pydantic import ConfigDict, create_model
+
+from givenergy_modbus.model.register import IR, RegisterGetter
+from givenergy_modbus.model.register import Converter as DT
+from givenergy_modbus.model.register import RegisterDefinition as Def
 
 
-class Battery(GivEnergyBaseModel):
-    """Structured format for BMS attributes."""
+class UsbDevice(IntEnum):
+    """USB devices that can be inserted into batteries."""
 
-    battery_serial_number: str
-    v_cell_01: float
-    v_cell_02: float
-    v_cell_03: float
-    v_cell_04: float
-    v_cell_05: float
-    v_cell_06: float
-    v_cell_07: float
-    v_cell_08: float
-    v_cell_09: float
-    v_cell_10: float
-    v_cell_11: float
-    v_cell_12: float
-    v_cell_13: float
-    v_cell_14: float
-    v_cell_15: float
-    v_cell_16: float
-    temp_cells_1: float
-    temp_cells_2: float
-    temp_cells_3: float
-    temp_cells_4: float
-    v_cells_sum: float
-    temp_bms_mos: float
-    v_battery_out: float
-    full_capacity: float
-    design_capacity: float
-    remaining_capacity: float
-    e_charge_total: float
-    e_discharge_total: float
-    status_1_2: Tuple[int, int]
-    status_3_4: Tuple[int, int]
-    status_5_6: Tuple[int, int]
-    status_7: Tuple[int, int]
-    warning_1_2: Tuple[int, int]
-    num_cycles: int
-    num_cells: int
-    bms_firmware_version: int
-    soc: int
-    design_capacity_2: float
-    temp_max: float
-    temp_min: float
-    usb_inserted: int
+    NONE = 0
+    DISK = 8
+
+
+class BatteryRegisterGetter(RegisterGetter):
+    """Structured format for all battery attributes."""
+
+    REGISTER_LUT = {
+        # Input Registers, block 60-119
+        "v_cell_01": Def(DT.milli, None, IR(60)),
+        "v_cell_02": Def(DT.milli, None, IR(61)),
+        "v_cell_03": Def(DT.milli, None, IR(62)),
+        "v_cell_04": Def(DT.milli, None, IR(63)),
+        "v_cell_05": Def(DT.milli, None, IR(64)),
+        "v_cell_06": Def(DT.milli, None, IR(65)),
+        "v_cell_07": Def(DT.milli, None, IR(66)),
+        "v_cell_08": Def(DT.milli, None, IR(67)),
+        "v_cell_09": Def(DT.milli, None, IR(68)),
+        "v_cell_10": Def(DT.milli, None, IR(69)),
+        "v_cell_11": Def(DT.milli, None, IR(70)),
+        "v_cell_12": Def(DT.milli, None, IR(71)),
+        "v_cell_13": Def(DT.milli, None, IR(72)),
+        "v_cell_14": Def(DT.milli, None, IR(73)),
+        "v_cell_15": Def(DT.milli, None, IR(74)),
+        "v_cell_16": Def(DT.milli, None, IR(75)),
+        "t_cells_01_04": Def(DT.deci, None, IR(76)),
+        "t_cells_05_08": Def(DT.deci, None, IR(77)),
+        "t_cells_09_12": Def(DT.deci, None, IR(78)),
+        "t_cells_13_16": Def(DT.deci, None, IR(79)),
+        "v_cells_sum": Def(DT.milli, None, IR(80)),
+        "t_bms_mosfet": Def(DT.deci, None, IR(81)),
+        "v_out": Def(DT.uint32, DT.milli, IR(82), IR(83)),
+        "cap_calibrated": Def(DT.uint32, DT.centi, IR(84), IR(85)),
+        "cap_design": Def(DT.uint32, DT.centi, IR(86), IR(87)),
+        "cap_remaining": Def(DT.uint32, DT.centi, IR(88), IR(89)),
+        "status_1": Def((DT.duint8, 0), None, IR(90)),
+        "status_2": Def((DT.duint8, 1), None, IR(90)),
+        "status_3": Def((DT.duint8, 0), None, IR(91)),
+        "status_4": Def((DT.duint8, 1), None, IR(91)),
+        "status_5": Def((DT.duint8, 0), None, IR(92)),
+        "status_6": Def((DT.duint8, 1), None, IR(92)),
+        "status_7": Def((DT.duint8, 0), None, IR(93)),
+        "warning_1": Def((DT.duint8, 0), None, IR(94)),
+        "warning_2": Def((DT.duint8, 1), None, IR(94)),
+        # IR(95) unused
+        "num_cycles": Def(DT.uint16, None, IR(96)),
+        "num_cells": Def(DT.uint16, None, IR(97)),
+        "bms_firmware_version": Def(DT.uint16, None, IR(98)),
+        # IR(99) unused
+        "soc": Def(DT.uint16, None, IR(100)),
+        "cap_design2": Def(DT.uint32, DT.centi, IR(101), IR(102)),
+        "t_max": Def(DT.deci, None, IR(103)),
+        "t_min": Def(DT.deci, None, IR(104)),
+        # IR(105-109) unused
+        "serial_number": Def(DT.string, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
+        "usb_device_inserted": Def(DT.uint16, UsbDevice, IR(115)),
+        # IR(116-119) unused
+    }
+
+
+_BatteryBase = create_model(  # type: ignore[call-overload]
+    "Battery",
+    __config__=ConfigDict(frozen=True, use_enum_values=True),
+    **BatteryRegisterGetter.to_fields(),
+)
+
+
+class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
+    """GivEnergy battery data model."""
+
+    @classmethod
+    def from_register_cache(cls, register_cache) -> "Battery":
+        """Construct a Battery from a RegisterCache."""
+        return cls.model_validate(BatteryRegisterGetter(register_cache).build())
 
     def is_valid(self) -> bool:
-        """Try to detect if a battery exists based on its serial number."""
-        return self.battery_serial_number not in (
-            '',
-            '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-            '          ',
+        """Try to detect if a battery exists based on its attributes."""
+        return self.serial_number not in (  # type: ignore[attr-defined]
+            None,
+            "",
+            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+            "          ",
         )

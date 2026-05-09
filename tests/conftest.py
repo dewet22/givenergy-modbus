@@ -1,10 +1,10 @@
 import inspect
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Optional, Union
 
 import pytest
 
 from givenergy_modbus.exceptions import ExceptionBase, InvalidPduState
-from givenergy_modbus.model.register import HoldingRegister, InputRegister
+from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     BasePDU,
@@ -55,8 +55,8 @@ def json_inverter_daytime_discharging_with_solar_generation() -> str:
         '"IR:36": 91, "IR:37": 34, "IR:38": 0, "IR:39": 0, "IR:40": 0, "IR:41": 244, "IR:42": 515, "IR:43": 554, '
         '"IR:44": 38, "IR:45": 0, "IR:46": 1725, "IR:47": 0, "IR:48": 385, "IR:49": 1, "IR:50": 5173, "IR:51": 647, '
         '"IR:52": 360, "IR:53": 2351, "IR:54": 4992, "IR:55": 241, "IR:56": 160, "IR:57": 0, "IR:58": 257, '
-        '"IR:59": 68, "IR:105": 34, "IR:106": 91, "IR:120": 0, "IR:121": 0, "IR:122": 0, "IR:123": 0, "IR:124": 0, '
-        '"IR:125": 0, "IR:126": 0, '
+        '"IR:59": 68, '
+        '"IR:120": 0, "IR:121": 0, "IR:122": 0, "IR:123": 0, "IR:124": 0, "IR:125": 0, "IR:126": 0, '
         '"IR:127": 0, "IR:128": 0, "IR:129": 0, "IR:130": 0, "IR:131": 0, "IR:132": 0, "IR:133": 0, "IR:134": 0, '
         '"IR:135": 0, "IR:136": 0, "IR:137": 0, "IR:138": 0, "IR:139": 0, "IR:140": 0, "IR:141": 0, "IR:142": 0, '
         '"IR:143": 0, "IR:144": 0, "IR:145": 0, "IR:146": 0, "IR:147": 0, "IR:148": 0, "IR:149": 0, "IR:150": 0, '
@@ -120,8 +120,8 @@ def json_battery_missing() -> str:
 def register_cache() -> RegisterCache:
     """Ensure we can instantiate a RegisterCache and set registers in it."""
     i = RegisterCache()
-    i.update_with_validate({HoldingRegister(k): v for k, v in HOLDING_REGISTERS.items()})
-    i.update_with_validate({InputRegister(k): v for k, v in INPUT_REGISTERS.items()})
+    i.update({HR(k): v for k, v in HOLDING_REGISTERS.items()})
+    i.update({IR(k): v for k, v in INPUT_REGISTERS.items()})
     return i
 
 
@@ -151,21 +151,21 @@ def register_cache_battery_missing(json_battery_missing) -> RegisterCache:
     return RegisterCache.from_json(json_battery_missing)
 
 
-PDUType = Type[BasePDU]
-CtorKwargs = Dict[str, Union[int, str, List[int]]]
+PDUType = type[BasePDU]
+CtorKwargs = dict[str, Union[int, str, list[int], Register]]
 MbapHeader = bytes
 InnerFrame = bytes
 ExceptionThrown = Optional[ExceptionBase]
 StrRepr = str
-PduTestCase = Tuple[StrRepr, PDUType, CtorKwargs, MbapHeader, InnerFrame, ExceptionThrown]
-PduTestCaseSig = 'str_repr, pdu_class, constructor_kwargs, mbap_header, inner_frame, ex'
-PduTestCases = List[PduTestCase]
+PduTestCase = tuple[StrRepr, PDUType, CtorKwargs, MbapHeader, InnerFrame, ExceptionThrown]
+PduTestCaseSig = "str_repr, pdu_class, constructor_kwargs, mbap_header, inner_frame, ex"
+PduTestCases = list[PduTestCase]
 
 _h2b = bytes.fromhex
 
 
 def _mbap_header(function_code: int, packet_length: int) -> MbapHeader:
-    return _h2b(f'59590001{packet_length:04x}01{function_code:02x}')
+    return _h2b(f"59590001{packet_length:04x}01{function_code:02x}")
 
 
 def find_subclasses(module, clazz):
@@ -183,94 +183,110 @@ def all_leaf_classes(cls):
 # Messages a server should be expected to process (or, typical messages a client would send)
 _server_messages: PduTestCases = [
     (
-        '2:4/ReadInputRegistersRequest(slave_address=0x32 base_register=16 register_count=6)',
+        "2:4/ReadInputRegistersRequest(slave_address=0x32 base_register=16 register_count=6)",
         ReadInputRegistersRequest,
         {
-            'base_register': 0x10,
-            'register_count': 6,
-            'check': 0x0754,
-            'data_adapter_serial_number': 'AB1234G567',
-            'error': False,
-            'padding': 8,
-            'slave_address': 0x32,
+            "base_register": 0x10,
+            "register_count": 6,
+            "check": 0x0754,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x1c\x01\x02',  # 8 bytes
-        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x04\x00\x10\x00\x06' b'\x07\x54',  # 26 bytes
+        b"YY\x00\x01\x00\x1c\x01\x02",  # 8 bytes
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x04\x00\x10\x00\x06\x07\x54",  # 26 bytes
         None,
     ),
     (
-        '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=20)',
+        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=20)",
         ReadHoldingRegistersRequest,
         {
-            'base_register': 0x5151,
-            'register_count': 20,
-            'check': 0x2221,
-            'data_adapter_serial_number': 'AB1234G567',
-            'error': False,
-            'padding': 8,
-            'slave_address': 0x32,
+            "base_register": 0x5151,
+            "register_count": 20,
+            "check": 0x2221,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x1c\x01\x02',
-        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x03\x51\x51\x00\x14' b'\x22\x21',
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x14\x22\x21",
         None,
     ),
     (
-        '2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=30)',
+        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=30)",
         ReadHoldingRegistersRequest,
         {
-            'base_register': 0x5151,
-            'register_count': 30,
-            'check': 0x25A1,
-            'data_adapter_serial_number': 'AB1234G567',
-            'error': False,
-            'padding': 8,
-            'slave_address': 0x32,
+            "base_register": 0x5151,
+            "register_count": 30,
+            "check": 0x25A1,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x1c\x01\x02',
-        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x03\x51\x51\x00\x1e' b'\x25\xa1',
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x1e\x25\xa1",
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HoldingRegister(179)/HOLDING_REG179 -> 2000/0x07d0)',
+        "2:6/WriteHoldingRegisterRequest(179 -> 2000/0x07d0)",
         WriteHoldingRegisterRequest,
         {
-            'register': HoldingRegister(179),
-            'value': 2000,
-            'check': 0x81EE,
-            'data_adapter_serial_number': 'AB1234G567',
-            'error': False,
-            'padding': 8,
-            'slave_address': 0x32,
+            "register": 179,
+            "value": 2000,
+            "check": 0x81EE,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x1c\x01\x02',
-        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\xb3\x07\xd0' b'\x81\xee',
-        InvalidPduState(r'HoldingRegister\(179\)/HOLDING_REG179 is not safe to write to', None),
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xb3\x07\xd0\x81\xee",
+        InvalidPduState(r"HR\(179\) is not safe to write to", None),
     ),
     (
-        '2:6/WriteHoldingRegisterRequest(HoldingRegister(20)/ENABLE_CHARGE_TARGET -> True/0x0001)',
+        "2:6/WriteHoldingRegisterRequest(199 -> 2000/0x07d0)",
         WriteHoldingRegisterRequest,
         {
-            'register': HoldingRegister(0x14),
-            'value': 1,
-            'check': 0xC42D,
-            'data_adapter_serial_number': 'AB1234G567',
-            'error': False,
-            'padding': 8,
-            'slave_address': 0x32,
+            "register": 199,
+            "value": 2000,
+            "check": 0x81EE,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
         },
-        b'YY\x00\x01\x00\x1c\x01\x02',
-        b'AB1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x08' b'\x32\x06\x00\x14\x00\x01' b'\xc4\x2d',
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xc7\x07\xd0\x81\xee",
+        InvalidPduState(r"HR\(199\) is not safe to write to", None),
+    ),
+    (
+        "2:6/WriteHoldingRegisterRequest(20 -> 1/0x0001)",
+        WriteHoldingRegisterRequest,
+        {
+            "register": 0x14,
+            "value": 1,
+            "check": 0xC42D,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "slave_address": 0x32,
+        },
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\x14\x00\x01\xc4\x2d",
         None,
     ),
     (
-        '1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=32)',
+        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=32)",
         HeartbeatResponse,
         {
-            'data_adapter_serial_number': 'AB1234G567',
-            'data_adapter_type': 32,
+            "data_adapter_serial_number": "AB1234G567",
+            "data_adapter_type": 32,
         },
-        b'YY\x00\x01\x00\x0d\x01\x01',  # 8b MBAP header
-        b'AB1234G567' b'\x20',
+        b"YY\x00\x01\x00\x0d\x01\x01",  # 8b MBAP header
+        b"AB1234G567\x20",
         None,
     ),
 ]
@@ -278,72 +294,190 @@ _server_messages: PduTestCases = [
 # Messages a client should be expected to process (or, typical messages a server would send)
 _client_messages: PduTestCases = [
     (
-        '2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0)',
+        "2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0)",
         ReadInputRegistersResponse,
         {
-            'check': 0x8E4B,
-            'inverter_serial_number': 'SA1234G567',
-            'base_register': 0x0000,
-            'register_count': 0x003C,
+            "check": 0x8E4B,
+            "inverter_serial_number": "SA1234G567",
+            "base_register": 0x0000,
+            "register_count": 0x003C,
             # fmt: off
-            'register_values': [
-                0x0001, 0x0CB0, 0x0C78, 0x0F19, 0x0000, 0x095B, 0x0000, 0x05C5, 0x0001, 0x0002,
-                0x0021, 0x0000, 0x008C, 0x138A, 0x0005, 0x0AA9, 0x2B34, 0x0008, 0x0041, 0x0008,
-                0x003F, 0x0000, 0x0005, 0x0000, 0x0278, 0x0000, 0x0071, 0x0000, 0x02FF, 0x0000,
-                0xFF75, 0x0000, 0x0000, 0x0BF5, 0x0000, 0x0057, 0x0054, 0x0049, 0x0000, 0x0000,
-                0x0000, 0x0124, 0x0311, 0x0288, 0x004E, 0x0000, 0x02F7, 0x0000, 0x00B6, 0x0001,
-                0x139E, 0x0467, 0x023C, 0x094B, 0x1389, 0x0121, 0x00BE, 0x0000, 0x00F8, 0x0011,
+            "register_values": [
+                0x0001,
+                0x0CB0,
+                0x0C78,
+                0x0F19,
+                0x0000,
+                0x095B,
+                0x0000,
+                0x05C5,
+                0x0001,
+                0x0002,
+                0x0021,
+                0x0000,
+                0x008C,
+                0x138A,
+                0x0005,
+                0x0AA9,
+                0x2B34,
+                0x0008,
+                0x0041,
+                0x0008,
+                0x003F,
+                0x0000,
+                0x0005,
+                0x0000,
+                0x0278,
+                0x0000,
+                0x0071,
+                0x0000,
+                0x02FF,
+                0x0000,
+                0xFF75,
+                0x0000,
+                0x0000,
+                0x0BF5,
+                0x0000,
+                0x0057,
+                0x0054,
+                0x0049,
+                0x0000,
+                0x0000,
+                0x0000,
+                0x0124,
+                0x0311,
+                0x0288,
+                0x004E,
+                0x0000,
+                0x02F7,
+                0x0000,
+                0x00B6,
+                0x0001,
+                0x139E,
+                0x0467,
+                0x023C,
+                0x094B,
+                0x1389,
+                0x0121,
+                0x00BE,
+                0x0000,
+                0x00F8,
+                0x0011,
             ],
             # fmt: on
-            'data_adapter_serial_number': 'WF1234G567',
-            'padding': 0x8A,
-            'slave_address': 0x32,
-            'error': False,
+            "data_adapter_serial_number": "WF1234G567",
+            "padding": 0x8A,
+            "slave_address": 0x32,
+            "error": False,
         },
-        b'YY\x00\x01\x00\x9e\x01\x02',  # 8b MBAP header
+        b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
         # 154b total payload, starting with 34b of fields:
-        b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x04' b'SA1234G567' b'\x00\x00' b'\x00<'
+        b"WF1234G567"
+        b"\x00\x00\x00\x00\x00\x00\x00\x8a"
+        b"\x32\x04"
+        b"SA1234G567"
+        b"\x00\x00"
+        b"\x00<"
         # 4x60b chunk, containing register values:
-        b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'
-        b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
-        b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
-        b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
-        b'\x8e\x4b',  # 2b crc
+        b"\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05"
+        b"\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00"
+        b"\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N"
+        b"\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11"
+        b"\x8e\x4b",  # 2b crc
         None,
     ),
     (
-        '2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0)',
+        "2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0)",
         ReadHoldingRegistersResponse,
         {
-            'check': 0x153D,
-            'inverter_serial_number': 'SA1234G567',
-            'base_register': 0x0000,
-            'register_count': 0x003C,
+            "check": 0x153D,
+            "inverter_serial_number": "SA1234G567",
+            "base_register": 0x0000,
+            "register_count": 0x003C,
             # fmt: off
-            'register_values': [
-                0x2001, 0x0003, 0x0832, 0x0201, 0x0000, 0xC350, 0x0E10, 0x0001, 0x4247, 0x3132,
-                0x3334, 0x4735, 0x3637, 0x5341, 0x3132, 0x3334, 0x4735, 0x3637, 0x0BBD, 0x01C1,
-                0x0000, 0x01C1, 0x0002, 0x0000, 0x8000, 0x761B, 0x1770, 0x0001, 0x0000, 0x0000,
-                0x0011, 0x0000, 0x0004, 0x0007, 0x008C, 0x0016, 0x0004, 0x0011, 0x0013, 0x0001,
-                0x0001, 0x0001, 0x0002, 0x0000, 0x0000, 0x0000, 0x0065, 0x0001, 0x0000, 0x0000,
-                0x0064, 0x0000, 0x0000, 0x0001, 0x0001, 0x00A0, 0x0640, 0x02BC, 0x0001, 0x0000,
+            "register_values": [
+                0x2001,
+                0x0003,
+                0x0832,
+                0x0201,
+                0x0000,
+                0xC350,
+                0x0E10,
+                0x0001,
+                0x4247,
+                0x3132,
+                0x3334,
+                0x4735,
+                0x3637,
+                0x5341,
+                0x3132,
+                0x3334,
+                0x4735,
+                0x3637,
+                0x0BBD,
+                0x01C1,
+                0x0000,
+                0x01C1,
+                0x0002,
+                0x0000,
+                0x8000,
+                0x761B,
+                0x1770,
+                0x0001,
+                0x0000,
+                0x0000,
+                0x0011,
+                0x0000,
+                0x0004,
+                0x0007,
+                0x008C,
+                0x0016,
+                0x0004,
+                0x0011,
+                0x0013,
+                0x0001,
+                0x0001,
+                0x0001,
+                0x0002,
+                0x0000,
+                0x0000,
+                0x0000,
+                0x0065,
+                0x0001,
+                0x0000,
+                0x0000,
+                0x0064,
+                0x0000,
+                0x0000,
+                0x0001,
+                0x0001,
+                0x00A0,
+                0x0640,
+                0x02BC,
+                0x0001,
+                0x0000,
             ],
             # fmt: on
-            'data_adapter_serial_number': 'WF1234G567',
-            'padding': 0x8A,
-            'slave_address': 0x32,
-            'error': False,
+            "data_adapter_serial_number": "WF1234G567",
+            "padding": 0x8A,
+            "slave_address": 0x32,
+            "error": False,
         },
-        b'YY\x00\x01\x00\x9e\x01\x02',  # 8b MBAP header
+        b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
         # 154b total payload, starting with 34b of fields:
-        b'WF1234G567' b'\x00\x00\x00\x00\x00\x00\x00\x8a' b'\x32\x03' b'SA1234G567' b'\x00\x00' b'\x00<'
+        b"WF1234G567"
+        b"\x00\x00\x00\x00\x00\x00\x00\x8a"
+        b"\x32\x03"
+        b"SA1234G567"
+        b"\x00\x00"
+        b"\x00<"
         # 4x60b chunk, containing register values:
-        b' \x01\x00\x03\x082\x02\x01\x00\x00\xc3P\x0e\x10\x00\x01BG1234G567SA1234G567\x0b\xbd\x01\xc1\x00\x00\x01'
-        b'\xc1\x00\x02\x00\x00\x80\x00v\x1b\x17p\x00\x01\x00\x00\x00\x00\x00\x11\x00\x00\x00\x04\x00\x07\x00\x8c'
-        b'\x00\x16\x00\x04\x00\x11\x00\x13\x00\x01\x00\x01\x00\x01\x00\x02\x00\x00\x00\x00\x00\x00\x00e\x00\x01\x00'
-        b'\x00\x00\x00\x00d\x00\x00\x00\x00\x00\x01\x00\x01\x00\xa0\x06@\x02\xbc\x00\x01\x00\x00'
-        b'\x15=',  # 2b crc
-        # b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'
+        b" \x01\x00\x03\x082\x02\x01\x00\x00\xc3P\x0e\x10\x00\x01BG1234G567SA1234G567\x0b\xbd\x01\xc1\x00\x00\x01"
+        b"\xc1\x00\x02\x00\x00\x80\x00v\x1b\x17p\x00\x01\x00\x00\x00\x00\x00\x11\x00\x00\x00\x04\x00\x07\x00\x8c"
+        b"\x00\x16\x00\x04\x00\x11\x00\x13\x00\x01\x00\x01\x00\x01\x00\x02\x00\x00\x00\x00\x00\x00\x00e\x00\x01\x00"
+        b"\x00\x00\x00\x00d\x00\x00\x00\x00\x00\x01\x00\x01\x00\xa0\x06@\x02\xbc\x00\x01\x00\x00"
+        b"\x15=",  # 2b crc
+        # b'\x00\x01\x0c\xb0\x0cx\x0f\x19\x00\x00\t[\x00\x00\x05\xc5\x00\x01\x00\x02\x00!\x00\x00\x00\x8c\x13\x8a\x00\x05'  # noqa: E501
         # b'\n\xa9+4\x00\x08\x00A\x00\x08\x00?\x00\x00\x00\x05\x00\x00\x02x\x00\x00\x00q\x00\x00\x02\xff\x00\x00'
         # b'\xffu\x00\x00\x00\x00\x0b\xf5\x00\x00\x00W\x00T\x00I\x00\x00\x00\x00\x00\x00\x01$\x03\x11\x02\x88\x00N'
         # b'\x00\x00\x02\xf7\x00\x00\x00\xb6\x00\x01\x13\x9e\x04g\x02<\tK\x13\x89\x01!\x00\xbe\x00\x00\x00\xf8\x00\x11'
@@ -351,50 +485,50 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        '2:6/WriteHoldingRegisterResponse(HoldingRegister(35)/SYSTEM_TIME_YEAR -> 8764/0x223c)',
+        "2:6/WriteHoldingRegisterResponse(35 -> 8764/0x223c)",
         WriteHoldingRegisterResponse,
         {
-            'check': 0x8E4B,
-            'inverter_serial_number': 'SA1234G567',
-            'register': HoldingRegister(0x0023),
-            'value': 0x223C,
-            'data_adapter_serial_number': 'WF1234G567',
-            'padding': 0x8A,
-            'slave_address': 0x32,
-            'error': False,
+            "check": 0x8E4B,
+            "inverter_serial_number": "SA1234G567",
+            "register": 0x0023,
+            "value": 0x223C,
+            "data_adapter_serial_number": "WF1234G567",
+            "padding": 0x8A,
+            "slave_address": 0x32,
+            "error": False,
         },
-        b'YY\x00\x01\x00\x26\x01\x02',  # 8b MBAP header
-        b'WF1234G567'
-        b'\x00\x00\x00\x00\x00\x00\x00\x8a'
-        b'\x32\x06'
-        b'SA1234G567'
-        b'\x00\x23'  # register
-        b'\x22\x3c'  # value readback
-        b'\x8e\x4b',  # 2b crc
+        b"YY\x00\x01\x00\x26\x01\x02",  # 8b MBAP header
+        b"WF1234G567"
+        b"\x00\x00\x00\x00\x00\x00\x00\x8a"
+        b"\x32\x06"
+        b"SA1234G567"
+        b"\x00\x23"  # register
+        b"\x22\x3c"  # value readback
+        b"\x8e\x4b",  # 2b crc
         None,
     ),
     (
-        '1/HeartbeatRequest(data_adapter_serial_number=WF1234G567 data_adapter_type=1)',
+        "1/HeartbeatRequest(data_adapter_serial_number=WF1234G567 data_adapter_type=1)",
         HeartbeatRequest,
-        {'data_adapter_serial_number': 'WF1234G567', 'data_adapter_type': 1},
+        {"data_adapter_serial_number": "WF1234G567", "data_adapter_type": 1},
         _mbap_header(1, 0x0D),
-        b'WF1234G567' + _h2b('01'),
+        b"WF1234G567" + _h2b("01"),
         None,
     ),
     (
-        '2:0/NullResponse(slave_address=0x22 nulls=[0]*62)',
+        "2:0/NullResponse(slave_address=0x22 nulls=[0]*62)",
         NullResponse,
         {
-            'check': 0x0,
-            'inverter_serial_number': '\x00' * 10,
-            'data_adapter_serial_number': 'KK4321H987',
-            'padding': 0x8A,
-            'slave_address': 0x22,
-            'error': False,
-            'nulls': [0] * 62,
+            "check": 0x0,
+            "inverter_serial_number": "\x00" * 10,
+            "data_adapter_serial_number": "KK4321H987",
+            "padding": 0x8A,
+            "slave_address": 0x22,
+            "error": False,
+            "nulls": [0] * 62,
         },
         _mbap_header(2, 158),
-        _h2b('4b4b3433323148393837000000000000008a2200' + '0000' * 68),
+        _h2b("4b4b3433323148393837000000000000008a2200" + "0000" * 68),
         None,
     ),
 ]

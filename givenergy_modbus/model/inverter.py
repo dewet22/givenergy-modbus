@@ -1,257 +1,246 @@
-import datetime
-import logging
-from enum import Enum
-from typing import Tuple
+from enum import IntEnum, StrEnum
 
-from pydantic import root_validator
+from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model import GivEnergyBaseModel
-
-_logger = logging.getLogger(__name__)
+from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import Converter as C
+from givenergy_modbus.model.register import RegisterDefinition as Def
 
 
-class Model(str, Enum):
-    """Known models of inverters."""
+class Model(StrEnum):
+    """Known models of inverters.
 
-    AC = 'AC'
-    Gen2 = 'Gen2'
-    Hybrid = 'Hybrid'
-    Unknown = 'Unknown'
+    Values are the first digit of the device type code reported by the inverter.
+    Note: Gen 2 inverters with an 'EA' serial prefix were previously mapped via a
+    serial-prefix lookup table (removed in 1.0). Their device type code first digit
+    is unknown — if EA-prefix units report a code not listed here, _missing_ will
+    raise ValueError. A field report from a Gen 2 owner is needed to add support.
+    """
+
+    HYBRID = "2"
+    AC = "3"
+    HYBRID_3PH = "4"
+    EMS = "5"
+    AC_3PH = "6"
+    GATEWAY = "7"
+    ALL_IN_ONE = "8"
 
     @classmethod
-    def from_serial_number(cls, serial_number: str):
-        """Return the appropriate model from a given serial number."""
-        serial_prefix_to_models_lut = {
-            'CE': cls.AC,
-            'ED': cls.Gen2,
-            'EA': cls.Gen2,
-            'SA': cls.Hybrid,
-            'SD': cls.Hybrid,
-        }
-        prefix = serial_number[:2]
-        if prefix in serial_prefix_to_models_lut:
-            return serial_prefix_to_models_lut[prefix]
-        else:
-            _logger.error(f'Cannot determine model number from serial number {serial_number!r}')
-            return cls.Unknown
+    def _missing_(cls, key):
+        """Pick model from the first digit of the device type code."""
+        return cls(key[0])
 
 
-class Inverter(GivEnergyBaseModel):
+class UsbDevice(IntEnum):
+    """USB devices that can be inserted into inverters."""
+
+    NONE = 0
+    WIFI = 1
+    DISK = 2
+
+
+class BatteryPowerMode(IntEnum):
+    """Battery discharge strategy."""
+
+    EXPORT = 0
+    SELF_CONSUMPTION = 1
+
+
+class BatteryCalibrationStage(IntEnum):
+    """Battery calibration stages."""
+
+    OFF = 0
+    DISCHARGE = 1
+    SET_LOWER_LIMIT = 2
+    CHARGE = 3
+    SET_UPPER_LIMIT = 4
+    BALANCE = 5
+    SET_FULL_CAPACITY = 6
+    FINISH = 7
+
+
+class MeterType(IntEnum):
+    """Installed meter type."""
+
+    CT_OR_EM418 = 0
+    EM115 = 1
+
+
+class BatteryType(IntEnum):
+    """Installed battery type."""
+
+    LEAD_ACID = 0
+    LITHIUM = 1
+
+
+class PowerFactorFunctionModel(IntEnum):
+    """Power Factor function model."""
+
+    PF_1 = 0
+    PF_BY_SET = 1
+    DEFAULT_PF_LINE = 2
+    USER_PF_LINE = 3
+    UNDER_EXCITED_INDUCTIVE_REACTIVE_POWER = 4
+    OVER_EXCITED_CAPACITIVE_REACTIVE_POWER = 5
+    QV_MODEL = 6
+
+
+class Status(IntEnum):
+    """Inverter status."""
+
+    WAITING = 0
+    NORMAL = 1
+    WARNING = 2
+    FAULT = 3
+    FLASHING_FIRMWARE_UPDATE = 4
+
+
+class InverterRegisterGetter(RegisterGetter):
     """Structured format for all inverter attributes."""
 
-    # Device details
-    inverter_serial_number: str
-    device_type_code: str
-    inverter_module: int
-    inverter_firmware_version: str
-    dsp_firmware_version: int
-    arm_firmware_version: int
-    usb_device_inserted: int
-    select_arm_chip: bool
-    bms_chip_version: int
-    inverter_modbus_address: int
-    modbus_version: float
-    system_time: datetime.datetime
-    inverter_state: Tuple[int, int]
+    REGISTER_LUT = {
+        #
+        # Holding Registers, block 0-59
+        #
+        "device_type_code": Def(C.hex, None, HR(0)),
+        "model": Def(C.hex, Model, HR(0)),
+        "module": Def(C.uint32, (C.hex, 8), HR(1), HR(2)),
+        "num_mppt": Def((C.duint8, 0), None, HR(3)),
+        "num_phases": Def((C.duint8, 1), None, HR(3)),
+        # HR(4-6) unused
+        "enable_ammeter": Def(C.bool, None, HR(7)),
+        "first_battery_serial_number": Def(C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
+        "serial_number": Def(C.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
+        "first_battery_bms_firmware_version": Def(C.uint16, None, HR(18)),
+        "dsp_firmware_version": Def(C.uint16, None, HR(19)),
+        "enable_charge_target": Def(C.bool, None, HR(20)),
+        "arm_firmware_version": Def(C.uint16, None, HR(21)),
+        "firmware_version": Def(C.firmware_version, None, HR(19), HR(21)),
+        "usb_device_inserted": Def(C.uint16, UsbDevice, HR(22)),
+        "select_arm_chip": Def(C.bool, None, HR(23)),
+        "variable_address": Def(C.uint16, None, HR(24)),
+        "variable_value": Def(C.uint16, None, HR(25)),
+        "grid_port_max_power_output": Def(C.uint16, None, HR(26)),
+        "battery_power_mode": Def(C.uint16, BatteryPowerMode, HR(27)),
+        "enable_60hz_freq_mode": Def(C.bool, None, HR(28)),
+        "battery_calibration_stage": Def(C.uint16, BatteryCalibrationStage, HR(29)),
+        "modbus_address": Def(C.uint16, None, HR(30)),
+        "charge_slot_2": Def(C.timeslot, None, HR(31), HR(32)),
+        "user_code": Def(C.uint16, None, HR(33)),
+        "modbus_version": Def(C.centi, (C.fstr, "0.2f"), HR(34)),
+        "system_time": Def(C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
+        "enable_drm_rj45_port": Def(C.bool, None, HR(41)),
+        "enable_reversed_ct_clamp": Def(C.bool, None, HR(42)),
+        "charge_soc": Def((C.duint8, 0), None, HR(43)),
+        "discharge_soc": Def((C.duint8, 1), None, HR(43)),
+        "discharge_slot_2": Def(C.timeslot, None, HR(44), HR(45)),
+        "bms_firmware_version": Def(C.uint16, None, HR(46)),
+        "meter_type": Def(C.uint16, MeterType, HR(47)),
+        "enable_reversed_115_meter": Def(C.bool, None, HR(48)),
+        "enable_reversed_418_meter": Def(C.bool, None, HR(49)),
+        "active_power_rate": Def(C.uint16, None, HR(50)),
+        "reactive_power_rate": Def(C.uint16, None, HR(51)),
+        "power_factor": Def(C.uint16, None, HR(52)),  # /10_000 - 1
+        "enable_inverter_auto_restart": Def((C.duint8, 0), C.bool, HR(53)),
+        "enable_inverter": Def((C.duint8, 1), C.bool, HR(53)),
+        "battery_type": Def(C.uint16, BatteryType, HR(54)),
+        "battery_capacity": Def(C.uint16, None, HR(55)),
+        "discharge_slot_1": Def(C.timeslot, None, HR(56), HR(57)),
+        "enable_auto_judge_battery_type": Def(C.bool, None, HR(58)),
+        "enable_discharge": Def(C.bool, None, HR(59)),
+        #
+        # Holding Registers, block 60-119
+        #
+        "v_pv_start": Def(C.uint16, C.deci, HR(60)),
+        "start_countdown_timer": Def(C.uint16, None, HR(61)),
+        "restart_delay_time": Def(C.uint16, None, HR(62)),
+        # skip protection settings HR(63-93)
+        "charge_slot_1": Def(C.timeslot, None, HR(94), HR(95)),
+        "enable_charge": Def(C.bool, None, HR(96)),
+        "battery_low_voltage_protection_limit": Def(C.uint16, C.centi, HR(97)),
+        "battery_high_voltage_protection_limit": Def(C.uint16, C.centi, HR(98)),
+        # skip voltage adjustment settings 99-107
+        "battery_low_force_charge_time": Def(C.uint16, None, HR(108)),
+        "enable_bms_read": Def(C.bool, None, HR(109)),
+        "battery_soc_reserve": Def(C.uint16, None, HR(110)),
+        "battery_charge_limit": Def(C.uint16, None, HR(111)),
+        "battery_discharge_limit": Def(C.uint16, None, HR(112)),
+        "enable_buzzer": Def(C.bool, None, HR(113)),
+        "battery_discharge_min_power_reserve": Def(C.uint16, None, HR(114)),
+        # 'island_check_continue': Def(C.uint16, None, HR(115)),
+        "charge_target_soc": Def(C.uint16, None, HR(116)),  # requires enable_charge_target
+        "charge_soc_stop_2": Def(C.uint16, None, HR(117)),
+        "discharge_soc_stop_2": Def(C.uint16, None, HR(118)),
+        "charge_soc_stop_1": Def(C.uint16, None, HR(119)),
+        #
+        # Holding Registers, block 120-179
+        #
+        "discharge_soc_stop_1": Def(C.uint16, None, HR(120)),
+        "enable_local_command_test": Def(C.bool, None, HR(121)),
+        "power_factor_function_model": Def(C.uint16, PowerFactorFunctionModel, HR(122)),
+        "frequency_load_limit_rate": Def(C.uint16, None, HR(123)),
+        "enable_low_voltage_fault_ride_through": Def(C.bool, None, HR(124)),
+        "enable_frequency_derating": Def(C.bool, None, HR(125)),
+        "enable_above_6kw_system": Def(C.bool, None, HR(126)),
+        "start_system_auto_test": Def(C.bool, None, HR(127)),
+        "enable_spi": Def(C.bool, None, HR(128)),
+        # skip PF configuration and protection settings 129-166
+        "threephase_balance_mode": Def(C.uint16, None, HR(167)),
+        "threephase_abc": Def(C.uint16, None, HR(168)),
+        "threephase_balance_1": Def(C.uint16, None, HR(169)),
+        "threephase_balance_2": Def(C.uint16, None, HR(170)),
+        "threephase_balance_3": Def(C.uint16, None, HR(171)),
+        # HR(172-174) unused
+        "enable_battery_on_pv_or_grid": Def(C.bool, None, HR(175)),
+        "debug_inverter": Def(C.uint16, None, HR(176)),
+        "enable_ups_mode": Def(C.bool, None, HR(177)),
+        "enable_g100_limit_switch": Def(C.bool, None, HR(178)),
+        "enable_battery_cable_impedance_alarm": Def(C.bool, None, HR(179)),
+        #
+        # Holding Registers, block 180-239
+        #
+        "enable_standard_self_consumption_logic": Def(C.bool, None, HR(199)),
+        "cmd_bms_flash_update": Def(C.bool, None, HR(200)),
+        #
+        # Holding Registers, block 4080-4139
+        #
+        "pv_power_setting": Def(C.uint32, None, HR(4107), HR(4108)),
+        "e_battery_discharge_total2": Def(C.uint32, None, HR(4109), HR(4110)),
+        "e_battery_charge_total2": Def(C.uint32, None, HR(4111), HR(4112)),
+        "e_battery_discharge_today": Def(C.uint16, None, HR(4113)),
+        "e_battery_charge_today": Def(C.uint16, None, HR(4114)),
+        #
+        # Holding Registers, block 4140-4199
+        #
+        "e_inverter_export_total": Def(C.uint32, None, HR(4141), HR(4142)),
+        #
+        # Input Registers, block 0-59
+        #
+        "status": Def(C.uint16, Status, IR(0)),
+    }
 
-    # Installation configuration
-    meter_type: int
-    reverse_115_meter_direct: bool
-    reverse_418_meter_direct: bool
-    enable_drm_rj45_port: bool
-    ct_adjust: int
-    enable_buzzer: bool
-    num_mppt: int
-    num_phases: int
-    enable_ammeter: bool
-    grid_port_max_power_output: int
-    enable_60hz_freq_mode: bool
-    enable_above_6kw_system: bool
-    enable_frequency_derating: bool
-    enable_low_voltage_fault_ride_through: bool
-    enable_spi: bool
+    # @computed('p_pv')
+    # def compute_p_pv(p_pv1: int, p_pv2: int, **kwargs) -> int:
+    #     """Computes the discharge slot 2."""
+    #     return p_pv1 + p_pv2
 
-    pv1_voltage_adjust: int
-    pv2_voltage_adjust: int
-    grid_r_voltage_adjust: int
-    grid_s_voltage_adjust: int
-    grid_t_voltage_adjust: int
-    grid_power_adjust: int
-    battery_voltage_adjust: int
-    pv1_power_adjust: int
-    pv2_power_adjust: int
+    # @computed('e_pv_day')
+    # def compute_e_pv_day(e_pv1_day: float, e_pv2_day: float, **kwargs) -> float:
+    #     """Computes the discharge slot 2."""
+    #     return e_pv1_day + e_pv2_day
 
-    active_power_rate: int
-    reactive_power_rate: int
-    power_factor: int
-    power_factor_function_model: int
-    inverter_start_time: int
-    inverter_restart_delay_time: int
 
-    # Fault conditions
-    dci_1_i: float
-    dci_1_time: int
-    dci_2_i: float
-    dci_2_time: int
-    f_ac_high_c: float
-    f_ac_high_in: float
-    f_ac_high_in_time: int
-    f_ac_high_out: float
-    f_ac_high_out_time: int
-    f_ac_low_c: float
-    f_ac_low_in: float
-    f_ac_low_in_time: int
-    f_ac_low_out: float
-    f_ac_low_out_time: int
-    gfci_1_i: float
-    gfci_1_time: int
-    gfci_2_i: float
-    gfci_2_time: int
-    v_ac_high_c: float
-    v_ac_high_in: float
-    v_ac_high_in_time: int
-    v_ac_high_out: float
-    v_ac_high_out_time: int
-    v_ac_low_c: float
-    v_ac_low_in: float
-    v_ac_low_in_time: int
-    v_ac_low_out: float
-    v_ac_low_out_time: int
+_InverterBase = create_model(  # type: ignore[call-overload]
+    "Inverter",
+    __config__=ConfigDict(frozen=True, use_enum_values=True),
+    **InverterRegisterGetter.to_fields(),
+)
 
-    iso_fault_value: float
-    gfci_fault_value: float
-    dci_fault_value: float
-    v_pv_fault_value: float
-    v_ac_fault_value: float
-    f_ac_fault_value: float
-    temp_fault_value: float
 
-    iso1: int
-    iso2: int
-    local_command_test: bool
+class Inverter(_InverterBase):  # type: ignore[valid-type,misc]
+    """GivEnergy inverter data model."""
 
-    # Battery configuration
-    inverter_battery_serial_number: str
-    inverter_battery_bms_firmware_version: int
-    enable_bms_read: bool
-    battery_type: int
-    battery_nominal_capacity: float
-    enable_auto_judge_battery_type: bool
-    v_pv_input_start: float
-    v_battery_under_protection_limit: float
-    v_battery_over_protection_limit: float
-
-    enable_discharge: bool
-    enable_charge: bool
-    enable_charge_target: bool
-    battery_power_mode: int
-    soc_force_adjust: int
-
-    charge_slot_1: Tuple[datetime.time, datetime.time]
-    charge_slot_2: Tuple[datetime.time, datetime.time]
-    discharge_slot_1: Tuple[datetime.time, datetime.time]
-    discharge_slot_2: Tuple[datetime.time, datetime.time]
-    charge_and_discharge_soc: Tuple[int, int]
-
-    battery_low_force_charge_time: int
-    battery_soc_reserve: int
-    battery_charge_limit: int
-    battery_discharge_limit: int
-    island_check_continue: int
-    battery_discharge_min_power_reserve: int
-    charge_target_soc: int
-    charge_soc_stop_2: int
-    discharge_soc_stop_2: int
-    charge_soc_stop_1: int
-    discharge_soc_stop_1: int
-
-    inverter_status: int
-    system_mode: int
-    inverter_countdown: int
-    charge_status: int
-    battery_percent: int
-    charger_warning_code: int
-    work_time_total: int
-    fault_code: int
-
-    e_battery_charge_day: float
-    e_battery_charge_day_2: float
-    e_battery_charge_total: float
-    e_battery_discharge_day: float
-    e_battery_discharge_day_2: float
-    e_battery_discharge_total: float
-    e_battery_throughput_total: float
-    e_discharge_year: float
-    e_inverter_out_day: float
-    e_inverter_out_total: float
-    e_grid_out_day: float
-    e_grid_in_day: float
-    e_grid_in_total: float
-    e_grid_out_total: float
-    e_inverter_in_day: float
-    e_inverter_in_total: float
-    e_pv1_day: float
-    e_pv2_day: float
-    e_solar_diverter: float
-    f_ac1: float
-    f_eps_backup: float
-    i_ac1: float
-    i_battery: float
-    i_grid_port: float
-    i_pv1: float
-    i_pv2: float
-    p_battery: int
-    p_eps_backup: int
-    p_grid_apparent: int
-    p_grid_out: int
-    p_inverter_out: int
-    p_load_demand: int
-    p_pv1: int
-    p_pv2: int
-    e_pv_total: float
-    pf_inverter_out: float
-    temp_battery: float
-    temp_charger: float
-    temp_inverter_heatsink: float
-    v_ac1: float
-    v_battery: float
-    v_eps_backup: float
-    v_highbrigh_bus: int
-    v_n_bus: float
-    v_p_bus: float
-    v_pv1: float
-    v_pv2: float
-
-    pf_cmd_memory_state: bool
-    pf_limit_lp1_lp: int
-    pf_limit_lp1_pf: float
-    pf_limit_lp2_lp: int
-    pf_limit_lp2_pf: float
-    pf_limit_lp3_lp: int
-    pf_limit_lp3_pf: float
-    pf_limit_lp4_lp: int
-    pf_limit_lp4_pf: float
-    frequency_load_limit_rate: int
-
-    real_v_f_value: float
-    remote_bms_restart: bool
-    safety_time_limit: float
-    safety_v_f_limit: float
-    start_system_auto_test: bool
-    test_treat_time: int
-    test_treat_value: float
-    test_value: float
-    user_code: int
-    v_10_min_protection: float
-
-    variable_address: int
-    variable_value: int
-
-    @root_validator
-    def compute_model(cls, values) -> dict:
-        """Computes the inverter model from the serial number prefix."""
-        if 'inverter_serial_number' in values:
-            values['inverter_model'] = Model.from_serial_number(values['inverter_serial_number'])
-        else:
-            values['inverter_model'] = Model.Unknown
-        return values
+    @classmethod
+    def from_register_cache(cls, register_cache) -> "Inverter":
+        """Construct an Inverter from a RegisterCache."""
+        return cls.model_validate(InverterRegisterGetter(register_cache).build())

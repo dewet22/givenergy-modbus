@@ -18,7 +18,7 @@ class NullResponse(TransparentResponse):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.nulls = kwargs.get('base_register', [0] * 62)
+        self.nulls = kwargs.get("nulls", [0] * 62)
 
     def _encode_function_data(self) -> None:
         super()._encode_function_data()
@@ -26,13 +26,13 @@ class NullResponse(TransparentResponse):
         self._update_check_code()
 
     @classmethod
-    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> 'NullResponse':
+    def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> "NullResponse":
         if decoder.remaining_bytes != 126:
             _logger.warning(
-                f'remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}'
+                f"remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}"
             )
-        attrs['nulls'] = [decoder.decode_16bit_uint() for _ in range(62)]
-        attrs['check'] = decoder.decode_16bit_uint()
+        attrs["nulls"] = [decoder.decode_16bit_uint() for _ in range(62)]
+        attrs["check"] = decoder.decode_16bit_uint()
         return cls(**attrs)
 
     def expected_response(self):
@@ -40,9 +40,9 @@ class NullResponse(TransparentResponse):
 
     def ensure_valid_state(self) -> None:
         """Sanity check our internal state."""
-        if self.inverter_serial_number != '\x00' * 10:
-            hex_str = self.inverter_serial_number.encode('latin1').hex()
-            _logger.warning(f'Unexpected non-null inverter serial number: {self.inverter_serial_number}/0x{hex_str}')
+        if self.inverter_serial_number != "\x00" * 10:
+            hex_str = self.inverter_serial_number.encode("latin1").hex()
+            _logger.warning(f"Unexpected non-null inverter serial number: {self.inverter_serial_number}/0x{hex_str}")
         if any(self.nulls):
             _logger.warning(
                 f'Unexpected non-null "register" values: {dict(filter(lambda v: v[1] != 0, enumerate(self.nulls)))}'

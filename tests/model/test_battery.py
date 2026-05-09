@@ -1,138 +1,216 @@
-import pytest
-
-from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.register import InputRegister
-
-EXPECTED_BATTERY_DICT = {
-    'bms_firmware_version': 3005,
-    'design_capacity': 160.0,
-    'design_capacity_2': 160.0,
-    'full_capacity': 190.97,
-    'num_cells': 16,
-    'num_cycles': 12,
-    'remaining_capacity': 18.04,
-    'battery_serial_number': 'BG1234G567',
-    'soc': 9,
-    'status_1_2': (0, 0),
-    'status_3_4': (6, 16),
-    'status_5_6': (1, 0),
-    'status_7': (0, 0),
-    'temp_bms_mos': 17.2,
-    'temp_cells_1': 17.5,
-    'temp_cells_2': 16.7,
-    'temp_cells_3': 17.1,
-    'temp_cells_4': 16.1,
-    'temp_max': 17.4,
-    'temp_min': 16.7,
-    'usb_inserted': 8,
-    'v_cell_01': 3.117,
-    'v_cell_02': 3.124,
-    'v_cell_03': 3.129,
-    'v_cell_04': 3.129,
-    'v_cell_05': 3.125,
-    'v_cell_06': 3.13,
-    'v_cell_07': 3.122,
-    'v_cell_08': 3.116,
-    'v_cell_09': 3.111,
-    'v_cell_10': 3.105,
-    'v_cell_11': 3.119,
-    'v_cell_12': 3.134,
-    'v_cell_13': 3.146,
-    'v_cell_14': 3.116,
-    'v_cell_15': 3.135,
-    'v_cell_16': 3.119,
-    'v_cells_sum': 49.97,
-    'v_battery_out': 50.029,
-    'warning_1_2': (0, 0),
-    'e_charge_total': 174.4,
-    'e_discharge_total': 169.6,
-}
+from givenergy_modbus.model.battery import Battery, UsbDevice
+from givenergy_modbus.model.register_cache import RegisterCache
 
 
-def test_has_expected_attributes():
-    """Ensure registers mapped to Batteries/BMS are represented in the model."""
-    expected_attributes = set()
-    for i in range(60):
-        name = InputRegister(i + 60).name.lower()
-        if name.endswith('_h'):
-            continue
-        elif name.endswith('_l'):
-            name = name[:-2]
-        elif name.startswith('status_') or name.startswith('warning_'):
-            pass
-        elif name.endswith('_1_2'):
-            name = name[:-4]
-        elif name.endswith('_3_4') or name.endswith('_5_6') or name.endswith('_7_8') or name.endswith('_9_10'):
-            continue
-        elif name.startswith('input_reg'):
-            continue
-        expected_attributes.add(name)
-    assert expected_attributes == set(Battery.__fields__.keys())
-
-
-def test_from_orm(register_cache):
+def test_from_registers(register_cache):
     """Ensure we can return a dict view of battery data."""
-    assert Battery.from_orm(register_cache).dict() == EXPECTED_BATTERY_DICT
-
-
-def test_from_orm_actual_data(register_cache_battery_daytime_discharging):
-    """Ensure we can instantiate an instance of battery data from actual registers."""
-    assert Battery.from_orm(register_cache_battery_daytime_discharging).dict() == {
-        'battery_serial_number': 'BG1234G567',
-        'bms_firmware_version': 3005,
-        'design_capacity': 160.0,
-        'design_capacity_2': 160.0,
-        'e_charge_total': 174.4,
-        'e_discharge_total': 169.6,
-        'full_capacity': 195.13,
-        'num_cells': 16,
-        'num_cycles': 23,
-        'remaining_capacity': 131.42,
-        'soc': 67,
-        'status_1_2': (0, 0),
-        'status_3_4': (14, 16),
-        'status_5_6': (1, 0),
-        'status_7': (0, 0),
-        'temp_bms_mos': 17.2,
-        'temp_cells_1': 16.8,
-        'temp_cells_2': 15.7,
-        'temp_cells_3': 16.5,
-        'temp_cells_4': 14.6,
-        'temp_max': 16.8,
-        'temp_min': 15.7,
-        'usb_inserted': 8,
-        'v_battery_out': 51.816,
-        'v_cell_01': 3.232,
-        'v_cell_02': 3.237,
-        'v_cell_03': 3.235,
-        'v_cell_04': 3.232,
-        'v_cell_05': 3.235,
-        'v_cell_06': 3.229,
-        'v_cell_07': 3.237,
-        'v_cell_08': 3.233,
-        'v_cell_09': 3.238,
-        'v_cell_10': 3.237,
-        'v_cell_11': 3.235,
-        'v_cell_12': 3.235,
-        'v_cell_13': 3.235,
-        'v_cell_14': 3.235,
-        'v_cell_15': 3.24,
-        'v_cell_16': 3.238,
-        'v_cells_sum': 51.832,
-        'warning_1_2': (0, 0),
+    assert Battery.from_register_cache(register_cache).model_dump() == {
+        "bms_firmware_version": 3005,
+        "cap_design": 160.0,
+        "cap_design2": 160.0,
+        "cap_calibrated": 190.97,
+        "num_cells": 16,
+        "num_cycles": 12,
+        "cap_remaining": 18.04,
+        "serial_number": "BG1234G567",
+        "soc": 9,
+        "status_1": 0,
+        "status_2": 0,
+        "status_3": 6,
+        "status_4": 16,
+        "status_5": 1,
+        "status_6": 0,
+        "status_7": 0,
+        "t_bms_mosfet": 17.2,
+        "t_cells_13_16": 16.1,
+        "t_cells_01_04": 17.5,
+        "t_cells_05_08": 16.7,
+        "t_cells_09_12": 17.1,
+        "t_max": 17.4,
+        "t_min": 16.7,
+        "usb_device_inserted": UsbDevice.DISK,
+        "v_cell_01": 3.117,
+        "v_cell_02": 3.124,
+        "v_cell_03": 3.129,
+        "v_cell_04": 3.129,
+        "v_cell_05": 3.125,
+        "v_cell_06": 3.13,
+        "v_cell_07": 3.122,
+        "v_cell_08": 3.116,
+        "v_cell_09": 3.111,
+        "v_cell_10": 3.105,
+        "v_cell_11": 3.119,
+        "v_cell_12": 3.134,
+        "v_cell_13": 3.146,
+        "v_cell_14": 3.116,
+        "v_cell_15": 3.135,
+        "v_cell_16": 3.119,
+        "v_cells_sum": 49.97,
+        "v_out": 50.029,
+        "warning_1": 0,
+        "warning_2": 0,
     }
 
 
-def test_from_orm_unsure_data(register_cache_battery_unsure, register_cache_battery_missing):
-    """Ensure we cannot instantiate an instance of battery data from registers returned for non-existent slave."""
-    b = Battery.from_orm(register_cache_battery_unsure)
-    assert b.battery_serial_number == '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
+    """Ensure we can instantiate an instance of battery data from actual registers."""
+    assert Battery.from_register_cache(register_cache_battery_daytime_discharging).model_dump() == {
+        "bms_firmware_version": 3005,
+        "cap_design": 160.0,
+        "cap_design2": 160.0,
+        "cap_calibrated": 195.13,
+        "num_cells": 16,
+        "num_cycles": 23,
+        "cap_remaining": 131.42,
+        "serial_number": "BG1234G567",
+        "soc": 67,
+        "status_1": 0,
+        "status_2": 0,
+        "status_3": 14,
+        "status_4": 16,
+        "status_5": 1,
+        "status_6": 0,
+        "status_7": 0,
+        "t_bms_mosfet": 17.2,
+        "t_cells_13_16": 14.6,
+        "t_cells_01_04": 16.8,
+        "t_cells_05_08": 15.7,
+        "t_cells_09_12": 16.5,
+        "t_max": 16.8,
+        "t_min": 15.7,
+        "usb_device_inserted": UsbDevice.DISK,
+        "v_cell_01": 3.232,
+        "v_cell_02": 3.237,
+        "v_cell_03": 3.235,
+        "v_cell_04": 3.232,
+        "v_cell_05": 3.235,
+        "v_cell_06": 3.229,
+        "v_cell_07": 3.237,
+        "v_cell_08": 3.233,
+        "v_cell_09": 3.238,
+        "v_cell_10": 3.237,
+        "v_cell_11": 3.235,
+        "v_cell_12": 3.235,
+        "v_cell_13": 3.235,
+        "v_cell_14": 3.235,
+        "v_cell_15": 3.24,
+        "v_cell_16": 3.238,
+        "v_cells_sum": 51.832,
+        "v_out": 51.816,
+        "warning_1": 0,
+        "warning_2": 0,
+    }
+
+
+def test_from_registers_unsure_data(register_cache_battery_unsure):
+    """Test case of battery registers returned for non-existent slave."""
+    b = Battery.from_register_cache(register_cache_battery_unsure)
+    assert b.serial_number == ""
     assert b.is_valid() is False
+    assert b.model_dump() == {
+        "bms_firmware_version": 0,
+        "cap_calibrated": 0.0,
+        "cap_design": 0.0,
+        "cap_design2": 0.0,
+        "cap_remaining": 0.0,
+        "num_cells": 0,
+        "num_cycles": 0,
+        "serial_number": "",
+        "soc": 0,
+        "status_1": 0,
+        "status_2": 0,
+        "status_3": 0,
+        "status_4": 0,
+        "status_5": 0,
+        "status_6": 0,
+        "status_7": 0,
+        "t_bms_mosfet": 25.6,
+        "t_cells_01_04": 5.2,
+        "t_cells_05_08": 0.0,
+        "t_cells_09_12": 0.0,
+        "t_cells_13_16": 0.0,
+        "t_max": 0.0,
+        "t_min": 0.0,
+        "usb_device_inserted": UsbDevice.NONE,
+        "v_cell_01": 0.0,
+        "v_cell_02": 0.0,
+        "v_cell_03": 0.0,
+        "v_cell_04": 0.0,
+        "v_cell_05": 0.0,
+        "v_cell_06": 0.0,
+        "v_cell_07": 0.0,
+        "v_cell_08": 0.0,
+        "v_cell_09": 0.0,
+        "v_cell_10": 0.0,
+        "v_cell_11": 0.0,
+        "v_cell_12": 0.0,
+        "v_cell_13": 0.0,
+        "v_cell_14": 0.0,
+        "v_cell_15": 0.0,
+        "v_cell_16": 0.0,
+        "v_cells_sum": 0.0,
+        "v_out": 0.0,
+        "warning_1": 0,
+        "warning_2": 0,
+    }
 
 
 def test_empty():
-    """Ensure we cannot instantiate from empty data."""
-    with pytest.raises(ValueError, match=r'\d validation errors for Battery'):
-        Battery()
-    with pytest.raises(ValueError, match=r'\d validation errors for Battery'):
-        Battery.from_orm({})
+    """Ensure we can instantiate from empty data."""
+    b1 = Battery()
+    b2 = Battery.from_register_cache(RegisterCache({}))
+    assert b1.serial_number is None
+    assert b1.is_valid() is False
+    assert b2.serial_number is None
+    assert b2.is_valid() is False
+
+    assert (
+        b1.model_dump()
+        == b2.model_dump()
+        == {
+            "bms_firmware_version": None,
+            "cap_calibrated": None,
+            "cap_design": None,
+            "cap_design2": None,
+            "cap_remaining": None,
+            "num_cells": None,
+            "num_cycles": None,
+            "serial_number": None,
+            "soc": None,
+            "status_1": None,
+            "status_2": None,
+            "status_3": None,
+            "status_4": None,
+            "status_5": None,
+            "status_6": None,
+            "status_7": None,
+            "t_bms_mosfet": None,
+            "t_cells_01_04": None,
+            "t_cells_05_08": None,
+            "t_cells_09_12": None,
+            "t_cells_13_16": None,
+            "t_max": None,
+            "t_min": None,
+            "usb_device_inserted": None,
+            "v_cell_01": None,
+            "v_cell_02": None,
+            "v_cell_03": None,
+            "v_cell_04": None,
+            "v_cell_05": None,
+            "v_cell_06": None,
+            "v_cell_07": None,
+            "v_cell_08": None,
+            "v_cell_09": None,
+            "v_cell_10": None,
+            "v_cell_11": None,
+            "v_cell_12": None,
+            "v_cell_13": None,
+            "v_cell_14": None,
+            "v_cell_15": None,
+            "v_cell_16": None,
+            "v_cells_sum": None,
+            "v_out": None,
+            "warning_1": None,
+            "warning_2": None,
+        }
+    )

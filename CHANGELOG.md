@@ -7,6 +7,66 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-05-09
+
+Complete modernisation of the library to Python 3.13+, pydantic v2, and a new asyncio-based messaging architecture.
+
+### Added
+
+- Asyncio-based client: long-lived connections with a network producer/consumer task pair. Incoming messages are
+  dispatched via `Future`s so command results can be awaited rather than polled.
+- `Plant.update(pdu)` method for incremental state updates from incoming PDUs.
+- `Inverter.from_register_cache()` and `Battery.from_register_cache()` classmethods replacing `from_orm()`.
+- `RegisterGetter` standalone class with `build()` and `get()` methods (replaces pydantic v1 `GetterDict`).
+- `ruff` for linting and formatting (replaces `flake8`, `black`, `isort`, `autopep8`, `pydocstyle`).
+- Tests covering all five security fixes (see Security section below).
+
+### Changed
+
+- ⚠️ Breaking change: the complete client API has been rewritten around asyncio. Dependent consumers will need to
+  update — see `README.md` for updated usage examples.
+- ⚠️ Minimum Python version raised to **3.13**. Python 3.7–3.12 are no longer supported.
+- Migrated from **pydantic v1** to **pydantic v2**: `model_validate()`, `model_dump()`, `model_dump_json()`,
+  `ConfigDict`, and `model_json_schema()` throughout. `TimeSlot` converted from `@dataclass` to a plain class with
+  a custom `__get_pydantic_core_schema__` to preserve instances in `model_dump()`.
+- `set_system_date_time()` now accepts `datetime.datetime` instead of `arrow.Arrow`.
+- Type annotations modernised to PEP 604 (`X | None`, `X | Y`) and PEP 585 (`list[X]`, `dict[K, V]`, `tuple[X]`).
+- `asyncio.get_event_loop()` replaced with `asyncio.get_running_loop()`.
+- CI matrix updated to Python 3.13 and 3.14; GitHub Actions pinned to current versions.
+- `setup.cfg` removed; all tool configuration now lives in `pyproject.toml`.
+
+### Removed
+
+- `arrow` runtime dependency — replaced by `datetime.datetime`.
+- `bump2version` dev dependency — use `poetry version` instead.
+- `black`, `isort`, `flake8`, `autopep8`, `pydocstyle`, `flake8-docstrings`, `flake8-typing-imports`,
+  `types-tabulate` — all replaced by `ruff`.
+- `aenum`, `toml`, `aiofiles` — replaced by stdlib equivalents (`enum.StrEnum`, `tomllib`, removed).
+- Support for Python 3.7–3.12.
+
+### Security
+
+- Fixed broken register value bounds check in `WriteHoldingRegister.ensure_valid_state`: the condition
+  `0 > self.value > 0xFFFF` is a Python chained comparison that is always `False`, so out-of-range values
+  were silently accepted. Corrected to `self.value < 0 or self.value > 0xFFFF`.
+- Fixed class-level mutable `expected_responses = {}` on `Client` — shared across all instances, causing
+  response futures from concurrent clients to collide. Now initialised per-instance in `__init__`.
+- Fixed `NullResponse.__init__` reading decoded nulls from the wrong kwargs key (`"base_register"` instead
+  of `"nulls"`), causing the decoded payload to be silently discarded and the non-null sanity check to never
+  trigger.
+- `RegisterCache.from_json` now logs a warning and skips unrecognised register keys instead of raising
+  `ValueError`, preventing a crash on malformed JSON input.
+- `ReadRegistersResponse` decoding now caps `register_count` at 60 before allocating the register values
+  list, preventing buffer exhaustion from a crafted response with an oversized count field.
+
+### Notes
+
+Socket Security was run against the full dependency diff introduced by this PR. All flagged packages
+(`cryptography`, `urllib3`, `setuptools`) are dev/build-only transitive dependencies — none are present
+in the published package's runtime install. The vulnerability score drops on `cryptography` (39→40, −9)
+and `urllib3` (1.26→2.0) reflect pre-existing advisories in those packages' own histories, not regressions
+introduced here. The library's runtime surface remains: `pydantic`, `crccheck`, `typing_extensions`.
+
 ## [0.10.1] - 2022-03-03
 
 ### Fixed
@@ -190,9 +250,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v1.0.0...HEAD
 
-[0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
+[1.0.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...v1.0.0
+
+[0.10.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
 
 [0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...v0.10.0
 
