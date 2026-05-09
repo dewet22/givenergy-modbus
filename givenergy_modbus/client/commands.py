@@ -1,6 +1,5 @@
 """High-level methods for interacting with a remote system."""
 
-from typing import Optional
 
 from datetime import datetime
 from typing_extensions import deprecated  # type: ignore[attr-defined]
@@ -177,7 +176,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
 
 
-def _set_charge_slot(discharge: bool, idx: int, slot: Optional[TimeSlot]) -> list[TransparentRequest]:
+def _set_charge_slot(discharge: bool, idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
     hr_start, hr_end = (
         getattr(RegisterMap, f"{'DIS' if discharge else ''}CHARGE_SLOT_{idx}_START"),
         getattr(RegisterMap, f"{'DIS' if discharge else ''}CHARGE_SLOT_{idx}_END"),
@@ -260,7 +259,7 @@ def set_mode_dynamic() -> list[TransparentRequest]:
 
 def set_mode_storage(
     discharge_slot_1: TimeSlot = TimeSlot.from_repr(1600, 700),
-    discharge_slot_2: Optional[TimeSlot] = None,
+    discharge_slot_2: TimeSlot | None = None,
     discharge_for_export: bool = False,
 ) -> list[TransparentRequest]:
     """Set system to storage mode with specific discharge slots(s).

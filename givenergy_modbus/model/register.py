@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Callable, Optional, Union, get_type_hints
+from typing import Any, Callable, get_type_hints
 
 from givenergy_modbus.model import TimeSlot
 
@@ -42,7 +42,7 @@ class Converter:
         return None
 
     @staticmethod
-    def string(*vals: int) -> Optional[str]:
+    def string(*vals: int) -> str | None:
         """Represent one or more registers as a concatenated string."""
         if vals is not None and None not in vals:
             return (
@@ -54,14 +54,14 @@ class Converter:
         return None
 
     @staticmethod
-    def fstr(val, fmt) -> Optional[str]:
+    def fstr(val, fmt) -> str | None:
         """Render a value using a format string."""
         if val is not None:
             return f"{val:{fmt}}"
         return None
 
     @staticmethod
-    def firmware_version(dsp_version: int, arm_version: int) -> Optional[str]:
+    def firmware_version(dsp_version: int, arm_version: int) -> str | None:
         """Represent ARM & DSP firmware versions in the same format as the dashboard."""
         if dsp_version is not None and arm_version is not None:
             return f"D0.{dsp_version}-A0.{arm_version}"
@@ -91,7 +91,7 @@ class Converter:
             return val / 10
 
     @staticmethod
-    def datetime(year, month, day, hour, min, sec) -> "Optional[datetime]":
+    def datetime(year, month, day, hour, min, sec) -> "datetime | None":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
             return datetime(year + 2000, month, day, hour, min, sec)
@@ -102,8 +102,8 @@ class Converter:
 class RegisterDefinition:
     """Specifies how to convert raw register values into their actual representation."""
 
-    pre_conv: Union[Callable, tuple, None]
-    post_conv: Union[Callable, tuple[Callable, Any], None]
+    pre_conv: Callable | tuple | None
+    post_conv: Callable | tuple[Callable, Any] | None
     registers: tuple["Register"]
 
     def __init__(self, *args, **kwargs):
@@ -188,7 +188,7 @@ class RegisterGetter:
                     return infer_return_type(v.pre_conv)
             return Any
 
-        return {k: (Optional[return_type(v)], None) for k, v in cls.REGISTER_LUT.items()}
+        return {k: (return_type(v) | None, None) for k, v in cls.REGISTER_LUT.items()}
 
 
 class RegisterEncoder(JSONEncoder):

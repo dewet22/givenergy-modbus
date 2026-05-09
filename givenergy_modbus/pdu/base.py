@@ -1,7 +1,6 @@
 import logging
 import struct
 from abc import ABC
-from typing import Optional
 
 from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
 from givenergy_modbus.exceptions import InvalidFrame, InvalidPduState
@@ -149,7 +148,7 @@ class ClientIncomingMessage(BasePDU, ABC):
         else:
             raise NotImplementedError(f"ClientIncomingMessage main function #{function_code} decoder")
 
-    def expected_response(self) -> Optional["ClientOutgoingMessage"]:
+    def expected_response(self) -> "ClientOutgoingMessage | None":
         """Create a template of a correctly shaped Response expected for this Request."""
         raise NotImplementedError()
 

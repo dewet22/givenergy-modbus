@@ -1,6 +1,7 @@
 import datetime
 import json
-from typing import TYPE_CHECKING, DefaultDict, Optional
+from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from givenergy_modbus.model.register import HR, IR, Register
 
@@ -8,10 +9,10 @@ if TYPE_CHECKING:
     from givenergy_modbus.model import TimeSlot
 
 
-class RegisterCache(DefaultDict[Register, int]):
+class RegisterCache(defaultdict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
 
-    def __init__(self, registers: Optional[dict[Register, int]] = None) -> None:
+    def __init__(self, registers: dict[Register, int] | None = None) -> None:
         if registers is None:
             registers = {}
         super().__init__(lambda: 0, registers)

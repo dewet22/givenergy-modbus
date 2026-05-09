@@ -2,7 +2,7 @@ import asyncio
 import logging
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable
 
 from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
@@ -17,7 +17,7 @@ class Client:
     """Asynchronous client utilising long-lived connections to a network device."""
 
     framer: Framer
-    expected_responses: "Dict[int, Future[TransparentResponse]]" = {}
+    expected_responses: dict[int, Future[TransparentResponse]] = {}
     plant: Plant
     # refresh_count: int = 0
     # debug_frames: Dict[str, Queue]
@@ -27,7 +27,7 @@ class Client:
     network_consumer_task: Task
     network_producer_task: Task
 
-    tx_queue: "Queue[Tuple[bytes, Optional[Future]]]"
+    tx_queue: Queue[tuple[bytes, Future | None]]
 
     def __init__(self, host: str, port: int, connect_timeout: float = 2.0) -> None:
         self.host = host
@@ -90,7 +90,7 @@ class Client:
 
     async def watch_plant(
         self,
-        handler: Optional[Callable] = None,
+        handler: Callable | None = None,
         refresh_period: float = 15.0,
         max_batteries: int = 5,
         timeout: float = 1.0,
@@ -174,7 +174,7 @@ class Client:
 
     def execute(
         self, requests: list[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
-    ) -> "Future[List[TransparentResponse]]":
+    ) -> Future[list[TransparentResponse]]:
         """Helper to perform multiple requests in bulk."""
         return asyncio.gather(
             *[self.send_request_and_await_response(m, timeout=timeout, retries=retries) for m in requests],
@@ -192,14 +192,14 @@ class Client:
         if existing_response_future and not existing_response_future.done():
             _logger.debug(f"Cancelling existing in-flight request and replacing: {request}")
             existing_response_future.cancel()
-        response_future: Future[TransparentResponse] = asyncio.get_event_loop().create_future()
+        response_future: Future[TransparentResponse] = asyncio.get_running_loop().create_future()
         self.expected_responses[expected_shape_hash] = response_future
 
         raw_frame = request.encode()
 
         tries = 0
         while tries <= retries:
-            frame_sent = asyncio.get_event_loop().create_future()
+            frame_sent = asyncio.get_running_loop().create_future()
             await self.tx_queue.put((raw_frame, frame_sent))
             await asyncio.wait_for(
                 frame_sent, timeout=self.tx_queue.qsize() + 1

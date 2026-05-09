@@ -1,7 +1,5 @@
 """Data model."""
 
-from __future__ import annotations
-
 from datetime import time
 from enum import IntEnum
 from typing import TYPE_CHECKING
@@ -18,7 +16,7 @@ class GivEnergyBaseModel(BaseModel):
     model_config = ConfigDict(frozen=True, use_enum_values=True)
 
     @classmethod
-    def from_registers(cls, register_cache: RegisterCache):
+    def from_registers(cls, register_cache: "RegisterCache"):
         """Constructor parsing registers directly."""
         raise NotImplementedError()
 
