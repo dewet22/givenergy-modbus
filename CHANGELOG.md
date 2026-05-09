@@ -7,6 +7,23 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-09
+
+### Changed
+
+- README rewritten to reflect the v1.0.0 API: async `Client`, module-level `commands`, `TimeSlot`, pydantic v2
+  `model_dump()`/`model_dump_json()`, and correct field names throughout.
+- Migrate from pre-commit to [prek](https://prek.j178.dev), a Rust-based git hook manager; update all hook revisions.
+- `__version__` now sourced from package metadata via `importlib.metadata` rather than a hardcoded string.
+- All GitHub Actions bumped to current versions (checkout@v4, codecov@v5, codeql@v3, gh-pages@v4, gh-release@v2).
+- `poetry.lock` updated to resolve 32 Dependabot security alerts (all transitive dev/build dependencies).
+- Release workflow: documentation publishing moved to after PyPI release; `skip-existing` and `fail_ci_if_error` fixes.
+- GitHub Pages source switched from Jekyll-on-`main` to pre-built mkdocs output on `gh-pages`.
+
+### Removed
+
+- `.bumpversion.cfg`, `makefile`, `MODERNISATION_PLAN.md` — stale artefacts from the pre-1.0 era.
+
 ## [1.0.0] - 2026-05-09
 
 Complete modernisation of the library to Python 3.13+, pydantic v2, and a new asyncio-based messaging architecture.
