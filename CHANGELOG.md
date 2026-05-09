@@ -7,6 +7,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-05-09
+
+### Fixed
+
+- `plant.py`: restore parentheses on `except (KeyError, AssertionError)` removed by ruff 0.15.12 formatter bug.
+
+### Changed
+
+- Docs updated for v1.0.0 API: installation, usage, and API reference pages fully rewritten.
+- `pyproject.toml`: classifier updated to `Production/Stable`; removed stale `Framework :: Pytest` and `Framework :: tox`.
+- `.gitignore`: stripped stale cookiecutter entries; added `.ruff_cache/`.
+- Python 3.14 set as default build Python across release and preview workflows.
+- `ruff` target version updated to `py314`.
+
 ## [1.0.1] - 2026-05-09
 
 ### Changed

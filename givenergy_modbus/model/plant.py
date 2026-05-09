@@ -82,7 +82,7 @@ class Plant(GivEnergyBaseModel):
         for i in range(6):
             try:
                 assert Battery.from_register_cache(self.register_caches[i + 0x32]).is_valid()
-            except (KeyError, AssertionError):
+            except (KeyError, AssertionError):  # fmt: skip  # TODO: remove when Python 3.13 support is dropped (PEP 758 unparenthesized except requires 3.14+)
                 break
         return i
 
