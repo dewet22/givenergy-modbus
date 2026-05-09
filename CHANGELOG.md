@@ -7,6 +7,24 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-09
+
+### Added
+
+- `Inverter`: `battery_capacity_ah` — raw Ah capacity at HR(55), renamed from `battery_capacity`.
+- `Inverter`: `battery_capacity_kwh` — computed field derived from Ah × nominal system voltage (51.2 V LV, 76.8 V 3-phase, 317 V All-in-One).
+- `Inverter`: `battery_voltage_adjust` (HR 105), `inverter_reboot` (HR 163), `enable_rtc` (HR 166), `inverter_errors` (HR 223–224), `battery_charge_limit_ac` (HR 313), `battery_discharge_limit_ac` (HR 314), `battery_pause_mode` (HR 318), `battery_pause_slot_1` (HR 319–320).
+- `Inverter`: `e_battery_discharge_2`, `e_battery_charge_2`, `e_battery_discharge_day_2`, `e_battery_charge_day_2` (IR 180–183).
+- `Inverter`: `p_combined_generation` (IR 247–248).
+- `Inverter`: Gen 3 charge/discharge slots — `charge_slot_3`–`10`, `discharge_slot_3`–`10`, `charge_slot_2_x` (HR 243–244), `charge_target_soc_1`–`10`, `discharge_target_soc_1`–`10`.
+- `Model`: `system_battery_voltage` property returning nominal pack voltage per model variant.
+
+### Changed
+
+- `Inverter`: `v_highbrigh_bus` converter changed from `uint16` to `deci` (value now in volts, not tenths of volts).
+- `Model`, `UsbDevice`, `BatteryPowerMode`, `BatteryCalibrationStage`, `MeterType`, `BatteryType`, `PowerFactorFunctionModel`, `Status`: changed from `StrEnum`/`IntEnum` to `(str, Enum)`/`(int, Enum)` mixin style to prevent pydantic from coercing enum instances to plain scalars.
+- `_InverterBase`: removed `use_enum_values=True` from pydantic `ConfigDict` so enum members are preserved on model instances.
+
 ## [1.0.2] - 2026-05-09
 
 ### Fixed

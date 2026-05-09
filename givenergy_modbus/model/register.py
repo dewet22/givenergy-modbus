@@ -86,6 +86,12 @@ class Converter:
             return val / 100
 
     @staticmethod
+    def int16(val: int) -> int:
+        """Interpret a 16-bit register value as a signed integer (two's complement)."""
+        if val is not None:
+            return val if val < 0x8000 else val - 0x10000
+
+    @staticmethod
     def deci(val: int) -> float:
         """Represent a register value as a float in 1/10 units."""
         if val is not None:
