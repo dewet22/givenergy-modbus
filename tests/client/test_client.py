@@ -70,3 +70,11 @@ def test_timeslot():
         assert ts == TimeSlot.from_repr(4321, 5432)
     with pytest.raises(ValueError, match="hour must be in 0..23"):
         assert ts == TimeSlot.from_repr("4321", "5432")
+
+
+def test_client_expected_responses_isolated_between_instances():
+    """expected_responses must be per-instance, not shared at the class level."""
+    client1 = Client(host="a", port=1)
+    client2 = Client(host="b", port=2)
+    client1.expected_responses[42] = "sentinel"
+    assert 42 not in client2.expected_responses

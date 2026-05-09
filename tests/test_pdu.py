@@ -1,9 +1,11 @@
 import logging
+import struct
 from typing import Any, Optional
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame
+from givenergy_modbus.codec import PayloadDecoder
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
 from givenergy_modbus.model.register import HR
 from givenergy_modbus.pdu import (
     BasePDU,
@@ -353,3 +355,37 @@ def test_expected_response():
     assert req.has_same_shape(res) is False
     assert req.expected_response().has_same_shape(res)
     assert res.has_same_shape(req) is False
+
+
+# ── Security fix tests ────────────────────────────────────────────────────────
+
+
+def test_write_register_value_bounds():
+    """ensure_valid_state must reject values outside [0, 0xFFFF]."""
+    with pytest.raises(InvalidPduState, match="must be an unsigned 16-bit int"):
+        WriteHoldingRegisterResponse(register=20, value=-1).ensure_valid_state()
+    with pytest.raises(InvalidPduState, match="must be an unsigned 16-bit int"):
+        WriteHoldingRegisterResponse(register=20, value=0x10000).ensure_valid_state()
+    # Boundary values must be accepted without raising.
+    WriteHoldingRegisterResponse(register=20, value=0).ensure_valid_state()
+    WriteHoldingRegisterResponse(register=20, value=0xFFFF).ensure_valid_state()
+
+
+def test_null_response_preserves_nulls_kwarg():
+    """NullResponse must store the supplied 'nulls' list, not silently use a default."""
+    custom = [1] + [0] * 61
+    assert NullResponse(nulls=custom).nulls == custom
+    assert NullResponse().nulls == [0] * 62
+
+
+def test_read_registers_response_caps_decode_at_60():
+    """A crafted register_count > 60 must not exhaust the decoder buffer."""
+    # Payload: base_register=0, register_count=100, then exactly 60 values, then check.
+    payload = struct.pack(">HH", 0, 100)
+    payload += struct.pack(">" + "H" * 60, *range(60))
+    payload += struct.pack(">H", 0)  # check
+    decoder = PayloadDecoder(payload)
+    result = ReadHoldingRegistersResponse.decode_transparent_function(decoder, error=False)
+    assert result.register_count == 100
+    assert len(result.register_values) == 60
+    assert result.register_values == list(range(60))

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip index *)",
+      "Bash(poetry lock *)",
+      "Bash(poetry install *)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python -m pytest tests/model/ -x --tb=short -q)",
+      "Bash(python -m pytest tests/ --tb=short -q)",
+      "Bash(python -m pytest tests/model/test_device.py -x -q)",
+      "Bash(python -m pytest -x -q)",
+      "Bash(poetry run *)",
+      "Bash(gh pr *)"
+    ]
+  }
+}

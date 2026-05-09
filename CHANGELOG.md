@@ -9,23 +9,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.0] - 2026-05-09
 
-### Security
-
-- Fixed broken register value bounds check in `WriteHoldingRegister.ensure_valid_state`: the condition
-  `0 > self.value > 0xFFFF` is a Python chained comparison that is always `False`, so out-of-range values
-  were silently accepted. Corrected to `self.value < 0 or self.value > 0xFFFF`.
-- Fixed class-level mutable `expected_responses = {}` on `Client` — shared across all instances, causing
-  response futures from concurrent clients to collide. Now initialised per-instance in `__init__`.
-- Fixed `NullResponse.__init__` reading decoded nulls from the wrong kwargs key (`"base_register"` instead
-  of `"nulls"`), causing the decoded payload to be silently discarded and the non-null sanity check to never
-  trigger.
-- `RegisterCache.from_json` now logs a warning and skips unrecognised register keys instead of raising
-  `ValueError`, preventing a crash on malformed JSON input.
-- `ReadRegistersResponse` decoding now caps `register_count` at 60 before allocating the register values
-  list, preventing buffer exhaustion from a crafted response with an oversized count field.
-
-
-
 Complete modernisation of the library to Python 3.13+, pydantic v2, and a new asyncio-based messaging architecture.
 
 ### Added
@@ -36,6 +19,7 @@ Complete modernisation of the library to Python 3.13+, pydantic v2, and a new as
 - `Inverter.from_register_cache()` and `Battery.from_register_cache()` classmethods replacing `from_orm()`.
 - `RegisterGetter` standalone class with `build()` and `get()` methods (replaces pydantic v1 `GetterDict`).
 - `ruff` for linting and formatting (replaces `flake8`, `black`, `isort`, `autopep8`, `pydocstyle`).
+- Tests covering all five security fixes (see Security section below).
 
 ### Changed
 
@@ -59,6 +43,21 @@ Complete modernisation of the library to Python 3.13+, pydantic v2, and a new as
   `types-tabulate` — all replaced by `ruff`.
 - `aenum`, `toml`, `aiofiles` — replaced by stdlib equivalents (`enum.StrEnum`, `tomllib`, removed).
 - Support for Python 3.7–3.12.
+
+### Security
+
+- Fixed broken register value bounds check in `WriteHoldingRegister.ensure_valid_state`: the condition
+  `0 > self.value > 0xFFFF` is a Python chained comparison that is always `False`, so out-of-range values
+  were silently accepted. Corrected to `self.value < 0 or self.value > 0xFFFF`.
+- Fixed class-level mutable `expected_responses = {}` on `Client` — shared across all instances, causing
+  response futures from concurrent clients to collide. Now initialised per-instance in `__init__`.
+- Fixed `NullResponse.__init__` reading decoded nulls from the wrong kwargs key (`"base_register"` instead
+  of `"nulls"`), causing the decoded payload to be silently discarded and the non-null sanity check to never
+  trigger.
+- `RegisterCache.from_json` now logs a warning and skips unrecognised register keys instead of raising
+  `ValueError`, preventing a crash on malformed JSON input.
+- `ReadRegistersResponse` decoding now caps `register_count` at 60 before allocating the register values
+  list, preventing buffer exhaustion from a crafted response with an oversized count field.
 
 ## [0.10.1] - 2022-03-03
 
