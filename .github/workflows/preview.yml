@@ -2,7 +2,7 @@ name: Stage & preview
 
 on:
   push:
-    branches: ['master', 'main']
+    branches: ['main']
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -40,4 +40,4 @@ jobs:
           user: __token__
           password: ${{ secrets.TEST_PYPI_API_TOKEN}}
           repository_url: https://test.pypi.org/legacy/
-          skip_existing: false
+          skip_existing: true
