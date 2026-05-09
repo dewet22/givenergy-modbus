@@ -10,7 +10,18 @@
       "Bash(python -m pytest tests/model/test_device.py -x -q)",
       "Bash(python -m pytest -x -q)",
       "Bash(poetry run *)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(ruff check *)",
+      "Bash(ruff format *)",
+      "Bash(mypy givenergy_modbus *)",
+      "Bash(git ls-remote *)",
+      "Bash(gh run *)",
+      "Bash(poetry show *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ]
   }
 }
