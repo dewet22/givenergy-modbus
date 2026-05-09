@@ -7,17 +7,41 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [1.0.0] - 2023-04-??
+## [1.0.0] - 2026-05-09
 
-Complete refactoring of the library – moving away from the error-prone send-and-wait synchronous messaging to an
-asyncio-based message queue system. Incoming messages are processed in a separate task and connected back to their
-requesting messages using Futures so that command results can be awaited.
+Complete modernisation of the library to Python 3.13+, pydantic v2, and a new asyncio-based messaging architecture.
+
+### Added
+
+- Asyncio-based client: long-lived connections with a network producer/consumer task pair. Incoming messages are
+  dispatched via `Future`s so command results can be awaited rather than polled.
+- `Plant.update(pdu)` method for incremental state updates from incoming PDUs.
+- `Inverter.from_register_cache()` and `Battery.from_register_cache()` classmethods replacing `from_orm()`.
+- `RegisterGetter` standalone class with `build()` and `get()` methods (replaces pydantic v1 `GetterDict`).
+- `ruff` for linting and formatting (replaces `flake8`, `black`, `isort`, `autopep8`, `pydocstyle`).
 
 ### Changed
 
-- ⚠️ Breaking change: the complete API has been rejigged so dependent consumers will need to update.
-- ⚠️ Removed support for Python 3.7 and 3.8. The former is EOL and the latter is 4 versions behind already. I can
-     feasibly only support the latest three versions.
+- ⚠️ Breaking change: the complete client API has been rewritten around asyncio. Dependent consumers will need to
+  update — see `README.md` for updated usage examples.
+- ⚠️ Minimum Python version raised to **3.13**. Python 3.7–3.12 are no longer supported.
+- Migrated from **pydantic v1** to **pydantic v2**: `model_validate()`, `model_dump()`, `model_dump_json()`,
+  `ConfigDict`, and `model_json_schema()` throughout. `TimeSlot` converted from `@dataclass` to a plain class with
+  a custom `__get_pydantic_core_schema__` to preserve instances in `model_dump()`.
+- `set_system_date_time()` now accepts `datetime.datetime` instead of `arrow.Arrow`.
+- Type annotations modernised to PEP 604 (`X | None`, `X | Y`) and PEP 585 (`list[X]`, `dict[K, V]`, `tuple[X]`).
+- `asyncio.get_event_loop()` replaced with `asyncio.get_running_loop()`.
+- CI matrix updated to Python 3.13 and 3.14; GitHub Actions pinned to current versions.
+- `setup.cfg` removed; all tool configuration now lives in `pyproject.toml`.
+
+### Removed
+
+- `arrow` runtime dependency — replaced by `datetime.datetime`.
+- `bump2version` dev dependency — use `poetry version` instead.
+- `black`, `isort`, `flake8`, `autopep8`, `pydocstyle`, `flake8-docstrings`, `flake8-typing-imports`,
+  `types-tabulate` — all replaced by `ruff`.
+- `aenum`, `toml`, `aiofiles` — replaced by stdlib equivalents (`enum.StrEnum`, `tomllib`, removed).
+- Support for Python 3.7–3.12.
 
 ## [0.10.1] - 2022-03-03
 
@@ -202,9 +226,11 @@ requesting messages using Futures so that command results can be awaited.
 
 - First release on PyPI
 
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v1.0.0...HEAD
 
-[0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
+[1.0.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...v1.0.0
+
+[0.10.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
 
 [0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...v0.10.0
 
