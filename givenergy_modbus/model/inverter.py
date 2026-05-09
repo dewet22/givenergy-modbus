@@ -230,7 +230,7 @@ class InverterRegisterGetter(RegisterGetter):
     #     return e_pv1_day + e_pv2_day
 
 
-_InverterBase = create_model(
+_InverterBase = create_model(  # type: ignore[call-overload]
     "Inverter",
     __config__=ConfigDict(frozen=True, use_enum_values=True),
     **InverterRegisterGetter.to_fields(),

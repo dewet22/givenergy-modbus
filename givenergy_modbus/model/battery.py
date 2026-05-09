@@ -70,7 +70,7 @@ class BatteryRegisterGetter(RegisterGetter):
     }
 
 
-_BatteryBase = create_model(
+_BatteryBase = create_model(  # type: ignore[call-overload]
     "Battery",
     __config__=ConfigDict(frozen=True, use_enum_values=True),
     **BatteryRegisterGetter.to_fields(),
@@ -87,7 +87,7 @@ class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
 
     def is_valid(self) -> bool:
         """Try to detect if a battery exists based on its attributes."""
-        return self.serial_number not in (
+        return self.serial_number not in (  # type: ignore[attr-defined]
             None,
             "",
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",

@@ -177,7 +177,7 @@ class Client:
         self, requests: list[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
     ) -> Future[list[TransparentResponse]]:
         """Helper to perform multiple requests in bulk."""
-        return asyncio.gather(
+        return asyncio.gather(  # type: ignore[return-value]
             *[self.send_request_and_await_response(m, timeout=timeout, retries=retries) for m in requests],
             return_exceptions=return_exceptions,
         )

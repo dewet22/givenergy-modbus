@@ -82,9 +82,9 @@ def test_plant(
     }
 
     i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
-    assert i.serial_number == "SA1234G567"
+    assert i.serial_number == "SA1234G567"  # type: ignore[attr-defined]
     b = Battery.from_register_cache(register_cache_battery_daytime_discharging)
-    assert b.serial_number == "BG1234G567"
+    assert b.serial_number == "BG1234G567"  # type: ignore[attr-defined]
 
     assert isinstance(plant.inverter, Inverter)
     assert plant.inverter == i
