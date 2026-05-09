@@ -21,7 +21,8 @@
       "Bash(gh run *)",
       "Bash(poetry show *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(prek run *)"
     ]
   }
 }

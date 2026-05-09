@@ -1,7 +1,7 @@
 """Tests for GivEnergyModbusFramer."""
 
 import logging
-from typing import Any, Optional, Union
+from typing import Any
 
 import pytest
 
@@ -63,7 +63,7 @@ async def validate_decoding(
     raw_frame: bytes,
     pdu_class: type[BasePDU],
     constructor_kwargs: dict[str, Any],
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     results = []
     async for result in framer.decode(raw_frame):
@@ -86,7 +86,7 @@ async def test_server_decoding(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     """Ensure Request PDU messages can be decoded from raw messages."""
     await validate_decoding(ServerFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex)
@@ -99,13 +99,13 @@ async def test_client_decoding(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     """Ensure Response PDU messages can be decoded from raw messages."""
     await validate_decoding(ClientFramer(), mbap_header + inner_frame, pdu_class, constructor_kwargs, ex)
 
 
-async def decode(framer_class: type[Framer], buffer: str) -> Union[BasePDU, ExceptionBase]:
+async def decode(framer_class: type[Framer], buffer: str) -> BasePDU | ExceptionBase:
     results = []
     async for result in framer_class().decode(_h2b(buffer)):
         results.append(result)

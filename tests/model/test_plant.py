@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -104,7 +104,7 @@ async def test_update(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     """Ensure we can update a Plant from PDU Response messages."""
     pdu: ClientIncomingMessage = pdu_class(**constructor_kwargs)

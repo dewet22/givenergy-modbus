@@ -1,6 +1,6 @@
 import logging
 import struct
-from typing import Any, Optional
+from typing import Any
 
 import pytest
 
@@ -108,7 +108,7 @@ def test_str_actual_messages(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     assert str(pdu_class(**constructor_kwargs)) == str_repr
 
@@ -150,7 +150,7 @@ def test_encoding(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     """Ensure PDU objects can be encoded to the correct wire format."""
     pdu = pdu_class(**constructor_kwargs)
@@ -168,7 +168,7 @@ def test_decoding(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
     caplog,
 ):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
@@ -199,7 +199,7 @@ def test_decoding_wrong_streams(
     constructor_kwargs: dict[str, Any],
     mbap_header: bytes,
     inner_frame: bytes,
-    ex: Optional[ExceptionBase],
+    ex: ExceptionBase | None,
 ):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     if ex:

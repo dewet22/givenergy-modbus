@@ -2,7 +2,7 @@ import asyncio
 import logging
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
-from typing import Callable
+from collections.abc import Callable
 
 from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
@@ -221,4 +221,4 @@ class Client:
             )
 
         _logger.warning(f"Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up")
-        raise asyncio.TimeoutError()
+        raise TimeoutError()

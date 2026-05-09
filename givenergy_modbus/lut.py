@@ -22,7 +22,7 @@ holding_register_LUT = {
     20: ["Winter Mode On Off", "unsigned", 1],
     21: ["ARM f/w version", "unsigned", 1],
     22: ["Wifi or U disk ", "unsigned", 1],
-    23: ["Selet dsp or ARM", "unsigned", 1],
+    23: ["Select dsp or ARM", "unsigned", 1],
     24: ["Set Variable address", "unsigned", 1],
     25: ["Set Variable Value", "unsigned", 1],
     26: ["GridPortMaxOutPutPower", "unsigned", 1],

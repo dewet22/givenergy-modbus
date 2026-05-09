@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from json import JSONEncoder
-from typing import Any, Callable, get_type_hints
+from typing import Any, get_type_hints
 
 from givenergy_modbus.model import TimeSlot
 
@@ -170,7 +171,7 @@ class RegisterGetter:
                     hints = get_type_hints(obj)
                     if ret := hints.get("return"):
                         return ret
-                except Exception:
+                except Exception:  # nosec B110
                     pass
                 return Any
             return obj  # assume it is a class/type already

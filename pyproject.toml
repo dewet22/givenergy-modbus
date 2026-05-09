@@ -132,6 +132,7 @@ commands =
 commands =
     poetry run ruff check givenergy_modbus tests
     poetry run mypy givenergy_modbus tests
+    poetry run bandit -r givenergy_modbus -c .bandit.yaml
 
 [testenv:build]
 allowlist_externals =

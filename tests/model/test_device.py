@@ -1,6 +1,7 @@
 import json
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, Optional
+from typing import Optional
 
 from pydantic import ConfigDict, create_model
 
