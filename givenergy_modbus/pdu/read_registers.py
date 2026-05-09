@@ -24,7 +24,10 @@ class ReadRegistersMessage(TransparentMessage, ABC):
         attrs["base_register"] = decoder.decode_16bit_uint()
         attrs["register_count"] = decoder.decode_16bit_uint()
         if issubclass(cls, ReadRegistersResponse) and not attrs.get("error", False):
-            attrs["register_values"] = [decoder.decode_16bit_uint() for _ in range(attrs["register_count"])]
+            # Cap to 60 to prevent buffer exhaustion from a crafted register_count.
+            # ensure_valid_state will reject the count/values length mismatch.
+            decode_count = min(attrs["register_count"], 60)
+            attrs["register_values"] = [decoder.decode_16bit_uint() for _ in range(decode_count)]
         attrs["check"] = decoder.decode_16bit_uint()
         return cls(**attrs)
 

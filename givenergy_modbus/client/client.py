@@ -36,6 +36,7 @@ class Client:
         self.framer = ClientFramer()
         self.plant = Plant()
         self.tx_queue = Queue(maxsize=20)
+        self.expected_responses = {}
         # self.debug_frames = {
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),

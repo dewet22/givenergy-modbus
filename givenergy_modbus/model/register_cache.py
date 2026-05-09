@@ -1,7 +1,10 @@
 import datetime
 import json
+import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING
+
+_logger = logging.getLogger(__name__)
 
 from givenergy_modbus.model.register import HR, IR, Register
 
@@ -36,7 +39,8 @@ class RegisterCache(defaultdict[Register, int]):
                 elif k.find(":") > 0:
                     reg, idx = k.split(":", maxsplit=1)
                 else:
-                    raise ValueError(f"{k} is not a valid Register type")
+                    _logger.warning("Skipping unrecognised register key %r", k)
+                    continue
                 try:
                     ret[lookup[reg](int(idx))] = v
                 except ValueError:

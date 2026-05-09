@@ -100,7 +100,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             raise InvalidPduState("Register must be set", self)
         if self.value is None:
             raise InvalidPduState("Register value must be set", self)
-        elif 0 > self.value > 0xFFFF:
+        elif self.value < 0 or self.value > 0xFFFF:
             raise InvalidPduState(f"Value {self.value}/0x{self.value:04x} must be an unsigned 16-bit int", self)
 
 

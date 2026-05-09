@@ -18,7 +18,7 @@ class NullResponse(TransparentResponse):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.nulls = kwargs.get("base_register", [0] * 62)
+        self.nulls = kwargs.get("nulls", [0] * 62)
 
     def _encode_function_data(self) -> None:
         super()._encode_function_data()
