@@ -82,7 +82,10 @@ class Plant(GivEnergyBaseModel):
         for i in range(6):
             try:
                 assert Battery.from_register_cache(self.register_caches[i + 0x32]).is_valid()  # nosec B101
-            except (KeyError, AssertionError):  # fmt: skip  # TODO: drop when 3.13 support ends (PEP 758)
+            except (KeyError, AssertionError, ValueError):  # fmt: skip  # TODO: drop when 3.13 support ends (PEP 758)
+                # ValueError covers enum-decoding failures from registers holding values
+                # outside the known set (e.g. a future enum-typed Battery field), so a
+                # single bad register stops probing rather than aborting the caller.
                 break
         return i
 

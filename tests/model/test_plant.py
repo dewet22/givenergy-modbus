@@ -7,7 +7,6 @@ import pytest
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.battery import UsbDevice as BatteryUsbDevice
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
@@ -94,6 +93,32 @@ def test_plant(
 
     # assert Plant(**plant.dict()) == plant
     # assert Plant.from_registers(plant) == plant
+
+
+def test_number_batteries_handles_decode_value_error(
+    plant: Plant,
+    register_cache_battery_daytime_discharging,
+    monkeypatch,
+):
+    """Regression test for #49: ValueError from a slave's register decode is swallowed.
+
+    A ValueError raised while probing a slave (e.g. an out-of-range enum value)
+    must not propagate out of number_batteries — it should be treated the same
+    as a missing or invalid battery and stop the probe loop.
+    """
+    plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
+    plant.register_caches[0x33] = RegisterCache()  # simulate a second slave responding
+
+    original_from_register_cache = Battery.from_register_cache
+
+    def raise_for_0x33(cache):
+        if cache is plant.register_caches[0x33]:
+            raise ValueError("11 is not a valid SomeEnum")
+        return original_from_register_cache(cache)
+
+    monkeypatch.setattr(Battery, "from_register_cache", raise_for_0x33)
+
+    assert plant.number_batteries == 1
 
 
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
@@ -1265,7 +1290,7 @@ def test_from_actual():
         "t_cells_13_16": 18.2,
         "t_max": 19.9,
         "t_min": 18.6,
-        "usb_device_inserted": BatteryUsbDevice.DISK,
+        "ir_115": 8,
         "v_cell_01": 3.221,
         "v_cell_02": 3.224,
         "v_cell_03": 3.219,
