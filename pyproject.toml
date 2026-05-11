@@ -1,62 +1,71 @@
-[tool.poetry]
+[project]
 name = "givenergy-modbus"
 version = "1.1.0"
-homepage = "https://github.com/dewet22/givenergy-modbus"
 description = "A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."
-authors = ["Dewet Diener <givenergy-modbus@dewet.org>"]
+authors = [
+    {name = "Dewet Diener", email = "givenergy-modbus@dewet.org"},
+]
 readme = "README.md"
-license = "Apache-2.0"
+license = {text = "Apache-2.0"}
 classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: Apache Software License',
-    'Natural Language :: English',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.13',
-    'Programming Language :: Python :: 3.14',
-    'Topic :: Home Automation',
-    'Topic :: Scientific/Engineering',
-    'Topic :: System :: Networking :: Monitoring',
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Home Automation",
+    "Topic :: Scientific/Engineering",
+    "Topic :: System :: Networking :: Monitoring",
 ]
-packages = [
-    { include = "givenergy_modbus" },
-    { include = "tests", format = "sdist" },
+requires-python = ">=3.13"
+dependencies = [
+    "crccheck>=1.1,<2",
+    "pydantic>=2.0,<3",
 ]
 
-[tool.poetry.dependencies]
-crccheck = "^1.1"
-pydantic = "^2.0"
-python = ">=3.13"
+[project.urls]
+Homepage = "https://github.com/dewet22/givenergy-modbus"
 
-[tool.poetry.group.dev.dependencies]
-pyyaml = ">=6.0.2"
-ipython = "^9.0.0"
-pip = "^26.0.0"
-twine = "^6.0.0"
-virtualenv = "^21.0.0"
-
-[tool.poetry.group.test.dependencies]
-bandit = "^1.7.5"
-mypy = "^2.0.0"
-pytest = "^9.0.0"
-pytest-asyncio = "^1.0.0"
-pytest-cov = "^7.0.0"
-pytest-timeout = "^2.4.0"
-ruff = "^0.15.0"
-tox = "^4.4.8"
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.0"
-mkdocs-autorefs = "^1.0.0"
-mkdocs-include-markdown-plugin = "^7.0.0"
-mkdocs-material = "^9.5.0"
-mkdocs-material-extensions = "^1.3.0"
-mkdocstrings = {extras = ["python"], version = "^1.0.0"}
+[dependency-groups]
+dev = [
+    "pyyaml>=6.0.2",
+    "ipython>=9.0.0,<10",
+    "pip>=26.0.0,<27",
+    "twine>=6.0.0,<7",
+    "virtualenv>=21.0.0,<22",
+]
+test = [
+    "bandit>=1.7.5,<2",
+    "mypy>=2.0.0,<3",
+    "pytest>=9.0.0,<10",
+    "pytest-asyncio>=1.0.0,<2",
+    "pytest-cov>=7.0.0,<8",
+    "pytest-timeout>=2.4.0,<3",
+    "ruff>=0.15.0,<1",
+    "tox>=4.4.8,<5",
+    "tox-uv>=1.0.0",
+]
+docs = [
+    "mkdocs>=1.6.0,<2",
+    "mkdocs-autorefs>=1.0.0,<2",
+    "mkdocs-include-markdown-plugin>=7.0.0,<8",
+    "mkdocs-material>=9.5.0,<10",
+    "mkdocs-material-extensions>=1.3.0,<2",
+    "mkdocstrings[python]>=1.0.0,<2",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["givenergy_modbus"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/givenergy_modbus", "/tests"]
 
 [tool.ruff]
 line-length = 120
@@ -114,38 +123,46 @@ python =
     3.13: py313
 
 [testenv]
-allowlist_externals = poetry
-commands_pre =
-    poetry install --no-root --sync --with=test
+runner = uv-venv-lock-runner
+dependency_groups =
+    test
 passenv = *
 setenv =
     PYTHONPATH = {toxinidir}
     PYTHONWARNINGS = ignore
 commands =
-    poetry run pytest --cov=givenergy_modbus --cov-branch --cov-report=xml --cov-report=term-missing tests
+    pytest --cov=givenergy_modbus --cov-branch --cov-report=xml --cov-report=term-missing tests
 
 [testenv:format]
+runner = uv-venv-lock-runner
+dependency_groups =
+    test
 commands =
-    poetry run ruff format --check givenergy_modbus tests
+    ruff format --check givenergy_modbus tests
 
 [testenv:lint]
+runner = uv-venv-lock-runner
+dependency_groups =
+    test
 commands =
-    poetry run ruff check givenergy_modbus tests
-    poetry run mypy givenergy_modbus tests
-    poetry run bandit -r givenergy_modbus -c .bandit.yaml
+    ruff check givenergy_modbus tests
+    mypy givenergy_modbus tests
+    bandit -r givenergy_modbus -c .bandit.yaml
 
 [testenv:build]
+runner = uv-venv-lock-runner
+dependency_groups =
+    dev
+    docs
 allowlist_externals =
-    poetry
-    mkdocs
+    uv
     twine
 commands =
-    poetry install --no-root --sync --with=docs
-    poetry build
+    uv build
     mkdocs build
     twine check dist/*
 """
 
 [tool.codespell]
 ignore-words-list = "astroid"
-skip = "./.*,./poetry.lock"
+skip = "./.*,./uv.lock"

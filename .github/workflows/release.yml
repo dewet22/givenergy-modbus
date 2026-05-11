@@ -24,17 +24,13 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          cache: poetry
       - name: Install dependencies
-        run: |
-          poetry env use ${{ matrix.python-version }}
-          poetry install --no-root --sync --with=test --with=docs
+        run: uv sync --group test --group docs
 
       - name: Get Changelog Entry
         if: runner.os == 'Linux'
@@ -46,8 +42,7 @@ jobs:
           path: ./CHANGELOG.md
 
       - name: Build wheels and source tarball
-        run: >-
-          poetry build
+        run: uv build
 
       - name: Create GitHub release
         if: runner.os == 'Linux'
@@ -71,8 +66,7 @@ jobs:
 
       - name: Build documentation
         if: runner.os == 'Linux'
-        run: |
-          poetry run mkdocs build
+        run: uv run mkdocs build
 
       - name: Publish documentation
         if: runner.os == 'Linux'

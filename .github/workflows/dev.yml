@@ -20,20 +20,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry env use ${{ matrix.python-version }}
-          poetry install --no-root --sync --with=test
       - name: Build & test with tox
-        run:
-          poetry run tox
+        run: uv run --group test tox
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

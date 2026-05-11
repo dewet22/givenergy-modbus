@@ -18,22 +18,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install Poetry
-        run: pipx install poetry
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
+          enable-cache: true
           python-version: ${{ matrix.python-version }}
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry env use ${{ matrix.python-version }}
-          poetry install --no-root --sync --with=test
       - name: Build wheels and source tarball
         run: |
-          poetry version $(poetry version --short)-dev.$GITHUB_RUN_NUMBER
-          poetry version --short
-          poetry build
+          uv version "$(uv version --short).dev.$GITHUB_RUN_NUMBER"
+          uv version --short
+          uv build
       - name: Publish to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
