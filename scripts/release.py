@@ -2,6 +2,7 @@
 """Release helper: version bumping and CHANGELOG management."""
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -36,6 +37,7 @@ class Changelog:
         self.lines = path.read_text().splitlines(keepends=True)
 
     def save(self) -> None:
+        """Write the current line buffer back to disk."""
         self.path.write_text("".join(self.lines))
 
     def unreleased_has_content(self) -> bool:
@@ -107,7 +109,7 @@ class Changelog:
         # Section exists — insert before its trailing blank lines
         abs_header = block_start + idx
         next_section_offset = next(
-            (j for j, l in enumerate(block[idx + 1 :], start=idx + 1) if l.startswith("### ")),
+            (j for j, line in enumerate(block[idx + 1 :], start=idx + 1) if line.startswith("### ")),
             len(block),
         )
         abs_section_end = block_start + next_section_offset
@@ -140,9 +142,12 @@ def cmd_bump(args) -> None:
     """Print the next version given a current version and bump type."""
     major, minor, patch = map(int, args.current.split("."))
     if args.bump == "major":
-        major += 1; minor = 0; patch = 0  # noqa: E702
+        major += 1
+        minor = 0
+        patch = 0  # noqa: E702
     elif args.bump == "minor":
-        minor += 1; patch = 0  # noqa: E702
+        minor += 1
+        patch = 0  # noqa: E702
     else:
         patch += 1
     print(f"{major}.{minor}.{patch}")
@@ -189,7 +194,51 @@ def cmd_append(_args) -> None:
     cl.save()
 
 
+def _is_skippable_commit(message: str) -> bool:
+    """Return True for commits that shouldn't produce changelog entries.
+
+    Skips:
+    - Merge commits ("Merge pull request" / "Merge branch") — the feature commits
+      they wrap are already in the push's `commits` list separately.
+    - The bot's own changelog-update commits — would otherwise recurse.
+    """
+    subject = message.splitlines()[0].strip()
+    if subject.startswith(("Merge pull request", "Merge branch")):
+        return True
+    if subject == "chore: update [Unreleased] changelog":
+        return True
+    return False
+
+
+def cmd_append_many(_args) -> None:
+    """Append every commit from a JSON push-event `commits` array (read from stdin).
+
+    Each commit object must have `id`, `message`, and optionally `author.username`.
+    Commits where _is_skippable_commit returns True are dropped silently.
+    """
+    raw = sys.stdin.read().strip()
+    if not raw:
+        return
+    commits = json.loads(raw)
+    cl = Changelog()
+    for c in commits:
+        message = (c.get("message") or "").strip()
+        if not message or _is_skippable_commit(message):
+            continue
+        sha = c.get("id", "")
+        login = (c.get("author") or {}).get("username", "")
+        # _commit_attribution reads from env vars; set them per-commit so the
+        # attribution string reflects this commit (not a stale value from $COMMIT_SHA).
+        os.environ["COMMIT_SHA"] = sha
+        os.environ["COMMIT_AUTHOR_LOGIN"] = login
+        section, description = _parse_commit(message)
+        attribution = _commit_attribution("".join(cl.lines))
+        cl.append_to_unreleased(section, f"- {description}{attribution}")
+    cl.save()
+
+
 def main() -> None:
+    """CLI entry point: parse argv and dispatch to the chosen subcommand."""
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -203,9 +252,19 @@ def main() -> None:
     update_p.add_argument("version", help="New version (e.g. 1.2.3)")
 
     sub.add_parser("append", help="Append $COMMIT_MSG to [Unreleased] (conventional commits)")
+    sub.add_parser(
+        "append-many",
+        help="Append every commit from a JSON push-event `commits` array (read from stdin)",
+    )
 
     args = parser.parse_args()
-    {"check": cmd_check, "bump": cmd_bump, "update": cmd_update, "append": cmd_append}[args.command](args)
+    {
+        "check": cmd_check,
+        "bump": cmd_bump,
+        "update": cmd_update,
+        "append": cmd_append,
+        "append-many": cmd_append_many,
+    }[args.command](args)
 
 
 if __name__ == "__main__":
