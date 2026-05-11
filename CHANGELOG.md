@@ -7,6 +7,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-11
+
+### Fixed
+
+- `Client`: handle `ConnectionResetError` from `writer.wait_closed()` when the remote resets the connection before the client finishes closing.
+
 ## [1.1.0] - 2026-05-09
 
 ### Added
