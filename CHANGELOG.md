@@ -19,6 +19,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - downgrade CRITICAL shutdown logs on intentional client.close() (#50) ([d21cf66](https://github.com/dewet22/givenergy-modbus/commit/d21cf665011a1ab954c2db1eb2898a3aa10b105d), @dewet22)
 - drop battery_soc_reserve=100 from set_mode_storage (#27) ([a6e5a1f](https://github.com/dewet22/givenergy-modbus/commit/a6e5a1f3f8860e90e01791ac776ee143dcc5e8a8), @dewet22)
 - keep parens around multi-exception except for py313 compatibility ([cd40d2f](https://github.com/dewet22/givenergy-modbus/commit/cd40d2f2a4773686f89139de729acf574b0db531), @dewet22)
+- append every commit on push to [Unreleased], not just head_commit ([5ea934d](https://github.com/dewet22/givenergy-modbus/commit/5ea934dcc224fdcd101dff627c461cb410a3fbcd), @dewet22)
 
 ### Maintenance
 
