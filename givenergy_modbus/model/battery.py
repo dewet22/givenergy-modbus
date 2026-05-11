@@ -59,7 +59,7 @@ class BatteryRegisterGetter(RegisterGetter):
         # IR(115) meaning unverified — manufacturer specs only document 0 and 8 (originally
         # decoded as a UsbDevice enum), but observed values outside that set (e.g. 11 on
         # D0.449-A0.449) caused decode failures. Exposed as a raw uint16 until documented.
-        "ir_115": Def(DT.uint16, None, IR(115)),
+        "usb_device_inserted": Def(DT.uint16, None, IR(115)),
         # IR(116-119) unused
     }
 
