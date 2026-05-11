@@ -9,120 +9,98 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.1.2] - 2026-05-11
 
+### Maintenance
+
+- replace tag-triggered release with workflow_dispatch ([dc78952](https://github.com/dewet22/givenergy-modbus/commit/dc789525805118aa881736ea4564cb61d207d188), @dewet22)
+- add Dependabot GitHub Actions version tracking ([e1680f9](https://github.com/dewet22/givenergy-modbus/commit/e1680f9cb597b4cea7d5f9f1526890d0c67ceae6), @dewet22)
+
 ## [1.1.1] - 2026-05-11
+
+### Maintenance
+
+- downgrade codecov upload failure to warning ([12a3085](https://github.com/dewet22/givenergy-modbus/commit/12a30859f38966d3b9c82d32e3cf9769d8919661), @dewet22)
+
+### Changed
+
+- migrate from Poetry to uv for dependency management ([c8c6156](https://github.com/dewet22/givenergy-modbus/commit/c8c615619f869bbc1f615f5fc992554cd7778a49), @dewet22)
 
 ### Fixed
 
-- `Client`: handle `ConnectionResetError` from `writer.wait_closed()` when the remote resets the connection before the client finishes closing.
+- handle ConnectionResetError when closing client connection ([b7109f1](https://github.com/dewet22/givenergy-modbus/commit/b7109f1f11d4330ef872108aa191c429de3e144d), @dewet22)
 
 ## [1.1.0] - 2026-05-09
 
-### Added
-
-- `Inverter`: `battery_capacity_ah` — raw Ah capacity at HR(55), renamed from `battery_capacity`.
-- `Inverter`: `battery_capacity_kwh` — computed field derived from Ah × nominal system voltage (51.2 V LV, 76.8 V 3-phase, 317 V All-in-One).
-- `Inverter`: `battery_voltage_adjust` (HR 105), `inverter_reboot` (HR 163), `enable_rtc` (HR 166), `inverter_errors` (HR 223–224), `battery_charge_limit_ac` (HR 313), `battery_discharge_limit_ac` (HR 314), `battery_pause_mode` (HR 318), `battery_pause_slot_1` (HR 319–320).
-- `Inverter`: `e_battery_discharge_2`, `e_battery_charge_2`, `e_battery_discharge_day_2`, `e_battery_charge_day_2` (IR 180–183).
-- `Inverter`: `p_combined_generation` (IR 247–248).
-- `Inverter`: Gen 3 charge/discharge slots — `charge_slot_3`–`10`, `discharge_slot_3`–`10`, `charge_slot_2_x` (HR 243–244), `charge_target_soc_1`–`10`, `discharge_target_soc_1`–`10`.
-- `Model`: `system_battery_voltage` property returning nominal pack voltage per model variant.
-
 ### Changed
 
-- `Inverter`: `v_highbrigh_bus` converter changed from `uint16` to `deci` (value now in volts, not tenths of volts).
-- `Model`, `UsbDevice`, `BatteryPowerMode`, `BatteryCalibrationStage`, `MeterType`, `BatteryType`, `PowerFactorFunctionModel`, `Status`: changed from `StrEnum`/`IntEnum` to `(str, Enum)`/`(int, Enum)` mixin style to prevent pydantic from coercing enum instances to plain scalars.
-- `_InverterBase`: removed `use_enum_values=True` from pydantic `ConfigDict` so enum members are preserved on model instances.
+- modernise type annotations and fix bandit/prek hooks ([6d8c50f](https://github.com/dewet22/givenergy-modbus/commit/6d8c50f99779bf744e1473cef4b2094a023aa95b), @dewet22)
+- bump inverter model to 1.1.0: new registers, computed battery_capacity_kwh, enum fix ([23b9cb8](https://github.com/dewet22/givenergy-modbus/commit/23b9cb80bd1446ef1d00d2f9f3af59bab7d10ce5), @dewet22)
 
 ## [1.0.2] - 2026-05-09
 
-### Fixed
-
-- `plant.py`: restore parentheses on `except (KeyError, AssertionError)` removed by ruff 0.15.12 formatter bug.
-
 ### Changed
 
-- Docs updated for v1.0.0 API: installation, usage, and API reference pages fully rewritten.
-- `pyproject.toml`: classifier updated to `Production/Stable`; removed stale `Framework :: Pytest` and `Framework :: tox`.
-- `.gitignore`: stripped stale cookiecutter entries; added `.ruff_cache/`.
-- Python 3.14 set as default build Python across release and preview workflows.
-- `ruff` target version updated to `py314`.
+- remove unnecessary fail-fast: false from release workflow ([2b65001](https://github.com/dewet22/givenergy-modbus/commit/2b6500157737ec58606979d3bb2e1c5b4f47ac15), @dewet22)
+- use Python 3.14 as default; fix __version__ when package not installed ([f46a4a4](https://github.com/dewet22/givenergy-modbus/commit/f46a4a41b7cf3dd21fe5e0ec9015f14e297272a2), @dewet22)
+- update ruff target-version to py314 ([867b90a](https://github.com/dewet22/givenergy-modbus/commit/867b90a69e7cb2b76ed7824debeb468977fde805), @dewet22)
+- update docs for v1.0.0 API ([bd21ab5](https://github.com/dewet22/givenergy-modbus/commit/bd21ab5833962797516b26f237845ef0d531a87e), @dewet22)
+- update root-level docs and config ([3935f9d](https://github.com/dewet22/givenergy-modbus/commit/3935f9d2efb12ac3b0557b2e6745943f728ca848), @dewet22)
 
 ## [1.0.1] - 2026-05-09
 
 ### Changed
 
-- README rewritten to reflect the v1.0.0 API: async `Client`, module-level `commands`, `TimeSlot`, pydantic v2
-  `model_dump()`/`model_dump_json()`, and correct field names throughout.
-- Migrate from pre-commit to [prek](https://prek.j178.dev), a Rust-based git hook manager; update all hook revisions.
-- `__version__` now sourced from package metadata via `importlib.metadata` rather than a hardcoded string.
-- All GitHub Actions bumped to current versions (checkout@v4, codecov@v5, codeql@v3, gh-pages@v4, gh-release@v2).
-- `poetry.lock` updated to resolve 32 Dependabot security alerts (all transitive dev/build dependencies).
-- Release workflow: documentation publishing moved to after PyPI release; `skip-existing` and `fail_ci_if_error` fixes.
-- GitHub Pages source switched from Jekyll-on-`main` to pre-built mkdocs output on `gh-pages`.
-
-### Removed
-
-- `.bumpversion.cfg`, `makefile`, `MODERNISATION_PLAN.md` — stale artefacts from the pre-1.0 era.
+- move docs publish to after pypi release in release workflow ([ffc0b13](https://github.com/dewet22/givenergy-modbus/commit/ffc0b133c814cf288f704452af05d2f91417ec81), @dewet22)
+- Set package-ecosystem to 'pip' in dependabot config ([93228e6](https://github.com/dewet22/givenergy-modbus/commit/93228e6a601e15709dae7336436f6914ca4e2f0a), @dewet22)
+- update poetry.lock to resolve 32 dependabot alerts ([d396420](https://github.com/dewet22/givenergy-modbus/commit/d3964209fc9c63a4e0ef67430de28bc37a78c2c3), @dewet22)
+- bump all GitHub Actions to current versions ([e83b8b1](https://github.com/dewet22/givenergy-modbus/commit/e83b8b1df9ea15e2633a4312a100754521f8e418), @dewet22)
+- fix release workflow: remove invalid fail_ci_if_error, use skip-existing ([075a7dd](https://github.com/dewet22/givenergy-modbus/commit/075a7dd10a050ec8d0b206e75ad227495eb14760), @dewet22)
+- update README for v1.0.0 API ([f54fbcb](https://github.com/dewet22/givenergy-modbus/commit/f54fbcb8c3a2b4508cb77abc64abdad33963b62f), @dewet22)
+- credit pymodbus as inspiration in README ([14103c8](https://github.com/dewet22/givenergy-modbus/commit/14103c810070bdbe1c3d25ebc8aa37d9dbd2b5f8), @dewet22)
+- migrate to prek, remove stale tooling, clean up post-1.0 ([adcfe87](https://github.com/dewet22/givenergy-modbus/commit/adcfe8716559a46ec0d3d33ab6b97b8d94a42fcc), @dewet22)
+- fix release workflow: Linux-only publish steps, fail-fast false ([db01aaa](https://github.com/dewet22/givenergy-modbus/commit/db01aaa9ce71ddafe726f63d89b0390ad9b2efd7), @dewet22)
 
 ## [1.0.0] - 2026-05-09
 
-Complete modernisation of the library to Python 3.13+, pydantic v2, and a new asyncio-based messaging architecture.
+A completely different approach to this library, handling comms in an asynchronous thread to avoid the old synchronous blocking and polling strategy. That started a rabbit hole of largely re-doing the entire architecture.
 
 ### Added
 
-- Asyncio-based client: long-lived connections with a network producer/consumer task pair. Incoming messages are
-  dispatched via `Future`s so command results can be awaited rather than polled.
-- `Plant.update(pdu)` method for incremental state updates from incoming PDUs.
-- `Inverter.from_register_cache()` and `Battery.from_register_cache()` classmethods replacing `from_orm()`.
-- `RegisterGetter` standalone class with `build()` and `get()` methods (replaces pydantic v1 `GetterDict`).
-- `ruff` for linting and formatting (replaces `flake8`, `black`, `isort`, `autopep8`, `pydocstyle`).
-- Tests covering all five security fixes (see Security section below).
+- New asyncio `Client` with long-lived connections, producer/consumer task pair, and `Future`-based response tracking — replaces the old synchronous `GivEnergyClient`.
+- Passive monitoring mode: listen-only client that observes traffic without sending commands.
+- `Plant.update(pdu)` for incremental state updates from incoming PDU responses; `Plant` now dynamically discovers the number of attached batteries.
+- Comprehensive holding register coverage: all HR(0–300+) mapped and typed, including `charge_slot_2`, `battery_discharge_mode`, `battery_calibration_stage`, `modbus_address`, `modbus_version`, `system_time`, `enable_60hz_freq_mode`, `enable_drm_rj45_port`, `inverter_reboot`, and ~30 additional fields.
+- Virtual aggregates: `p_pv_power`, `e_pv_total`, and related computed fields.
+- Custom exception hierarchy for richer, typed error handling.
+- Community contributions: inverter register additions from @holdestmade and @dominic.
 
 ### Changed
 
-- ⚠️ Breaking change: the complete client API has been rewritten around asyncio. Dependent consumers will need to
-  update — see `README.md` for updated usage examples.
-- ⚠️ Minimum Python version raised to **3.13**. Python 3.7–3.12 are no longer supported.
-- Migrated from **pydantic v1** to **pydantic v2**: `model_validate()`, `model_dump()`, `model_dump_json()`,
-  `ConfigDict`, and `model_json_schema()` throughout. `TimeSlot` converted from `@dataclass` to a plain class with
-  a custom `__get_pydantic_core_schema__` to preserve instances in `model_dump()`.
-- `set_system_date_time()` now accepts `datetime.datetime` instead of `arrow.Arrow`.
-- Type annotations modernised to PEP 604 (`X | None`, `X | Y`) and PEP 585 (`list[X]`, `dict[K, V]`, `tuple[X]`).
-- `asyncio.get_event_loop()` replaced with `asyncio.get_running_loop()`.
-- CI matrix updated to Python 3.13 and 3.14; GitHub Actions pinned to current versions.
-- `setup.cfg` removed; all tool configuration now lives in `pyproject.toml`.
+- PDUs now encode and decode themselves; `Framer` refactored to pass raw frames to the callback and invoke it on decode failure as well as success.
+- `RegisterCache` bound to an explicit slave address; sanity-check gates stale or malformed PDU updates.
+- Registers refactored to plain data containers; behaviour (validation, scaling, conversion) moved into `Inverter` and `Battery` models.
+- `Coordinator` renamed to `Client`; network layer folded into the same class.
+- `TimeSlot` moved to the model package.
+- Python 3.9+ minimum (Python 3.7 and 3.8 dropped).
+- modernisation phases 1 & 2: Python 3.13+, ruff, drop legacy tooling ([18ca4dc](https://github.com/dewet22/givenergy-modbus/commit/18ca4dc1c34fb2308910a87c5250c0e2f5bed131), @dewet22 🎉)
+- modernisation phase 3: pydantic v2 migration ([98b89fd](https://github.com/dewet22/givenergy-modbus/commit/98b89fde6cbe99dbed1e7458de445d736884e4a1), @dewet22)
+- modernisation phase 4: remove arrow and bump2version deps ([ee6b5c0](https://github.com/dewet22/givenergy-modbus/commit/ee6b5c03319858c7595888d185270e7ac1f940cd), @dewet22)
+- modernisation phase 5: type annotation modernisation ([568a722](https://github.com/dewet22/givenergy-modbus/commit/568a72260df01882a5134186a2eaf9428383196b), @dewet22)
+- modernisation phase 6: CI/CD update ([142be88](https://github.com/dewet22/givenergy-modbus/commit/142be88ed296b09fb2aade5938c101c276bfe0f0), @dewet22)
+- note missing Gen 2 (EA prefix) inverter model support ([cd131bb](https://github.com/dewet22/givenergy-modbus/commit/cd131bba4561941a8536d990896c61e6b5296567), @dewet22)
+- fix CI failures on Python 3.13/3.14 ([450e2dc](https://github.com/dewet22/givenergy-modbus/commit/450e2dc574e41de953374ad8dfc3bea242522e64), @dewet22)
+- bump outdated dev/test dependencies ([8cce166](https://github.com/dewet22/givenergy-modbus/commit/8cce166939de9309edf55786ed110c54a0b753c4), @dewet22)
+- bump mypy to ^2.0.0 and fix newly surfaced type errors ([24c64ad](https://github.com/dewet22/givenergy-modbus/commit/24c64ad5c3225172c7f7b579f89e92d2acb8d3de), @dewet22)
+- fix mkdocs deprecation warnings ([dd4f546](https://github.com/dewet22/givenergy-modbus/commit/dd4f54612d9e0af91310b47ada4ca04cc90510eb), @dewet22)
+- add security fix tests and tidy changelog ([2a22379](https://github.com/dewet22/givenergy-modbus/commit/2a22379519840747af7c3902bcdd2c97137af56a), @dewet22)
 
 ### Removed
 
-- `arrow` runtime dependency — replaced by `datetime.datetime`.
-- `bump2version` dev dependency — use `poetry version` instead.
-- `black`, `isort`, `flake8`, `autopep8`, `pydocstyle`, `flake8-docstrings`, `flake8-typing-imports`,
-  `types-tabulate` — all replaced by `ruff`.
-- `aenum`, `toml`, `aiofiles` — replaced by stdlib equivalents (`enum.StrEnum`, `tomllib`, removed).
-- Support for Python 3.7–3.12.
+- `pymodbus` runtime dependency — the Modbus protocol is now implemented entirely in-library.
+- Old synchronous CLI (spun out to a separate package).
 
 ### Security
 
-- Fixed broken register value bounds check in `WriteHoldingRegister.ensure_valid_state`: the condition
-  `0 > self.value > 0xFFFF` is a Python chained comparison that is always `False`, so out-of-range values
-  were silently accepted. Corrected to `self.value < 0 or self.value > 0xFFFF`.
-- Fixed class-level mutable `expected_responses = {}` on `Client` — shared across all instances, causing
-  response futures from concurrent clients to collide. Now initialised per-instance in `__init__`.
-- Fixed `NullResponse.__init__` reading decoded nulls from the wrong kwargs key (`"base_register"` instead
-  of `"nulls"`), causing the decoded payload to be silently discarded and the non-null sanity check to never
-  trigger.
-- `RegisterCache.from_json` now logs a warning and skips unrecognised register keys instead of raising
-  `ValueError`, preventing a crash on malformed JSON input.
-- `ReadRegistersResponse` decoding now caps `register_count` at 60 before allocating the register values
-  list, preventing buffer exhaustion from a crafted response with an oversized count field.
-
-### Notes
-
-Socket Security was run against the full dependency diff introduced by this PR. All flagged packages
-(`cryptography`, `urllib3`, `setuptools`) are dev/build-only transitive dependencies — none are present
-in the published package's runtime install. The vulnerability score drops on `cryptography` (39→40, −9)
-and `urllib3` (1.26→2.0) reflect pre-existing advisories in those packages' own histories, not regressions
-introduced here. The library's runtime surface remains: `pydantic`, `crccheck`, `typing_extensions`.
+- fix five issues identified in audit ([2e38d5e](https://github.com/dewet22/givenergy-modbus/commit/2e38d5e010a61216faed357a73b088fe4f323137), @dewet22)
 
 ## [0.10.1] - 2022-03-03
 
@@ -306,31 +284,3 @@ introduced here. The library's runtime surface remains: `pydantic`, `crccheck`, 
 ## 0.1.0 (2022-01-02)
 
 - First release on PyPI
-
-[Unreleased]: https://github.com/dewet22/givenergy-modbus/compare/v1.0.0...HEAD
-
-[1.0.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.1...v1.0.0
-
-[0.10.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.10.0...v0.10.1
-
-[0.10.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.4...v0.10.0
-
-[0.9.4]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.3...v0.9.4
-
-[0.9.3]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.2...v0.9.3
-
-[0.9.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.1...v0.9.2
-
-[0.9.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.9.0...v0.9.1
-
-[0.9.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.8.0...v0.9.0
-
-[0.8.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.7.0...v0.8.0
-
-[0.7.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.2...v0.7.0
-
-[0.6.2]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.1...v0.6.2
-
-[0.6.1]: https://github.com/dewet22/givenergy-modbus/compare/v0.6.0...v0.6.1
-
-[0.6.0]: https://github.com/dewet22/givenergy-modbus/compare/v0.5.0...v0.6.0

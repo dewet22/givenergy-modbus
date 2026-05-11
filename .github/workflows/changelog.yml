@@ -1,0 +1,35 @@
+name: Update changelog
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  update-changelog:
+    # Skip commits from bots (e.g. release commits, Dependabot) to avoid loops
+    if: github.actor != 'github-actions[bot]' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Append commit to [Unreleased]
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_SHA: ${{ github.event.head_commit.id }}
+          COMMIT_AUTHOR_LOGIN: ${{ github.event.head_commit.author.username }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 scripts/release.py append
+
+      - name: Commit if changed
+        run: |
+          git diff --quiet CHANGELOG.md && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update [Unreleased] changelog"
+          git push

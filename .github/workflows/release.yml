@@ -30,53 +30,24 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Check [Unreleased] has content
+        run: python3 scripts/release.py check
+
       - name: Bump version
         id: version
         env:
           BUMP: ${{ inputs.bump }}
         run: |
           CURRENT=$(uv version --short)
-          NEW=$(CURRENT="$CURRENT" python3 -c "
-          import os
-          major, minor, patch = map(int, os.environ['CURRENT'].split('.'))
-          bump = os.environ['BUMP']
-          if bump == 'patch': patch += 1
-          elif bump == 'minor': minor += 1; patch = 0
-          elif bump == 'major': major += 1; minor = 0; patch = 0
-          print(f'{major}.{minor}.{patch}')
-          ")
+          NEW=$(python3 scripts/release.py bump "$CURRENT" "$BUMP")
           uv version "$NEW"
           uv lock
           echo "version=$NEW" >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG
-        run: |
-          TODAY=$(date +%Y-%m-%d)
-          VERSION="${{ steps.version.outputs.version }}"
-          TODAY="$TODAY" VERSION="$VERSION" python3 -c "
-          import os
-          today, version = os.environ['TODAY'], os.environ['VERSION']
-          content = open('CHANGELOG.md').read()
-          content = content.replace(
-              '## [Unreleased]',
-              f'## [Unreleased]\n\n## [{version}] - {today}',
-              1,
-          )
-          open('CHANGELOG.md', 'w').write(content)
-          "
-
-      - name: Extract changelog entry
         id: changelog
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          BODY=$(VERSION="$VERSION" python3 -c "
-          import os, re
-          version = os.environ['VERSION']
-          content = open('CHANGELOG.md').read()
-          pattern = rf'## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\Z)'
-          match = re.search(pattern, content, re.DOTALL)
-          print(match.group(1).strip() if match else '')
-          ")
+          BODY=$(python3 scripts/release.py update "${{ steps.version.outputs.version }}")
           {
             echo 'body<<EOF'
             echo "$BODY"
