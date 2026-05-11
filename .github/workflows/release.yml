@@ -84,6 +84,25 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
+      - name: Notify downstream consumers
+        env:
+          # Fine-grained PAT with `Contents: write` on dewet22/givenergy-cli
+          # and dewet22/givenergy-hass. If unset, the step skips with a warning
+          # so the release flow doesn't break before the secret is configured.
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_DISPATCH_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::DOWNSTREAM_DISPATCH_TOKEN not set; skipping downstream notification"
+            exit 0
+          fi
+          for repo in dewet22/givenergy-cli dewet22/givenergy-hass; do
+            echo "Dispatching givenergy-modbus-release event to ${repo}"
+            jq -nc --arg v "$VERSION" \
+              '{event_type: "givenergy-modbus-release", client_payload: {version: $v}}' \
+              | gh api -X POST "repos/${repo}/dispatches" --input -
+          done
+
       - name: Install docs dependencies
         run: uv sync --group docs
 
