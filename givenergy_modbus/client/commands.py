@@ -277,7 +277,10 @@ def set_mode_storage(
         ret = set_discharge_mode_max_power()  # r27=0
     else:
         ret = set_discharge_mode_to_match_demand()  # r27=1
-    ret.extend(set_battery_soc_reserve(100))  # r110=100
+    # Intentionally do not set BATTERY_SOC_RESERVE (r110): forcing it to 100
+    # disables discharge entirely on Gen2 (and is not what the official portal
+    # does when selecting Timed Discharge / Timed Export presets). Callers who
+    # want a specific reserve should set it explicitly via set_battery_soc_reserve().
     ret.extend(set_enable_discharge(True))  # r59=1
     ret.extend(set_discharge_slot_1(discharge_slot_1))  # r56=1600, r57=700
     if discharge_slot_2:

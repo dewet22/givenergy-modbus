@@ -99,7 +99,6 @@ async def test_set_mode_storage():
     """Ensure we can set the inverter to a storage mode with discharge slots."""
     assert commands.set_mode_storage(TimeSlot.from_components(1, 2, 3, 4)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 102),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 304),
@@ -109,7 +108,6 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_components(5, 6, 7, 8), TimeSlot.from_components(9, 10, 11, 12)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 506),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 708),
@@ -119,7 +117,6 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_repr(1314, 1516), discharge_for_export=True) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 0),
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, 100),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 1314),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 1516),
