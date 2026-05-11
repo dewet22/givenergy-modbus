@@ -1,75 +1,125 @@
-name: Release & publish
+name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump type
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   release:
-    strategy:
-      matrix:
-        python-version: ['3.14']
-        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
-    runs-on: ${{ matrix.os }}
+    # Pure-Python package: the wheel is platform-independent, so a single
+    # Ubuntu runner is sufficient. Cross-platform compatibility is already
+    # validated on every push by dev.yml.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-      - name: Get version from tag
-        id: tag_name
-        run: echo "current_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-        shell: bash
-
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --group test --group docs
 
-      - name: Get Changelog Entry
-        if: runner.os == 'Linux'
-        id: changelog_reader
-        uses: mindsers/changelog-reader-action@v2
-        with:
-          validation_depth: 10
-          version: ${{ steps.tag_name.outputs.current_version }}
-          path: ./CHANGELOG.md
+      - name: Bump version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          CURRENT=$(uv version --short)
+          NEW=$(CURRENT="$CURRENT" python3 -c "
+          import os
+          major, minor, patch = map(int, os.environ['CURRENT'].split('.'))
+          bump = os.environ['BUMP']
+          if bump == 'patch': patch += 1
+          elif bump == 'minor': minor += 1; patch = 0
+          elif bump == 'major': major += 1; minor = 0; patch = 0
+          print(f'{major}.{minor}.{patch}')
+          ")
+          uv version "$NEW"
+          uv lock
+          echo "version=$NEW" >> $GITHUB_OUTPUT
 
-      - name: Build wheels and source tarball
+      - name: Update CHANGELOG
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          VERSION="${{ steps.version.outputs.version }}"
+          TODAY="$TODAY" VERSION="$VERSION" python3 -c "
+          import os
+          today, version = os.environ['TODAY'], os.environ['VERSION']
+          content = open('CHANGELOG.md').read()
+          content = content.replace(
+              '## [Unreleased]',
+              f'## [Unreleased]\n\n## [{version}] - {today}',
+              1,
+          )
+          open('CHANGELOG.md', 'w').write(content)
+          "
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BODY=$(VERSION="$VERSION" python3 -c "
+          import os, re
+          version = os.environ['VERSION']
+          content = open('CHANGELOG.md').read()
+          pattern = rf'## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\Z)'
+          match = re.search(pattern, content, re.DOTALL)
+          print(match.group(1).strip() if match else '')
+          ")
+          {
+            echo 'body<<EOF'
+            echo "$BODY"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml CHANGELOG.md uv.lock
+          git commit -m "chore: release ${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
+          git push
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Build
         run: uv build
 
-      - name: Create GitHub release
-        if: runner.os == 'Linux'
-        id: create_release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          body: ${{ steps.changelog_reader.outputs.changes }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.body }}
           files: dist/*.whl
           draft: false
           prerelease: false
 
-      - name: publish to PyPI
-        if: runner.os == 'Linux'
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
+      - name: Install docs dependencies
+        run: uv sync --group docs
+
       - name: Build documentation
-        if: runner.os == 'Linux'
         run: uv run mkdocs build
 
       - name: Publish documentation
-        if: runner.os == 'Linux'
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
