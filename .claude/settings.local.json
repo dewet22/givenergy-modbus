@@ -18,7 +18,9 @@
       "Bash(poetry show *)",
       "Bash(git pull *)",
       "Bash(git stash *)",
-      "Bash(prek run *)"
+      "Bash(prek run *)",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)"
     ]
   }
 }

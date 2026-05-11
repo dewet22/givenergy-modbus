@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 from asyncio import StreamReader
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -70,6 +71,37 @@ def test_timeslot():
         assert ts == TimeSlot.from_repr(4321, 5432)
     with pytest.raises(ValueError, match="hour must be in 0..23"):
         assert ts == TimeSlot.from_repr("4321", "5432")
+
+
+async def test_close_succeeds_when_connection_closed_cleanly():
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock()
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+
+    await client.close()
+
+    writer.close.assert_called_once()
+    writer.wait_closed.assert_called_once()
+
+
+async def test_close_handles_connection_reset_on_wait_closed():
+    """close() must not propagate ConnectionResetError from wait_closed() when remote tears down first."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock(side_effect=ConnectionResetError)
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+
+    await client.close()  # must not raise
+
+    writer.close.assert_called_once()
+    writer.wait_closed.assert_called_once()
 
 
 def test_client_expected_responses_isolated_between_instances():

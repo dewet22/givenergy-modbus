@@ -66,7 +66,10 @@ class Client:
         self.network_producer_task.cancel()
         if hasattr(self, "writer") and self.writer:
             self.writer.close()
-            await self.writer.wait_closed()
+            try:
+                await self.writer.wait_closed()
+            except ConnectionResetError:
+                pass
             del self.writer
 
         self.network_consumer_task.cancel()
