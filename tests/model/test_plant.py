@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -119,6 +120,30 @@ def test_number_batteries_handles_decode_value_error(
     monkeypatch.setattr(Battery, "from_register_cache", raise_for_0x33)
 
     assert plant.number_batteries == 1
+
+
+def test_number_batteries_counts_all_six_when_all_valid(plant: Plant, monkeypatch):
+    """A plant with 6 valid batteries must return 6, not 5 (no off-by-one when loop completes)."""
+    for slave in range(0x32, 0x38):
+        plant.register_caches[slave] = RegisterCache()
+
+    always_valid_battery = MagicMock(spec=Battery)
+    always_valid_battery.is_valid.return_value = True
+    monkeypatch.setattr(Battery, "from_register_cache", lambda _cache: always_valid_battery)
+
+    assert plant.number_batteries == 6
+
+
+def test_number_batteries_honours_is_valid_check(plant: Plant, monkeypatch):
+    """is_valid() must be honoured to stop the probe loop (was an assert, now an explicit if)."""
+    plant.register_caches[0x32] = RegisterCache()
+    plant.register_caches[0x33] = RegisterCache()  # extra cache so missing-key isn't the early-exit
+
+    invalid_battery = MagicMock(spec=Battery)
+    invalid_battery.is_valid.return_value = False
+    monkeypatch.setattr(Battery, "from_register_cache", lambda _cache: invalid_battery)
+
+    assert plant.number_batteries == 0
 
 
 @pytest.mark.parametrize(PduTestCaseSig, CLIENT_MESSAGES)
