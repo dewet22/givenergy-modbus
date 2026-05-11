@@ -1290,7 +1290,7 @@ def test_from_actual():
         "t_cells_13_16": 18.2,
         "t_max": 19.9,
         "t_min": 18.6,
-        "ir_115": 8,
+        "usb_device_inserted": 8,
         "v_cell_01": 3.221,
         "v_cell_02": 3.224,
         "v_cell_03": 3.219,
