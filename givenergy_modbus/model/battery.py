@@ -1,17 +1,8 @@
-from enum import IntEnum
-
 from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.register import IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as DT
 from givenergy_modbus.model.register import RegisterDefinition as Def
-
-
-class UsbDevice(IntEnum):
-    """USB devices that can be inserted into batteries."""
-
-    NONE = 0
-    DISK = 8
 
 
 class BatteryRegisterGetter(RegisterGetter):
@@ -65,7 +56,10 @@ class BatteryRegisterGetter(RegisterGetter):
         "t_min": Def(DT.deci, None, IR(104)),
         # IR(105-109) unused
         "serial_number": Def(DT.string, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
-        "usb_device_inserted": Def(DT.uint16, UsbDevice, IR(115)),
+        # IR(115) meaning unverified — manufacturer specs only document 0 and 8 (originally
+        # decoded as a UsbDevice enum), but observed values outside that set (e.g. 11 on
+        # D0.449-A0.449) caused decode failures. Exposed as a raw uint16 until documented.
+        "usb_device_inserted": Def(DT.uint16, None, IR(115)),
         # IR(116-119) unused
     }
 

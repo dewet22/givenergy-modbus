@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 from asyncio import StreamReader
 from unittest.mock import AsyncMock, MagicMock
 
@@ -110,3 +111,76 @@ def test_client_expected_responses_isolated_between_instances():
     client2 = Client(host="b", port=2)
     client1.expected_responses[42] = "sentinel"
     assert 42 not in client2.expected_responses
+
+
+async def test_consumer_logs_debug_not_critical_on_intentional_shutdown(caplog):
+    """Regression for #50: when close() set _shutting_down, the consumer must exit at DEBUG, not CRITICAL."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    client._shutting_down = True
+    client.reader.feed_eof()
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    assert not any(r.levelno >= logging.WARNING for r in caplog.records), (
+        f"intentional shutdown should not emit WARNING+: {[(r.levelname, r.message) for r in caplog.records]}"
+    )
+    assert any("intentional shutdown" in r.message for r in caplog.records)
+
+
+async def test_consumer_still_logs_critical_on_unexpected_eof(caplog):
+    """When the reader hits EOF without a shutdown signal, CRITICAL is preserved."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+
+
+async def test_producer_logs_debug_not_critical_on_intentional_shutdown(caplog):
+    """Regression for #50: when close() set _shutting_down, the producer must exit at DEBUG, not CRITICAL."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = True
+    client.writer = writer
+    client._shutting_down = True
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_producer()
+
+    assert not any(r.levelno >= logging.WARNING for r in caplog.records), (
+        f"intentional shutdown should not emit WARNING+: {[(r.levelname, r.message) for r in caplog.records]}"
+    )
+    assert any("intentional shutdown" in r.message for r in caplog.records)
+
+
+async def test_producer_still_logs_critical_on_unexpected_writer_close(caplog):
+    """When the writer is closing without a shutdown signal, CRITICAL is preserved."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = True
+    client.writer = writer  # _shutting_down stays False
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_producer()
+
+    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+
+
+async def test_close_sets_shutting_down_flag():
+    """close() must set _shutting_down so the task exit-paths take the quiet branch."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock()
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+
+    assert client._shutting_down is False
+    await client.close()
+    assert client._shutting_down is True

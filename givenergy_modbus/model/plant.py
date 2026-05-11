@@ -78,13 +78,19 @@ class Plant(GivEnergyBaseModel):
     @property
     def number_batteries(self) -> int:
         """Determine the number of batteries connected to the system based on whether the register data is valid."""
-        i = 0
+        count = 0
         for i in range(6):
             try:
-                assert Battery.from_register_cache(self.register_caches[i + 0x32]).is_valid()  # nosec B101
-            except (KeyError, AssertionError):  # fmt: skip  # TODO: drop when 3.13 support ends (PEP 758)
+                battery = Battery.from_register_cache(self.register_caches[i + 0x32])
+            except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
+                # KeyError: no cache for that slave yet. ValueError: an enum-typed
+                # register held a value outside the known set. Either way, treat as
+                # "not a battery" and stop probing rather than aborting the caller.
                 break
-        return i
+            if not battery.is_valid():
+                break
+            count += 1
+        return count
 
     @property
     def batteries(self) -> list[Battery]:

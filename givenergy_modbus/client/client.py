@@ -22,6 +22,7 @@ class Client:
     # refresh_count: int = 0
     # debug_frames: Dict[str, Queue]
     connected = False
+    _shutting_down = False
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task
@@ -37,6 +38,7 @@ class Client:
         self.plant = Plant()
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
+        self._shutting_down = False
         # self.debug_frames = {
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),
@@ -58,6 +60,7 @@ class Client:
     async def close(self):
         """Disconnect from the remote host and clean up tasks and queues."""
         self.connected = False
+        self._shutting_down = True
         if self.tx_queue:
             while not self.tx_queue.empty():
                 _, future = self.tx_queue.get_nowait()
@@ -148,7 +151,10 @@ class Client:
                 # except RegisterCacheUpdateFailed as e:
                 #     # await self.debug_frames['error'].put(frame)
                 #     _logger.debug(f'Ignoring {message}: {e}')
-        _logger.critical("network_consumer reader at EOF, cannot continue")
+        if self._shutting_down:
+            _logger.debug("network_consumer exiting on intentional shutdown")
+        else:
+            _logger.critical("network_consumer reader at EOF, cannot continue")
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
         """Producer loop to transmit queued frames with an appropriate delay."""
@@ -160,7 +166,10 @@ class Client:
             if future:
                 future.set_result(True)
             await asyncio.sleep(tx_message_wait)
-        _logger.critical("network_producer writer is closing, cannot continue")
+        if self._shutting_down:
+            _logger.debug("network_producer exiting on intentional shutdown")
+        else:
+            _logger.critical("network_producer writer is closing, cannot continue")
 
     # async def _task_dump_queues_to_files(self):
     #     """Task to periodically dump debug message frames to disk for debugging."""
