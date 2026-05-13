@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 from asyncio import StreamReader
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -184,3 +184,134 @@ async def test_close_sets_shutting_down_flag():
     assert client._shutting_down is False
     await client.close()
     assert client._shutting_down is True
+
+
+async def test_consumer_clears_connected_on_unexpected_eof():
+    """Bug fix: connected must be set to False when the consumer exits due to remote EOF."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    client.reader.feed_eof()
+    client.connected = True
+
+    await client._task_network_consumer()
+
+    assert client.connected is False  # nosec
+
+
+async def test_producer_clears_connected_on_unexpected_writer_close():
+    """Bug fix: connected must be set to False when the producer exits due to writer closing."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = True
+    client.writer = writer
+    client.connected = True
+
+    await client._task_network_producer()
+
+    assert client.connected is False  # nosec
+
+
+async def test_send_request_raises_timeout_when_tx_queue_is_full():
+    """Bug fix: a full tx_queue must raise TimeoutError quickly, not block forever."""
+    client = Client(host="foo", port=4321)
+    # Fill the queue to capacity so the next put() will block.
+    for _ in range(client.tx_queue.maxsize):
+        client.tx_queue.put_nowait((b"", None))
+
+    from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
+
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    # Patch wait_for to immediately raise TimeoutError, simulating the 5s timeout
+    # elapsing without the producer draining the queue.
+    with patch("givenergy_modbus.client.client.asyncio.wait_for", AsyncMock(side_effect=asyncio.TimeoutError)):
+        with pytest.raises(TimeoutError, match="TX queue full"):
+            await client.send_request_and_await_response(req, timeout=1.0, retries=0)
+
+
+async def test_close_does_not_raise_when_tasks_were_never_created():
+    """Bug fix: close() must not raise AttributeError when connect() failed before tasks were created."""
+    client = Client(host="foo", port=4321)
+    # Simulate a half-initialised client: writer exists, but no task attributes.
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock()
+    client.writer = writer
+    client.reader = MagicMock()
+
+    await client.close()  # must not raise
+
+
+async def test_send_request_raises_timeout_after_all_retries_exhausted():
+    """When all retry attempts time out, the final TimeoutError is raised."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    async def drain_queue():
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+
+    drainer = asyncio.create_task(drain_queue())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+    finally:
+        drainer.cancel()
+
+
+async def test_send_request_succeeds_after_timeout_retry():
+    """When the first attempt times out but the retry receives a response, the result is returned."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+    attempt = 0
+
+    async def drain_and_respond():
+        nonlocal attempt
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            attempt += 1
+            if attempt >= 2:
+                # First attempt times out; resolve the response on retry.
+                await asyncio.sleep(0)
+                future = client.expected_responses.get(expected_hash)
+                if future and not future.done():
+                    future.set_result(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20))
+
+    drainer = asyncio.create_task(drain_and_respond())
+    try:
+        result = await client.send_request_and_await_response(req, timeout=0.02, retries=2)
+        assert result.register == 35  # nosec
+    finally:
+        drainer.cancel()
+
+
+async def test_send_request_retries_on_error_response():
+    """When the response has error=True the request is retried, then gives up with TimeoutError."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+
+    async def drain_and_error():
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            await asyncio.sleep(0)
+            future = client.expected_responses.get(expected_hash)
+            if future and not future.done():
+                error_resp = WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20)
+                error_resp.error = True
+                future.set_result(error_resp)
+
+    drainer = asyncio.create_task(drain_and_error())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+    finally:
+        drainer.cancel()

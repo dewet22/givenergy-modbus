@@ -25,8 +25,8 @@ class Client:
     _shutting_down = False
     reader: StreamReader
     writer: StreamWriter
-    network_consumer_task: Task
-    network_producer_task: Task
+    network_consumer_task: Task | None
+    network_producer_task: Task | None
 
     tx_queue: Queue[tuple[bytes, Future | None]]
 
@@ -39,6 +39,8 @@ class Client:
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
+        self.network_producer_task: Task | None = None
+        self.network_consumer_task: Task | None = None
         # self.debug_frames = {
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),
@@ -66,7 +68,8 @@ class Client:
                 _, future = self.tx_queue.get_nowait()
                 if future:
                     future.cancel()
-        self.network_producer_task.cancel()
+        if self.network_producer_task:
+            self.network_producer_task.cancel()
         if hasattr(self, "writer") and self.writer:
             self.writer.close()
             try:
@@ -75,7 +78,8 @@ class Client:
                 pass
             del self.writer
 
-        self.network_consumer_task.cancel()
+        if self.network_consumer_task:
+            self.network_consumer_task.cancel()
         if hasattr(self, "reader") and self.reader:
             self.reader.feed_eof()
             self.reader.set_exception(RuntimeError("cancelling"))
@@ -154,6 +158,7 @@ class Client:
         if self._shutting_down:
             _logger.debug("network_consumer exiting on intentional shutdown")
         else:
+            self.connected = False
             _logger.critical("network_consumer reader at EOF, cannot continue")
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
@@ -163,12 +168,13 @@ class Client:
             self.writer.write(message)
             await self.writer.drain()
             self.tx_queue.task_done()
-            if future:
+            if future and not future.done():
                 future.set_result(True)
             await asyncio.sleep(tx_message_wait)
         if self._shutting_down:
             _logger.debug("network_producer exiting on intentional shutdown")
         else:
+            self.connected = False
             _logger.critical("network_producer writer is closing, cannot continue")
 
     # async def _task_dump_queues_to_files(self):
@@ -205,32 +211,38 @@ class Client:
         if existing_response_future and not existing_response_future.done():
             _logger.debug(f"Cancelling existing in-flight request and replacing: {request}")
             existing_response_future.cancel()
-        response_future: Future[TransparentResponse] = asyncio.get_running_loop().create_future()
-        self.expected_responses[expected_shape_hash] = response_future
 
         raw_frame = request.encode()
 
         tries = 0
         while tries <= retries:
+            response_future: Future[TransparentResponse] = asyncio.get_running_loop().create_future()
+            self.expected_responses[expected_shape_hash] = response_future
             frame_sent = asyncio.get_running_loop().create_future()
-            await self.tx_queue.put((raw_frame, frame_sent))
+            try:
+                await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent)), timeout=5.0)
+            except asyncio.TimeoutError as exc:
+                raise TimeoutError("TX queue full — producer task has likely died") from exc
             await asyncio.wait_for(
                 frame_sent, timeout=self.tx_queue.qsize() + 1
             )  # this should only happen if the producer task is stuck
-            await asyncio.wait_for(response_future, timeout=timeout)
-            if response_future.done():
-                response = response_future.result()
-                if tries > 0:
-                    _logger.debug(f"Received {response} after {tries} tries")
-                if response.error:
-                    _logger.error(f"Received error response, retrying: {response}")
-                else:
-                    return response
-            tries += 1
-            _logger.debug(
-                f"Timeout awaiting {expected_response} (future: {response_future}), "
-                f"attempting retry {tries} of {retries}"
-            )
+            try:
+                await asyncio.wait_for(response_future, timeout=timeout)
+            except asyncio.TimeoutError:
+                tries += 1
+                _logger.debug(
+                    f"Timeout awaiting {expected_response} (future: {response_future}), "
+                    f"attempting retry {tries} of {retries}"
+                )
+                continue
+            response = response_future.result()
+            if tries > 0:
+                _logger.debug(f"Received {response} after {tries} tries")
+            if response.error:
+                _logger.error(f"Received error response, retrying: {response}")
+                tries += 1
+                continue
+            return response
 
         _logger.warning(f"Timeout awaiting {expected_response} after {tries} tries at {timeout}s, giving up")
         raise TimeoutError()
