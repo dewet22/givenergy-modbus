@@ -14,6 +14,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Maintenance
 
 - add Claude Code automations (hooks, skills, MCP, subagent) ([00929f9](https://github.com/dewet22/givenergy-modbus/commit/00929f941733b6f27a60676c0b94a91a5ffcccdf), @dewet22)
+- ignore Claude Code local settings and worktrees ([634dd08](https://github.com/dewet22/givenergy-modbus/commit/634dd08d1bebc1aac1a47d87356c57af4ae26254), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 
