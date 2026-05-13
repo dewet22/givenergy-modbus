@@ -238,3 +238,80 @@ async def test_close_does_not_raise_when_tasks_were_never_created():
     client.reader = MagicMock()
 
     await client.close()  # must not raise
+
+
+async def test_send_request_raises_timeout_after_all_retries_exhausted():
+    """When all retry attempts time out, the final TimeoutError is raised."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    async def drain_queue():
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+
+    drainer = asyncio.create_task(drain_queue())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+    finally:
+        drainer.cancel()
+
+
+async def test_send_request_succeeds_after_timeout_retry():
+    """When the first attempt times out but the retry receives a response, the result is returned."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+    attempt = 0
+
+    async def drain_and_respond():
+        nonlocal attempt
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            attempt += 1
+            if attempt >= 2:
+                # First attempt times out; resolve the response on retry.
+                await asyncio.sleep(0)
+                future = client.expected_responses.get(expected_hash)
+                if future and not future.done():
+                    future.set_result(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20))
+
+    drainer = asyncio.create_task(drain_and_respond())
+    try:
+        result = await client.send_request_and_await_response(req, timeout=0.02, retries=2)
+        assert result.register == 35
+    finally:
+        drainer.cancel()
+
+
+async def test_send_request_retries_on_error_response():
+    """When the response has error=True the request is retried, then gives up with TimeoutError."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+
+    async def drain_and_error():
+        while True:
+            _, frame_sent = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            await asyncio.sleep(0)
+            future = client.expected_responses.get(expected_hash)
+            if future and not future.done():
+                error_resp = WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20)
+                error_resp.error = True
+                future.set_result(error_resp)
+
+    drainer = asyncio.create_task(drain_and_error())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+    finally:
+        drainer.cancel()
