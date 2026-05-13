@@ -4,8 +4,10 @@ from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.inverter import (
     BatteryType,
-    InverterRegisterGetter,
+    Model,
     PowerFactorFunctionModel,
+    SinglePhaseInverter,
+    SinglePhaseInverterRegisterGetter,
     Status,
 )
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
@@ -204,12 +206,12 @@ _THREE_PHASE_LUT = {
 class ThreePhaseInverterRegisterGetter(RegisterGetter):
     """Structured format for three-phase inverter attributes.
 
-    Merges the single-phase InverterRegisterGetter LUT with three-phase-specific
+    Merges the single-phase SinglePhaseInverterRegisterGetter LUT with three-phase-specific
     registers. Three-phase entries win for any key that appears in both (e.g.
     battery_soc moves from IR(59) to IR(1132)).
     """
 
-    REGISTER_LUT = dict(InverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT)
+    REGISTER_LUT = dict(SinglePhaseInverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT)
 
 
 _ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
@@ -226,3 +228,24 @@ class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,mi
     def from_register_cache(cls, register_cache) -> "ThreePhaseInverter":
         """Construct a ThreePhaseInverter from a RegisterCache."""
         return cls.model_validate(ThreePhaseInverterRegisterGetter(register_cache).build())
+
+
+_THREE_PHASE_MODELS = {
+    Model.HYBRID_3PH,
+    Model.AC_3PH,
+    Model.AIO_COMMERCIAL,
+    Model.ALL_IN_ONE,
+    Model.HYBRID_HV_GEN3,
+    Model.ALL_IN_ONE_HYBRID,
+}
+
+
+def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | ThreePhaseInverter":
+    """Return the appropriate inverter model instance for the given device model.
+
+    Three-phase and AIO/HV units use a different register address layout;
+    everything else uses the single-phase layout.
+    """
+    if model in _THREE_PHASE_MODELS:
+        return ThreePhaseInverter.from_register_cache(register_cache)
+    return SinglePhaseInverter.from_register_cache(register_cache)

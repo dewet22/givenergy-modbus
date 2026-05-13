@@ -82,6 +82,6 @@ class TimeSlot:
 # from givenergy_modbus.model import battery, inverter, plant, register_cache
 #
 # Plant = plant.Plant
-# Inverter = inverter.Inverter
+# SinglePhaseInverter = inverter.SinglePhaseInverter
 # Battery = battery.Battery
 # RegisterCache = register_cache.RegisterCache

@@ -232,7 +232,7 @@ class Phase(IntEnum):
         return None
 
 
-class InverterRegisterGetter(RegisterGetter):
+class SinglePhaseInverterRegisterGetter(RegisterGetter):
     """Structured format for all inverter attributes."""
 
     REGISTER_LUT = {
@@ -475,20 +475,20 @@ class InverterRegisterGetter(RegisterGetter):
     }
 
 
-_InverterBase = create_model(  # type: ignore[call-overload]
-    "Inverter",
+_SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
+    "SinglePhaseInverter",
     __config__=ConfigDict(frozen=True),
-    **InverterRegisterGetter.to_fields(),
+    **SinglePhaseInverterRegisterGetter.to_fields(),
 )
 
 
-class Inverter(_InverterBase):  # type: ignore[valid-type,misc]
-    """GivEnergy inverter data model."""
+class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,misc]
+    """GivEnergy single-phase inverter data model."""
 
     @classmethod
-    def from_register_cache(cls, register_cache) -> "Inverter":
-        """Construct an Inverter from a RegisterCache."""
-        return cls.model_validate(InverterRegisterGetter(register_cache).build())
+    def from_register_cache(cls, register_cache) -> "SinglePhaseInverter":
+        """Construct a SinglePhaseInverter from a RegisterCache."""
+        return cls.model_validate(SinglePhaseInverterRegisterGetter(register_cache).build())
 
     def p_pv(self) -> int:
         """Computes the total PV power."""

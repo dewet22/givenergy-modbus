@@ -5,7 +5,7 @@ from pydantic import ConfigDict
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import Inverter
+from givenergy_modbus.model.inverter import SinglePhaseInverter
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -71,9 +71,9 @@ class Plant(GivEnergyBaseModel):
                 self.register_caches[slave_address].update({HR(pdu.register): pdu.value})
 
     @property
-    def inverter(self) -> Inverter:
-        """Return Inverter model for the Plant."""
-        return Inverter.from_register_cache(self.register_caches[0x32])
+    def inverter(self) -> SinglePhaseInverter:
+        """Return SinglePhaseInverter model for the Plant."""
+        return SinglePhaseInverter.from_register_cache(self.register_caches[0x32])
 
     @property
     def number_batteries(self) -> int:

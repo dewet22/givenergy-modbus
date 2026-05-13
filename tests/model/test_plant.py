@@ -12,13 +12,13 @@ from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
-    Inverter,
     MeterType,
     Model,
     PowerFactorFunctionModel,
+    SinglePhaseInverter,
     Status,
 )
-from givenergy_modbus.model.inverter import UsbDevice as InverterUsbDevice
+from givenergy_modbus.model.inverter import UsbDevice as SinglePhaseInverterUsbDevice
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -81,12 +81,12 @@ def test_plant(
         "register_caches": plant.register_caches,
     }
 
-    i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
+    i = SinglePhaseInverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == "SA1234G567"  # type: ignore[attr-defined]
     b = Battery.from_register_cache(register_cache_battery_daytime_discharging)
     assert b.serial_number == "BG1234G567"  # type: ignore[attr-defined]
 
-    assert isinstance(plant.inverter, Inverter)
+    assert isinstance(plant.inverter, SinglePhaseInverter)
     assert plant.inverter == i
     assert plant.number_batteries == 1
     assert isinstance(plant.batteries[0], Battery)
@@ -1233,7 +1233,7 @@ def test_from_actual():
         "i_grid_port": 2.66,
         "battery_soc": 57,
         "system_time": datetime(2022, 4, 27, 23, 29, 18),
-        "usb_device_inserted": InverterUsbDevice.DISK,
+        "usb_device_inserted": SinglePhaseInverterUsbDevice.DISK,
         "user_code": 7,
         "variable_address": 32768,
         "variable_value": 30235,
