@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from enum import Enum, IntEnum, StrEnum
 
@@ -527,3 +528,15 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
         if self.battery_capacity_ah is None or self.model is None:  # type: ignore[attr-defined]
             return None
         return self.battery_capacity_ah * self.model.system_battery_voltage / 1000  # type: ignore[attr-defined]
+
+
+def __getattr__(name: str):
+    if name == "Inverter":
+        warnings.warn(
+            "Inverter has been renamed to SinglePhaseInverter and the alias will be removed in a future release. "
+            "Use select_inverter() to obtain the correct model for a given device.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return SinglePhaseInverter
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

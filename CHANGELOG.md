@@ -43,7 +43,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 ### Changed
 
-- `Inverter` renamed to `SinglePhaseInverter`; `select_inverter()` is now the recommended constructor — it returns the right concrete type based on device model ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
+- `Inverter` renamed to `SinglePhaseInverter`; `select_inverter()` is now the recommended constructor — it returns the right concrete type based on device model. `Inverter` remains importable as a deprecated alias ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
 - `Plant.update()` validates each incoming register bank before committing; banks with an invalid serial number (e.g. all-zero padding from an absent battery slot) are silently discarded rather than written into the cache ([82ba7fc](https://github.com/dewet22/givenergy-modbus/commit/82ba7fc), @dewet22)
 - Bounds violations on physical measurements are logged at ERROR level and currently still committed — enforcement (discard-on-violation) follows in a future release once the bounds have been validated in production (see [#57](https://github.com/dewet22/givenergy-modbus/issues/57)) ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
 
@@ -53,6 +53,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 ### Deprecated
 
+- `Inverter` — use `SinglePhaseInverter` directly, or `select_inverter()` to get the correct type for a given device
 - `commands.enable_charge()` / `disable_charge()` — use `set_enable_charge(bool)` instead
 - `commands.enable_discharge()` / `disable_discharge()` — use `set_enable_discharge(bool)` instead
 
