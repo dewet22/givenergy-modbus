@@ -1,0 +1,228 @@
+"""GivEnergy three-phase inverter data model."""
+
+from pydantic import ConfigDict, create_model
+
+from givenergy_modbus.model.inverter import (
+    BatteryType,
+    InverterRegisterGetter,
+    PowerFactorFunctionModel,
+    Status,
+)
+from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import Converter as C
+from givenergy_modbus.model.register import RegisterDefinition as Def
+
+# Registers that are three-phase specific or that shadow single-phase registers at higher addresses.
+# When merged with InverterRegisterGetter.REGISTER_LUT these entries win (dict update semantics).
+_THREE_PHASE_LUT = {
+    #
+    # Holding Registers 1001–1124 — Three-Phase configuration
+    #
+    "set_command_save": Def(C.bool, None, HR(1001)),
+    "active_rate": Def(C.uint16, None, HR(1002)),
+    "reactive_rate": Def(C.uint16, None, HR(1003)),
+    "set_power_factor": Def(C.uint16, None, HR(1004)),
+    "grid_connect_time": Def(C.uint16, None, HR(1007)),
+    "grid_reconnect_time": Def(C.uint16, None, HR(1008)),
+    "v_grid_low_limit_1": Def(C.deci, None, HR(1018)),
+    "v_grid_high_limit_1": Def(C.deci, None, HR(1019)),
+    "f_grid_low_limit_1": Def(C.centi, None, HR(1020)),
+    "f_grid_high_limit_1": Def(C.centi, None, HR(1021)),
+    "v_grid_low_limit_2": Def(C.deci, None, HR(1022)),
+    "v_grid_high_limit_2": Def(C.deci, None, HR(1023)),
+    "f_grid_low_limit_2": Def(C.centi, None, HR(1024)),
+    "f_grid_high_limit_2": Def(C.centi, None, HR(1025)),
+    "v_grid_low_limit_3": Def(C.deci, None, HR(1026)),
+    "v_grid_high_limit_3": Def(C.deci, None, HR(1027)),
+    "f_grid_low_limit_3": Def(C.centi, None, HR(1028)),
+    "f_grid_high_limit_3": Def(C.centi, None, HR(1029)),
+    "v_10min_protect": Def(C.deci, None, HR(1042)),
+    "pf_model": Def(C.uint16, PowerFactorFunctionModel, HR(1043)),
+    "f_over_derate_start": Def(C.centi, None, HR(1045)),
+    "f_over_derate_slope": Def(C.uint16, None, HR(1046)),
+    "f_under_derate_start": Def(C.centi, None, HR(1064)),
+    "f_under_derate_end": Def(C.centi, None, HR(1065)),
+    "f_over_derate_end": Def(C.centi, None, HR(1066)),
+    "p_export_limit": Def(C.deci, None, HR(1063)),
+    "battery_power_cutoff": Def(C.uint16, None, HR(1078)),
+    # battery_type at HR(1080) shadows the single-phase HR(54)
+    "battery_type": Def(C.uint16, BatteryType, HR(1080)),
+    "max_charge_current": Def(C.uint16, None, HR(1088)),
+    "backup_enable": Def(C.bool, None, HR(1105)),
+    # battery_discharge_limit_ac at HR(1108) shadows single-phase HR(314)
+    "battery_discharge_limit_ac": Def(C.uint16, None, HR(1108)),
+    # battery_soc_reserve at HR(1109) shadows single-phase HR(110)
+    "battery_soc_reserve": Def(C.uint16, None, HR(1109)),
+    # battery_charge_limit_ac at HR(1110) shadows single-phase HR(313)
+    "battery_charge_limit_ac": Def(C.uint16, None, HR(1110)),
+    # charge_target_soc at HR(1111) shadows single-phase HR(116)
+    "charge_target_soc": Def(C.uint16, None, HR(1111)),
+    # enable_charge at HR(1112) shadows single-phase HR(96)
+    "enable_charge": Def(C.bool, None, HR(1112)),
+    # charge_slot_1 at HR(1113/1114) shadows single-phase HR(94/95)
+    "charge_slot_1": Def(C.timeslot, None, HR(1113), HR(1114)),
+    # charge_slot_2 at HR(1115/1116) shadows single-phase HR(31/32)
+    "charge_slot_2": Def(C.timeslot, None, HR(1115), HR(1116)),
+    # discharge_slot_1 at HR(1118/1119) shadows single-phase HR(56/57)
+    "discharge_slot_1": Def(C.timeslot, None, HR(1118), HR(1119)),
+    # discharge_slot_2 at HR(1120/1121) shadows single-phase HR(44/45)
+    "discharge_slot_2": Def(C.timeslot, None, HR(1120), HR(1121)),
+    # enable_discharge at HR(1122) shadows single-phase HR(59)
+    "enable_discharge": Def(C.bool, None, HR(1122)),
+    #
+    # Input Registers 1001–1060 — PV
+    #
+    # v_pv1/v_pv2 at IR(1001/1002) shadow single-phase IR(1/2)
+    "v_pv1": Def(C.deci, None, IR(1001)),
+    "v_pv2": Def(C.deci, None, IR(1002)),
+    # i_pv1/i_pv2 at IR(1009/1010) shadow single-phase IR(8/9)
+    "i_pv1": Def(C.deci, None, IR(1009)),
+    "i_pv2": Def(C.deci, None, IR(1010)),
+    # p_pv1/p_pv2 at IR(1017-1020) are uint32+deci; single-phase is raw uint16
+    "p_pv1": Def(C.uint32, C.deci, IR(1017), IR(1018)),
+    "p_pv2": Def(C.uint32, C.deci, IR(1019), IR(1020)),
+    #
+    # Input Registers 1061–1099 — Grid
+    #
+    # v_ac1/i_ac1/f_ac1 shadow single-phase IR(5/10/13)
+    "v_ac1": Def(C.deci, None, IR(1061)),
+    "v_ac2": Def(C.deci, None, IR(1062)),
+    "v_ac3": Def(C.deci, None, IR(1063)),
+    "i_ac1": Def(C.deci, None, IR(1064)),
+    "i_ac2": Def(C.deci, None, IR(1065)),
+    "i_ac3": Def(C.deci, None, IR(1066)),
+    # f_ac1 shadows single-phase IR(13)
+    "f_ac1": Def(C.centi, None, IR(1067)),
+    # power_factor shadows single-phase HR(52); int16 here
+    "power_factor": Def(C.int16, None, IR(1068)),
+    "p_inverter_out": Def(C.int32, C.deci, IR(1069), IR(1070)),
+    "p_inverter_ac_charge": Def(C.uint32, C.deci, IR(1071), IR(1072)),
+    # p_grid_apparent shadows single-phase IR(43) (was uint16, now uint32+deci)
+    "p_grid_apparent": Def(C.uint32, C.deci, IR(1073), IR(1074)),
+    # system_mode shadows single-phase IR(49)
+    "system_mode": Def(C.uint16, None, IR(1075)),
+    # status shadows single-phase IR(0)
+    "status": Def(C.uint16, Status, IR(1076)),
+    "start_delay_time": Def(C.uint16, None, IR(1077)),
+    "p_meter_import": Def(C.uint32, C.deci, IR(1079), IR(1080)),
+    "p_meter_export": Def(C.uint32, C.deci, IR(1081), IR(1082)),
+    "p_load_ac1": Def(C.deci, None, IR(1083)),
+    "p_load_ac2": Def(C.deci, None, IR(1084)),
+    "p_load_ac3": Def(C.deci, None, IR(1085)),
+    "p_load_all": Def(C.uint32, C.deci, IR(1089), IR(1090)),
+    "p_out_ac1": Def(C.deci, None, IR(1091)),
+    "p_out_ac2": Def(C.deci, None, IR(1092)),
+    "p_out_ac3": Def(C.deci, None, IR(1093)),
+    "v_out_ac1": Def(C.deci, None, IR(1094)),
+    "v_out_ac2": Def(C.deci, None, IR(1095)),
+    "v_out_ac3": Def(C.deci, None, IR(1096)),
+    #
+    # Input Registers 1120–1140 — Battery
+    #
+    "battery_priority": Def(C.uint16, None, IR(1120)),
+    "dc_status": Def(C.uint16, Status, IR(1124)),
+    "t_inverter": Def(C.deci, None, IR(1128)),
+    "t_boost": Def(C.deci, None, IR(1129)),
+    "t_buck_boost": Def(C.deci, None, IR(1130)),
+    "v_battery_bms": Def(C.deci, None, IR(1131)),
+    # battery_soc shadows single-phase IR(59)
+    "battery_soc": Def(C.uint16, None, IR(1132)),
+    "v_battery_pcs": Def(C.deci, None, IR(1133)),
+    "v_dc_bus": Def(C.deci, None, IR(1134)),
+    "v_inv_bus": Def(C.deci, None, IR(1135)),
+    "p_battery_discharge": Def(C.uint32, C.deci, IR(1136), IR(1137)),
+    "p_battery_charge": Def(C.uint32, C.deci, IR(1138), IR(1139)),
+    # i_battery shadows single-phase IR(51); same converter, different scale
+    "i_battery": Def(C.int16, C.deci, IR(1140)),
+    #
+    # Input Registers 1180–1192 — EPS
+    #
+    "f_nominal_eps": Def(C.centi, None, IR(1180)),
+    "v_eps_ac1": Def(C.deci, None, IR(1181)),
+    "v_eps_ac2": Def(C.deci, None, IR(1182)),
+    "v_eps_ac3": Def(C.deci, None, IR(1183)),
+    "i_eps_ac1": Def(C.deci, None, IR(1184)),
+    "i_eps_ac2": Def(C.deci, None, IR(1185)),
+    "i_eps_ac3": Def(C.deci, None, IR(1186)),
+    "p_eps_ac1": Def(C.uint32, C.deci, IR(1187), IR(1188)),
+    "p_eps_ac2": Def(C.uint32, C.deci, IR(1189), IR(1190)),
+    "p_eps_ac3": Def(C.uint32, C.deci, IR(1191), IR(1192)),
+    #
+    # Input Registers 1240–1245 — Additional power meters
+    #
+    "p_export": Def(C.uint32, C.deci, IR(1240), IR(1241)),
+    "p_meter2": Def(C.uint32, C.deci, IR(1244), IR(1245)),
+    #
+    # Input Registers 1300–1307 — Fault codes (raw; decode separately if needed)
+    #
+    "inverter_fault_code_0": Def(C.uint16, None, IR(1300)),
+    "inverter_fault_code_1": Def(C.uint16, None, IR(1301)),
+    "inverter_fault_code_2": Def(C.uint16, None, IR(1302)),
+    "inverter_fault_code_3": Def(C.uint16, None, IR(1303)),
+    "inverter_fault_code_4": Def(C.uint16, None, IR(1304)),
+    "inverter_fault_code_5": Def(C.uint16, None, IR(1305)),
+    "inverter_fault_code_6": Def(C.uint16, None, IR(1306)),
+    "inverter_fault_code_7": Def(C.uint16, None, IR(1307)),
+    #
+    # Input Registers 1317–1327 — Firmware identification
+    #
+    "tph_software_version": Def(C.string, None, IR(1317), IR(1318), IR(1319)),
+    "tph_firmware_version": Def(C.string, None, IR(1320), IR(1321), IR(1322), IR(1323), IR(1324)),
+    "ac_dsp_firmware_version": Def(C.uint16, None, IR(1325)),
+    "dc_dsp_firmware_version": Def(C.uint16, None, IR(1326)),
+    "tph_arm_firmware_version": Def(C.uint16, None, IR(1327)),
+    # firmware_version shadows single-phase HR(19)+HR(21); same converter, different registers
+    "firmware_version": Def(C.firmware_version, None, IR(1325), IR(1327)),
+    #
+    # Input Registers 1360–1413 — Energy totals
+    #
+    "e_inverter_out_today": Def(C.uint32, C.deci, IR(1360), IR(1361)),
+    "e_inverter_out_total": Def(C.uint32, C.deci, IR(1362), IR(1363)),
+    "e_pv1_today": Def(C.uint32, C.deci, IR(1366), IR(1367)),
+    "e_pv1_total": Def(C.uint32, C.deci, IR(1368), IR(1369)),
+    "e_pv2_today": Def(C.uint32, C.deci, IR(1370), IR(1371)),
+    "e_pv2_total": Def(C.uint32, C.deci, IR(1372), IR(1373)),
+    "e_pv_total": Def(C.uint32, C.deci, IR(1374), IR(1375)),
+    "e_ac_charge_today": Def(C.uint32, C.deci, IR(1376), IR(1377)),
+    "e_ac_charge_total": Def(C.uint32, C.deci, IR(1378), IR(1379)),
+    "e_import_today": Def(C.uint32, C.deci, IR(1380), IR(1381)),
+    "e_import_total": Def(C.uint32, C.deci, IR(1382), IR(1383)),
+    "e_export_today": Def(C.uint32, C.deci, IR(1384), IR(1385)),
+    "e_export_total": Def(C.uint32, C.deci, IR(1386), IR(1387)),
+    "e_battery_discharge_today": Def(C.uint32, C.deci, IR(1388), IR(1389)),
+    "e_battery_discharge_total": Def(C.uint32, C.deci, IR(1390), IR(1391)),
+    "e_battery_charge_today": Def(C.uint32, C.deci, IR(1392), IR(1393)),
+    "e_battery_charge_total": Def(C.uint32, C.deci, IR(1394), IR(1395)),
+    "e_load_today": Def(C.uint32, C.deci, IR(1396), IR(1397)),
+    "e_load_total": Def(C.uint32, C.deci, IR(1398), IR(1399)),
+    "e_export2_today": Def(C.uint32, C.deci, IR(1400), IR(1401)),
+    "e_export2_total": Def(C.uint32, C.deci, IR(1402), IR(1403)),
+    "e_pv_today": Def(C.uint32, C.deci, IR(1412), IR(1413)),
+}
+
+
+class ThreePhaseInverterRegisterGetter(RegisterGetter):
+    """Structured format for three-phase inverter attributes.
+
+    Merges the single-phase InverterRegisterGetter LUT with three-phase-specific
+    registers. Three-phase entries win for any key that appears in both (e.g.
+    battery_soc moves from IR(59) to IR(1132)).
+    """
+
+    REGISTER_LUT = dict(InverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT)
+
+
+_ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
+    "ThreePhaseInverter",
+    __config__=ConfigDict(frozen=True),
+    **ThreePhaseInverterRegisterGetter.to_fields(),
+)
+
+
+class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,misc]
+    """GivEnergy three-phase inverter data model."""
+
+    @classmethod
+    def from_register_cache(cls, register_cache) -> "ThreePhaseInverter":
+        """Construct a ThreePhaseInverter from a RegisterCache."""
+        return cls.model_validate(ThreePhaseInverterRegisterGetter(register_cache).build())

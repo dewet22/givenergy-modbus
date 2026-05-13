@@ -30,6 +30,13 @@ class Converter:
             return (high_val << 16) + low_val
 
     @staticmethod
+    def int32(high_val: int, low_val: int) -> int:
+        """Combine two registers into a signed 32-bit int (two's complement)."""
+        if high_val is not None and low_val is not None:
+            raw = (high_val << 16) + low_val
+            return raw if raw < 0x80000000 else raw - 0x100000000
+
+    @staticmethod
     def timeslot(start_time: int, end_time: int) -> TimeSlot:
         """Interpret register as a time slot."""
         if start_time is not None and end_time is not None:
