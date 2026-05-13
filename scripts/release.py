@@ -11,21 +11,31 @@ from pathlib import Path
 
 CHANGELOG = Path(__file__).parent.parent / "CHANGELOG.md"
 
+_SECTION_ORDER: list[str] = [
+    "✨ Added",
+    "🔄 Changed",
+    "⚠️ Deprecated",
+    "🗑️ Removed",
+    "🐛 Fixed",
+    "🔒 Security",
+    "🔧 Maintenance",
+]
+
 _COMMIT_TYPE_TO_SECTION: dict[str, str] = {
-    "feat": "Added",
-    "fix": "Fixed",
-    "perf": "Changed",
-    "refactor": "Changed",
-    "revert": "Fixed",
-    "security": "Security",
-    "docs": "Changed",
+    "feat": "✨ Added",
+    "fix": "🐛 Fixed",
+    "perf": "🔄 Changed",
+    "refactor": "🔧 Maintenance",
+    "revert": "🐛 Fixed",
+    "security": "🔒 Security",
+    "docs": "🔧 Maintenance",
     # Non-functional but recorded for completeness
-    "ci": "Maintenance",
-    "chore": "Maintenance",
-    "test": "Maintenance",
-    "style": "Maintenance",
-    "build": "Maintenance",
-    "wip": "Maintenance",
+    "ci": "🔧 Maintenance",
+    "chore": "🔧 Maintenance",
+    "test": "🔧 Maintenance",
+    "style": "🔧 Maintenance",
+    "build": "🔧 Maintenance",
+    "wip": "🔧 Maintenance",
 }
 
 
@@ -99,10 +109,23 @@ class Changelog:
         try:
             idx = block.index(section_header)
         except ValueError:
-            # Section doesn't exist — append at the end of the [Unreleased] block
+            # Section doesn't exist — insert before the first existing section that
+            # comes after this one in _SECTION_ORDER, or at the end of the block.
+            new_rank = _SECTION_ORDER.index(section) if section in _SECTION_ORDER else len(_SECTION_ORDER)
             insert_at = block_end
-            while insert_at > block_start and not self.lines[insert_at - 1].strip():
-                insert_at -= 1
+            for j, line in enumerate(block):
+                if line.startswith("### "):
+                    name = line[4:].strip()
+                    rank = _SECTION_ORDER.index(name) if name in _SECTION_ORDER else len(_SECTION_ORDER)
+                    if rank > new_rank:
+                        abs_pos = block_start + j
+                        while abs_pos > block_start and not self.lines[abs_pos - 1].strip():
+                            abs_pos -= 1
+                        insert_at = abs_pos
+                        break
+            else:
+                while insert_at > block_start and not self.lines[insert_at - 1].strip():
+                    insert_at -= 1
             self.lines[insert_at:insert_at] = ["\n", section_header, "\n", f"{entry}\n"]
             return
 
@@ -124,11 +147,11 @@ def _parse_commit(message: str) -> tuple[str, str]:
     subject = message.splitlines()[0].strip()
     m = re.match(r"^(\w+)(?:\([^)]*\))?(!)?\s*:\s*(.+)", subject)
     if not m:
-        return "Changed", subject
+        return "🔄 Changed", subject
     commit_type, breaking, description = m.group(1).lower(), m.group(2), m.group(3).strip()
     if breaking:
-        return "Changed", f"⚠️ Breaking: {description}"
-    return _COMMIT_TYPE_TO_SECTION.get(commit_type, "Changed"), description
+        return "🔄 Changed", f"⚠️ Breaking: {description}"
+    return _COMMIT_TYPE_TO_SECTION.get(commit_type, "🔄 Changed"), description
 
 
 def cmd_check(_args) -> None:
