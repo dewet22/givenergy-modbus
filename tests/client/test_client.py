@@ -195,7 +195,7 @@ async def test_consumer_clears_connected_on_unexpected_eof():
 
     await client._task_network_consumer()
 
-    assert client.connected is False
+    assert client.connected is False  # nosec
 
 
 async def test_producer_clears_connected_on_unexpected_writer_close():
@@ -208,7 +208,7 @@ async def test_producer_clears_connected_on_unexpected_writer_close():
 
     await client._task_network_producer()
 
-    assert client.connected is False
+    assert client.connected is False  # nosec
 
 
 async def test_send_request_raises_timeout_when_tx_queue_is_full():
