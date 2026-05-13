@@ -41,7 +41,7 @@ class Converter:
             return raw if raw < 0x80000000 else raw - 0x100000000
 
     @staticmethod
-    def timeslot(start_time: int, end_time: int) -> TimeSlot:
+    def timeslot(start_time: int, end_time: int) -> "TimeSlot | None":
         """Interpret register as a time slot."""
         if start_time is not None and end_time is not None:
             # Some inverters store 60 as a sentinel for an unset slot (portal shows '--:--').
@@ -180,7 +180,7 @@ class Converter:
             None,
         ]
         bits = f"{val:032b}"
-        return [_FAULTS[i] for i, b in enumerate(bits) if b == "1" and _FAULTS[i] is not None]
+        return [f for i, b in enumerate(bits) if b == "1" and (f := _FAULTS[i]) is not None]
 
     @staticmethod
     def hexfield(val: int, idx: int, width: int = 1) -> int | None:

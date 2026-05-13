@@ -11,6 +11,7 @@ from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import resolve_model
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     HeartbeatRequest,
     ReadHoldingRegistersRequest,
@@ -136,7 +137,7 @@ class Client:
             timeout=timeout,
             retries=retries,
         )
-        cache = self.plant.register_caches.get(0x32, {})
+        cache: RegisterCache = self.plant.register_caches.get(0x32, RegisterCache())
         raw_dtc = cache.get(HR(0))
         if raw_dtc is None:
             raise CommunicationError(
@@ -154,7 +155,7 @@ class Client:
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
-                bms_cache = self.plant.register_caches.get(0xA0, {})
+                bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
                 num_bcus = bms_cache.get(IR(61)) or 0
                 for i in range(num_bcus):
                     if await self._probe(
@@ -162,7 +163,7 @@ class Client:
                         timeout=probe_timeout,
                         retries=probe_retries,
                     ):
-                        bcu_cache = self.plant.register_caches.get(0x70 + i, {})
+                        bcu_cache: RegisterCache = self.plant.register_caches.get(0x70 + i, RegisterCache())
                         num_modules = bcu_cache.get(IR(64)) or 0
                         caps.bcu_slaves.append((i, num_modules))
             _logger.info("detect: bcu_slaves=%s", caps.bcu_slaves)
@@ -198,7 +199,7 @@ class Client:
                 try:
                     if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
                         break
-                except (KeyError, ValueError):
+                except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
                     break
                 caps.lv_battery_slaves.append(batt_addr)
             _logger.info("detect: lv_battery_slaves=%s", caps.lv_battery_slaves)
@@ -209,7 +210,7 @@ class Client:
     async def load_config(self, timeout: float = 2.0, retries: int = 3) -> Plant:
         """Read HR configuration blocks for the inverter."""
         slave = self.plant.capabilities.inverter_slave if self.plant.capabilities else 0x32
-        reqs = [
+        reqs: list[TransparentRequest] = [
             ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=slave),
             ReadHoldingRegistersRequest(base_register=60, register_count=60, slave_address=slave),
             ReadHoldingRegistersRequest(base_register=120, register_count=60, slave_address=slave),
@@ -372,14 +373,14 @@ class Client:
             frame_sent = asyncio.get_running_loop().create_future()
             try:
                 await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent)), timeout=5.0)
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
             await asyncio.wait_for(
                 frame_sent, timeout=self.tx_queue.qsize() + 1
             )  # this should only happen if the producer task is stuck
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 tries += 1
                 _logger.debug(
                     f"Timeout awaiting {expected_response} (future: {response_future}), "

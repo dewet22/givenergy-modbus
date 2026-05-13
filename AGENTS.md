@@ -26,4 +26,3 @@ Never speculatively change register addresses or values. When in doubt, read onl
 - `Client` is the primary public interface — backwards compatibility matters
 - `set_*` methods in `commands.py` expose inverter control; treat these with extra care
 - Changes to the public API require CHANGELOG.md updates
-

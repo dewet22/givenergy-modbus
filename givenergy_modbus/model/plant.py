@@ -138,7 +138,7 @@ class Plant(GivEnergyBaseModel):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             self._commit_bank(slave_address, incoming)
         elif isinstance(pdu, ReadInputRegistersResponse):
-            incoming = {IR(k): v for k, v in pdu.to_dict().items()}
+            incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             self._commit_bank(slave_address, incoming)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:

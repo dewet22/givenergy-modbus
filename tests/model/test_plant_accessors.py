@@ -1,6 +1,5 @@
 """Tests for Plant typed accessors that depend on PlantCapabilities."""
 
-
 from givenergy_modbus.model.hv_bcu import HvStack
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
