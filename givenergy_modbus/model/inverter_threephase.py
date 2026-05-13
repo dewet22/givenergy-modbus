@@ -8,6 +8,7 @@ from givenergy_modbus.model.inverter import (
     PowerFactorFunctionModel,
     SinglePhaseInverter,
     SinglePhaseInverterRegisterGetter,
+    SlotMap,
     Status,
 )
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
@@ -221,6 +222,12 @@ _ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
 )
 
 
+THREE_PHASE_SLOTS = SlotMap(
+    charge_slots=((1113, 1114), (1115, 1116)),
+    discharge_slots=((1118, 1119), (1120, 1121)),
+)
+
+
 class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,misc]
     """GivEnergy three-phase inverter data model."""
 
@@ -229,15 +236,22 @@ class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,mi
         """Construct a ThreePhaseInverter from a RegisterCache."""
         return cls.model_validate(ThreePhaseInverterRegisterGetter(register_cache).build())
 
+    @property
+    def slot_map(self) -> SlotMap:
+        """Register address pairs for the charge/discharge time slots on this model."""
+        return THREE_PHASE_SLOTS
 
-_THREE_PHASE_MODELS = {
-    Model.HYBRID_3PH,
-    Model.AC_3PH,
-    Model.AIO_COMMERCIAL,
-    Model.ALL_IN_ONE,
-    Model.HYBRID_HV_GEN3,
-    Model.ALL_IN_ONE_HYBRID,
-}
+
+THREE_PHASE_MODELS: frozenset[Model] = frozenset(
+    {
+        Model.HYBRID_3PH,
+        Model.AC_3PH,
+        Model.AIO_COMMERCIAL,
+        Model.ALL_IN_ONE,
+        Model.HYBRID_HV_GEN3,
+        Model.ALL_IN_ONE_HYBRID,
+    }
+)
 
 
 def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | ThreePhaseInverter":
@@ -246,6 +260,6 @@ def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | Thre
     Three-phase and AIO/HV units use a different register address layout;
     everything else uses the single-phase layout.
     """
-    if model in _THREE_PHASE_MODELS:
+    if model in THREE_PHASE_MODELS:
         return ThreePhaseInverter.from_register_cache(register_cache)
     return SinglePhaseInverter.from_register_cache(register_cache)

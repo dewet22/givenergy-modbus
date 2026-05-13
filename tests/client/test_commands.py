@@ -5,6 +5,8 @@ import pytest
 from givenergy_modbus.client import commands
 from givenergy_modbus.client.commands import RegisterMap
 from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS
+from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 
 
@@ -84,6 +86,29 @@ async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, h
         WriteHoldingRegisterRequest(hr_start, 0),
         WriteHoldingRegisterRequest(hr_end, 0),
     ]
+
+
+@pytest.mark.parametrize(
+    "fn,ts_arg,discharge,idx",
+    [
+        ("set_charge_slot_1", TimeSlot.from_components(1, 0, 2, 0), False, 0),
+        ("set_charge_slot_2", TimeSlot.from_components(1, 0, 2, 0), False, 1),
+        ("set_discharge_slot_1", TimeSlot.from_components(16, 0, 7, 0), True, 0),
+        ("set_discharge_slot_2", TimeSlot.from_components(16, 0, 7, 0), True, 1),
+    ],
+)
+async def test_slot_setters_route_via_slot_map(fn, ts_arg, discharge, idx):
+    slots = THREE_PHASE_SLOTS.discharge_slots if discharge else THREE_PHASE_SLOTS.charge_slots
+    hr_start, hr_end = slots[idx]
+    result = getattr(commands, fn)(ts_arg, slot_map=THREE_PHASE_SLOTS)
+    assert result[0].register == hr_start
+    assert result[1].register == hr_end
+
+
+async def test_slot_setters_default_to_single_phase():
+    result = commands.set_charge_slot_1(TimeSlot.from_components(0, 0, 1, 0))
+    assert result[0].register == SINGLE_PHASE_SLOTS.charge_slots[0][0]
+    assert result[1].register == SINGLE_PHASE_SLOTS.charge_slots[0][1]
 
 
 async def test_set_mode_dynamic():

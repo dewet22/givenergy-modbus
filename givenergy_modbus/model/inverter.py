@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum, IntEnum, StrEnum
 
 from pydantic import ConfigDict, computed_field, create_model
@@ -55,6 +56,20 @@ class Model(str, Enum):
             return 76.8
         else:
             return 51.2
+
+
+@dataclass(frozen=True)
+class SlotMap:
+    """Register address pairs for charge and discharge time slots."""
+
+    charge_slots: tuple[tuple[int, int], ...]
+    discharge_slots: tuple[tuple[int, int], ...]
+
+
+SINGLE_PHASE_SLOTS = SlotMap(
+    charge_slots=((94, 95), (31, 32)),
+    discharge_slots=((56, 57), (44, 45)),
+)
 
 
 # ARM firmware version century → HYBRID generation for DTC prefix "20"
@@ -498,6 +513,11 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
     def e_pv_day(self) -> float:
         """Computes the total PV energy for the day."""
         return self.e_pv1_day + self.e_pv2_day  # type: ignore[attr-defined]
+
+    @property
+    def slot_map(self) -> SlotMap:
+        """Register address pairs for the charge/discharge time slots on this model."""
+        return SINGLE_PHASE_SLOTS
 
     @computed_field  # type: ignore[prop-decorator]
     @property

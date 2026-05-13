@@ -4,6 +4,7 @@ from datetime import datetime
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
@@ -175,11 +176,8 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
 
 
-def _set_charge_slot(discharge: bool, idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
-    hr_start, hr_end = (
-        getattr(RegisterMap, f"{'DIS' if discharge else ''}CHARGE_SLOT_{idx}_START"),
-        getattr(RegisterMap, f"{'DIS' if discharge else ''}CHARGE_SLOT_{idx}_END"),
-    )
+def _set_slot(discharge: bool, idx: int, slot: TimeSlot | None, slot_map: SlotMap) -> list[TransparentRequest]:
+    hr_start, hr_end = (slot_map.discharge_slots if discharge else slot_map.charge_slots)[idx - 1]
     if slot:
         return [
             WriteHoldingRegisterRequest(hr_start, int(slot.start.strftime("%H%M"))),
@@ -192,44 +190,44 @@ def _set_charge_slot(discharge: bool, idx: int, slot: TimeSlot | None) -> list[T
         ]
 
 
-def set_charge_slot_1(timeslot: TimeSlot) -> list[TransparentRequest]:
+def set_charge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Set first charge slot start & end times."""
-    return _set_charge_slot(False, 1, timeslot)
+    return _set_slot(False, 1, timeslot, slot_map)
 
 
-def reset_charge_slot_1() -> list[TransparentRequest]:
+def reset_charge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Reset first charge slot to zero/disabled."""
-    return _set_charge_slot(False, 1, None)
+    return _set_slot(False, 1, None, slot_map)
 
 
-def set_charge_slot_2(timeslot: TimeSlot) -> list[TransparentRequest]:
+def set_charge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Set second charge slot start & end times."""
-    return _set_charge_slot(False, 2, timeslot)
+    return _set_slot(False, 2, timeslot, slot_map)
 
 
-def reset_charge_slot_2() -> list[TransparentRequest]:
+def reset_charge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Reset second charge slot to zero/disabled."""
-    return _set_charge_slot(False, 2, None)
+    return _set_slot(False, 2, None, slot_map)
 
 
-def set_discharge_slot_1(timeslot: TimeSlot) -> list[TransparentRequest]:
+def set_discharge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Set first discharge slot start & end times."""
-    return _set_charge_slot(True, 1, timeslot)
+    return _set_slot(True, 1, timeslot, slot_map)
 
 
-def reset_discharge_slot_1() -> list[TransparentRequest]:
+def reset_discharge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Reset first discharge slot to zero/disabled."""
-    return _set_charge_slot(True, 1, None)
+    return _set_slot(True, 1, None, slot_map)
 
 
-def set_discharge_slot_2(timeslot: TimeSlot) -> list[TransparentRequest]:
+def set_discharge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Set second discharge slot start & end times."""
-    return _set_charge_slot(True, 2, timeslot)
+    return _set_slot(True, 2, timeslot, slot_map)
 
 
-def reset_discharge_slot_2() -> list[TransparentRequest]:
+def reset_discharge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
     """Reset second discharge slot to zero/disabled."""
-    return _set_charge_slot(True, 2, None)
+    return _set_slot(True, 2, None, slot_map)
 
 
 def set_system_date_time(dt: datetime) -> list[TransparentRequest]:
