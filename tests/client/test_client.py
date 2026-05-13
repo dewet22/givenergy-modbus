@@ -195,7 +195,7 @@ async def test_consumer_clears_connected_on_unexpected_eof():
 
     await client._task_network_consumer()
 
-    assert client.connected is False
+    assert client.connected is False  # nosec
 
 
 async def test_producer_clears_connected_on_unexpected_writer_close():
@@ -208,7 +208,7 @@ async def test_producer_clears_connected_on_unexpected_writer_close():
 
     await client._task_network_producer()
 
-    assert client.connected is False
+    assert client.connected is False  # nosec
 
 
 async def test_send_request_raises_timeout_when_tx_queue_is_full():
@@ -285,7 +285,7 @@ async def test_send_request_succeeds_after_timeout_retry():
     drainer = asyncio.create_task(drain_and_respond())
     try:
         result = await client.send_request_and_await_response(req, timeout=0.02, retries=2)
-        assert result.register == 35
+        assert result.register == 35  # nosec
     finally:
         drainer.cancel()
 
