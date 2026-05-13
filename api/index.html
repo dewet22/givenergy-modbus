@@ -4488,7 +4488,19 @@
 <span class="normal">233</span>
 <span class="normal">234</span>
 <span class="normal">235</span>
-<span class="normal">236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous client utilising long-lived connections to a network device.&quot;&quot;&quot;</span>
 
     <span class="n">framer</span><span class="p">:</span> <span class="n">Framer</span>
@@ -4500,8 +4512,8 @@
     <span class="n">_shutting_down</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="n">reader</span><span class="p">:</span> <span class="n">StreamReader</span>
     <span class="n">writer</span><span class="p">:</span> <span class="n">StreamWriter</span>
-    <span class="n">network_consumer_task</span><span class="p">:</span> <span class="n">Task</span>
-    <span class="n">network_producer_task</span><span class="p">:</span> <span class="n">Task</span>
+    <span class="n">network_consumer_task</span><span class="p">:</span> <span class="n">Task</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">network_producer_task</span><span class="p">:</span> <span class="n">Task</span> <span class="o">|</span> <span class="kc">None</span>
 
     <span class="n">tx_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="p">,</span> <span class="n">Future</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]]</span>
 
@@ -4514,6 +4526,8 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">expected_responses</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_shutting_down</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="p">:</span> <span class="n">Task</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="p">:</span> <span class="n">Task</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="c1"># self.debug_frames = {</span>
         <span class="c1">#     &#39;all&#39;: Queue(maxsize=1000),</span>
         <span class="c1">#     &#39;error&#39;: Queue(maxsize=1000),</span>
@@ -4541,7 +4555,8 @@
                 <span class="n">_</span><span class="p">,</span> <span class="n">future</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">future</span><span class="p">:</span>
                     <span class="n">future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;writer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="k">try</span><span class="p">:</span>
@@ -4550,7 +4565,8 @@
                 <span class="k">pass</span>
             <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;reader&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">feed_eof</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;cancelling&quot;</span><span class="p">))</span>
@@ -4629,6 +4645,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutting_down</span><span class="p">:</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;network_consumer exiting on intentional shutdown&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;network_consumer reader at EOF, cannot continue&quot;</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_task_network_producer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tx_message_wait</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">):</span>
@@ -4638,12 +4655,13 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">drain</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">task_done</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">future</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">future</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
                 <span class="n">future</span><span class="o">.</span><span class="n">set_result</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">tx_message_wait</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shutting_down</span><span class="p">:</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;network_producer exiting on intentional shutdown&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;network_producer writer is closing, cannot continue&quot;</span><span class="p">)</span>
 
     <span class="c1"># async def _task_dump_queues_to_files(self):</span>
@@ -4680,32 +4698,38 @@
         <span class="k">if</span> <span class="n">existing_response_future</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">existing_response_future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cancelling existing in-flight request and replacing: </span><span class="si">{</span><span class="n">request</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">existing_response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-        <span class="n">response_future</span><span class="p">:</span> <span class="n">Future</span><span class="p">[</span><span class="n">TransparentResponse</span><span class="p">]</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">expected_responses</span><span class="p">[</span><span class="n">expected_shape_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">response_future</span>
 
         <span class="n">raw_frame</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
         <span class="n">tries</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">while</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+            <span class="n">response_future</span><span class="p">:</span> <span class="n">Future</span><span class="p">[</span><span class="n">TransparentResponse</span><span class="p">]</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">expected_responses</span><span class="p">[</span><span class="n">expected_shape_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">response_future</span>
             <span class="n">frame_sent</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">frame_sent</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">frame_sent</span><span class="p">)),</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s2">&quot;TX queue full — producer task has likely died&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
             <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
                 <span class="n">frame_sent</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">qsize</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
             <span class="p">)</span>  <span class="c1"># this should only happen if the producer task is stuck</span>
-            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">response_future</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">response_future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
-                <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
-                    <span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received error response, retrying: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">return</span> <span class="n">response</span>
-            <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
-                <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
-            <span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">response_future</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+                <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+                <span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received error response, retrying: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+            <span class="k">return</span> <span class="n">response</span>
 
         <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries at </span><span class="si">{</span><span class="n">timeout</span><span class="si">}</span><span class="s2">s, giving up&quot;</span><span class="p">)</span>
         <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">()</span>
@@ -4745,9 +4769,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
 <span class="normal">63</span>
 <span class="normal">64</span>
 <span class="normal">65</span>
@@ -4769,7 +4791,11 @@
 <span class="normal">81</span>
 <span class="normal">82</span>
 <span class="normal">83</span>
-<span class="normal">84</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Disconnect from the remote host and clean up tasks and queues.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_shutting_down</span> <span class="o">=</span> <span class="kc">True</span>
@@ -4778,7 +4804,8 @@
             <span class="n">_</span><span class="p">,</span> <span class="n">future</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">future</span><span class="p">:</span>
                 <span class="n">future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_producer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;writer&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
@@ -4787,7 +4814,8 @@
             <span class="k">pass</span>
         <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">writer</span>
 
-    <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_consumer_task</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;reader&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">feed_eof</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reader</span><span class="o">.</span><span class="n">set_exception</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;cancelling&quot;</span><span class="p">))</span>
@@ -4820,9 +4848,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">49</span>
 <span class="normal">50</span>
 <span class="normal">51</span>
 <span class="normal">52</span>
@@ -4831,7 +4857,9 @@
 <span class="normal">55</span>
 <span class="normal">56</span>
 <span class="normal">57</span>
-<span class="normal">58</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to the remote host and start background tasks.&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">connection</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">open_connection</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">host</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">socket</span><span class="o">.</span><span class="n">TCP_NODELAY</span><span class="p">)</span>
@@ -4865,14 +4893,14 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Future</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">TransparentResponse</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Helper to perform multiple requests in bulk.&quot;&quot;&quot;</span>
@@ -4906,10 +4934,10 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Run a single set of requests and return.&quot;&quot;&quot;</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">requests</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="n">retries</span><span class="p">)</span>
@@ -4939,13 +4967,13 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">90</span>
-<span class="normal">91</span>
-<span class="normal">92</span>
-<span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">full_refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">max_batteries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Refresh data about the Plant.&quot;&quot;&quot;</span>
@@ -4978,13 +5006,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">203</span>
 <span class="normal">204</span>
 <span class="normal">205</span>
 <span class="normal">206</span>
@@ -5017,7 +5039,19 @@
 <span class="normal">233</span>
 <span class="normal">234</span>
 <span class="normal">235</span>
-<span class="normal">236</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">TransparentRequest</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TransparentResponse</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Send a request to the remote, await and return the response.&quot;&quot;&quot;</span>
@@ -5028,32 +5062,38 @@
     <span class="k">if</span> <span class="n">existing_response_future</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">existing_response_future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
         <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cancelling existing in-flight request and replacing: </span><span class="si">{</span><span class="n">request</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">existing_response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-    <span class="n">response_future</span><span class="p">:</span> <span class="n">Future</span><span class="p">[</span><span class="n">TransparentResponse</span><span class="p">]</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">expected_responses</span><span class="p">[</span><span class="n">expected_shape_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">response_future</span>
 
     <span class="n">raw_frame</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
 
     <span class="n">tries</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">while</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+        <span class="n">response_future</span><span class="p">:</span> <span class="n">Future</span><span class="p">[</span><span class="n">TransparentResponse</span><span class="p">]</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected_responses</span><span class="p">[</span><span class="n">expected_shape_hash</span><span class="p">]</span> <span class="o">=</span> <span class="n">response_future</span>
         <span class="n">frame_sent</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_running_loop</span><span class="p">()</span><span class="o">.</span><span class="n">create_future</span><span class="p">()</span>
-        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">frame_sent</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="n">raw_frame</span><span class="p">,</span> <span class="n">frame_sent</span><span class="p">)),</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s2">&quot;TX queue full — producer task has likely died&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
         <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span>
             <span class="n">frame_sent</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tx_queue</span><span class="o">.</span><span class="n">qsize</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span>
         <span class="p">)</span>  <span class="c1"># this should only happen if the producer task is stuck</span>
-        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">response_future</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">response_future</span><span class="o">.</span><span class="n">done</span><span class="p">():</span>
-            <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
-                <span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received error response, retrying: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">return</span> <span class="n">response</span>
-        <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
-            <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
-        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">response_future</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TimeoutError</span><span class="p">:</span>
+            <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">error</span><span class="p">:</span>
+            <span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received error response, retrying: </span><span class="si">{</span><span class="n">response</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">continue</span>
+        <span class="k">return</span> <span class="n">response</span>
 
     <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> after </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> tries at </span><span class="si">{</span><span class="n">timeout</span><span class="si">}</span><span class="s2">s, giving up&quot;</span><span class="p">)</span>
     <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">()</span>
@@ -5083,11 +5123,7 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
 <span class="normal">103</span>
 <span class="normal">104</span>
 <span class="normal">105</span>
@@ -5101,7 +5137,11 @@
 <span class="normal">113</span>
 <span class="normal">114</span>
 <span class="normal">115</span>
-<span class="normal">116</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">refresh_period</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
