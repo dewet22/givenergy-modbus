@@ -58,3 +58,7 @@ ENV/
 
 # misc
 /debug
+
+# Claude Code — local-only, not shared
+.claude/settings.local.json
+.claude/worktrees/
