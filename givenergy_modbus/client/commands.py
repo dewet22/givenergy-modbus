@@ -4,6 +4,7 @@ from datetime import datetime
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model.battery import BatteryPauseMode
 from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
@@ -42,6 +43,22 @@ class RegisterMap:
     BATTERY_DISCHARGE_MIN_POWER_RESERVE = 114
     CHARGE_TARGET_SOC = 116
     REBOOT = 163
+    ENABLE_RTC = 166
+    BATTERY_CHARGE_LIMIT_AC = 313
+    BATTERY_DISCHARGE_LIMIT_AC = 314
+    BATTERY_PAUSE_MODE = 318
+    BATTERY_PAUSE_SLOT_START = 319
+    BATTERY_PAUSE_SLOT_END = 320
+    AC_CHARGE_ENABLE = 1112
+    FORCE_DISCHARGE_ENABLE = 1122
+    FORCE_CHARGE_ENABLE = 1123
+    EMS_PLANT_ENABLE = 2040
+    EXPORT_SLOT_1_START = 2062
+    EXPORT_SLOT_1_END = 2063
+    EXPORT_SLOT_2_START = 2065
+    EXPORT_SLOT_2_END = 2066
+    EXPORT_SLOT_3_START = 2068
+    EXPORT_SLOT_3_END = 2069
 
 
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
@@ -174,6 +191,87 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     if not 4 <= val <= 100:
         raise ValueError(f"Battery power reserve ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
+
+
+def set_active_power_rate(target: int) -> list[TransparentRequest]:
+    """Set the inverter's active power output as a percentage of its rated capacity."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, int(target))]
+
+
+def set_enable_rtc(enabled: bool) -> list[TransparentRequest]:
+    """Enable the Real Time Clock register to persist settings to EEPROM."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, enabled)]
+
+
+def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
+    """Set the battery AC charge power limit as a percentage."""
+    val = int(val)
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, val)]
+
+
+def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
+    """Set the battery AC discharge power limit as a percentage."""
+    val = int(val)
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
+
+
+def set_battery_pause_mode(val: BatteryPauseMode) -> list[TransparentRequest]:
+    """Set the battery pause mode."""
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, val)]
+
+
+def set_pause_slot(slot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set the battery pause time slot, or clear it if slot is None."""
+    if slot:
+        return [
+            WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, int(slot.start.strftime("%H%M"))),
+            WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, int(slot.end.strftime("%H%M"))),
+        ]
+    return [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 0),
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 0),
+    ]
+
+
+def set_ac_charge(enabled: bool) -> list[TransparentRequest]:
+    """Enable AC charging on three-phase inverters."""
+    return [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, enabled)]
+
+
+def set_force_charge(enabled: bool) -> list[TransparentRequest]:
+    """Enable forced battery charging on three-phase inverters."""
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, enabled)]
+
+
+def set_force_discharge(enabled: bool) -> list[TransparentRequest]:
+    """Enable forced battery discharging on three-phase inverters."""
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, enabled)]
+
+
+def set_ems_plant(enabled: bool) -> list[TransparentRequest]:
+    """Enable EMS plant control."""
+    return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, enabled)]
+
+
+def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set an export time slot by index (1–3), or clear it if slot is None."""
+    if not 1 <= idx <= 3:
+        raise ValueError(f"Export slot index ({idx}) must be in [1-3]")
+    hr_start = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START")
+    hr_end = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
+    if slot:
+        return [
+            WriteHoldingRegisterRequest(hr_start, int(slot.start.strftime("%H%M"))),
+            WriteHoldingRegisterRequest(hr_end, int(slot.end.strftime("%H%M"))),
+        ]
+    return [
+        WriteHoldingRegisterRequest(hr_start, 0),
+        WriteHoldingRegisterRequest(hr_end, 0),
+    ]
 
 
 def _set_slot(discharge: bool, idx: int, slot: TimeSlot | None, slot_map: SlotMap) -> list[TransparentRequest]:
