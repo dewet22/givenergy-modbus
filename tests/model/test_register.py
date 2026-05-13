@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from givenergy_modbus.model.register import HR, IR, MR, Converter, RegisterEncoder
+from givenergy_modbus.model.register import HR, IR, MR, Converter, RegisterDefinition, RegisterEncoder, RegisterGetter
+from givenergy_modbus.model.register_cache import RegisterCache
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -111,3 +112,64 @@ def test_converter_gateway_version():
 
     assert Converter.gateway_version(None, second, third, fourth) is None
     assert Converter.gateway_version(first, None, third, fourth) is None
+
+
+# ---------------------------------------------------------------------------
+# RegisterDefinition bounds
+# ---------------------------------------------------------------------------
+
+
+def _getter(defn: RegisterDefinition, raw: int) -> RegisterGetter:
+    """Build a single-register getter wired to a cache containing `raw`."""
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    return _G(RegisterCache({IR(0): raw}))
+
+
+def test_bounds_within_range():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    assert _getter(defn, 50).get("field") == 50
+
+
+def test_bounds_at_limits():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    assert _getter(defn, 0).get("field") == 0
+    assert _getter(defn, 100).get("field") == 100
+
+
+def test_bounds_below_min_returns_none():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    assert _getter(defn, 65535).get("field") is None  # uint16 of -1 raw
+
+
+def test_bounds_above_max_returns_none():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), max=100)
+    assert _getter(defn, 101).get("field") is None
+
+
+def test_bounds_checked_post_conversion():
+    # Raw value 550 → deci → 55.0; bounds 0.0–100.0 should pass
+    defn = RegisterDefinition(Converter.uint16, Converter.deci, IR(0), min=0.0, max=100.0)
+    assert _getter(defn, 550).get("field") == pytest.approx(55.0)
+    # Raw value 1010 → deci → 101.0; exceeds max=100.0
+    assert _getter(defn, 1010).get("field") is None
+
+
+def test_bounds_checked_post_signed_conversion():
+    # int16 of raw 65535 → -1; below min=0 → None
+    defn = RegisterDefinition(Converter.int16, None, IR(0), min=0)
+    assert _getter(defn, 65535).get("field") is None
+    assert _getter(defn, 10).get("field") == 10
+
+
+def test_no_bounds_unchanged():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0))
+    assert _getter(defn, 65535).get("field") == 65535
+
+
+def test_missing_register_skips_bounds():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    getter = type("_G", (RegisterGetter,), {"REGISTER_LUT": {"field": defn}})(RegisterCache())
+    assert getter.get("field") is None

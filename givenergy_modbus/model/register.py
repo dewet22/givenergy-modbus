@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -5,6 +6,8 @@ from json import JSONEncoder
 from typing import Any, get_type_hints
 
 from givenergy_modbus.model import TimeSlot
+
+_logger = logging.getLogger(__name__)
 
 
 class Converter:
@@ -142,11 +145,15 @@ class RegisterDefinition:
     pre_conv: Callable | tuple | None
     post_conv: Callable | tuple[Callable, Any] | None
     registers: tuple["Register"]
+    min: int | float | None
+    max: int | float | None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, min: int | float | None = None, max: int | float | None = None):
         self.pre_conv = args[0]
         self.post_conv = args[1]
         self.registers = args[2:]  # type: ignore[assignment]
+        self.min = min
+        self.max = max
 
     def __hash__(self):
         return hash(self.registers)
@@ -183,9 +190,15 @@ class RegisterGetter:
 
         if defn.post_conv:
             if isinstance(defn.post_conv, tuple):
-                return defn.post_conv[0](val, *defn.post_conv[1:])
+                val = defn.post_conv[0](val, *defn.post_conv[1:])
             else:
-                return defn.post_conv(val)
+                val = defn.post_conv(val)
+
+        if val is not None and (defn.min is not None or defn.max is not None):
+            if (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max):
+                _logger.warning("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
+                return None
+
         return val
 
     def build(self) -> dict[str, Any]:
