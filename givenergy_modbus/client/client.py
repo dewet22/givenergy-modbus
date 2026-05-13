@@ -66,7 +66,8 @@ class Client:
                 _, future = self.tx_queue.get_nowait()
                 if future:
                     future.cancel()
-        self.network_producer_task.cancel()
+        if hasattr(self, "network_producer_task"):
+            self.network_producer_task.cancel()
         if hasattr(self, "writer") and self.writer:
             self.writer.close()
             try:
@@ -75,7 +76,8 @@ class Client:
                 pass
             del self.writer
 
-        self.network_consumer_task.cancel()
+        if hasattr(self, "network_consumer_task"):
+            self.network_consumer_task.cancel()
         if hasattr(self, "reader") and self.reader:
             self.reader.feed_eof()
             self.reader.set_exception(RuntimeError("cancelling"))
@@ -154,6 +156,7 @@ class Client:
         if self._shutting_down:
             _logger.debug("network_consumer exiting on intentional shutdown")
         else:
+            self.connected = False
             _logger.critical("network_consumer reader at EOF, cannot continue")
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
@@ -169,6 +172,7 @@ class Client:
         if self._shutting_down:
             _logger.debug("network_producer exiting on intentional shutdown")
         else:
+            self.connected = False
             _logger.critical("network_producer writer is closing, cannot continue")
 
     # async def _task_dump_queues_to_files(self):
@@ -213,7 +217,12 @@ class Client:
         tries = 0
         while tries <= retries:
             frame_sent = asyncio.get_running_loop().create_future()
-            await self.tx_queue.put((raw_frame, frame_sent))
+            try:
+                await asyncio.wait_for(
+                    self.tx_queue.put((raw_frame, frame_sent)), timeout=5.0
+                )
+            except asyncio.TimeoutError as exc:
+                raise TimeoutError("TX queue full — producer task has likely died") from exc
             await asyncio.wait_for(
                 frame_sent, timeout=self.tx_queue.qsize() + 1
             )  # this should only happen if the producer task is stuck
