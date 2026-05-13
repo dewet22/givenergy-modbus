@@ -44,6 +44,10 @@ class Converter:
     def timeslot(start_time: int, end_time: int) -> TimeSlot:
         """Interpret register as a time slot."""
         if start_time is not None and end_time is not None:
+            # Some inverters store 60 as a sentinel for an unset slot (portal shows '--:--').
+            # Passing 60 as minutes to TimeSlot.from_repr raises ValueError, so treat it as unset.
+            if start_time == 60 or end_time == 60:
+                return None
             return TimeSlot.from_repr(start_time, end_time)
 
     @staticmethod

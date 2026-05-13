@@ -93,6 +93,17 @@ def test_register():
         json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder)
 
 
+def test_converter_timeslot_sentinel():
+    from givenergy_modbus.model import TimeSlot
+
+    assert Converter.timeslot(0, 430) == TimeSlot.from_repr(0, 430)
+    assert Converter.timeslot(None, 430) is None
+    assert Converter.timeslot(0, None) is None
+    # raw value 60 is a hardware sentinel for "unset"; minutes=60 would raise ValueError
+    assert Converter.timeslot(60, 2359) is None
+    assert Converter.timeslot(0, 60) is None
+
+
 def test_converter_hexfield():
     assert Converter.hexfield(0xABCD, 0) == 0xA
     assert Converter.hexfield(0xABCD, 1) == 0xB
