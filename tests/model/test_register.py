@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from givenergy_modbus.model.register import HR, IR, RegisterEncoder
+from givenergy_modbus.model.register import HR, IR, MR, RegisterEncoder
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -64,8 +64,16 @@ def test_register():
 
     assert str(HR(22)) == "HR_22"
     assert str(IR(99)) == "IR_99"
+    assert str(MR(7)) == "MR_7"
     assert json.dumps(HR(22), cls=RegisterEncoder) == '"HR_22"'
     assert json.dumps(IR(56), cls=RegisterEncoder) == '"IR_56"'
+    assert json.dumps(MR(3), cls=RegisterEncoder) == '"MR_3"'
+
+    assert MR(0) == MR(0)
+    assert MR(0) != MR(1)
+    assert MR(0) != HR(0)
+    assert MR(0) != IR(0)
+    assert {MR(0): 1, MR(1): 2} == {MR(0): 1, MR(1): 2}
 
     assert str({HR(0): 1234, HR(1): 0x4321, HR(2): 0xABCD, IR(0): 2}) == (
         "{HR_0: 1234, HR_1: 17185, HR_2: 43981, IR_0: 2}"

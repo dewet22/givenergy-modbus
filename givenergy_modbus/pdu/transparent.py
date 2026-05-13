@@ -120,9 +120,9 @@ class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
     @classmethod
     def lookup_transparent_function_decoder(cls, transparent_function_code: int) -> type["TransparentRequest"]:
         from givenergy_modbus.pdu import (
-            ReadBatteryInputRegistersRequest,
             ReadHoldingRegistersRequest,
             ReadInputRegistersRequest,
+            ReadMeterProductRegistersRequest,
             WriteHoldingRegisterRequest,
         )
 
@@ -133,7 +133,7 @@ class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):
         elif transparent_function_code == 6:
             return WriteHoldingRegisterRequest
         elif transparent_function_code == 0x16:
-            return ReadBatteryInputRegistersRequest
+            return ReadMeterProductRegistersRequest
         else:
             raise NotImplementedError(f"TransparentRequest function #{transparent_function_code} decoder")
 
@@ -161,6 +161,7 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
             NullResponse,
             ReadHoldingRegistersResponse,
             ReadInputRegistersResponse,
+            ReadMeterProductRegistersResponse,
             WriteHoldingRegisterResponse,
         )
 
@@ -172,6 +173,8 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
             return ReadInputRegistersResponse
         elif transparent_function_code == 6:
             return WriteHoldingRegisterResponse
+        elif transparent_function_code == 0x16:
+            return ReadMeterProductRegistersResponse
         else:
             raise NotImplementedError(f"TransparentResponse function #{transparent_function_code} decoder")
 

@@ -306,7 +306,7 @@ async def test_inverter_boot(caplog):
         # HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)
         '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
         '31 36 01'
-        # ReadBatteryInputRegistersRequest(slave_address=0x01 base_register=60)
+        # ReadMeterProductRegistersRequest(slave_address=0x01 base_register=60)
         '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
         '31 36 00 00 00 00 00 00  00 08 01 16 00 3c 00 3c'
         '88 14',
@@ -324,7 +324,7 @@ async def test_inverter_boot(caplog):
         '00 00 00 00 00 01 00 01  00 a0 00 00 00 00 00 01'
         '00 00 2d b0',
 
-        # ReadBatteryInputRegistersRequest(slave_address=0x02 base_register=60)
+        # ReadMeterProductRegistersRequest(slave_address=0x02 base_register=60)
         '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
         '31 36 00 00 00 00 00 00  00 08 02 16 00 3c 00 3c'
         '88 27',
@@ -333,14 +333,14 @@ async def test_inverter_boot(caplog):
         '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
         '31 36 01',
 
-        # ReadBatteryInputRegistersRequest(slave_address=0x03 base_register=60)
+        # ReadMeterProductRegistersRequest(slave_address=0x03 base_register=60)
         '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
         '31 36 00 00 00 00 00 00  00 08 03 16 00 3c 00 3c'
         '89 f6 '
         # HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)
         '59 59 00 01 00 0d 01 01  57 46 32 31 32 35 47 33'
         '31 36 01 '
-        # ReadBatteryInputRegistersRequest(slave_address=0x04 base_register=60)
+        # ReadMeterProductRegistersRequest(slave_address=0x04 base_register=60)
         '59 59 00 01 00 1c 00 02  57 46 32 31 32 35 47 33'
         '31 36 00 00 00 00 00 00  00 08 04 16 00 3c 00 3c'
         '88 41 ',
@@ -364,11 +364,11 @@ async def test_inverter_boot(caplog):
         "2:3/ReadHoldingRegistersRequest(slave_address=0x11 base_register=0)",
         "2:3/ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)",
         "1/HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)",
-        "2:22/ReadBatteryInputRegistersRequest(slave_address=0x01 base_register=60)",
+        "2:22/ReadMeterProductRegistersRequest(slave_address=0x01 base_register=60)",
         "2:3/ReadHoldingRegistersResponse(slave_address=0x11 base_register=0)",
-        "2:22/ReadBatteryInputRegistersRequest(slave_address=0x02 base_register=60)",
+        "2:22/ReadMeterProductRegistersRequest(slave_address=0x02 base_register=60)",
         "1/HeartbeatRequest(data_adapter_serial_number=WF2125G316 data_adapter_type=1)",
-        "2:22/ReadBatteryInputRegistersRequest(slave_address=0x03 base_register=60)",
+        "2:22/ReadMeterProductRegistersRequest(slave_address=0x03 base_register=60)",
         "1/HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)",
-        "2:22/ReadBatteryInputRegistersRequest(slave_address=0x04 base_register=60)",
+        "2:22/ReadMeterProductRegistersRequest(slave_address=0x04 base_register=60)",
     ]

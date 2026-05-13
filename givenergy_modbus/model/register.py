@@ -218,6 +218,7 @@ class Register:
 
     TYPE_HOLDING = "HR"
     TYPE_INPUT = "IR"
+    TYPE_METER = "MR"
 
     _type: str
     _idx: int
@@ -247,3 +248,9 @@ class IR(Register):
     """Input Register."""
 
     _type = Register.TYPE_INPUT
+
+
+class MR(Register):
+    """Meter Product Register."""
+
+    _type = Register.TYPE_METER
