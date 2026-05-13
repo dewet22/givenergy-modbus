@@ -903,29 +903,29 @@ def test_model_specific_variants():
 
 
 @pytest.mark.parametrize(
-    "dtc, arm_fw, expected",
+    "raw_dtc, arm_fw, expected",
     [
         # DTC "20xx" — generation depends on ARM firmware century
-        ("2001", 250, Model.HYBRID_GEN1),  # century 2 → GEN1
-        ("2001", 199, Model.HYBRID_GEN1),  # century 1 → GEN1
-        ("2001", 350, Model.HYBRID_GEN3),  # century 3 → GEN3
-        ("2001", 399, Model.HYBRID_GEN3),  # century 3 → GEN3
-        ("2001", 850, Model.HYBRID_GEN2),  # century 8 → GEN2
-        ("2001", 950, Model.HYBRID_GEN2),  # century 9 → GEN2
-        ("2003", 310, Model.HYBRID_GEN3),  # different power rating, same gen
+        (0x2001, 250, Model.HYBRID_GEN1),  # century 2 → GEN1
+        (0x2001, 199, Model.HYBRID_GEN1),  # century 1 → GEN1
+        (0x2001, 350, Model.HYBRID_GEN3),  # century 3 → GEN3
+        (0x2001, 399, Model.HYBRID_GEN3),  # century 3 → GEN3
+        (0x2001, 850, Model.HYBRID_GEN2),  # century 8 → GEN2
+        (0x2001, 950, Model.HYBRID_GEN2),  # century 9 → GEN2
+        (0x2003, 310, Model.HYBRID_GEN3),  # different power rating, same gen
         # Specific two-digit prefixes
-        ("2101", 100, Model.POLAR),
-        ("4001", 100, Model.HYBRID_3PH),
-        ("4101", 100, Model.AIO_COMMERCIAL),
-        ("5001", 100, Model.EMS),
-        ("5101", 100, Model.EMS_COMMERCIAL),
-        ("6001", 100, Model.AC_3PH),
-        ("7001", 100, Model.GATEWAY),
-        ("8001", 100, Model.ALL_IN_ONE),
-        ("8101", 100, Model.HYBRID_HV_GEN3),
-        ("8201", 100, Model.ALL_IN_ONE_HYBRID),
-        ("8301", 100, Model.HYBRID_GEN4),
+        (0x2101, 100, Model.POLAR),
+        (0x4001, 100, Model.HYBRID_3PH),
+        (0x4101, 100, Model.AIO_COMMERCIAL),
+        (0x5001, 100, Model.EMS),
+        (0x5101, 100, Model.EMS_COMMERCIAL),
+        (0x6001, 100, Model.AC_3PH),
+        (0x7001, 100, Model.GATEWAY),
+        (0x8001, 100, Model.ALL_IN_ONE),
+        (0x8101, 100, Model.HYBRID_HV_GEN3),
+        (0x8201, 100, Model.ALL_IN_ONE_HYBRID),
+        (0x8301, 100, Model.HYBRID_GEN4),
     ],
 )
-def test_resolve_model(dtc, arm_fw, expected):
-    assert resolve_model(dtc, arm_fw) is expected
+def test_resolve_model(raw_dtc, arm_fw, expected):
+    assert resolve_model(raw_dtc, arm_fw) is expected

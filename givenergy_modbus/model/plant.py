@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import ConfigDict
@@ -6,7 +7,7 @@ from pydantic import ConfigDict
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
 from givenergy_modbus.model.hv_bcu import BcuRegisterGetter
-from givenergy_modbus.model.inverter import SinglePhaseInverter, SinglePhaseInverterRegisterGetter
+from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, SinglePhaseInverterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -19,6 +20,61 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
+# Coarse families "4" (HYBRID_3PH), "6" (AC_3PH) and "8" (ALL_IN_ONE and variants)
+# are all HV; specific sub-variants are included explicitly.
+_HV_MODELS: frozenset[Model] = frozenset(
+    {
+        Model.HYBRID_3PH,
+        Model.AC_3PH,
+        Model.ALL_IN_ONE,
+        Model.HYBRID_HV_GEN3,
+        Model.ALL_IN_ONE_HYBRID,
+    }
+)
+
+
+@dataclass
+class PlantCapabilities:
+    """Describes the hardware topology discovered by Client.detect().
+
+    Returned by Client.detect(); callers assign it to plant.capabilities or
+    persist it for faster restarts (see fork-merge-plan deferred items).
+    """
+
+    device_type: Model
+    inverter_slave: int = 0x32
+    meter_slaves: list[int] = field(default_factory=list)
+    lv_battery_slaves: list[int] = field(default_factory=list)
+    # Each entry is (slave_offset, num_modules) where the BCU slave address is 0x70 + slave_offset.
+    bcu_slaves: list[tuple[int, int]] = field(default_factory=list)
+
+    @property
+    def is_hv(self) -> bool:
+        """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
+        return self.device_type in _HV_MODELS
+
+    def to_dict(self) -> dict:
+        """Serialise to a JSON-safe dict for persistence."""
+        return {
+            "device_type": self.device_type.value,
+            "inverter_slave": self.inverter_slave,
+            "meter_slaves": self.meter_slaves,
+            "lv_battery_slaves": self.lv_battery_slaves,
+            "bcu_slaves": [list(s) for s in self.bcu_slaves],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PlantCapabilities":
+        """Deserialise from a previously persisted dict."""
+        return cls(
+            device_type=Model(data["device_type"]),
+            inverter_slave=data["inverter_slave"],
+            meter_slaves=data["meter_slaves"],
+            lv_battery_slaves=data["lv_battery_slaves"],
+            bcu_slaves=[tuple(s) for s in data["bcu_slaves"]],  # type: ignore[misc]
+        )
 
 
 class Plant(GivEnergyBaseModel):

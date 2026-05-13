@@ -13,7 +13,7 @@ class Model(str, Enum):
     Single-digit values are the coarse family (first digit of the DTC); these are
     what `Model(dtc_string)` returns via `_missing_` for backward compatibility.
     Two-character and "20gN" values are more specific variants reachable via
-    `resolve_model(dtc, arm_fw)` or by direct construction e.g. `Model("81")`.
+    `resolve_model(raw_dtc, arm_fw)` or by direct construction e.g. `Model("81")`.
 
     Note: Gen 2 inverters with an 'EA' serial prefix were previously mapped via a
     serial-prefix lookup table (removed in 1.0). Their device type code first digit
@@ -75,15 +75,16 @@ _DTC_PREFIX_TO_MODEL: dict[str, Model] = {
 }
 
 
-def resolve_model(dtc: str, arm_fw: int) -> Model:
+def resolve_model(raw_dtc: int, arm_fw: int) -> Model:
     """Return the most specific Model for a given device type code and ARM firmware version.
 
-    `dtc` is the 4-char hex string from HR(0) (e.g. '2001').
+    `raw_dtc` is the raw integer value of HR(0) (e.g. 0x2001).
     `arm_fw` is the raw ARM firmware version integer from HR(21).
 
     Use this in preference to plain `Model(dtc)` when you have both values available.
     `Model(dtc)` continues to work and returns the coarse family for backward compat.
     """
+    dtc = f"{raw_dtc:04x}"
     prefix = dtc[:2]
     if prefix == "20":
         return _HYBRID_FW_CENTURY_TO_GEN.get(arm_fw // 100, Model.HYBRID_GEN1)
