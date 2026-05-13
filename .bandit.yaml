@@ -1,7 +1,6 @@
 # https://bandit.readthedocs.io/en/latest/config.html
 
 skips:
-  - B101  # assert statements are idiomatic in pytest test files
   - B313  # xml.etree.ElementTree — not used in this codebase
   - B314
   - B315
