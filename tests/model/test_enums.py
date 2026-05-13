@@ -1,6 +1,6 @@
 import pytest
 
-from givenergy_modbus.model.battery import BatteryPauseMode, State
+from givenergy_modbus.model.battery import BatteryMaintenance, BatteryPauseMode, State
 from givenergy_modbus.model.inverter import Certification, Generation, InverterType, Phase, WorkMode
 from givenergy_modbus.model.meter import MeterStatus
 
@@ -77,3 +77,7 @@ def test_phase(value, expected):
 def test_phase_unknown_dtc():
     with pytest.raises(ValueError):
         Phase("9001")
+
+
+def test_battery_maintenance_missing():
+    assert BatteryMaintenance(99) == BatteryMaintenance.OFF  # _missing_

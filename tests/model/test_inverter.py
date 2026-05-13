@@ -1,4 +1,5 @@
 import datetime
+import warnings
 
 import pytest
 
@@ -932,3 +933,51 @@ def test_model_specific_variants():
 )
 def test_resolve_model(raw_dtc, arm_fw, expected):
     assert resolve_model(raw_dtc, arm_fw) is expected
+
+
+@pytest.mark.parametrize(
+    "model,expected",
+    [
+        (Model.ALL_IN_ONE, 317.0),
+        (Model.HYBRID_3PH, 76.8),
+        (Model.AC_3PH, 76.8),
+        (Model.HYBRID, 51.2),
+    ],
+)
+def test_model_system_battery_voltage(model, expected):
+    assert model.system_battery_voltage == expected
+
+
+def test_single_phase_inverter_slot_map():
+    from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS
+
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache())
+    assert inv.slot_map is SINGLE_PHASE_SLOTS
+
+
+def test_single_phase_inverter_p_pv_and_e_pv_day():
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache({IR(18): 1000, IR(20): 500, IR(17): 12, IR(19): 8})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.p_pv() == 1500  # type: ignore[attr-defined]
+    assert inv.e_pv_day() == 2.0  # type: ignore[attr-defined]
+
+
+def test_inverter_deprecation_alias():
+    import givenergy_modbus.model.inverter as inv_module
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        cls = inv_module.Inverter  # type: ignore[attr-defined]
+    assert cls is SinglePhaseInverter
+    assert len(w) == 1
+    assert issubclass(w[0].category, DeprecationWarning)
+    assert "SinglePhaseInverter" in str(w[0].message)
+
+
+def test_inverter_getattr_unknown():
+    import givenergy_modbus.model.inverter as inv_module
+
+    with pytest.raises(AttributeError, match="has no attribute"):
+        _ = inv_module.NonExistentAttribute  # type: ignore[attr-defined]

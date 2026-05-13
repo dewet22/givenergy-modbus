@@ -1444,3 +1444,25 @@ def test_commit_bank_write_holding_register_bypasses_validation(plant: Plant):
     pdu.value = 99999  # deliberately extreme
     plant.update(pdu)
     assert plant.register_caches[0x32].get(HR(20)) == 99999
+
+
+def test_update_error_pdu_is_ignored(plant: Plant):
+    """PDUs with error=True must be silently discarded."""
+    pdu = _make_ir_pdu({5: 1234})
+    pdu.error = True
+    plant.update(pdu)
+    assert IR(5) not in plant.register_caches[0x32]
+
+
+def test_getter_for_slave_meter_address(plant: Plant):
+    """A bank arriving on a meter slave address (0x01–0x08) must be accepted."""
+    pdu = _make_ir_pdu({0: 1}, slave_address=0x01)
+    plant.update(pdu)
+    assert 0x01 in plant.register_caches
+
+
+def test_getter_for_slave_bcu_address(plant: Plant):
+    """A bank arriving on a BCU slave address (0x70–0x8F) must be accepted."""
+    pdu = _make_ir_pdu({0: 42}, slave_address=0x70)
+    plant.update(pdu)
+    assert 0x70 in plant.register_caches

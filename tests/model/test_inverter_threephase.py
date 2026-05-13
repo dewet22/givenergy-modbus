@@ -1,7 +1,7 @@
 import pytest
 
-from givenergy_modbus.model.inverter import Status
-from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, Status
+from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS, ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -143,3 +143,18 @@ def test_individual_fields(reg, value, field, expected):
     cache = _cache({reg: value})
     tph = ThreePhaseInverter.from_register_cache(cache)
     assert getattr(tph, field) == expected
+
+
+def test_three_phase_inverter_slot_map():
+    tph = ThreePhaseInverter.from_register_cache(RegisterCache())
+    assert tph.slot_map is THREE_PHASE_SLOTS
+
+
+def test_select_inverter_three_phase():
+    result = select_inverter(Model.HYBRID_3PH, RegisterCache())
+    assert isinstance(result, ThreePhaseInverter)
+
+
+def test_select_inverter_single_phase():
+    result = select_inverter(Model.HYBRID, RegisterCache())
+    assert isinstance(result, SinglePhaseInverter)
