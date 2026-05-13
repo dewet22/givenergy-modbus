@@ -122,16 +122,12 @@ class Converter:
     @staticmethod
     def nominal_voltage(option: int) -> int | None:
         """Map register option index to nominal grid voltage (V): 0→230, 1→208, 2→240."""
-        if option is not None:
-            return (230, 208, 240)[option]
-        return None
+        return {0: 230, 1: 208, 2: 240}.get(option)
 
     @staticmethod
     def nominal_frequency(option: int) -> int | None:
         """Map register option index to nominal grid frequency (Hz): 0→50, 1→60."""
-        if option is not None:
-            return (50, 60)[option]
-        return None
+        return {0: 50, 1: 60}.get(option)
 
     @staticmethod
     def inverter_fault_code(val: int) -> list[str] | None:
