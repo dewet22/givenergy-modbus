@@ -5,6 +5,9 @@ import pytest
 from givenergy_modbus.client import commands
 from givenergy_modbus.client.commands import RegisterMap
 from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model.battery import BatteryPauseMode
+from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS
+from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 
 
@@ -84,6 +87,29 @@ async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, h
         WriteHoldingRegisterRequest(hr_start, 0),
         WriteHoldingRegisterRequest(hr_end, 0),
     ]
+
+
+@pytest.mark.parametrize(
+    "fn,ts_arg,discharge,idx",
+    [
+        ("set_charge_slot_1", TimeSlot.from_components(1, 0, 2, 0), False, 0),
+        ("set_charge_slot_2", TimeSlot.from_components(1, 0, 2, 0), False, 1),
+        ("set_discharge_slot_1", TimeSlot.from_components(16, 0, 7, 0), True, 0),
+        ("set_discharge_slot_2", TimeSlot.from_components(16, 0, 7, 0), True, 1),
+    ],
+)
+async def test_slot_setters_route_via_slot_map(fn, ts_arg, discharge, idx):
+    slots = THREE_PHASE_SLOTS.discharge_slots if discharge else THREE_PHASE_SLOTS.charge_slots
+    hr_start, hr_end = slots[idx]
+    result = getattr(commands, fn)(ts_arg, slot_map=THREE_PHASE_SLOTS)
+    assert result[0].register == hr_start
+    assert result[1].register == hr_end
+
+
+async def test_slot_setters_default_to_single_phase():
+    result = commands.set_charge_slot_1(TimeSlot.from_components(0, 0, 1, 0))
+    assert result[0].register == SINGLE_PHASE_SLOTS.charge_slots[0][0]
+    assert result[1].register == SINGLE_PHASE_SLOTS.charge_slots[0][1]
 
 
 async def test_set_mode_dynamic():
@@ -166,3 +192,95 @@ async def test_set_inverter_reboot():
     assert commands.set_inverter_reboot() == [
         WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100, slave_address=0x11),
     ]
+
+
+async def test_set_active_power_rate():
+    assert commands.set_active_power_rate(100) == [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, 100)]
+    assert commands.set_active_power_rate(0) == [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, 0)]
+
+
+async def test_set_enable_rtc():
+    assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, True)]
+    assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, False)]
+
+
+async def test_set_battery_charge_limit_ac():
+    assert commands.set_battery_charge_limit_ac(50) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 50)
+    ]
+    with pytest.raises(ValueError, match="AC Charge Limit"):
+        commands.set_battery_charge_limit_ac(0)
+    with pytest.raises(ValueError, match="AC Charge Limit"):
+        commands.set_battery_charge_limit_ac(101)
+
+
+async def test_set_battery_discharge_limit_ac():
+    assert commands.set_battery_discharge_limit_ac(50) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 50)
+    ]
+    with pytest.raises(ValueError, match="AC Discharge Limit"):
+        commands.set_battery_discharge_limit_ac(0)
+    with pytest.raises(ValueError, match="AC Discharge Limit"):
+        commands.set_battery_discharge_limit_ac(101)
+
+
+async def test_set_battery_pause_mode():
+    assert commands.set_battery_pause_mode(BatteryPauseMode.DISABLED) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.DISABLED)
+    ]
+    assert commands.set_battery_pause_mode(BatteryPauseMode.PAUSE_BOTH) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.PAUSE_BOTH)
+    ]
+
+
+async def test_set_pause_slot():
+    slot = TimeSlot.from_components(1, 30, 5, 0)
+    assert commands.set_pause_slot(slot) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 130),
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 500),
+    ]
+    assert commands.set_pause_slot(None) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 0),
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 0),
+    ]
+
+
+async def test_set_ac_charge():
+    assert commands.set_ac_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, True)]
+    assert commands.set_ac_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, False)]
+
+
+async def test_set_force_charge():
+    assert commands.set_force_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, True)]
+
+
+async def test_set_force_discharge():
+    assert commands.set_force_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, True)]
+
+
+async def test_set_ems_plant():
+    assert commands.set_ems_plant(True) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, True)]
+    assert commands.set_ems_plant(False) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, False)]
+
+
+@pytest.mark.parametrize("idx", [1, 2, 3])
+async def test_set_export_slot(idx):
+    slot = TimeSlot.from_components(16, 0, 20, 0)
+    result = commands.set_export_slot(idx, slot)
+    assert result[0].register == getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START")
+    assert result[1].register == getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
+    assert result[0].value == 1600
+    assert result[1].value == 2000
+
+    cleared = commands.set_export_slot(idx, None)
+    assert cleared == [
+        WriteHoldingRegisterRequest(getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START"), 0),
+        WriteHoldingRegisterRequest(getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END"), 0),
+    ]
+
+
+async def test_set_export_slot_invalid_idx():
+    with pytest.raises(ValueError, match="Export slot index"):
+        commands.set_export_slot(0, None)
+    with pytest.raises(ValueError, match="Export slot index"):
+        commands.set_export_slot(4, None)

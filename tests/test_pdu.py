@@ -19,6 +19,9 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
+    ReadMeterProductRegisters,
+    ReadMeterProductRegistersRequest,
+    ReadMeterProductRegistersResponse,
     ReadRegistersMessage,
     ReadRegistersRequest,
     TransparentMessage,
@@ -122,6 +125,17 @@ def test_class_equivalence():
     assert isinstance(ReadInputRegistersRequest(), ReadRegistersRequest)
     assert not isinstance(ReadInputRegistersRequest(), ReadHoldingRegistersRequest)
     assert ReadInputRegistersRequest is ReadInputRegistersRequest
+
+
+def test_meter_pdu_classes():
+    """ReadMeterProductRegisters* are separate from the battery/input register hierarchy."""
+    assert issubclass(ReadMeterProductRegistersRequest, ReadRegistersRequest)
+    assert issubclass(ReadMeterProductRegistersResponse, ReadRegistersMessage)
+    assert not issubclass(ReadMeterProductRegistersRequest, ReadInputRegistersRequest)
+    assert isinstance(ReadMeterProductRegistersRequest(), ReadRegistersRequest)
+    assert ReadMeterProductRegisters.transparent_function_code == 0x16
+    assert ReadMeterProductRegistersRequest().transparent_function_code == 0x16
+    assert ReadMeterProductRegistersResponse().transparent_function_code == 0x16
 
 
 def test_cannot_change_function_code():

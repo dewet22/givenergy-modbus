@@ -1,8 +1,19 @@
 import json
+import logging
 
 import pytest
 
-from givenergy_modbus.model.register import HR, IR, RegisterEncoder
+from givenergy_modbus.model.register import (
+    HR,
+    IR,
+    MR,
+    Converter,
+    RegisterDefinition,
+    RegisterEncoder,
+    RegisterGetter,
+    is_valid_serial,
+)
+from givenergy_modbus.model.register_cache import RegisterCache
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -64,11 +75,235 @@ def test_register():
 
     assert str(HR(22)) == "HR_22"
     assert str(IR(99)) == "IR_99"
+    assert str(MR(7)) == "MR_7"
     assert json.dumps(HR(22), cls=RegisterEncoder) == '"HR_22"'
     assert json.dumps(IR(56), cls=RegisterEncoder) == '"IR_56"'
+    assert json.dumps(MR(3), cls=RegisterEncoder) == '"MR_3"'
+
+    assert MR(0) == MR(0)
+    assert MR(0) != MR(1)
+    assert MR(0) != HR(0)
+    assert MR(0) != IR(0)
+    assert {MR(0): 1, MR(1): 2} == {MR(0): 1, MR(1): 2}
 
     assert str({HR(0): 1234, HR(1): 0x4321, HR(2): 0xABCD, IR(0): 2}) == (
         "{HR_0: 1234, HR_1: 17185, HR_2: 43981, IR_0: 2}"
     )
     with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
         json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder)
+
+
+def test_converter_timeslot_sentinel():
+    from givenergy_modbus.model import TimeSlot
+
+    assert Converter.timeslot(0, 430) == TimeSlot.from_repr(0, 430)
+    assert Converter.timeslot(None, 430) is None
+    assert Converter.timeslot(0, None) is None
+    # raw value 60 is a hardware sentinel for "unset"; minutes=60 would raise ValueError
+    assert Converter.timeslot(60, 2359) is None
+    assert Converter.timeslot(0, 60) is None
+
+
+def test_converter_hexfield():
+    assert Converter.hexfield(0xABCD, 0) == 0xA
+    assert Converter.hexfield(0xABCD, 1) == 0xB
+    assert Converter.hexfield(0xABCD, 2) == 0xC
+    assert Converter.hexfield(0xABCD, 3) == 0xD
+    assert Converter.hexfield(0xABCD, 0, 2) == 0xAB
+    assert Converter.hexfield(0x1234, 1, 3) == 0x234
+    assert Converter.hexfield(None, 0) is None
+
+
+def test_converter_bitfield():
+    assert Converter.bitfield(0b1010_0011_0000_0001, 0, 0) == 1  # MSB
+    assert Converter.bitfield(0b1010_0011_0000_0001, 15, 15) == 1  # LSB
+    assert Converter.bitfield(0b1010_0000_0000_0000, 0, 3) == 0b1010
+    assert Converter.bitfield(0xFFFF, 0, 15) == 0xFFFF
+    assert Converter.bitfield(0x0000, 0, 15) == 0
+    assert Converter.bitfield(None, 0, 0) is None
+
+
+def test_converter_gateway_version():
+    # 'GA' = 0x4741, '00' = 0x3030, digits 0,0,0,9 stored as byte values in two registers
+    first = 0x4741  # 'G','A'
+    second = 0x3030  # '0','0'
+    third = 0x0000  # digits '0','0'
+    fourth = 0x0009  # digits '0','9'
+    assert Converter.gateway_version(first, second, third, fourth) == "GA000009"
+
+    assert Converter.gateway_version(None, second, third, fourth) is None
+    assert Converter.gateway_version(first, None, third, fourth) is None
+
+
+def test_converter_inverter_fault_code():
+    assert Converter.inverter_fault_code(None) is None
+    assert Converter.inverter_fault_code(0) == []
+    # bit 3 (from MSB) → "Backup Overload Fault"
+    result = Converter.inverter_fault_code(0b0001_0000_0000_0000_0000_0000_0000_0000)
+    assert result == ["Backup Overload Fault"]
+    # bits 6+7 → "Grid Monitor Comm Fault" + "ARM Comms Fault"
+    result = Converter.inverter_fault_code(0b0000_0011_0000_0000_0000_0000_0000_0000)
+    assert "Grid Monitor Comm Fault" in result
+    assert "ARM Comms Fault" in result
+    # None bits produce no output
+    assert Converter.inverter_fault_code(0b1110_0000_0000_0000_0000_0000_0000_0000) == []
+
+
+# ---------------------------------------------------------------------------
+# RegisterDefinition bounds
+# ---------------------------------------------------------------------------
+
+
+def _getter(defn: RegisterDefinition, raw: int) -> RegisterGetter:
+    """Build a single-register getter wired to a cache containing `raw`."""
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    return _G(RegisterCache({IR(0): raw}))
+
+
+def test_bounds_within_range():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    assert _getter(defn, 50).get("field") == 50
+
+
+def test_bounds_at_limits():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    assert _getter(defn, 0).get("field") == 0
+    assert _getter(defn, 100).get("field") == 100
+
+
+def test_bounds_below_min_logs_error_and_passes_through(caplog):
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    with caplog.at_level(logging.ERROR):
+        val = _getter(defn, 65535).get("field")
+    assert val == 65535
+    assert caplog.records
+
+
+def test_bounds_above_max_logs_error_and_passes_through(caplog):
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), max=100)
+    with caplog.at_level(logging.ERROR):
+        val = _getter(defn, 101).get("field")
+    assert val == 101
+    assert caplog.records
+
+
+def test_bounds_checked_post_conversion(caplog):
+    # Raw value 550 → deci → 55.0; bounds 0.0–100.0 should pass
+    defn = RegisterDefinition(Converter.uint16, Converter.deci, IR(0), min=0.0, max=100.0)
+    assert _getter(defn, 550).get("field") == pytest.approx(55.0)
+    # Raw value 1010 → deci → 101.0; exceeds max=100.0 — logs error, value passes through
+    with caplog.at_level(logging.ERROR):
+        val = _getter(defn, 1010).get("field")
+    assert val == pytest.approx(101.0)
+    assert caplog.records
+
+
+def test_bounds_checked_post_signed_conversion(caplog):
+    # int16 of raw 65535 → -1; below min=0 — logs error, value passes through
+    defn = RegisterDefinition(Converter.int16, None, IR(0), min=0)
+    with caplog.at_level(logging.ERROR):
+        val = _getter(defn, 65535).get("field")
+    assert val == -1
+    assert caplog.records
+    assert _getter(defn, 10).get("field") == 10
+
+
+def test_no_bounds_unchanged():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0))
+    assert _getter(defn, 65535).get("field") == 65535
+
+
+def test_missing_register_skips_bounds():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
+    getter = type("_G", (RegisterGetter,), {"REGISTER_LUT": {"field": defn}})(RegisterCache())
+    assert getter.get("field") is None
+
+
+# ---------------------------------------------------------------------------
+# is_valid_serial
+# ---------------------------------------------------------------------------
+
+
+def test_is_valid_serial_accepts_alphanumeric():
+    assert is_valid_serial("SA1234G567")
+    assert is_valid_serial("BG1234G567")
+
+
+def test_is_valid_serial_warns_on_unexpected_pattern(caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.register"):
+        result = is_valid_serial("AAAAAAAAAA")  # 10 alnum uppercase but not AA0000A000
+    assert result is True
+    assert "does not match expected pattern" in caplog.text
+
+
+def test_is_valid_serial_rejects_wrong_length():
+    assert not is_valid_serial("ABC123")  # too short
+    assert not is_valid_serial("A")
+    assert not is_valid_serial("SA1234G5678")  # too long
+
+
+def test_is_valid_serial_rejects_blanks():
+    assert not is_valid_serial(None)
+    assert not is_valid_serial("")
+    assert not is_valid_serial("          ")
+    assert not is_valid_serial("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+
+
+def test_is_valid_serial_rejects_non_alphanumeric():
+    assert not is_valid_serial("SA-1234567")
+    assert not is_valid_serial("SA 1234567")
+    assert not is_valid_serial("sa1234g567")  # lowercase
+
+
+# ---------------------------------------------------------------------------
+# RegisterGetter.is_coherent
+# ---------------------------------------------------------------------------
+
+
+def _serial_getter(serial_registers: tuple) -> type[RegisterGetter]:
+    """Build a RegisterGetter subclass whose 'serial_number' spans the given registers."""
+    defn = RegisterDefinition(Converter.string, None, *serial_registers)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"serial_number": defn}
+
+    return _G
+
+
+def test_is_coherent_passes_when_no_serial_in_lut():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0))
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    assert _G.is_coherent({IR(0): 42}, RegisterCache()) is True
+
+
+def test_is_coherent_passes_when_serial_not_in_incoming_bank():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    assert G.is_coherent({IR(0): 42}, RegisterCache()) is True
+
+
+def test_is_coherent_passes_with_valid_serial():
+    # "SA1234G567" across 5 registers (2 chars each): 0x5341, 0x3132, 0x3334, 0x4735, 0x3637
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    incoming = {IR(10): 0x5341, IR(11): 0x3132, IR(12): 0x3334, IR(13): 0x4735, IR(14): 0x3637}
+    assert G.is_coherent(incoming, RegisterCache()) is True
+
+
+def test_is_coherent_fails_with_invalid_serial():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    incoming = {IR(10): 0x0000, IR(11): 0x0000, IR(12): 0x0000, IR(13): 0x0000, IR(14): 0x0000}
+    assert G.is_coherent(incoming, RegisterCache()) is False
+
+
+def test_is_coherent_uses_committed_plus_incoming():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    committed = RegisterCache({IR(10): 0x5341, IR(11): 0x3132, IR(12): 0x3334, IR(13): 0x4735})
+    incoming = {IR(14): 0x3637}  # final register arriving now
+    assert G.is_coherent(incoming, committed) is True

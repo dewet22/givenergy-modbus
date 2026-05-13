@@ -7,16 +7,60 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+A chunky update, incorporating a lot of the differences that GivTCP developed and introduced during the extended time being forked away. Kudos and credit to @britkat1980 for all the effort that I could crib from.
+
+### Added
+
+**New device models** — all modelled as siblings of `SinglePhaseInverter` / `Battery`, with `from_register_cache()` constructors and typed fields:
+
+- `ThreePhaseInverter` for three-phase models (HR/IR 1000–1420), including grid protection limits, derating curves, per-phase measurements, EPS/backup mode, energy counters, slot registers, and `force_charge_enable` / `battery_maintenance_mode` ([09e37f0](https://github.com/dewet22/givenergy-modbus/commit/09e37f07174faa437e3d2cb236422c95b265112a), [95aba95](https://github.com/dewet22/givenergy-modbus/commit/95aba95), @dewet22)
+- `Bcu` and `Bmu` model classes for HV battery stacks (AIO / HV Gen3 / AIO-Hybrid systems) ([ee15702](https://github.com/dewet22/givenergy-modbus/commit/ee1570282ecdc170347fec4cb09ece6f6f78a980), @dewet22)
+- `Meter` and `MeterProduct` model classes for external meter slaves at addresses `0x01`–`0x08`, read via FC 0x04 and FC 0x16 respectively ([c6d3a0a](https://github.com/dewet22/givenergy-modbus/commit/c6d3a0a9aef54c7518daa32cb98f929465ea7468), @dewet22)
+- `Ems` model for EMS plant status and configuration registers ([3621938](https://github.com/dewet22/givenergy-modbus/commit/36219386c8b40d08c6c0b1106faa2a8e10e53b96), @dewet22)
+- `Gateway` and `Gateway2` models with `select_gateway()` for automatic firmware-version-based dispatch ([752160a](https://github.com/dewet22/givenergy-modbus/commit/752160afd6826a1233df7a9e8e6d997dfc65c764), @dewet22)
+- `select_inverter(model, register_cache)` returns `SinglePhaseInverter | ThreePhaseInverter` based on device type ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
+
+**Plant and client lifecycle:**
+
+- `PlantCapabilities` dataclass captures full device topology from `detect()`: device type, inverter slave address, LV battery / meter / HV BCU slave addresses ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc), @dewet22)
+- `Client.detect()` for one-time device and peripheral discovery; `Client.refresh()` for fast IR measurement polling; `Client.load_config()` for HR configuration reads — replacing the old `refresh_plant_data()` monolith ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc), [9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e98), @dewet22)
+- Typed plant accessors — `plant.inverter`, `plant.batteries`, `plant.hv_stacks`, `plant.meters`, `plant.ems`, `plant.gateway` — all dispatch via `capabilities` rather than hardcoded slave-address arithmetic ([9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e98), @dewet22)
+
+**Commands:**
+
+- `SlotMap` frozen dataclass for model-driven slot register routing; all slot setters now accept `slot_map: SlotMap = SINGLE_PHASE_SLOTS` — three-phase callers pass `plant.inverter.slot_map` ([a0c50e3](https://github.com/dewet22/givenergy-modbus/commit/a0c50e3), @dewet22)
+- New command helpers: `set_battery_pause_mode`, `set_pause_slot`, `set_ac_charge`, `set_force_charge`, `set_force_discharge`, `set_enable_rtc`, `set_active_power_rate`, `set_battery_charge_limit_ac`, `set_battery_discharge_limit_ac`, `set_ems_plant`, `set_export_slot` ([8ca0b75](https://github.com/dewet22/givenergy-modbus/commit/8ca0b75), @dewet22)
+
+**Register coverage and converters:**
+
+- `MR` register namespace and `ReadMeterProductRegisters` PDU (FC 0x16) for meter product identification registers ([ef89324](https://github.com/dewet22/givenergy-modbus/commit/ef89324adc19996cbdb2f621ed848649ab822449), @dewet22)
+- `resolve_model(dtc, arm_fw)` for firmware-version-aware device model resolution ([09dea7b](https://github.com/dewet22/givenergy-modbus/commit/09dea7b436fb2df11827c6d11c1f65646b6cd623), @dewet22)
+- Extended `Model` enum: `HYBRID_GEN1/2/3/4`, `HYBRID_HV_GEN3`, `ALL_IN_ONE_HYBRID`, `POLAR`, `EMS_COMMERCIAL`, `AIO_COMMERCIAL`; existing single-character `Model(dtc)` lookups are unchanged ([09dea7b](https://github.com/dewet22/givenergy-modbus/commit/09dea7b436fb2df11827c6d11c1f65646b6cd623), @dewet22)
+- New converters: `C.int32`, `C.bitfield`, `C.hexfield`, `C.gateway_version`, `C.nominal_voltage`, `C.nominal_frequency`, `C.inverter_fault_code` ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), [5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4), @dewet22)
+- New enums: `WorkMode`, `Certification`, `InverterType`, `Generation`, `Phase`, `MeterStatus`, `BatteryMaintenance` ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), [95aba95](https://github.com/dewet22/givenergy-modbus/commit/95aba95), @dewet22)
+- `inverter_fault_messages` field on `SinglePhaseInverter` decodes the HR(223/224) bitmask into a list of active fault name strings ([5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4), @dewet22)
+- `min`/`max` physical bounds on `RegisterDefinition` for out-of-range detection across all register LUTs ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
+
 ### Changed
 
-- add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
-- update claude config ([6cd077e](https://github.com/dewet22/givenergy-modbus/commit/6cd077e74c08ea6fc79f4e4e69683af7127d8761), @dewet22)
-- add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
+- `Inverter` renamed to `SinglePhaseInverter`; `select_inverter()` is now the recommended constructor — it returns the right concrete type based on device model. `Inverter` remains importable as a deprecated alias ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
+- `Plant.update()` validates each incoming register bank before committing; banks with an invalid serial number (e.g. all-zero padding from an absent battery slot) are silently discarded rather than written into the cache ([82ba7fc](https://github.com/dewet22/givenergy-modbus/commit/82ba7fc), @dewet22)
+- Bounds violations on physical measurements are logged at ERROR level and currently still committed — enforcement (discard-on-violation) follows in a future release once the bounds have been validated in production (see [#57](https://github.com/dewet22/givenergy-modbus/issues/57)) ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
+
+### Fixed
+
+- `Converter.timeslot` now returns `None` for raw register value `60` — a hardware sentinel for an unset slot that previously caused `ValueError: minute must be in 0..59` ([f93f872](https://github.com/dewet22/givenergy-modbus/commit/f93f872), @dewet22)
+
+### Deprecated
+
+- `Inverter` — use `SinglePhaseInverter` directly, or `select_inverter()` to get the correct type for a given device
+- `commands.enable_charge()` / `disable_charge()` — use `set_enable_charge(bool)` instead
+- `commands.enable_discharge()` / `disable_discharge()` — use `set_enable_discharge(bool)` instead
 
 ### Maintenance
 
-- add Claude Code automations (hooks, skills, MCP, subagent) ([00929f9](https://github.com/dewet22/givenergy-modbus/commit/00929f941733b6f27a60676c0b94a91a5ffcccdf), @dewet22)
-- ignore Claude Code local settings and worktrees ([634dd08](https://github.com/dewet22/givenergy-modbus/commit/634dd08d1bebc1aac1a47d87356c57af4ae26254), @dewet22)
+- add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
+- add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 

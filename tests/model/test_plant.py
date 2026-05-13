@@ -12,13 +12,13 @@ from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
-    Inverter,
     MeterType,
     Model,
     PowerFactorFunctionModel,
+    SinglePhaseInverter,
     Status,
 )
-from givenergy_modbus.model.inverter import UsbDevice as InverterUsbDevice
+from givenergy_modbus.model.inverter import UsbDevice as SinglePhaseInverterUsbDevice
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -26,6 +26,7 @@ from givenergy_modbus.pdu import (
     ClientIncomingMessage,
     HeartbeatRequest,
     NullResponse,
+    ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
     ReadRegistersResponse,
     WriteHoldingRegisterResponse,
@@ -41,11 +42,13 @@ def plant():
 
 def test_instantiation():
     assert (plant := Plant()).model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
     }
     assert json.loads(plant.model_dump_json()) == {
+        "capabilities": None,
         "register_caches": {"50": {}},
         "inverter_serial_number": "",
         "data_adapter_serial_number": "",
@@ -53,6 +56,7 @@ def test_instantiation():
 
     rc = RegisterCache(registers={HR(1): 2})
     assert Plant(inverter_serial_number="AB1234", register_caches={0x30: rc}).model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "AB1234",
         "register_caches": {0x30: rc},
@@ -66,6 +70,7 @@ def test_plant(
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
     assert plant.model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
@@ -76,17 +81,18 @@ def test_plant(
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
     assert plant.model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": plant.register_caches,
     }
 
-    i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
+    i = SinglePhaseInverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == "SA1234G567"  # type: ignore[attr-defined]
     b = Battery.from_register_cache(register_cache_battery_daytime_discharging)
     assert b.serial_number == "BG1234G567"  # type: ignore[attr-defined]
 
-    assert isinstance(plant.inverter, Inverter)
+    assert isinstance(plant.inverter, SinglePhaseInverter)
     assert plant.inverter == i
     assert plant.number_batteries == 1
     assert isinstance(plant.batteries[0], Battery)
@@ -161,6 +167,7 @@ async def test_update(
     assert plant.register_caches == {0x32: {}}
     orig_plant_dict = plant.model_dump()
     assert orig_plant_dict == {
+        "capabilities": None,
         "register_caches": {0x32: {}},
         "inverter_serial_number": "",
         "data_adapter_serial_number": "",
@@ -171,7 +178,7 @@ async def test_update(
     d = plant.model_dump()
     # with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
     #     plant.json()
-    assert d.keys() == {"register_caches", "inverter_serial_number", "data_adapter_serial_number"}
+    assert d.keys() == {"capabilities", "register_caches", "inverter_serial_number", "data_adapter_serial_number"}
 
     expected_caches_keys = {0x32}
     if isinstance(pdu, (ReadRegistersResponse, WriteHoldingRegisterResponse)):
@@ -1233,7 +1240,7 @@ def test_from_actual():
         "i_grid_port": 2.66,
         "battery_soc": 57,
         "system_time": datetime(2022, 4, 27, 23, 29, 18),
-        "usb_device_inserted": InverterUsbDevice.DISK,
+        "usb_device_inserted": SinglePhaseInverterUsbDevice.DISK,
         "user_code": 7,
         "variable_address": 32768,
         "variable_value": 30235,
@@ -1241,6 +1248,7 @@ def test_from_actual():
         "inverter_reboot": 0,
         "enable_rtc": False,
         "inverter_errors": None,
+        "inverter_fault_messages": None,
         "charge_target_soc_1": None,
         "charge_slot_2_x": None,
         "charge_target_soc_2": None,
@@ -1337,3 +1345,124 @@ def test_from_actual():
         "warning_1": 0,
         "warning_2": 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Double-buffer / bank validation tests
+# ---------------------------------------------------------------------------
+
+
+def _make_ir_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadInputRegistersResponse:
+    """Build a minimal ReadInputRegistersResponse mock for update() tests."""
+    pdu = MagicMock(spec=ReadInputRegistersResponse)
+    pdu.slave_address = slave_address
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.to_dict.return_value = registers
+    return pdu
+
+
+def _make_hr_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadHoldingRegistersResponse:
+    """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
+    pdu = MagicMock(spec=ReadHoldingRegistersResponse)
+    pdu.slave_address = slave_address
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.to_dict.return_value = registers
+    return pdu
+
+
+def test_commit_bank_valid_registers_are_committed(plant: Plant):
+    """A bank with all values within bounds must be written to the cache."""
+    # IR(5) = v_ac1, deci, bounds 0–300. Raw 2367 → 236.7 V — valid.
+    pdu = _make_ir_pdu({5: 2367})
+    plant.update(pdu)
+    assert plant.register_caches[0x32].get(IR(5)) == 2367
+
+
+def test_commit_bank_bounds_violation_logs_error_and_commits(plant: Plant, caplog):
+    """A bank with out-of-bounds values must still be committed; violations are logged at ERROR."""
+    import logging
+
+    # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=500.0.
+    pdu = _make_ir_pdu({5: 65535, 59: 50})
+    with caplog.at_level(logging.ERROR):
+        plant.update(pdu)
+    assert IR(5) in plant.register_caches[0x32]
+    assert IR(59) in plant.register_caches[0x32]
+    assert any("bounds" in r.message.lower() for r in caplog.records)
+
+
+def test_commit_bank_out_of_bounds_overwrites_prior_data(plant: Plant):
+    """An out-of-bounds bank is committed and does overwrite previously committed values."""
+    plant.register_caches[0x32].update({IR(5): 2367})  # prime with known-good value
+
+    pdu = _make_ir_pdu({5: 65535})
+    plant.update(pdu)
+
+    assert plant.register_caches[0x32].get(IR(5)) == 65535  # overwritten by incoming bank
+
+
+def test_commit_bank_unknown_slave_skips_validation(plant: Plant):
+    """Banks for unknown slave addresses (no getter) are committed without validation."""
+    # 0x99 has no getter — unknown hardware passes through unchecked.
+    pdu = _make_ir_pdu({5: 65535}, slave_address=0x99)
+    plant.update(pdu)
+    assert plant.register_caches[0x99].get(IR(5)) == 65535
+
+
+def test_commit_bank_incoherent_serial_discards_bank(plant: Plant):
+    """A battery bank whose serial number registers decode to garbage must be discarded."""
+    # Battery serial is at IR(110-114). All zeros → empty string → incoherent.
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, slave_address=0x33)
+    plant.update(pdu)
+    assert IR(60) not in plant.register_caches.get(0x33, {})
+
+
+def test_commit_bank_valid_serial_allows_bank(plant: Plant):
+    """A battery bank with a valid serial number must be committed."""
+    # "BG1234G567" encoded across IR(110-114): each register holds two ASCII chars
+    # 'B'=0x42, 'G'=0x47 → 0x4247; '1'=0x31, '2'=0x32 → 0x3132; etc.
+    pdu = _make_ir_pdu(
+        {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221},
+        slave_address=0x33,
+    )
+    plant.update(pdu)
+    assert plant.register_caches[0x33].get(IR(60)) == 3221
+
+
+def test_commit_bank_write_holding_register_bypasses_validation(plant: Plant):
+    """WriteHoldingRegisterResponse is always applied — user-initiated writes are trusted."""
+    pdu = MagicMock(spec=WriteHoldingRegisterResponse)
+    pdu.slave_address = 0x32
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.register = 20
+    pdu.value = 99999  # deliberately extreme
+    plant.update(pdu)
+    assert plant.register_caches[0x32].get(HR(20)) == 99999
+
+
+def test_update_error_pdu_is_ignored(plant: Plant):
+    """PDUs with error=True must be silently discarded."""
+    pdu = _make_ir_pdu({5: 1234})
+    pdu.error = True
+    plant.update(pdu)
+    assert IR(5) not in plant.register_caches[0x32]
+
+
+def test_getter_for_slave_meter_address(plant: Plant):
+    """A bank arriving on a meter slave address (0x01–0x08) must be accepted."""
+    pdu = _make_ir_pdu({0: 1}, slave_address=0x01)
+    plant.update(pdu)
+    assert 0x01 in plant.register_caches
+
+
+def test_getter_for_slave_bcu_address(plant: Plant):
+    """A bank arriving on a BCU slave address (0x70–0x8F) must be accepted."""
+    pdu = _make_ir_pdu({0: 42}, slave_address=0x70)
+    plant.update(pdu)
+    assert 0x70 in plant.register_caches

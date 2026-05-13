@@ -192,23 +192,23 @@ class ReadInputRegistersResponse(ReadInputRegisters, ReadRegistersResponse):
         return
 
 
-class ReadBatteryInputRegisters(ReadRegistersMessage, ABC):
-    """Request & Response PDUs for function #4/Read Input Registers."""
+class ReadMeterProductRegisters(ReadRegistersMessage, ABC):
+    """Request & Response PDUs for function #0x16/Read Meter Product Registers."""
 
     transparent_function_code = 0x16
 
 
-class ReadBatteryInputRegistersRequest(ReadBatteryInputRegisters, ReadRegistersRequest):
-    """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
+class ReadMeterProductRegistersRequest(ReadMeterProductRegisters, ReadRegistersRequest):
+    """Concrete PDU implementation for handling function #0x16/Read Meter Product Registers request messages."""
 
     def expected_response(self):
-        return ReadInputRegistersResponse(
+        return ReadMeterProductRegistersResponse(
             base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
         )
 
 
-class ReadBatteryInputRegistersResponse(ReadBatteryInputRegisters, ReadRegistersResponse):
-    """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
+class ReadMeterProductRegistersResponse(ReadMeterProductRegisters, ReadRegistersResponse):
+    """Concrete PDU implementation for handling function #0x16/Read Meter Product Registers response messages."""
 
     def expected_response(self):
         return
