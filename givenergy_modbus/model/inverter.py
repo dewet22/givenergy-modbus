@@ -10,13 +10,18 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 class Model(str, Enum):
     """Known models of inverters.
 
-    Values are the first digit of the device type code reported by the inverter.
+    Single-digit values are the coarse family (first digit of the DTC); these are
+    what `Model(dtc_string)` returns via `_missing_` for backward compatibility.
+    Two-character and "20gN" values are more specific variants reachable via
+    `resolve_model(dtc, arm_fw)` or by direct construction e.g. `Model("81")`.
+
     Note: Gen 2 inverters with an 'EA' serial prefix were previously mapped via a
     serial-prefix lookup table (removed in 1.0). Their device type code first digit
     is unknown — if EA-prefix units report a code not listed here, _missing_ will
     raise ValueError. A field report from a Gen 2 owner is needed to add support.
     """
 
+    # Coarse families (first digit of DTC) — backward-compatible values
     HYBRID = "2"
     AC = "3"
     HYBRID_3PH = "4"
@@ -25,10 +30,21 @@ class Model(str, Enum):
     GATEWAY = "7"
     ALL_IN_ONE = "8"
 
+    # Specific variants (two-digit DTC prefix or firmware-disambiguated)
+    HYBRID_GEN1 = "20g1"
+    HYBRID_GEN2 = "20g2"
+    HYBRID_GEN3 = "20g3"
+    POLAR = "21"
+    AIO_COMMERCIAL = "41"
+    EMS_COMMERCIAL = "51"
+    HYBRID_HV_GEN3 = "81"
+    ALL_IN_ONE_HYBRID = "82"
+    HYBRID_GEN4 = "83"
+
     @classmethod
-    def _missing_(cls, key):
+    def _missing_(cls, value):
         """Pick model from the first digit of the device type code."""
-        return cls(key[0])
+        return cls(value[0])
 
     @property
     def system_battery_voltage(self) -> float:
@@ -39,6 +55,39 @@ class Model(str, Enum):
             return 76.8
         else:
             return 51.2
+
+
+# ARM firmware version century → HYBRID generation for DTC prefix "20"
+_HYBRID_FW_CENTURY_TO_GEN: dict[int, Model] = {
+    3: Model.HYBRID_GEN3,
+    8: Model.HYBRID_GEN2,
+    9: Model.HYBRID_GEN2,
+}
+
+# Two-digit DTC prefix → specific Model variant (where distinct from single-digit family)
+_DTC_PREFIX_TO_MODEL: dict[str, Model] = {
+    "21": Model.POLAR,
+    "41": Model.AIO_COMMERCIAL,
+    "51": Model.EMS_COMMERCIAL,
+    "81": Model.HYBRID_HV_GEN3,
+    "82": Model.ALL_IN_ONE_HYBRID,
+    "83": Model.HYBRID_GEN4,
+}
+
+
+def resolve_model(dtc: str, arm_fw: int) -> Model:
+    """Return the most specific Model for a given device type code and ARM firmware version.
+
+    `dtc` is the 4-char hex string from HR(0) (e.g. '2001').
+    `arm_fw` is the raw ARM firmware version integer from HR(21).
+
+    Use this in preference to plain `Model(dtc)` when you have both values available.
+    `Model(dtc)` continues to work and returns the coarse family for backward compat.
+    """
+    prefix = dtc[:2]
+    if prefix == "20":
+        return _HYBRID_FW_CENTURY_TO_GEN.get(arm_fw // 100, Model.HYBRID_GEN1)
+    return _DTC_PREFIX_TO_MODEL.get(prefix, Model(dtc))
 
 
 class UsbDevice(int, Enum):

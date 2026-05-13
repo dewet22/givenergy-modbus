@@ -13,6 +13,7 @@ from givenergy_modbus.model.inverter import (
     PowerFactorFunctionModel,
     Status,
     UsbDevice,
+    resolve_model,
 )
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -873,3 +874,58 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_battery_charge_day_2": 9.1,
         "p_combined_generation": None,
     }
+
+
+def test_model_coarse_lookup():
+    """Model(dtc) returns the coarse family regardless of specific variant."""
+    assert Model("2") is Model.HYBRID
+    assert Model("2001") is Model.HYBRID
+    assert Model("2101") is Model.HYBRID
+    assert Model("4001") is Model.HYBRID_3PH
+    assert Model("4101") is Model.HYBRID_3PH  # AIO_COMMERCIAL falls back to HYBRID_3PH family
+    assert Model("5101") is Model.EMS  # EMS_COMMERCIAL falls back to EMS family
+    assert Model("8101") is Model.ALL_IN_ONE  # HYBRID_HV_GEN3 falls back to ALL_IN_ONE family
+    assert Model("8201") is Model.ALL_IN_ONE
+    assert Model("8301") is Model.ALL_IN_ONE
+
+
+def test_model_specific_variants():
+    """Specific variants are reachable by direct construction."""
+    assert Model("20g1") is Model.HYBRID_GEN1
+    assert Model("20g2") is Model.HYBRID_GEN2
+    assert Model("20g3") is Model.HYBRID_GEN3
+    assert Model("21") is Model.POLAR
+    assert Model("41") is Model.AIO_COMMERCIAL
+    assert Model("51") is Model.EMS_COMMERCIAL
+    assert Model("81") is Model.HYBRID_HV_GEN3
+    assert Model("82") is Model.ALL_IN_ONE_HYBRID
+    assert Model("83") is Model.HYBRID_GEN4
+
+
+@pytest.mark.parametrize(
+    "dtc, arm_fw, expected",
+    [
+        # DTC "20xx" — generation depends on ARM firmware century
+        ("2001", 250, Model.HYBRID_GEN1),  # century 2 → GEN1
+        ("2001", 199, Model.HYBRID_GEN1),  # century 1 → GEN1
+        ("2001", 350, Model.HYBRID_GEN3),  # century 3 → GEN3
+        ("2001", 399, Model.HYBRID_GEN3),  # century 3 → GEN3
+        ("2001", 850, Model.HYBRID_GEN2),  # century 8 → GEN2
+        ("2001", 950, Model.HYBRID_GEN2),  # century 9 → GEN2
+        ("2003", 310, Model.HYBRID_GEN3),  # different power rating, same gen
+        # Specific two-digit prefixes
+        ("2101", 100, Model.POLAR),
+        ("4001", 100, Model.HYBRID_3PH),
+        ("4101", 100, Model.AIO_COMMERCIAL),
+        ("5001", 100, Model.EMS),
+        ("5101", 100, Model.EMS_COMMERCIAL),
+        ("6001", 100, Model.AC_3PH),
+        ("7001", 100, Model.GATEWAY),
+        ("8001", 100, Model.ALL_IN_ONE),
+        ("8101", 100, Model.HYBRID_HV_GEN3),
+        ("8201", 100, Model.ALL_IN_ONE_HYBRID),
+        ("8301", 100, Model.HYBRID_GEN4),
+    ],
+)
+def test_resolve_model(dtc, arm_fw, expected):
+    assert resolve_model(dtc, arm_fw) is expected
