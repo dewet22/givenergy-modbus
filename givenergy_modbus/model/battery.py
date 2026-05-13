@@ -1,3 +1,5 @@
+from enum import IntEnum
+
 from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.register import IR, RegisterGetter
@@ -87,3 +89,28 @@ class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
             "          ",
         )
+
+
+class State(IntEnum):
+    """Battery charge/discharge state."""
+
+    STATIC = 0
+    CHARGE = 1
+    DISCHARGE = 2
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.STATIC
+
+
+class BatteryPauseMode(IntEnum):
+    """Battery pause mode."""
+
+    DISABLED = 0
+    PAUSE_CHARGE = 1
+    PAUSE_DISCHARGE = 2
+    PAUSE_BOTH = 3
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.DISABLED

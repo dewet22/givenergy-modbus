@@ -104,6 +104,29 @@ class Converter:
             return datetime(year + 2000, month, day, hour, min, sec)
         return None
 
+    @staticmethod
+    def hexfield(val: int, idx: int, width: int = 1) -> int | None:
+        """Extract `width` hex digit(s) starting at `idx` from the 4-char hex representation."""
+        if val is not None:
+            return int(f"{val:04X}"[idx : idx + width], 16)
+        return None
+
+    @staticmethod
+    def bitfield(val: int, low: int, high: int) -> int | None:
+        """Extract the bit range [low, high] (inclusive) from a 16-bit register value."""
+        if val is not None:
+            return int(f"{val:016b}"[low : high + 1], 2)
+        return None
+
+    @staticmethod
+    def gateway_version(first: int, second: int, third: int, fourth: int) -> str | None:
+        """Decode gateway firmware version string from 4 registers (e.g. 'GA000009')."""
+        if None in (first, second, third, fourth):
+            return None
+        prefix = b"".join(v.to_bytes(2, "big") for v in (first, second)).decode("latin1").replace("\x00", "")
+        digits = "".join(str(b) for v in (third, fourth) for b in v.to_bytes(2, "big"))
+        return prefix + digits
+
 
 @dataclass(init=False)
 class RegisterDefinition:

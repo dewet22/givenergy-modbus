@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from givenergy_modbus.model.register import HR, IR, MR, RegisterEncoder
+from givenergy_modbus.model.register import HR, IR, MR, Converter, RegisterEncoder
 
 # fmt: off
 INPUT_REGISTERS: dict[int, int] = dict(enumerate([
@@ -80,3 +80,34 @@ def test_register():
     )
     with pytest.raises(TypeError, match="keys must be str, int, float, bool or None, not HR"):
         json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder)
+
+
+def test_converter_hexfield():
+    assert Converter.hexfield(0xABCD, 0) == 0xA
+    assert Converter.hexfield(0xABCD, 1) == 0xB
+    assert Converter.hexfield(0xABCD, 2) == 0xC
+    assert Converter.hexfield(0xABCD, 3) == 0xD
+    assert Converter.hexfield(0xABCD, 0, 2) == 0xAB
+    assert Converter.hexfield(0x1234, 1, 3) == 0x234
+    assert Converter.hexfield(None, 0) is None
+
+
+def test_converter_bitfield():
+    assert Converter.bitfield(0b1010_0011_0000_0001, 0, 0) == 1  # MSB
+    assert Converter.bitfield(0b1010_0011_0000_0001, 15, 15) == 1  # LSB
+    assert Converter.bitfield(0b1010_0000_0000_0000, 0, 3) == 0b1010
+    assert Converter.bitfield(0xFFFF, 0, 15) == 0xFFFF
+    assert Converter.bitfield(0x0000, 0, 15) == 0
+    assert Converter.bitfield(None, 0, 0) is None
+
+
+def test_converter_gateway_version():
+    # 'GA' = 0x4741, '00' = 0x3030, digits 0,0,0,9 stored as byte values in two registers
+    first = 0x4741  # 'G','A'
+    second = 0x3030  # '0','0'
+    third = 0x0000  # digits '0','0'
+    fourth = 0x0009  # digits '0','9'
+    assert Converter.gateway_version(first, second, third, fourth) == "GA000009"
+
+    assert Converter.gateway_version(None, second, third, fourth) is None
+    assert Converter.gateway_version(first, None, third, fourth) is None

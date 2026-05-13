@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum, StrEnum
 
 from pydantic import ConfigDict, computed_field, create_model
 
@@ -103,6 +103,84 @@ class Status(int, Enum):
     WARNING = 2
     FAULT = 3
     FLASHING_FIRMWARE_UPDATE = 4
+
+
+class WorkMode(IntEnum):
+    """Inverter work mode."""
+
+    INITIALISING = 0
+    OFF_GRID = 1
+    ON_GRID = 2
+    FAULT = 3
+    UPDATE = 4
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.INITIALISING
+
+
+class Certification(IntEnum):
+    """Grid compliance certification."""
+
+    UNKNOWN = 0
+    G98 = 8
+    G99 = 12
+    G98_NI = 16
+    G99_NI = 17
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.UNKNOWN
+
+
+class InverterType(IntEnum):
+    """Inverter phase and voltage type."""
+
+    SINGLE_PHASE_LV = 0
+    SINGLE_PHASE_HV = 1
+    THREE_PHASE_LV = 2
+    THREE_PHASE_HV = 3
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.SINGLE_PHASE_LV
+
+
+class Generation(StrEnum):
+    """Inverter hardware generation."""
+
+    GEN1 = "Gen 1"
+    GEN2 = "Gen 2"
+    GEN3 = "Gen 3"
+    GEN3_PLUS = "Gen 3+"
+    GEN4 = "Gen 4"
+    AIO2 = "AIO 2"
+    UNKNOWN = "Unknown"
+
+
+_DTC_PREFIX_TO_PHASE = {
+    "2": 1,
+    "3": 1,
+    "4": 3,
+    "5": 1,
+    "6": 3,
+    "7": 1,
+    "8": 1,
+}
+
+
+class Phase(IntEnum):
+    """Number of AC phases."""
+
+    ONE = 1
+    THREE = 3
+
+    @classmethod
+    def _missing_(cls, value):
+        """Accept a DTC string and map its first digit to a phase count."""
+        if isinstance(value, str) and value[:1] in _DTC_PREFIX_TO_PHASE:
+            return cls(_DTC_PREFIX_TO_PHASE[value[:1]])
+        return None
 
 
 class InverterRegisterGetter(RegisterGetter):
