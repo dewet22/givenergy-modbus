@@ -1248,6 +1248,7 @@ def test_from_actual():
         "inverter_reboot": 0,
         "enable_rtc": False,
         "inverter_errors": None,
+        "inverter_fault_messages": None,
         "charge_target_soc_1": None,
         "charge_slot_2_x": None,
         "charge_target_soc_2": None,

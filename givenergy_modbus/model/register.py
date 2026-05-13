@@ -130,6 +130,55 @@ class Converter:
         return None
 
     @staticmethod
+    def inverter_fault_code(val: int) -> list[str] | None:
+        """Decode a 32-bit inverter fault bitmask into a list of active fault names.
+
+        Bit table sourced from britkat1980/givenergy-modbus-async; not verified against
+        official firmware documentation (contact @britkat1980 for provenance).
+        Three-phase units use a different 9-word fault register layout (IR 1300–1307)
+        and are not decoded here — see open questions in fork-merge-plan.md.
+        """
+        if val is None:
+            return None
+        _FAULTS = [
+            None,
+            None,
+            None,
+            "Backup Overload Fault",
+            None,
+            None,
+            "Grid Monitor Comm Fault",
+            "ARM Comms Fault",
+            "Consistent Fault",
+            "EEPROM Fault",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "Inverter Frequency Fault",
+            "Relay Fault",
+            "Inverter Voltage Fault",
+            "GFCI Fault",
+            "Hail Sensor Fault",
+            "DSP Comms Fault",
+            "Bus over voltage",
+            "Inverter Current Fault",
+            "No Utility",
+            "PV Isolation Fault",
+            "Current leak high",
+            "DCI high",
+            "PV Over voltage",
+            "Grid voltage Fault",
+            "Grid Frequency Fault",
+            "Inverter NTC Fault",
+            None,
+        ]
+        bits = f"{val:032b}"
+        return [_FAULTS[i] for i, b in enumerate(bits) if b == "1" and _FAULTS[i] is not None]
+
+    @staticmethod
     def hexfield(val: int, idx: int, width: int = 1) -> int | None:
         """Extract `width` hex digit(s) starting at `idx` from the 4-char hex representation."""
         if val is not None:

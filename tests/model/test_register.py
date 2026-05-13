@@ -124,6 +124,20 @@ def test_converter_gateway_version():
     assert Converter.gateway_version(first, None, third, fourth) is None
 
 
+def test_converter_inverter_fault_code():
+    assert Converter.inverter_fault_code(None) is None
+    assert Converter.inverter_fault_code(0) == []
+    # bit 3 (from MSB) → "Backup Overload Fault"
+    result = Converter.inverter_fault_code(0b0001_0000_0000_0000_0000_0000_0000_0000)
+    assert result == ["Backup Overload Fault"]
+    # bits 6+7 → "Grid Monitor Comm Fault" + "ARM Comms Fault"
+    result = Converter.inverter_fault_code(0b0000_0011_0000_0000_0000_0000_0000_0000)
+    assert "Grid Monitor Comm Fault" in result
+    assert "ARM Comms Fault" in result
+    # None bits produce no output
+    assert Converter.inverter_fault_code(0b1110_0000_0000_0000_0000_0000_0000_0000) == []
+
+
 # ---------------------------------------------------------------------------
 # RegisterDefinition bounds
 # ---------------------------------------------------------------------------

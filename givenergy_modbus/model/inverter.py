@@ -359,6 +359,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_standard_self_consumption_logic": Def(C.bool, None, HR(199)),
         "cmd_bms_flash_update": Def(C.bool, None, HR(200)),
         "inverter_errors": Def(C.uint32, None, HR(223), HR(224)),
+        "inverter_fault_messages": Def(C.uint32, C.inverter_fault_code, HR(223), HR(224)),
         # 202-239 - Hot Water Diverter?
         #
         # Holding Registers, block 240-299
