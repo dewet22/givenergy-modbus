@@ -1,16 +1,15 @@
 # GivEnergy Modbus
 
+<p align="center"><img src="logo.png" alt="GivEnergy" width="320"></p>
+
 [![pypi](https://img.shields.io/pypi/v/givenergy-modbus)](https://pypi.org/project/givenergy-modbus/)
 [![python](https://img.shields.io/pypi/pyversions/givenergy-modbus)](https://pypi.org/project/givenergy-modbus/)
-[![GitHub branch status](https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main)](https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain)
-[![release workflow](https://img.shields.io/github/actions/workflow/status/dewet22/givenergy-modbus/release.yml)](https://github.com/dewet22/givenergy-modbus/actions/workflows/release.yml)
+[![CI](https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main)](https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain)
 [![codecov](https://img.shields.io/codecov/c/github/dewet22/givenergy-modbus)](https://codecov.io/github/dewet22/givenergy-modbus)
-![PyPI - License](https://img.shields.io/pypi/l/givenergy-modbus)
+[![license](https://img.shields.io/github/license/dewet22/givenergy-modbus)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
-Cloud. Inspired by and originally built on [pymodbus](https://pymodbus.readthedocs.io/), it now provides its own
-asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
+A Python library for communicating with GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy Cloud. Inspired by and originally built on [pymodbus](https://pymodbus.readthedocs.io/), it now provides its own asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
 
 > ⚠️ This project makes no representations as to its completeness or correctness. You use it at your own risk — if your
 > inverter mysteriously explodes because you accidentally set the `BOOMTIME` register or you consume a MWh of
