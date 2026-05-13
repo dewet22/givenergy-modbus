@@ -110,4 +110,4 @@ class MeterProduct(_MeterProductBase):  # type: ignore[misc,valid-type]
 
     def is_valid(self) -> bool:
         """Try to detect if a meter product record exists based on its attributes."""
-        return self.serial_number not in (None, "", "\x00\x00\x00\x00")  # type: ignore[attr-defined]
+        return bool(self.serial_number and self.serial_number.isalnum())  # type: ignore[attr-defined]

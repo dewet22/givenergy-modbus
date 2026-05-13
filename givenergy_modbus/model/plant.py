@@ -84,6 +84,9 @@ class Plant(GivEnergyBaseModel):
         """Validate incoming register bank against bounds and commit if clean."""
         getter_cls = self._getter_for_slave(slave_address)
         if getter_cls is not None:
+            if not getter_cls.is_coherent(incoming, self.register_caches[slave_address]):
+                _logger.warning("Discarding incoherent register bank for slave 0x%02x", slave_address)
+                return
             violations = getter_cls.validate_bank(incoming, self.register_caches[slave_address])
             if violations:
                 _logger.warning(

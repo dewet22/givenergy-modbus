@@ -1402,6 +1402,26 @@ def test_commit_bank_unknown_slave_skips_validation(plant: Plant):
     assert plant.register_caches[0x99].get(IR(5)) == 65535
 
 
+def test_commit_bank_incoherent_serial_discards_bank(plant: Plant):
+    """A battery bank whose serial number registers decode to garbage must be discarded."""
+    # Battery serial is at IR(110-114). All zeros → empty string → incoherent.
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, slave_address=0x33)
+    plant.update(pdu)
+    assert IR(60) not in plant.register_caches.get(0x33, {})
+
+
+def test_commit_bank_valid_serial_allows_bank(plant: Plant):
+    """A battery bank with a valid serial number must be committed."""
+    # "BG1234G567" encoded across IR(110-114): each register holds two ASCII chars
+    # 'B'=0x42, 'G'=0x47 → 0x4247; '1'=0x31, '2'=0x32 → 0x3132; etc.
+    pdu = _make_ir_pdu(
+        {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221},
+        slave_address=0x33,
+    )
+    plant.update(pdu)
+    assert plant.register_caches[0x33].get(IR(60)) == 3221
+
+
 def test_commit_bank_write_holding_register_bypasses_validation(plant: Plant):
     """WriteHoldingRegisterResponse is always applied — user-initiated writes are trusted."""
     pdu = MagicMock(spec=WriteHoldingRegisterResponse)

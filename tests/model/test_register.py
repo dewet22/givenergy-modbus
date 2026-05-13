@@ -2,7 +2,16 @@ import json
 
 import pytest
 
-from givenergy_modbus.model.register import HR, IR, MR, Converter, RegisterDefinition, RegisterEncoder, RegisterGetter
+from givenergy_modbus.model.register import (
+    HR,
+    IR,
+    MR,
+    Converter,
+    RegisterDefinition,
+    RegisterEncoder,
+    RegisterGetter,
+    is_valid_serial,
+)
 from givenergy_modbus.model.register_cache import RegisterCache
 
 # fmt: off
@@ -173,3 +182,90 @@ def test_missing_register_skips_bounds():
     defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
     getter = type("_G", (RegisterGetter,), {"REGISTER_LUT": {"field": defn}})(RegisterCache())
     assert getter.get("field") is None
+
+
+# ---------------------------------------------------------------------------
+# is_valid_serial
+# ---------------------------------------------------------------------------
+
+
+def test_is_valid_serial_accepts_alphanumeric():
+    assert is_valid_serial("SA1234G567")
+    assert is_valid_serial("BG1234G567")
+
+
+def test_is_valid_serial_warns_on_unexpected_pattern(caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.register"):
+        result = is_valid_serial("AAAAAAAAAA")  # 10 alnum uppercase but not AA0000A000
+    assert result is True
+    assert "does not match expected pattern" in caplog.text
+
+
+def test_is_valid_serial_rejects_wrong_length():
+    assert not is_valid_serial("ABC123")  # too short
+    assert not is_valid_serial("A")
+    assert not is_valid_serial("SA1234G5678")  # too long
+
+
+def test_is_valid_serial_rejects_blanks():
+    assert not is_valid_serial(None)
+    assert not is_valid_serial("")
+    assert not is_valid_serial("          ")
+    assert not is_valid_serial("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+
+
+def test_is_valid_serial_rejects_non_alphanumeric():
+    assert not is_valid_serial("SA-1234567")
+    assert not is_valid_serial("SA 1234567")
+    assert not is_valid_serial("sa1234g567")  # lowercase
+
+
+# ---------------------------------------------------------------------------
+# RegisterGetter.is_coherent
+# ---------------------------------------------------------------------------
+
+
+def _serial_getter(serial_registers: tuple) -> type[RegisterGetter]:
+    """Build a RegisterGetter subclass whose 'serial_number' spans the given registers."""
+    defn = RegisterDefinition(Converter.string, None, *serial_registers)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"serial_number": defn}
+
+    return _G
+
+
+def test_is_coherent_passes_when_no_serial_in_lut():
+    defn = RegisterDefinition(Converter.uint16, None, IR(0))
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    assert _G.is_coherent({IR(0): 42}, RegisterCache()) is True
+
+
+def test_is_coherent_passes_when_serial_not_in_incoming_bank():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    assert G.is_coherent({IR(0): 42}, RegisterCache()) is True
+
+
+def test_is_coherent_passes_with_valid_serial():
+    # "SA1234G567" across 5 registers (2 chars each): 0x5341, 0x3132, 0x3334, 0x4735, 0x3637
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    incoming = {IR(10): 0x5341, IR(11): 0x3132, IR(12): 0x3334, IR(13): 0x4735, IR(14): 0x3637}
+    assert G.is_coherent(incoming, RegisterCache()) is True
+
+
+def test_is_coherent_fails_with_invalid_serial():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    incoming = {IR(10): 0x0000, IR(11): 0x0000, IR(12): 0x0000, IR(13): 0x0000, IR(14): 0x0000}
+    assert G.is_coherent(incoming, RegisterCache()) is False
+
+
+def test_is_coherent_uses_committed_plus_incoming():
+    G = _serial_getter((IR(10), IR(11), IR(12), IR(13), IR(14)))
+    committed = RegisterCache({IR(10): 0x5341, IR(11): 0x3132, IR(12): 0x3334, IR(13): 0x4735})
+    incoming = {IR(14): 0x3637}  # final register arriving now
+    assert G.is_coherent(incoming, committed) is True

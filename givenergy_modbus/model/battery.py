@@ -2,7 +2,7 @@ from enum import IntEnum
 
 from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model.register import IR, RegisterGetter
+from givenergy_modbus.model.register import IR, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register import Converter as DT
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -83,12 +83,7 @@ class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
 
     def is_valid(self) -> bool:
         """Try to detect if a battery exists based on its attributes."""
-        return self.serial_number not in (  # type: ignore[attr-defined]
-            None,
-            "",
-            "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            "          ",
-        )
+        return is_valid_serial(self.serial_number)  # type: ignore[attr-defined]
 
 
 class State(IntEnum):

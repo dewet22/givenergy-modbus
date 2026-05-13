@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -159,6 +160,22 @@ class RegisterDefinition:
         return hash(self.registers)
 
 
+_SERIAL_PATTERN = re.compile(r"[A-Z]{2}\d{4}[A-Z]\d{3}")
+
+
+def is_valid_serial(s: str | None) -> bool:
+    """Return True if s looks like a real GivEnergy serial number (exactly 10 [A-Z0-9] chars).
+
+    Also logs a warning when the value passes the length/charset gate but does not match the
+    expected AA0000A000 pattern — preserving compatibility with unknown real-world variants.
+    """
+    if not (s and len(s) == 10 and s.isalnum() and s == s.upper()):
+        return False
+    if not _SERIAL_PATTERN.fullmatch(s):
+        _logger.warning("serial number %r is valid but does not match expected pattern AA0000A000", s)
+    return True
+
+
 class RegisterGetter:
     """Specifies how device attributes are derived from raw register values."""
 
@@ -235,6 +252,23 @@ class RegisterGetter:
                 violations.append(name)
 
         return violations
+
+    @classmethod
+    def is_coherent(cls, incoming: dict["Register", int], committed: Any) -> bool:
+        """Return False if the incoming bank contains a serial number that is not valid.
+
+        Only fires when the serial number registers are present in the incoming bank.
+        Getters without a 'serial_number' field always return True.
+        """
+        if "serial_number" not in cls.REGISTER_LUT:
+            return True
+        serial_regs = set(cls.REGISTER_LUT["serial_number"].registers)
+        if not serial_regs & set(incoming):
+            return True
+        from givenergy_modbus.model.register_cache import RegisterCache
+
+        candidate = RegisterCache({**committed, **incoming})
+        return is_valid_serial(cls(candidate).get("serial_number"))
 
     @classmethod
     def to_fields(cls) -> dict[str, tuple[Any, None]]:
