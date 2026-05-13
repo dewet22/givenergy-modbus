@@ -11,6 +11,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
 - update claude config ([6cd077e](https://github.com/dewet22/givenergy-modbus/commit/6cd077e74c08ea6fc79f4e4e69683af7127d8761), @dewet22)
+- add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
 
 ### Maintenance
 
