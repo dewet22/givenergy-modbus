@@ -18,6 +18,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - add Claude Code automations (hooks, skills, MCP, subagent) ([00929f9](https://github.com/dewet22/givenergy-modbus/commit/00929f941733b6f27a60676c0b94a91a5ffcccdf), @dewet22)
 - ignore Claude Code local settings and worktrees ([634dd08](https://github.com/dewet22/givenergy-modbus/commit/634dd08d1bebc1aac1a47d87356c57af4ae26254), @dewet22)
 
+### Added
+
+- add MR register namespace and ReadMeterProductRegisters PDU (phase 0.1) ([ef89324](https://github.com/dewet22/givenergy-modbus/commit/ef89324adc19996cbdb2f621ed848649ab822449), @dewet22)
+- add decode-helper enums and converters (phase 0.2) ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), @dewet22)
+- widen Model enum and add resolve_model helper (phase 0.3) ([09dea7b](https://github.com/dewet22/givenergy-modbus/commit/09dea7b436fb2df11827c6d11c1f65646b6cd623), @dewet22)
+
 ## [1.3.0] - 2026-05-13
 
 ### Maintenance
