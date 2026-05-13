@@ -288,7 +288,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Holding Registers, block 60-119
         #
-        "v_pv_start": Def(C.uint16, C.deci, HR(60)),
+        "v_pv_start": Def(C.uint16, C.deci, HR(60), min=0.0, max=2000.0),
         "start_countdown_timer": Def(C.uint16, None, HR(61)),
         "restart_delay_time": Def(C.uint16, None, HR(62)),
         # skip protection settings HR(63-93)
@@ -409,24 +409,24 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Input Registers, block 0-59
         #
         "status": Def(C.uint16, Status, IR(0)),
-        "v_pv1": Def(C.deci, None, IR(1)),
-        "v_pv2": Def(C.deci, None, IR(2)),
+        "v_pv1": Def(C.deci, None, IR(1), min=0.0, max=2000.0),
+        "v_pv2": Def(C.deci, None, IR(2), min=0.0, max=2000.0),
         "v_p_bus": Def(C.deci, None, IR(3)),
         "v_n_bus": Def(C.deci, None, IR(4)),
-        "v_ac1": Def(C.deci, None, IR(5), min=0.0, max=300.0),
+        "v_ac1": Def(C.deci, None, IR(5), min=0.0, max=500.0),
         "e_battery_throughput": Def(C.uint32, C.deci, IR(6), IR(7)),
-        "i_pv1": Def(C.deci, None, IR(8)),
-        "i_pv2": Def(C.deci, None, IR(9)),
-        "i_ac1": Def(C.deci, None, IR(10)),
+        "i_pv1": Def(C.deci, None, IR(8), min=0.0, max=500.0),
+        "i_pv2": Def(C.deci, None, IR(9), min=0.0, max=500.0),
+        "i_ac1": Def(C.deci, None, IR(10), min=0.0, max=500.0),
         "e_pv_total": Def(C.uint32, C.deci, IR(11), IR(12)),
-        "f_ac1": Def(C.centi, None, IR(13), min=45.0, max=65.0),
+        "f_ac1": Def(C.centi, None, IR(13), min=40.0, max=70.0),
         "charge_status": Def(C.uint16, None, IR(14)),
         "v_highbrigh_bus": Def(C.deci, None, IR(15)),
         "pf_inverter_output_now": Def(C.uint16, None, IR(16)),
         "e_pv1_day": Def(C.deci, None, IR(17)),
-        "p_pv1": Def(C.uint16, None, IR(18)),
+        "p_pv1": Def(C.uint16, None, IR(18), max=50000),
         "e_pv2_day": Def(C.deci, None, IR(19)),
-        "p_pv2": Def(C.uint16, None, IR(20)),
+        "p_pv2": Def(C.uint16, None, IR(20), max=50000),
         "e_grid_out_total": Def(C.uint32, C.deci, IR(21), IR(22)),
         "e_solar_diverter": Def(C.deci, None, IR(23)),
         "p_grid_out_ph1": Def(C.int16, None, IR(24)),
@@ -435,7 +435,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "e_inverter_in_total": Def(C.uint32, C.deci, IR(27), IR(28)),
         "e_discharge_year": Def(C.deci, None, IR(29)),
         "p_grid_out": Def(C.int16, None, IR(30)),
-        "p_backup": Def(C.uint16, None, IR(31)),  # EPS
+        "p_backup": Def(C.uint16, None, IR(31), max=50000),  # EPS
         "e_grid_in_total": Def(C.uint32, C.deci, IR(32), IR(33)),
         # IR(34) unknown, skip
         "e_load_day": Def(C.deci, None, IR(35)),
@@ -444,8 +444,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "countdown": Def(C.uint16, None, IR(38)),
         "fault_code": Def(C.uint32, (C.hex, 8), IR(39), IR(40)),
         "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
-        "p_load_demand": Def(C.uint16, None, IR(42)),
-        "p_grid_apparent": Def(C.uint16, None, IR(43)),
+        "p_load_demand": Def(C.uint16, None, IR(42), max=50000),
+        "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
         "e_inverter_out_day": Def(C.deci, None, IR(44)),
         "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
         "work_time_total": Def(C.uint32, None, IR(47), IR(48)),
@@ -453,8 +453,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
         "p_battery": Def(C.int16, None, IR(52)),
-        "v_ac1_output": Def(C.deci, None, IR(53)),  # might be v_eps_backup?
-        "f_ac1_output": Def(C.centi, None, IR(54)),  # might be f_eps_backup?
+        "v_ac1_output": Def(C.deci, None, IR(53), min=0.0, max=500.0),  # might be v_eps_backup?
+        "f_ac1_output": Def(C.centi, None, IR(54), min=40.0, max=70.0),  # might be f_eps_backup?
         "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
         "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
@@ -471,7 +471,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Input Registers, block 240-300
         # Gen3
         #
-        "p_combined_generation": Def(C.uint32, None, IR(247), IR(248)),
+        "p_combined_generation": Def(C.uint32, None, IR(247), IR(248), max=100000),
     }
 
 

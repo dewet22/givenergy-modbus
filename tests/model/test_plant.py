@@ -1375,23 +1375,27 @@ def test_commit_bank_valid_registers_are_committed(plant: Plant):
     assert plant.register_caches[0x32].get(IR(5)) == 2367
 
 
-def test_commit_bank_bounds_violation_discards_entire_bank(plant: Plant):
-    """A bank containing even one out-of-bounds value must be discarded entirely."""
-    # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=300.0.
+def test_commit_bank_bounds_violation_logs_error_and_commits(plant: Plant, caplog):
+    """A bank with out-of-bounds values must still be committed; violations are logged at ERROR."""
+    import logging
+
+    # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=500.0.
     pdu = _make_ir_pdu({5: 65535, 59: 50})
-    plant.update(pdu)
-    assert IR(5) not in plant.register_caches[0x32]
-    assert IR(59) not in plant.register_caches[0x32]
+    with caplog.at_level(logging.ERROR):
+        plant.update(pdu)
+    assert IR(5) in plant.register_caches[0x32]
+    assert IR(59) in plant.register_caches[0x32]
+    assert any("bounds" in r.message.lower() for r in caplog.records)
 
 
-def test_commit_bank_out_of_bounds_does_not_overwrite_prior_good_data(plant: Plant):
-    """A bad bank must not clobber previously committed good values."""
+def test_commit_bank_out_of_bounds_overwrites_prior_data(plant: Plant):
+    """An out-of-bounds bank is committed and does overwrite previously committed values."""
     plant.register_caches[0x32].update({IR(5): 2367})  # prime with known-good value
 
     pdu = _make_ir_pdu({5: 65535})
     plant.update(pdu)
 
-    assert plant.register_caches[0x32].get(IR(5)) == 2367  # original preserved
+    assert plant.register_caches[0x32].get(IR(5)) == 65535  # overwritten by incoming bank
 
 
 def test_commit_bank_unknown_slave_skips_validation(plant: Plant):

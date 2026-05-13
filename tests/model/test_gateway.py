@@ -66,7 +66,7 @@ def test_select_gateway_returns_gateway_for_empty_cache():
 def test_gateway_power_readings():
     cache = _cache(
         {
-            IR(1608): 65536 - 2310,  # v_grid = -231.0 (int16 deci; negative)
+            IR(1608): 2310,  # v_grid = 231.0 V
             IR(1609): 100,  # i_grid = 10.0 A
             IR(1617): 3000,  # p_pv = 3000 W
             IR(1618): 2000,  # p_load = 2000 W
@@ -75,7 +75,7 @@ def test_gateway_power_readings():
         }
     )
     gw = Gateway.from_register_cache(cache)
-    assert gw.v_grid == -231.0  # type: ignore[attr-defined]
+    assert gw.v_grid == 231.0  # type: ignore[attr-defined]
     assert gw.i_grid == 10.0  # type: ignore[attr-defined]
     assert gw.p_pv == 3000  # type: ignore[attr-defined]
     assert gw.p_load == 2000  # type: ignore[attr-defined]

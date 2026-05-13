@@ -26,9 +26,9 @@ class MeterRegisterGetter(RegisterGetter):
 
     REGISTER_LUT = {
         # Input Registers IR(60)–IR(88)
-        "v_phase_1": Def(C.deci, None, IR(60)),
-        "v_phase_2": Def(C.deci, None, IR(61)),
-        "v_phase_3": Def(C.deci, None, IR(62)),
+        "v_phase_1": Def(C.deci, None, IR(60), min=0.0, max=500.0),
+        "v_phase_2": Def(C.deci, None, IR(61), min=0.0, max=500.0),
+        "v_phase_3": Def(C.deci, None, IR(62), min=0.0, max=500.0),
         "i_phase_1": Def(C.centi, None, IR(63)),
         "i_phase_2": Def(C.centi, None, IR(64)),
         "i_phase_3": Def(C.centi, None, IR(65)),
@@ -50,7 +50,7 @@ class MeterRegisterGetter(RegisterGetter):
         "pf_phase_2": Def(C.milli, None, IR(81)),
         "pf_phase_3": Def(C.milli, None, IR(82)),
         "pf_total": Def(C.milli, None, IR(83)),
-        "frequency": Def(C.centi, None, IR(84)),
+        "frequency": Def(C.centi, None, IR(84), min=40.0, max=70.0),
         "e_import_active": Def(C.deci, None, IR(85)),
         "e_import_reactive": Def(C.deci, None, IR(86)),
         "e_export_active": Def(C.deci, None, IR(87)),

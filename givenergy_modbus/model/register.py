@@ -213,8 +213,8 @@ class RegisterGetter:
 
         if val is not None and (defn.min is not None or defn.max is not None):
             if (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max):
-                _logger.warning("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
-                return None
+                # TODO(enforcement): change to `return None` to suppress out-of-bounds values.
+                _logger.error("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
 
         return val
 
@@ -230,9 +230,8 @@ class RegisterGetter:
     ) -> list[str]:
         """Check incoming registers against bounds-constrained fields.
 
-        Returns the names of any fields whose post-conversion value is None
-        despite all their registers being present — indicating a bounds
-        violation. Only fields that have bounds defined and whose registers
+        Returns the names of any fields whose post-conversion value falls outside
+        the defined bounds. Only fields that have bounds defined and whose registers
         overlap the incoming bank are checked.
         """
         from givenergy_modbus.model.register_cache import RegisterCache
@@ -248,7 +247,12 @@ class RegisterGetter:
                 continue
             if any(candidate.get(r) is None for r in defn.registers):
                 continue
-            if getter.get(name) is None:
+            val = getter.get(name)
+            # TODO(enforcement): once get() suppresses OOB values (returns None), this explicit
+            # bounds check can be replaced with the simpler `if getter.get(name) is None`.
+            if val is not None and (
+                (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max)
+            ):
                 violations.append(name)
 
         return violations

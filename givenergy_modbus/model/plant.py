@@ -5,6 +5,7 @@ from pydantic import ConfigDict
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.hv_bcu import BcuRegisterGetter
 from givenergy_modbus.model.inverter import SinglePhaseInverter, SinglePhaseInverterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -40,6 +41,8 @@ class Plant(GivEnergyBaseModel):
             return SinglePhaseInverterRegisterGetter
         if 0x33 <= slave_address <= 0x37:
             return BatteryRegisterGetter
+        if 0x70 <= slave_address <= 0x8F:
+            return BcuRegisterGetter
         return None
 
     def update(self, pdu: ClientIncomingMessage):
@@ -89,12 +92,12 @@ class Plant(GivEnergyBaseModel):
                 return
             violations = getter_cls.validate_bank(incoming, self.register_caches[slave_address])
             if violations:
-                _logger.warning(
-                    "Discarding register bank for slave 0x%02x: bounds violations in %s",
+                _logger.error(
+                    "Bounds violations in register bank for slave 0x%02x: %s",
                     slave_address,
                     violations,
                 )
-                return
+                # TODO(enforcement): add `return` here to discard the entire bank on any violation.
         self.register_caches[slave_address].update(incoming)
 
     @property
