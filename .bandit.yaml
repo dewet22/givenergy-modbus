@@ -1,5 +1,8 @@
 # https://bandit.readthedocs.io/en/latest/config.html
 
+exclude_dirs:
+  - tests  # B101 (assert) is expected and idiomatic in test files
+
 skips:
   - B313  # xml.etree.ElementTree — not used in this codebase
   - B314
