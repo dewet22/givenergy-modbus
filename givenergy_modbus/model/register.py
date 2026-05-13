@@ -206,6 +206,37 @@ class RegisterGetter:
         return {key: self.get(key) for key in self.REGISTER_LUT}
 
     @classmethod
+    def validate_bank(
+        cls,
+        incoming: dict["Register", int],
+        committed: Any,
+    ) -> list[str]:
+        """Check incoming registers against bounds-constrained fields.
+
+        Returns the names of any fields whose post-conversion value is None
+        despite all their registers being present — indicating a bounds
+        violation. Only fields that have bounds defined and whose registers
+        overlap the incoming bank are checked.
+        """
+        from givenergy_modbus.model.register_cache import RegisterCache
+
+        candidate = RegisterCache({**committed, **incoming})
+        getter = cls(candidate)
+        violations = []
+
+        for name, defn in cls.REGISTER_LUT.items():
+            if defn.min is None and defn.max is None:
+                continue
+            if not any(r in incoming for r in defn.registers):
+                continue
+            if any(candidate.get(r) is None for r in defn.registers):
+                continue
+            if getter.get(name) is None:
+                violations.append(name)
+
+        return violations
+
+    @classmethod
     def to_fields(cls) -> dict[str, tuple[Any, None]]:
         """Determine a pydantic fields definition for the class."""
 

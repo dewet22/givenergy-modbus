@@ -4,9 +4,9 @@ from typing import Any
 from pydantic import ConfigDict
 
 from givenergy_modbus.model import GivEnergyBaseModel
-from givenergy_modbus.model.battery import Battery
-from givenergy_modbus.model.inverter import SinglePhaseInverter
-from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.inverter import SinglePhaseInverter, SinglePhaseInverterRegisterGetter
+from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -33,6 +33,14 @@ class Plant(GivEnergyBaseModel):
         """Ensure a default register cache is always present."""
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
+
+    def _getter_for_slave(self, slave_address: int) -> type[RegisterGetter] | None:
+        """Return the RegisterGetter class appropriate for a given slave address."""
+        if slave_address == 0x32:
+            return SinglePhaseInverterRegisterGetter
+        if 0x33 <= slave_address <= 0x37:
+            return BatteryRegisterGetter
+        return None
 
     def update(self, pdu: ClientIncomingMessage):
         """Update the Plant state from a PDU message."""
@@ -61,14 +69,30 @@ class Plant(GivEnergyBaseModel):
         self.data_adapter_serial_number = pdu.data_adapter_serial_number
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
-            self.register_caches[slave_address].update({HR(k): v for k, v in pdu.to_dict().items()})
+            incoming = {HR(k): v for k, v in pdu.to_dict().items()}
+            self._commit_bank(slave_address, incoming)
         elif isinstance(pdu, ReadInputRegistersResponse):
-            self.register_caches[slave_address].update({IR(k): v for k, v in pdu.to_dict().items()})
+            incoming = {IR(k): v for k, v in pdu.to_dict().items()}
+            self._commit_bank(slave_address, incoming)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
             else:
                 self.register_caches[slave_address].update({HR(pdu.register): pdu.value})
+
+    def _commit_bank(self, slave_address: int, incoming: dict) -> None:
+        """Validate incoming register bank against bounds and commit if clean."""
+        getter_cls = self._getter_for_slave(slave_address)
+        if getter_cls is not None:
+            violations = getter_cls.validate_bank(incoming, self.register_caches[slave_address])
+            if violations:
+                _logger.warning(
+                    "Discarding register bank for slave 0x%02x: bounds violations in %s",
+                    slave_address,
+                    violations,
+                )
+                return
+        self.register_caches[slave_address].update(incoming)
 
     @property
     def inverter(self) -> SinglePhaseInverter:

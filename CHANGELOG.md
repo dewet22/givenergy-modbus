@@ -17,12 +17,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - add Claude Code automations (hooks, skills, MCP, subagent) ([00929f9](https://github.com/dewet22/givenergy-modbus/commit/00929f941733b6f27a60676c0b94a91a5ffcccdf), @dewet22)
 - ignore Claude Code local settings and worktrees ([634dd08](https://github.com/dewet22/givenergy-modbus/commit/634dd08d1bebc1aac1a47d87356c57af4ae26254), @dewet22)
+- exclude britkat/ directory from pytest collection ([75f1a14](https://github.com/dewet22/givenergy-modbus/commit/75f1a14069d86536f60b0e22a5fce8673377f046), @dewet22)
 
 ### Added
 
 - add MR register namespace and ReadMeterProductRegisters PDU (phase 0.1) ([ef89324](https://github.com/dewet22/givenergy-modbus/commit/ef89324adc19996cbdb2f621ed848649ab822449), @dewet22)
 - add decode-helper enums and converters (phase 0.2) ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), @dewet22)
 - widen Model enum and add resolve_model helper (phase 0.3) ([09dea7b](https://github.com/dewet22/givenergy-modbus/commit/09dea7b436fb2df11827c6d11c1f65646b6cd623), @dewet22)
+- add Meter and MeterProduct model classes (phase 1.2) ([c6d3a0a](https://github.com/dewet22/givenergy-modbus/commit/c6d3a0a9aef54c7518daa32cb98f929465ea7468), @dewet22)
+- add ThreePhaseInverter model and int32 converter (phase 1.3) ([09e37f0](https://github.com/dewet22/givenergy-modbus/commit/09e37f07174faa437e3d2cb236422c95b265112a), @dewet22)
+- add Ems model (phase 1.4) ([3621938](https://github.com/dewet22/givenergy-modbus/commit/36219386c8b40d08c6c0b1106faa2a8e10e53b96), @dewet22)
+- add Gateway / Gateway2 models and select_gateway() (phase 1.5) ([752160a](https://github.com/dewet22/givenergy-modbus/commit/752160afd6826a1233df7a9e8e6d997dfc65c764), @dewet22)
+- add Bcu and Bmu models for HV battery stacks (phase 1.1) ([ee15702](https://github.com/dewet22/givenergy-modbus/commit/ee1570282ecdc170347fec4cb09ece6f6f78a980), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 

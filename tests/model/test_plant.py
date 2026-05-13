@@ -26,6 +26,7 @@ from givenergy_modbus.pdu import (
     ClientIncomingMessage,
     HeartbeatRequest,
     NullResponse,
+    ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
     ReadRegistersResponse,
     WriteHoldingRegisterResponse,
@@ -1337,3 +1338,78 @@ def test_from_actual():
         "warning_1": 0,
         "warning_2": 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Double-buffer / bank validation tests
+# ---------------------------------------------------------------------------
+
+
+def _make_ir_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadInputRegistersResponse:
+    """Build a minimal ReadInputRegistersResponse mock for update() tests."""
+    pdu = MagicMock(spec=ReadInputRegistersResponse)
+    pdu.slave_address = slave_address
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.to_dict.return_value = registers
+    return pdu
+
+
+def _make_hr_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadHoldingRegistersResponse:
+    """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
+    pdu = MagicMock(spec=ReadHoldingRegistersResponse)
+    pdu.slave_address = slave_address
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.to_dict.return_value = registers
+    return pdu
+
+
+def test_commit_bank_valid_registers_are_committed(plant: Plant):
+    """A bank with all values within bounds must be written to the cache."""
+    # IR(5) = v_ac1, deci, bounds 0–300. Raw 2367 → 236.7 V — valid.
+    pdu = _make_ir_pdu({5: 2367})
+    plant.update(pdu)
+    assert plant.register_caches[0x32].get(IR(5)) == 2367
+
+
+def test_commit_bank_bounds_violation_discards_entire_bank(plant: Plant):
+    """A bank containing even one out-of-bounds value must be discarded entirely."""
+    # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=300.0.
+    pdu = _make_ir_pdu({5: 65535, 59: 50})
+    plant.update(pdu)
+    assert IR(5) not in plant.register_caches[0x32]
+    assert IR(59) not in plant.register_caches[0x32]
+
+
+def test_commit_bank_out_of_bounds_does_not_overwrite_prior_good_data(plant: Plant):
+    """A bad bank must not clobber previously committed good values."""
+    plant.register_caches[0x32].update({IR(5): 2367})  # prime with known-good value
+
+    pdu = _make_ir_pdu({5: 65535})
+    plant.update(pdu)
+
+    assert plant.register_caches[0x32].get(IR(5)) == 2367  # original preserved
+
+
+def test_commit_bank_unknown_slave_skips_validation(plant: Plant):
+    """Banks for unknown slave addresses (no getter) are committed without validation."""
+    # 0x99 has no getter — unknown hardware passes through unchecked.
+    pdu = _make_ir_pdu({5: 65535}, slave_address=0x99)
+    plant.update(pdu)
+    assert plant.register_caches[0x99].get(IR(5)) == 65535
+
+
+def test_commit_bank_write_holding_register_bypasses_validation(plant: Plant):
+    """WriteHoldingRegisterResponse is always applied — user-initiated writes are trusted."""
+    pdu = MagicMock(spec=WriteHoldingRegisterResponse)
+    pdu.slave_address = 0x32
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.register = 20
+    pdu.value = 99999  # deliberately extreme
+    plant.update(pdu)
+    assert plant.register_caches[0x32].get(HR(20)) == 99999
