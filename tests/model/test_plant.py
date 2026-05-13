@@ -42,11 +42,13 @@ def plant():
 
 def test_instantiation():
     assert (plant := Plant()).model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
     }
     assert json.loads(plant.model_dump_json()) == {
+        "capabilities": None,
         "register_caches": {"50": {}},
         "inverter_serial_number": "",
         "data_adapter_serial_number": "",
@@ -54,6 +56,7 @@ def test_instantiation():
 
     rc = RegisterCache(registers={HR(1): 2})
     assert Plant(inverter_serial_number="AB1234", register_caches={0x30: rc}).model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "AB1234",
         "register_caches": {0x30: rc},
@@ -67,6 +70,7 @@ def test_plant(
 ):
     """Ensure we can instantiate a Plant from existing DTOs."""
     assert plant.model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": {0x32: {}},
@@ -77,6 +81,7 @@ def test_plant(
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
     assert plant.model_dump() == {
+        "capabilities": None,
         "data_adapter_serial_number": "",
         "inverter_serial_number": "",
         "register_caches": plant.register_caches,
@@ -162,6 +167,7 @@ async def test_update(
     assert plant.register_caches == {0x32: {}}
     orig_plant_dict = plant.model_dump()
     assert orig_plant_dict == {
+        "capabilities": None,
         "register_caches": {0x32: {}},
         "inverter_serial_number": "",
         "data_adapter_serial_number": "",
@@ -172,7 +178,7 @@ async def test_update(
     d = plant.model_dump()
     # with pytest.raises(TypeError, match='keys must be str, int, float, bool or None, not HR'):
     #     plant.json()
-    assert d.keys() == {"register_caches", "inverter_serial_number", "data_adapter_serial_number"}
+    assert d.keys() == {"capabilities", "register_caches", "inverter_serial_number", "data_adapter_serial_number"}
 
     expected_caches_keys = {0x32}
     if isinstance(pdu, (ReadRegistersResponse, WriteHoldingRegisterResponse)):

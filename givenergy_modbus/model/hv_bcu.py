@@ -3,12 +3,15 @@
 BCU slaves: 0x70–0x8F
 BMU slaves: 0x50–0x6F
 
+`HvStack` bundles a BCU and its BMUs for one physical battery stack.
+
 The BMU register layout is offset by 120 * bmu_index within the BCU slave, which
 means register addresses depend on which BMU is being read.  Because Pydantic models
 require a fixed schema, `Bmu` is constructed by `Bmu.from_register_cache(cache, offset)`
 which resolves all addresses before model creation.
 """
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import ConfigDict, create_model
@@ -149,3 +152,12 @@ class Bmu(_BmuBase):  # type: ignore[misc,valid-type]
     def is_valid(self) -> bool:
         """Try to detect if a BMU is present based on its attributes."""
         return self.serial_number not in (None, "", "          ")  # type: ignore[attr-defined]
+
+
+@dataclass
+class HvStack:
+    """One HV battery stack: a BCU and the BMUs it manages."""
+
+    slave_address: int
+    bcu: Bcu
+    bmus: list[Bmu] = field(default_factory=list)

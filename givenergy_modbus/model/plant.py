@@ -6,8 +6,12 @@ from pydantic import ConfigDict
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
-from givenergy_modbus.model.hv_bcu import BcuRegisterGetter
+from givenergy_modbus.model.ems import Ems
+from givenergy_modbus.model.gateway import Gateway, Gateway2, select_gateway
+from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
 from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, SinglePhaseInverterRegisterGetter
+from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
+from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -83,6 +87,7 @@ class Plant(GivEnergyBaseModel):
     model_config = ConfigDict(frozen=False, use_enum_values=True, arbitrary_types_allowed=True)
 
     register_caches: dict[int, RegisterCache] = {}
+    capabilities: PlantCapabilities | None = None
     inverter_serial_number: str = ""
     data_adapter_serial_number: str = ""
 
@@ -95,6 +100,8 @@ class Plant(GivEnergyBaseModel):
         """Return the RegisterGetter class appropriate for a given slave address."""
         if slave_address == 0x32:
             return SinglePhaseInverterRegisterGetter
+        if 0x01 <= slave_address <= 0x08:
+            return MeterRegisterGetter
         if 0x33 <= slave_address <= 0x37:
             return BatteryRegisterGetter
         if 0x70 <= slave_address <= 0x8F:
@@ -157,13 +164,19 @@ class Plant(GivEnergyBaseModel):
         self.register_caches[slave_address].update(incoming)
 
     @property
-    def inverter(self) -> SinglePhaseInverter:
-        """Return SinglePhaseInverter model for the Plant."""
+    def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
+        """Return the inverter model, dispatching on device type when capabilities are available."""
+        if self.capabilities:
+            return select_inverter(
+                self.capabilities.device_type, self.register_caches[self.capabilities.inverter_slave]
+            )
         return SinglePhaseInverter.from_register_cache(self.register_caches[0x32])
 
     @property
     def number_batteries(self) -> int:
         """Determine the number of batteries connected to the system based on whether the register data is valid."""
+        if self.capabilities:
+            return len(self.capabilities.lv_battery_slaves)
         count = 0
         for i in range(6):
             try:
@@ -181,4 +194,51 @@ class Plant(GivEnergyBaseModel):
     @property
     def batteries(self) -> list[Battery]:
         """Return Battery models for the Plant."""
+        if self.capabilities:
+            return [
+                Battery.from_register_cache(self.register_caches[addr])
+                for addr in self.capabilities.lv_battery_slaves
+                if addr in self.register_caches
+            ]
         return [Battery.from_register_cache(self.register_caches[i + 0x32]) for i in range(self.number_batteries)]
+
+    @property
+    def hv_stacks(self) -> list[HvStack]:
+        """Return HV battery stacks (BCU + BMUs) for HV systems; empty list for LV systems."""
+        if not self.capabilities or not self.capabilities.bcu_slaves:
+            return []
+        stacks = []
+        for offset, num_modules in self.capabilities.bcu_slaves:
+            slave_addr = 0x70 + offset
+            cache = self.register_caches.get(slave_addr, RegisterCache())
+            bcu = Bcu.from_register_cache(cache)
+            bmus = [Bmu.from_register_cache(cache, i) for i in range(num_modules)]
+            stacks.append(HvStack(slave_address=slave_addr, bcu=bcu, bmus=bmus))
+        return stacks
+
+    @property
+    def meters(self) -> dict[int, Meter]:
+        """Return Meter models keyed by slave address."""
+        if not self.capabilities or not self.capabilities.meter_slaves:
+            return {}
+        return {
+            addr: Meter.from_register_cache(self.register_caches[addr])
+            for addr in self.capabilities.meter_slaves
+            if addr in self.register_caches
+        }
+
+    @property
+    def ems(self) -> Ems | None:
+        """Return Ems model for EMS/EMS_COMMERCIAL device types; None otherwise."""
+        if not self.capabilities or self.capabilities.device_type not in (Model.EMS, Model.EMS_COMMERCIAL):
+            return None
+        cache = self.register_caches.get(self.capabilities.inverter_slave, RegisterCache())
+        return Ems.from_register_cache(cache)
+
+    @property
+    def gateway(self) -> Gateway | Gateway2 | None:
+        """Return Gateway or Gateway2 model for GATEWAY device type; None otherwise."""
+        if not self.capabilities or self.capabilities.device_type != Model.GATEWAY:
+            return None
+        cache = self.register_caches.get(self.capabilities.inverter_slave, RegisterCache())
+        return select_gateway(cache)

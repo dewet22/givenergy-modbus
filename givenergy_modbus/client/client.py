@@ -139,7 +139,9 @@ class Client:
         cache = self.plant.register_caches.get(0x32, {})
         raw_dtc = cache.get(HR(0))
         if raw_dtc is None:
-            raise CommunicationError("detect: HR(0) not populated after reading slave 0x11 — cannot determine device type")
+            raise CommunicationError(
+                "detect: HR(0) not populated after reading slave 0x11 — cannot determine device type"
+            )
         arm_fw = cache.get(HR(21)) or 0
         caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw))
         _logger.info("detect: device_type=%s", caps.device_type)
@@ -201,12 +203,49 @@ class Client:
                 caps.lv_battery_slaves.append(batt_addr)
             _logger.info("detect: lv_battery_slaves=%s", caps.lv_battery_slaves)
 
+        self.plant.capabilities = caps
         return caps
+
+    async def load_config(self, timeout: float = 2.0, retries: int = 3) -> Plant:
+        """Read HR configuration blocks for the inverter."""
+        slave = self.plant.capabilities.inverter_slave if self.plant.capabilities else 0x32
+        reqs = [
+            ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=slave),
+            ReadHoldingRegistersRequest(base_register=60, register_count=60, slave_address=slave),
+            ReadHoldingRegistersRequest(base_register=120, register_count=60, slave_address=slave),
+            ReadInputRegistersRequest(base_register=120, register_count=60, slave_address=slave),
+        ]
+        await self.execute(reqs, timeout=timeout, retries=retries)
+        return self.plant
+
+    async def refresh(self, timeout: float = 1.0, retries: int = 0) -> Plant:
+        """Read IR measurement blocks for all known slaves."""
+        caps = self.plant.capabilities
+        if caps is None:
+            return await self.refresh_plant(full_refresh=False)
+        slave = caps.inverter_slave
+        reqs: list[TransparentRequest] = [
+            ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=slave),
+            ReadInputRegistersRequest(base_register=180, register_count=60, slave_address=slave),
+        ]
+        for addr in caps.lv_battery_slaves:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=addr))
+        for addr in caps.meter_slaves:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, slave_address=addr))
+        for offset, _ in caps.bcu_slaves:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=0x70 + offset))
+        await self.execute(reqs, timeout=timeout, retries=retries)
+        return self.plant
 
     async def refresh_plant(
         self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
-    ):
+    ) -> Plant:
         """Refresh data about the Plant."""
+        if self.plant.capabilities:
+            if full_refresh:
+                await self.load_config()
+            await self.refresh()
+            return self.plant
         reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
         await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant

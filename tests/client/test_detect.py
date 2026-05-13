@@ -91,6 +91,7 @@ async def test_detect_resolves_model_from_hr0_hr21():
             caps = await client.detect()
 
     assert caps.device_type == Model.HYBRID_GEN3
+    assert client.plant.capabilities is caps
 
 
 def _prime_battery_serial(client: Client, slave: int) -> None:
