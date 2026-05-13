@@ -109,3 +109,16 @@ class BatteryPauseMode(IntEnum):
     @classmethod
     def _missing_(cls, value):
         return cls.DISABLED
+
+
+class BatteryMaintenance(IntEnum):
+    """Battery maintenance mode."""
+
+    OFF = 0
+    DISCHARGE = 1
+    CHARGE = 2
+    STANDBY = 3
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.OFF

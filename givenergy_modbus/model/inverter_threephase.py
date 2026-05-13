@@ -2,6 +2,7 @@
 
 from pydantic import ConfigDict, create_model
 
+from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
     BatteryType,
     Model,
@@ -39,19 +40,59 @@ _THREE_PHASE_LUT = {
     "v_grid_high_limit_3": Def(C.deci, None, HR(1027), min=0.0, max=500.0),
     "f_grid_low_limit_3": Def(C.centi, None, HR(1028), min=40.0, max=70.0),
     "f_grid_high_limit_3": Def(C.centi, None, HR(1029), min=40.0, max=70.0),
+    # HR(1030-1033) — CEE grid limits
+    "v_grid_low_limit_cee": Def(C.deci, None, HR(1030), min=0.0, max=500.0),
+    "v_grid_high_limit_cee": Def(C.deci, None, HR(1031), min=0.0, max=500.0),
+    "f_grid_low_limit_cee": Def(C.centi, None, HR(1032), min=40.0, max=70.0),
+    "f_grid_high_limit_cee": Def(C.centi, None, HR(1033), min=40.0, max=70.0),
+    # HR(1034-1041) — time-based grid voltage/frequency limits
+    "time_grid_low_voltage_limit_1": Def(C.centi, None, HR(1034)),
+    "time_grid_high_voltage_limit_1": Def(C.centi, None, HR(1035)),
+    "time_grid_low_voltage_limit_2": Def(C.centi, None, HR(1036)),
+    "time_grid_high_voltage_limit_2": Def(C.centi, None, HR(1037)),
+    "time_grid_low_freq_limit_1": Def(C.centi, None, HR(1038)),
+    "time_grid_high_freq_limit_1": Def(C.centi, None, HR(1039)),
+    "time_grid_low_freq_limit_2": Def(C.centi, None, HR(1040)),
+    "time_grid_high_freq_limit_2": Def(C.centi, None, HR(1041)),
     "v_10min_protect": Def(C.deci, None, HR(1042), min=0.0, max=500.0),
     "pf_model": Def(C.uint16, PowerFactorFunctionModel, HR(1043)),
     "f_over_derate_start": Def(C.centi, None, HR(1045), min=40.0, max=70.0),
     "f_over_derate_slope": Def(C.uint16, None, HR(1046)),
+    # HR(1047-1061) — reactive power / derating detail
+    "q_lockin_power": Def(C.uint16, None, HR(1047)),
+    "pf_lock_in_voltage": Def(C.deci, None, HR(1049), min=0.0, max=500.0),
+    "pf_lock_out_voltage": Def(C.deci, None, HR(1050), min=0.0, max=500.0),
+    "f_under_derate_slope": Def(C.milli, None, HR(1051)),
+    "v_reactive_delay_time": Def(C.milli, None, HR(1052)),
+    "time_over_freq_delay_time": Def(C.centi, None, HR(1053)),
+    "pf_limit_load_1": Def(C.uint16, None, HR(1054)),
+    "pf_limit_pf_1": Def(C.uint16, None, HR(1055)),
+    "pf_limit_load_2": Def(C.uint16, None, HR(1056)),
+    "pf_limit_pf_2": Def(C.uint16, None, HR(1057)),
+    "pf_limit_load_3": Def(C.uint16, None, HR(1058)),
+    "pf_limit_pf_3": Def(C.uint16, None, HR(1059)),
+    "pf_limit_load_4": Def(C.uint16, None, HR(1060)),
+    "pf_limit_pf_4": Def(C.uint16, None, HR(1061)),
     "f_under_derate_start": Def(C.centi, None, HR(1064), min=40.0, max=70.0),
     "f_under_derate_end": Def(C.centi, None, HR(1065), min=40.0, max=70.0),
     "f_over_derate_end": Def(C.centi, None, HR(1066), min=40.0, max=70.0),
     "p_export_limit": Def(C.deci, None, HR(1063), max=6500),
     "battery_power_cutoff": Def(C.uint16, None, HR(1078)),
+    "ac_power_derate_delay": Def(C.centi, None, HR(1079)),
     # battery_type at HR(1080) shadows the single-phase HR(54)
     "battery_type": Def(C.uint16, BatteryType, HR(1080)),
     "max_charge_current": Def(C.uint16, None, HR(1088)),
+    "v_battery_lv": Def(C.deci, None, HR(1089), min=0.0, max=1000.0),
+    "v_battery_cv": Def(C.deci, None, HR(1090), min=0.0, max=1000.0),
+    "lead_acid_number": Def(C.deci, None, HR(1091)),
+    "drms_enable": Def(C.bool, None, HR(1093)),
+    "aging_test": Def(C.uint16, None, HR(1098)),
+    "bypass_enable": Def(C.bool, None, HR(1100)),
+    "npe_enable": Def(C.bool, None, HR(1101)),
+    "unbalance_output_enable": Def(C.bool, None, HR(1104)),
     "backup_enable": Def(C.bool, None, HR(1105)),
+    "v_backup_nominal": Def(C.nominal_voltage, None, HR(1106)),
+    "f_backup_nominal": Def(C.nominal_frequency, None, HR(1107)),
     # battery_discharge_limit_ac at HR(1108) shadows single-phase HR(314)
     "battery_discharge_limit_ac": Def(C.uint16, None, HR(1108)),
     # battery_soc_reserve at HR(1109) shadows single-phase HR(110)
@@ -66,12 +107,15 @@ _THREE_PHASE_LUT = {
     "charge_slot_1": Def(C.timeslot, None, HR(1113), HR(1114)),
     # charge_slot_2 at HR(1115/1116) shadows single-phase HR(31/32)
     "charge_slot_2": Def(C.timeslot, None, HR(1115), HR(1116)),
+    "load_compensation_enable": Def(C.bool, None, HR(1117)),
     # discharge_slot_1 at HR(1118/1119) shadows single-phase HR(56/57)
     "discharge_slot_1": Def(C.timeslot, None, HR(1118), HR(1119)),
     # discharge_slot_2 at HR(1120/1121) shadows single-phase HR(44/45)
     "discharge_slot_2": Def(C.timeslot, None, HR(1120), HR(1121)),
     # enable_discharge at HR(1122) shadows single-phase HR(59)
     "enable_discharge": Def(C.bool, None, HR(1122)),
+    "force_charge_enable": Def(C.bool, None, HR(1123)),
+    "battery_maintenance_mode": Def(C.uint16, BatteryMaintenance, HR(1124)),
     #
     # Input Registers 1001–1060 — PV
     #
@@ -123,6 +167,8 @@ _THREE_PHASE_LUT = {
     # Input Registers 1120–1140 — Battery
     #
     "battery_priority": Def(C.uint16, None, IR(1120)),
+    # battery_type (IR) at IR(1121) — read-only decoded value alongside HR(1080)
+    "battery_type_ir": Def(C.uint16, BatteryType, IR(1121)),
     "dc_status": Def(C.uint16, Status, IR(1124)),
     "t_inverter": Def(C.deci, None, IR(1128), min=-60.0, max=150.0),
     "t_boost": Def(C.deci, None, IR(1129), min=-60.0, max=150.0),
