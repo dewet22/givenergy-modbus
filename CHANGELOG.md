@@ -59,6 +59,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - whitelist battery pause registers 318-320 in WRITE_SAFE_REGISTERS ([9824e3b](https://github.com/dewet22/givenergy-modbus/commit/9824e3b825dfa693eb326b36fc199277a5aafc46), @dewet22)
 - add docstrings to deprecated slot wrappers; narrow types in slot tests ([0038349](https://github.com/dewet22/givenergy-modbus/commit/0038349737204615bf5a92b357267e73f4f94c5d), @dewet22)
 - split three-phase HR 1060-1124 load into two ≤60-register reads ([31bce62](https://github.com/dewet22/givenergy-modbus/commit/31bce6216505150050a7159bb1bf5729fe6cbb08), @dewet22)
+- address PR #61 review feedback on slave→device rename ([f1c8235](https://github.com/dewet22/givenergy-modbus/commit/f1c8235e74953ec7ed5d5b94d83a9a17ae475fc8), @dewet22)
 
 ### ⚠️ Deprecated
 
@@ -76,6 +77,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - purify Converter class and backfill three-phase/EMS register fields ([851d4a9](https://github.com/dewet22/givenergy-modbus/commit/851d4a9e6d2cd42dc85ae5e66d7095577b30876e), @dewet22)
 - add architecture overview with topology and component diagrams ([7a7eca4](https://github.com/dewet22/givenergy-modbus/commit/7a7eca43b05210e937a96d073c277033cad6109e), @dewet22)
 - add load_config/refresh dispatch tests; drop email from CLAUDE.md ([da4d218](https://github.com/dewet22/givenergy-modbus/commit/da4d218322232173b491f715f21ff51fbd1e04d8), @dewet22)
+- rename slave→device terminology in line with Modbus.org 2020 update ([48404e5](https://github.com/dewet22/givenergy-modbus/commit/48404e55a104a0857493c29af9a32056e3b1bc9b), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 
