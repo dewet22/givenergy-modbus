@@ -221,7 +221,8 @@ class Client:
             if caps.is_three_phase:
                 reqs += [
                     ReadHoldingRegistersRequest(base_register=1000, register_count=60, slave_address=slave),
-                    ReadHoldingRegistersRequest(base_register=1060, register_count=65, slave_address=slave),
+                    ReadHoldingRegistersRequest(base_register=1060, register_count=60, slave_address=slave),
+                    ReadHoldingRegistersRequest(base_register=1120, register_count=5, slave_address=slave),
                 ]
             if caps.has_extended_slots:
                 reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, slave_address=slave))
