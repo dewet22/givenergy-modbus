@@ -68,11 +68,13 @@ class Changelog:
         # Resolve the default at call time (not as a parameter default) so tests can
         # redirect the module-level CHANGELOG to a temp file via monkeypatch.
         self.path = path if path is not None else CHANGELOG
-        self.lines = self.path.read_text().splitlines(keepends=True)
+        # Always read/write as UTF-8; the section headers contain emoji which fall
+        # outside Windows' default cp1252 codec.
+        self.lines = self.path.read_text(encoding="utf-8").splitlines(keepends=True)
 
     def save(self) -> None:
         """Write the current line buffer back to disk."""
-        self.path.write_text("".join(self.lines))
+        self.path.write_text("".join(self.lines), encoding="utf-8")
 
     def unreleased_has_content(self) -> bool:
         """Return True if [Unreleased] contains any non-blank, non-header lines."""
@@ -249,7 +251,7 @@ def cmd_append(_args) -> None:
         return
     section, description = _parse_commit(message)
     cl = Changelog()
-    attribution = _commit_attribution(cl.path.read_text())
+    attribution = _commit_attribution(cl.path.read_text(encoding="utf-8"))
     cl.append_to_unreleased(section, f"- {description}{attribution}")
     cl.save()
 

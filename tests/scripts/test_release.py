@@ -183,7 +183,7 @@ _MINIMAL_CHANGELOG = """\
 def tmp_changelog(tmp_path, monkeypatch):
     """Point the Changelog class at a temporary file populated with a minimal skeleton."""
     cl_path = tmp_path / "CHANGELOG.md"
-    cl_path.write_text(_MINIMAL_CHANGELOG)
+    cl_path.write_text(_MINIMAL_CHANGELOG, encoding="utf-8")
     monkeypatch.setattr(release, "CHANGELOG", cl_path)
     return cl_path
 
@@ -199,7 +199,7 @@ def test_append_many_writes_entries(tmp_changelog, monkeypatch):
         {"id": "def5678", "message": "fix: bar", "author": {"username": "alice"}, "modified": ["src/bar.py"]},
     ]
     _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text()
+    text = tmp_changelog.read_text(encoding="utf-8")
     assert "✨ Added" in text
     assert "add widget" in text
     assert "🐛 Fixed" in text
@@ -213,7 +213,7 @@ def test_append_many_skips_when_changelog_touched_in_push(tmp_changelog, monkeyp
     ]
     _drive_append_many(commits, monkeypatch)
     # File is untouched — no entries appended for either commit.
-    assert tmp_changelog.read_text() == _MINIMAL_CHANGELOG
+    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
 
 
 def test_append_many_honours_changelog_section_trailer(tmp_changelog, monkeypatch):
@@ -225,7 +225,7 @@ def test_append_many_honours_changelog_section_trailer(tmp_changelog, monkeypatc
         },
     ]
     _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text()
+    text = tmp_changelog.read_text(encoding="utf-8")
     assert "🔄 Changed" in text
     # Should NOT land in Maintenance, the default for refactor:
     assert "🔧 Maintenance" not in text
@@ -241,7 +241,7 @@ def test_append_many_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
         },
     ]
     _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text()
+    text = tmp_changelog.read_text(encoding="utf-8")
     assert "add widget" in text
     assert "fixup review feedback" not in text
 
@@ -249,4 +249,4 @@ def test_append_many_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
 def test_append_many_with_empty_stdin_is_noop(tmp_changelog, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
     release.cmd_append_many(None)
-    assert tmp_changelog.read_text() == _MINIMAL_CHANGELOG
+    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
