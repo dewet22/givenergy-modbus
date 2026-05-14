@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Required for PyPI trusted publishing via OIDC (no API token).
+      id-token: write
 
     steps:
       - name: Checkout
@@ -104,8 +106,6 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
       - name: Notify downstream consumers

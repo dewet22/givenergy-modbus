@@ -1,0 +1,38 @@
+name: Publish tag to PyPI
+
+# Re-publish an already-tagged version. Useful when the main release workflow
+# tagged and built successfully but the PyPI upload step failed (e.g. expired
+# token, transient outage). Builds from the tag's commit and publishes via
+# PyPI trusted publishing — no API token needed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing git tag to publish (e.g. v2.0.0a1)
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
