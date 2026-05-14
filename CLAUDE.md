@@ -43,5 +43,4 @@ uv run ruff check --fix && uv run ruff format
 ## Git
 
 - Conventional commits: `feat:`, `fix:`, `refactor:`, etc.
-- Author email for commits: `dewet22@users.noreply.github.com`
 - Don't push; prepare commits and let the user decide when to push/PR.
