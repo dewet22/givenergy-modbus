@@ -201,11 +201,15 @@ def _is_skippable_commit(message: str) -> bool:
     - Merge commits ("Merge pull request" / "Merge branch") — the feature commits
       they wrap are already in the push's `commits` list separately.
     - The bot's own changelog-update commits — would otherwise recurse.
+    - Any chore: commit whose subject mentions "changelog" — these are housekeeping
+      edits to CHANGELOG.md itself and don't belong as entries within it.
     """
     subject = message.splitlines()[0].strip()
     if subject.startswith(("Merge pull request", "Merge branch")):
         return True
     if subject == "chore: update [Unreleased] changelog":
+        return True
+    if subject.startswith("chore:") and "changelog" in subject.lower():
         return True
     return False
 
