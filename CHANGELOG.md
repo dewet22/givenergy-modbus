@@ -10,6 +10,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### 🔧 Maintenance
 
 - switch PyPI publishing to OIDC; add publish-tag.yml recovery workflow ([27a1dc4](https://github.com/dewet22/givenergy-modbus/commit/27a1dc4ad2604e72ed63feb10715bc11127d2917), @dewet22)
+- fold republish-tag mode into release.yml ([759a04e](https://github.com/dewet22/givenergy-modbus/commit/759a04e357a280bf255b71b9f486b1a2371aebfc), @dewet22)
 
 ## [2.0.0a1] - 2026-05-14
 
