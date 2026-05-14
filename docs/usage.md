@@ -123,6 +123,7 @@ All commands live in `givenergy_modbus.client.commands` and return
 | `set_discharge_slot(idx, timeslot, slot_map)` | Set discharge slot `idx` (1-based) |
 | `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` |
 | `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` |
+| `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) |
 | `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) |
 
 ### Operating modes
@@ -133,7 +134,6 @@ All commands live in `givenergy_modbus.client.commands` and return
 | `set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)` | Storage/timed discharge mode |
 | `set_discharge_mode_max_power()` | Set battery to discharge at max power |
 | `set_discharge_mode_to_match_demand()` | Set battery to match load demand |
-| `set_battery_pause_mode(val)` | Set battery pause mode (`BatteryPauseMode` enum) |
 | `set_ac_charge(enabled)` | Enable or disable AC charging (three-phase) |
 | `set_force_charge(enabled)` | Force battery charge (three-phase) |
 | `set_force_discharge(enabled)` | Force battery discharge (three-phase) |
