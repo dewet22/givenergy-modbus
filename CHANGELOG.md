@@ -44,6 +44,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - add slots 3-10 write commands and model-aware SlotMap dispatch ([e7a88d0](https://github.com/dewet22/givenergy-modbus/commit/e7a88d02e01c4d101c145a3d2d49fcedf5c51f3f), @dewet22)
 - per-model register block dispatch in load_config() and refresh() ([1568038](https://github.com/dewet22/givenergy-modbus/commit/1568038c7243a49ef410033210690b7445bbf822), @dewet22)
 - per-commit and per-push overrides for the changelog bot ([2eb890a](https://github.com/dewet22/givenergy-modbus/commit/2eb890adc8e81dc2df93df3eadee913efc3b13a4), @dewet22)
+- support prerelease and finalize bumps in release workflow ([743f0e5](https://github.com/dewet22/givenergy-modbus/commit/743f0e5bba9a54a89cc004093c1bde126499289c), @dewet22)
 
 ### 🔄 Changed
 
