@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0a1] - 2026-05-14
+
 A chunky update, incorporating a lot of the differences that GivTCP developed and introduced during the extended time being forked away. Kudos and credit to @britkat1980 for all the effort that I could crib from.
 
 ### ✨ Added
