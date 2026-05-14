@@ -40,18 +40,6 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - New enums: `WorkMode`, `Certification`, `InverterType`, `Generation`, `Phase`, `MeterStatus`, `BatteryMaintenance` ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), [95aba95](https://github.com/dewet22/givenergy-modbus/commit/95aba95), @dewet22)
 - `inverter_fault_messages` field on `SinglePhaseInverter` decodes the HR(223/224) bitmask into a list of active fault name strings ([5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4), @dewet22)
 - `min`/`max` physical bounds on `RegisterDefinition` for out-of-range detection across all register LUTs ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
-- add post-conversion bounds checking to RegisterDefinition ([3a83461](https://github.com/dewet22/givenergy-modbus/commit/3a8346174d9f4506443f5a4e77489486a0b49c0c), @dewet22)
-- double-buffer bank validation in Plant.update() ([b804586](https://github.com/dewet22/givenergy-modbus/commit/b8045866157051ecd2c1922ed7584876b3652fb9), @dewet22)
-- bank coherence check via serial number validity ([82ba7fc](https://github.com/dewet22/givenergy-modbus/commit/82ba7fc673736794a7cc6ff4fc893c4308e283ee), @dewet22)
-- add bounds to register definitions for corruption detection ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0db93fd4062e662789771e9a833cfd1603), @dewet22)
-- add PlantCapabilities, Client.detect(), and resolve_model(raw_dtc) (phase 2.2) ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc880d6e7eda05ea8c4653705cd0fa89275), @dewet22)
-- typed plant accessors, Client.refresh()/load_config(), HvStack (phase 2.3) ([9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e981bff1b308b499c0a48e9eb9277294000e), @dewet22)
-- introduce SlotMap for model-driven charge/discharge slot register routing ([a0c50e3](https://github.com/dewet22/givenergy-modbus/commit/a0c50e308b57f74b7c9465f2af9a8a1cb1e05f0e), @dewet22)
-- add Phase 3.2 orthogonal command helpers ([8ca0b75](https://github.com/dewet22/givenergy-modbus/commit/8ca0b75e4495770916de0bfef160119f0cd106b7), @dewet22)
-- add missing three-phase registers and BatteryMaintenance enum ([95aba95](https://github.com/dewet22/givenergy-modbus/commit/95aba95c127951858d25529af3226f1159ccfe00), @dewet22)
-- add inverter_fault_messages decoder for single-phase HR 223/224 ([5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4a3e873fabc34d6a70338e6f302b1c29c4), @dewet22)
-- deprecate Inverter alias with DeprecationWarning via module __getattr__ ([87bc7a0](https://github.com/dewet22/givenergy-modbus/commit/87bc7a0d38982e180c6b0b36e60dce6c699c64dc), @dewet22)
-- fork-merge — HV/3-phase/gateway models, Client.detect(), bounds validation, enums ([5d57332](https://github.com/dewet22/givenergy-modbus/commit/5d573325d887cb0e98b561ebd7ba5316f227521c), @dewet22)
 
 ### Changed
 
@@ -62,8 +50,6 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 ### Fixed
 
 - `Converter.timeslot` now returns `None` for raw register value `60` — a hardware sentinel for an unset slot that previously caused `ValueError: minute must be in 0..59` ([f93f872](https://github.com/dewet22/givenergy-modbus/commit/f93f872), @dewet22)
-- guard Converter.timeslot against hardware sentinel value 60 ([f93f872](https://github.com/dewet22/givenergy-modbus/commit/f93f872bc1f15eff82f0807c059b0bdf748585d5), @dewet22)
-- resolve mypy errors in client.py, plant.py, register.py; apply prek auto-fixes ([2673079](https://github.com/dewet22/givenergy-modbus/commit/26730791b053cf98cb4bf072afe682fbcd8dc23e), @dewet22)
 - use dict.get() in nominal_voltage/nominal_frequency to avoid IndexError on unknown option ([b5446a2](https://github.com/dewet22/givenergy-modbus/commit/b5446a2c9b560fe9cf8a2b727b73fb7209da0329), @dewet22)
 
 ### Deprecated
@@ -76,10 +62,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 - add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
 - add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
-- reorder [Unreleased] sections (Added → Changed → Maintenance) ([5f1ee88](https://github.com/dewet22/givenergy-modbus/commit/5f1ee88e6756bf09d41c3000ad6d4f13c2fc2171), @dewet22)
-- update [Unreleased] changelog for fork-merge work ([2a64ed9](https://github.com/dewet22/givenergy-modbus/commit/2a64ed9e2807a66a3d6cafbe12b29a87f940cbf2), @dewet22)
 - add coverage for deprecation alias, slot maps, getter branches, and BatteryMaintenance ([f3c3842](https://github.com/dewet22/givenergy-modbus/commit/f3c3842963d928aeba72b135af50328c1aae0c9e), @dewet22)
-- exclude tests/ from bandit to suppress B101 false positives ([b17d076](https://github.com/dewet22/givenergy-modbus/commit/b17d0765adea3bb5491cf171d156a5989174b72a), @dewet22)
 - add .bandit INI file to exclude tests/ from bandit scan ([f153a30](https://github.com/dewet22/givenergy-modbus/commit/f153a30fa7917827a9364a75bbd3524d3bda0630), @dewet22)
 
 ## [1.3.0] - 2026-05-13
