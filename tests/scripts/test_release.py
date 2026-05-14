@@ -286,3 +286,72 @@ def test_append_skips_merge_commits(tmp_changelog, monkeypatch):
     monkeypatch.setenv("COMMIT_MSG", "Merge pull request #99 from foo/bar")
     release.cmd_append(None)
     assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
+
+
+# ---------------------------------------------------------------------------
+# cmd_bump — version bumping (release + prerelease semantics)
+# ---------------------------------------------------------------------------
+
+
+class _BumpArgs:
+    """Minimal stand-in for argparse Namespace passed to cmd_bump."""
+
+    def __init__(self, current: str, bump: str, prerelease: str | None = None) -> None:
+        self.current = current
+        self.bump = bump
+        self.prerelease = prerelease
+
+
+def _bump(capsys, current: str, bump: str, prerelease: str | None = None) -> str:
+    release.cmd_bump(_BumpArgs(current, bump, prerelease))
+    return capsys.readouterr().out.strip()
+
+
+def test_bump_major_minor_patch(capsys):
+    assert _bump(capsys, "1.3.0", "major") == "2.0.0"
+    assert _bump(capsys, "1.3.0", "minor") == "1.4.0"
+    assert _bump(capsys, "1.3.0", "patch") == "1.3.1"
+
+
+def test_bump_major_with_alpha_starts_prerelease(capsys):
+    assert _bump(capsys, "1.3.0", "major", "alpha") == "2.0.0a1"
+    assert _bump(capsys, "1.3.0", "minor", "beta") == "1.4.0b1"
+    assert _bump(capsys, "1.3.0", "patch", "rc") == "1.3.1rc1"
+
+
+def test_bump_prerelease_increments_counter(capsys):
+    assert _bump(capsys, "2.0.0a1", "prerelease") == "2.0.0a2"
+    assert _bump(capsys, "2.0.0b5", "prerelease") == "2.0.0b6"
+    assert _bump(capsys, "1.4.0rc1", "prerelease") == "1.4.0rc2"
+
+
+def test_bump_prerelease_requires_existing_prerelease():
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_BumpArgs("2.0.0", "prerelease"))
+
+
+def test_bump_finalize_drops_prerelease_suffix(capsys):
+    assert _bump(capsys, "2.0.0a3", "finalize") == "2.0.0"
+    assert _bump(capsys, "1.4.0rc2", "finalize") == "1.4.0"
+
+
+def test_bump_finalize_requires_existing_prerelease():
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_BumpArgs("2.0.0", "finalize"))
+
+
+def test_bump_release_drops_prerelease_from_current(capsys):
+    # Bumping major/minor/patch from a prerelease ignores the suffix on `current`.
+    assert _bump(capsys, "2.0.0a3", "major") == "3.0.0"
+    assert _bump(capsys, "2.0.0a3", "minor") == "2.1.0"
+    assert _bump(capsys, "2.0.0a3", "patch") == "2.0.1"
+
+
+def test_bump_rejects_unparseable_version():
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_BumpArgs("not-a-version", "patch"))
+
+
+def test_bump_prerelease_flag_invalid_with_prerelease_bump():
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_BumpArgs("2.0.0a1", "prerelease", "alpha"))

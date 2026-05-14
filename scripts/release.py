@@ -202,19 +202,70 @@ def cmd_check(_args) -> None:
         sys.exit(1)
 
 
+_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
+_PRERELEASE_STAGES = {"alpha": "a", "beta": "b", "rc": "rc"}
+
+
 def cmd_bump(args) -> None:
-    """Print the next version given a current version and bump type."""
-    major, minor, patch = map(int, args.current.split("."))
+    """Print the next version given a current version and bump type.
+
+    Bump types:
+      major / minor / patch  — operate on the release tuple; any prerelease
+                               suffix on `current` is dropped. Combine with
+                               `--prerelease alpha|beta|rc` to start a new
+                               prerelease line (e.g. 1.3.0 -> 2.0.0a1).
+      prerelease             — increment the prerelease counter only
+                               (2.0.0a1 -> 2.0.0a2). Requires current to
+                               already have a prerelease suffix.
+      finalize               — drop the prerelease suffix without changing
+                               the release tuple (2.0.0a3 -> 2.0.0).
+    """
+    m = _VERSION_RE.match(args.current)
+    if not m:
+        print(f"ERROR: cannot parse version {args.current!r}", file=sys.stderr)
+        sys.exit(1)
+    major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    pre_stage, pre_n = m.group(4), m.group(5)
+
+    if args.bump == "prerelease":
+        if pre_stage is None:
+            print(
+                f"ERROR: prerelease bump requires current to have a prerelease suffix "
+                f"(got {args.current!r})",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.prerelease:
+            print("ERROR: --prerelease cannot be combined with bump=prerelease", file=sys.stderr)
+            sys.exit(1)
+        print(f"{major}.{minor}.{patch}{pre_stage}{int(pre_n) + 1}")
+        return
+
+    if args.bump == "finalize":
+        if pre_stage is None:
+            print(
+                f"ERROR: finalize requires current to have a prerelease suffix "
+                f"(got {args.current!r})",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.prerelease:
+            print("ERROR: --prerelease cannot be combined with bump=finalize", file=sys.stderr)
+            sys.exit(1)
+        print(f"{major}.{minor}.{patch}")
+        return
+
     if args.bump == "major":
-        major += 1
-        minor = 0
-        patch = 0  # noqa: E702
+        major, minor, patch = major + 1, 0, 0
     elif args.bump == "minor":
-        minor += 1
-        patch = 0  # noqa: E702
-    else:
+        minor, patch = minor + 1, 0
+    else:  # patch
         patch += 1
-    print(f"{major}.{minor}.{patch}")
+
+    if args.prerelease:
+        print(f"{major}.{minor}.{patch}{_PRERELEASE_STAGES[args.prerelease]}1")
+    else:
+        print(f"{major}.{minor}.{patch}")
 
 
 def cmd_update(args) -> None:
@@ -339,8 +390,13 @@ def main() -> None:
     sub.add_parser("check", help="Fail if [Unreleased] section is empty")
 
     bump_p = sub.add_parser("bump", help="Print next version number")
-    bump_p.add_argument("current", help="Current version (e.g. 1.2.3)")
-    bump_p.add_argument("bump", choices=["major", "minor", "patch"])
+    bump_p.add_argument("current", help="Current version (e.g. 1.2.3 or 2.0.0a1)")
+    bump_p.add_argument("bump", choices=["major", "minor", "patch", "prerelease", "finalize"])
+    bump_p.add_argument(
+        "--prerelease",
+        choices=["alpha", "beta", "rc"],
+        help="With major/minor/patch: start a prerelease line (e.g. 1.3.0 + major + alpha -> 2.0.0a1).",
+    )
 
     update_p = sub.add_parser("update", help="Move [Unreleased] to a versioned section and print the entry")
     update_p.add_argument("version", help="New version (e.g. 1.2.3)")
