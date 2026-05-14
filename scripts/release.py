@@ -38,17 +38,45 @@ _COMMIT_TYPE_TO_SECTION: dict[str, str] = {
     "wip": "🔧 Maintenance",
 }
 
+# Trailer key that overrides automatic section bucketing on a per-commit basis.
+# Recognised values are either `skip` (suppress the entry) or any of the textual
+# section names in _SECTION_ORDER (case-insensitive, emoji optional).
+_CHANGELOG_TRAILER_RE = re.compile(r"^changelog\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def _resolve_section_alias(name: str) -> str | None:
+    """Match a section name (e.g. 'Changed' or '✨ Added') to its emoji-prefixed form."""
+    name = name.strip().lower()
+    for section in _SECTION_ORDER:
+        # Accept both the full form ("✨ Added") and the textual suffix ("Added").
+        if section.lower() == name:
+            return section
+        textual = section.split(" ", 1)[-1].lower()
+        if textual == name:
+            return section
+    return None
+
+
+def _find_changelog_trailer(message: str) -> str | None:
+    """Return the value of the last `Changelog:` trailer in the message, or None."""
+    matches = _CHANGELOG_TRAILER_RE.findall(message)
+    return matches[-1].strip() if matches else None
+
 
 class Changelog:
     """Line-by-line reader/editor for Keep a Changelog files."""
 
-    def __init__(self, path: Path = CHANGELOG) -> None:
-        self.path = path
-        self.lines = path.read_text().splitlines(keepends=True)
+    def __init__(self, path: Path | None = None) -> None:
+        # Resolve the default at call time (not as a parameter default) so tests can
+        # redirect the module-level CHANGELOG to a temp file via monkeypatch.
+        self.path = path if path is not None else CHANGELOG
+        # Always read/write as UTF-8; the section headers contain emoji which fall
+        # outside Windows' default cp1252 codec.
+        self.lines = self.path.read_text(encoding="utf-8").splitlines(keepends=True)
 
     def save(self) -> None:
         """Write the current line buffer back to disk."""
-        self.path.write_text("".join(self.lines))
+        self.path.write_text("".join(self.lines), encoding="utf-8")
 
     def unreleased_has_content(self) -> bool:
         """Return True if [Unreleased] contains any non-blank, non-header lines."""
@@ -143,15 +171,28 @@ class Changelog:
 
 
 def _parse_commit(message: str) -> tuple[str, str]:
-    """Return (changelog_section, description) for a conventional commit message."""
+    """Return (changelog_section, description) for a conventional commit message.
+
+    A `Changelog: <Section>` trailer (case-insensitive) overrides the section that
+    the conventional-commit prefix would normally map to. Useful when the prefix
+    doesn't reflect the change's user impact (e.g. a `refactor:` that renames public
+    API → `Changelog: Changed`). Unrecognised values are ignored. `Changelog: skip`
+    is handled separately by `_is_skippable_commit`.
+    """
     subject = message.splitlines()[0].strip()
     m = re.match(r"^(\w+)(?:\([^)]*\))?(!)?\s*:\s*(.+)", subject)
     if not m:
-        return "🔄 Changed", subject
-    commit_type, breaking, description = m.group(1).lower(), m.group(2), m.group(3).strip()
-    if breaking:
-        return "🔄 Changed", f"⚠️ Breaking: {description}"
-    return _COMMIT_TYPE_TO_SECTION.get(commit_type, "🔄 Changed"), description
+        section, description = "🔄 Changed", subject
+    else:
+        commit_type, breaking, description = m.group(1).lower(), m.group(2), m.group(3).strip()
+        section = "🔄 Changed" if breaking else _COMMIT_TYPE_TO_SECTION.get(commit_type, "🔄 Changed")
+        if breaking:
+            description = f"⚠️ Breaking: {description}"
+
+    trailer = _find_changelog_trailer(message)
+    if trailer and trailer.lower() != "skip":
+        section = _resolve_section_alias(trailer) or section
+    return section, description
 
 
 def cmd_check(_args) -> None:
@@ -208,11 +249,11 @@ def _commit_attribution(changelog_text: str) -> str:
 def cmd_append(_args) -> None:
     """Append a conventional commit (from $COMMIT_MSG) to [Unreleased]."""
     message = os.environ.get("COMMIT_MSG", "").strip()
-    if not message:
+    if not message or _is_skippable_commit(message):
         return
     section, description = _parse_commit(message)
     cl = Changelog()
-    attribution = _commit_attribution(cl.path.read_text())
+    attribution = _commit_attribution(cl.path.read_text(encoding="utf-8"))
     cl.append_to_unreleased(section, f"- {description}{attribution}")
     cl.save()
 
@@ -226,6 +267,8 @@ def _is_skippable_commit(message: str) -> bool:
     - The bot's own changelog-update commits — would otherwise recurse.
     - Any chore: commit whose subject mentions "changelog" — these are housekeeping
       edits to CHANGELOG.md itself and don't belong as entries within it.
+    - Commits with a `Changelog: skip` trailer — author opt-out for follow-up
+      commits whose narrative is already captured by their parent commit.
     """
     subject = message.splitlines()[0].strip()
     if subject.startswith(("Merge pull request", "Merge branch")):
@@ -234,19 +277,43 @@ def _is_skippable_commit(message: str) -> bool:
         return True
     if subject.startswith("chore:") and "changelog" in subject.lower():
         return True
+    trailer = _find_changelog_trailer(message)
+    if trailer and trailer.lower() == "skip":
+        return True
+    return False
+
+
+def _push_touched_changelog(commits: list[dict]) -> bool:
+    """Return True if any commit in the push added/modified/removed CHANGELOG.md.
+
+    Used as an opt-out: if a branch maintained its own changelog entries (e.g. for
+    a complex PR where per-commit auto-bucketing isn't expressive enough), the bot
+    should not also append entries on top — that would double-record the change.
+    `removed` is included so that a push deleting the file doesn't cause the
+    subsequent read_text() to raise FileNotFoundError.
+    """
+    for c in commits:
+        for key in ("added", "modified", "removed"):
+            files = c.get(key) or []
+            if "CHANGELOG.md" in files:
+                return True
     return False
 
 
 def cmd_append_many(_args) -> None:
     """Append every commit from a JSON push-event `commits` array (read from stdin).
 
-    Each commit object must have `id`, `message`, and optionally `author.username`.
-    Commits where _is_skippable_commit returns True are dropped silently.
+    Each commit object must have `id`, `message`, and optionally `author.username`,
+    `added`, `modified`. Commits where _is_skippable_commit returns True are dropped
+    silently. If any commit in the push touched CHANGELOG.md, the entire append step
+    is skipped — see `_push_touched_changelog` for the rationale.
     """
     raw = sys.stdin.read().strip()
     if not raw:
         return
     commits = json.loads(raw)
+    if _push_touched_changelog(commits):
+        return
     cl = Changelog()
     for c in commits:
         message = (c.get("message") or "").strip()
