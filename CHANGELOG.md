@@ -40,6 +40,9 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - New enums: `WorkMode`, `Certification`, `InverterType`, `Generation`, `Phase`, `MeterStatus`, `BatteryMaintenance` ([80a457d](https://github.com/dewet22/givenergy-modbus/commit/80a457da7ee3295e6a5d569fd890ea4c88b37b89), [95aba95](https://github.com/dewet22/givenergy-modbus/commit/95aba95), @dewet22)
 - `inverter_fault_messages` field on `SinglePhaseInverter` decodes the HR(223/224) bitmask into a list of active fault name strings ([5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4), @dewet22)
 - `min`/`max` physical bounds on `RegisterDefinition` for out-of-range detection across all register LUTs ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
+- accept mode parameter in set_calibrate_battery_soc ([8139304](https://github.com/dewet22/givenergy-modbus/commit/8139304b373625fcf13e52a90328e0eb50876c1c), @dewet22)
+- add slots 3-10 write commands and model-aware SlotMap dispatch ([e7a88d0](https://github.com/dewet22/givenergy-modbus/commit/e7a88d02e01c4d101c145a3d2d49fcedf5c51f3f), @dewet22)
+- per-model register block dispatch in load_config() and refresh() ([1568038](https://github.com/dewet22/givenergy-modbus/commit/1568038c7243a49ef410033210690b7445bbf822), @dewet22)
 
 ### 🔄 Changed
 
@@ -53,6 +56,9 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - `Client.one_shot_command()` no longer calls `connect()` internally — calling it on an already-connected client was opening a second TCP connection, spawning duplicate consumer/producer tasks, and causing both tasks to race for reads on the same `StreamReader`, permanently breaking the connection ([2b33e61](https://github.com/dewet22/givenergy-modbus/commit/2b33e61), @dewet22)
 - use dict.get() in nominal_voltage/nominal_frequency to avoid IndexError on unknown option ([b5446a2](https://github.com/dewet22/givenergy-modbus/commit/b5446a2c9b560fe9cf8a2b727b73fb7209da0329), @dewet22)
 - remove implicit connect() from one_shot_command ([87d42bf](https://github.com/dewet22/givenergy-modbus/commit/87d42bfdfc3e08388a3679a2769efafa5bea31c8), @dewet22)
+- whitelist battery pause registers 318-320 in WRITE_SAFE_REGISTERS ([9824e3b](https://github.com/dewet22/givenergy-modbus/commit/9824e3b825dfa693eb326b36fc199277a5aafc46), @dewet22)
+- add docstrings to deprecated slot wrappers; narrow types in slot tests ([0038349](https://github.com/dewet22/givenergy-modbus/commit/0038349737204615bf5a92b357267e73f4f94c5d), @dewet22)
+- split three-phase HR 1060-1124 load into two ≤60-register reads ([31bce62](https://github.com/dewet22/givenergy-modbus/commit/31bce6216505150050a7159bb1bf5729fe6cbb08), @dewet22)
 
 ### ⚠️ Deprecated
 
@@ -66,6 +72,10 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
 - add coverage for deprecation alias, slot maps, getter branches, and BatteryMaintenance ([f3c3842](https://github.com/dewet22/givenergy-modbus/commit/f3c3842963d928aeba72b135af50328c1aae0c9e), @dewet22)
 - add .bandit INI file to exclude tests/ from bandit scan ([f153a30](https://github.com/dewet22/givenergy-modbus/commit/f153a30fa7917827a9364a75bbd3524d3bda0630), @dewet22)
+- update usage guide, README, CONTRIBUTING, and add CLAUDE.md ([f4f0ee4](https://github.com/dewet22/givenergy-modbus/commit/f4f0ee469c7089ee605cc0b660f6a44bbf37482d), @dewet22)
+- purify Converter class and backfill three-phase/EMS register fields ([851d4a9](https://github.com/dewet22/givenergy-modbus/commit/851d4a9e6d2cd42dc85ae5e66d7095577b30876e), @dewet22)
+- add architecture overview with topology and component diagrams ([7a7eca4](https://github.com/dewet22/givenergy-modbus/commit/7a7eca43b05210e937a96d073c277033cad6109e), @dewet22)
+- add load_config/refresh dispatch tests; drop email from CLAUDE.md ([da4d218](https://github.com/dewet22/givenergy-modbus/commit/da4d218322232173b491f715f21ff51fbd1e04d8), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 
