@@ -16,13 +16,13 @@ def _make_client() -> Client:
     return client
 
 
-def _prime_cache(client: Client, slave: int, registers: dict) -> None:
-    """Pre-populate a slave's register cache as if plant.update() had been called."""
+def _prime_cache(client: Client, device_address: int, registers: dict) -> None:
+    """Pre-populate a device's register cache as if plant.update() had been called."""
     from givenergy_modbus.model.register_cache import RegisterCache
 
-    if slave not in client.plant.register_caches:
-        client.plant.register_caches[slave] = RegisterCache()
-    client.plant.register_caches[slave].update(registers)
+    if device_address not in client.plant.register_caches:
+        client.plant.register_caches[device_address] = RegisterCache()
+    client.plant.register_caches[device_address].update(registers)
 
 
 async def _mock_probe_success(request, *, timeout, retries):
@@ -42,10 +42,10 @@ async def _mock_probe_timeout(request, *, timeout, retries):
 def test_plant_capabilities_round_trip():
     caps = PlantCapabilities(
         device_type=Model.HYBRID,
-        inverter_slave=0x32,
-        meter_slaves=[1, 2],
-        lv_battery_slaves=[0x33, 0x34],
-        bcu_slaves=[],
+        inverter_address=0x32,
+        meter_addresses=[1, 2],
+        lv_battery_addresses=[0x33, 0x34],
+        bcu_stacks=[],
     )
     assert PlantCapabilities.from_dict(caps.to_dict()) == caps
 
@@ -53,14 +53,14 @@ def test_plant_capabilities_round_trip():
 def test_plant_capabilities_round_trip_with_bcus():
     caps = PlantCapabilities(
         device_type=Model.ALL_IN_ONE,
-        inverter_slave=0x32,
-        meter_slaves=[],
-        lv_battery_slaves=[],
-        bcu_slaves=[(0, 3), (1, 2)],
+        inverter_address=0x32,
+        meter_addresses=[],
+        lv_battery_addresses=[],
+        bcu_stacks=[(0, 3), (1, 2)],
     )
     restored = PlantCapabilities.from_dict(caps.to_dict())
     assert restored == caps
-    assert restored.bcu_slaves == [(0, 3), (1, 2)]
+    assert restored.bcu_stacks == [(0, 3), (1, 2)]
 
 
 def test_plant_capabilities_is_hv():
@@ -94,25 +94,29 @@ async def test_detect_resolves_model_from_hr0_hr21():
     assert client.plant.capabilities is caps
 
 
-def _prime_battery_serial(client: Client, slave: int) -> None:
-    """Prime a slave cache with a valid battery serial number (IR 110–114)."""
+def _prime_battery_serial(client: Client, device_address: int) -> None:
+    """Prime a device cache with a valid battery serial number (IR 110–114)."""
     # "SA1234A567" encoded as five big-endian 16-bit register values.
-    _prime_cache(client, slave, {IR(110): 0x5341, IR(111): 0x3132, IR(112): 0x3334, IR(113): 0x4135, IR(114): 0x3637})
+    _prime_cache(
+        client,
+        device_address,
+        {IR(110): 0x5341, IR(111): 0x3132, IR(112): 0x3334, IR(113): 0x4135, IR(114): 0x3637},
+    )
 
 
 @pytest.mark.asyncio
 async def test_detect_no_peripherals_returns_empty_lists():
     client = _make_client()
     _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
-    # No battery serial primed at 0x32 → Battery.is_valid() returns False → no battery slaves.
+    # No battery serial primed at 0x32 → Battery.is_valid() returns False → no battery devices.
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
             caps = await client.detect()
 
-    assert caps.meter_slaves == []
-    assert caps.lv_battery_slaves == []
-    assert caps.bcu_slaves == []
+    assert caps.meter_addresses == []
+    assert caps.lv_battery_addresses == []
+    assert caps.bcu_stacks == []
 
 
 @pytest.mark.asyncio
@@ -127,13 +131,13 @@ async def test_detect_finds_lv_batteries():
     probe_results = {0x33: True, 0x34: False}
 
     async def _probe_side_effect(request, *, timeout, retries):
-        return probe_results.get(request.slave_address, False)
+        return probe_results.get(request.device_address, False)
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", side_effect=_probe_side_effect):
             caps = await client.detect()
 
-    assert caps.lv_battery_slaves == [0x32, 0x33]
+    assert caps.lv_battery_addresses == [0x32, 0x33]
 
 
 @pytest.mark.asyncio
@@ -144,13 +148,13 @@ async def test_detect_finds_meters():
     meter_addresses = {0x01, 0x03}
 
     async def _probe_side_effect(request, *, timeout, retries):
-        return request.slave_address in meter_addresses
+        return request.device_address in meter_addresses
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", side_effect=_probe_side_effect):
             caps = await client.detect()
 
-    assert caps.meter_slaves == [0x01, 0x03]
+    assert caps.meter_addresses == [0x01, 0x03]
 
 
 @pytest.mark.asyncio
@@ -167,15 +171,15 @@ async def test_detect_hv_probes_bcus():
     bams_and_bcus = {0xA0, 0x70, 0x71}
 
     async def _probe_side_effect(request, *, timeout, retries):
-        return request.slave_address in bams_and_bcus
+        return request.device_address in bams_and_bcus
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", side_effect=_probe_side_effect):
             caps = await client.detect()
 
     assert caps.is_hv is True
-    assert caps.bcu_slaves == [(0, 3), (1, 2)]
-    assert caps.lv_battery_slaves == []
+    assert caps.bcu_stacks == [(0, 3), (1, 2)]
+    assert caps.lv_battery_addresses == []
 
 
 @pytest.mark.asyncio
@@ -189,12 +193,12 @@ async def test_detect_hv_skips_lv_battery_probing():
             caps = await client.detect()
 
     assert caps.is_hv is True
-    assert caps.lv_battery_slaves == []
+    assert caps.lv_battery_addresses == []
 
 
 @pytest.mark.asyncio
 async def test_detect_raises_when_hr0_missing():
-    """If HR(0) is absent after reading slave 0x11, detect raises CommunicationError."""
+    """If HR(0) is absent after reading device 0x11, detect raises CommunicationError."""
     client = _make_client()
     # Don't prime any cache — HR(0) will be absent.
 

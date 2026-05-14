@@ -159,7 +159,7 @@ class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
 
     def expected_response(self):
         return ReadHoldingRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
 
@@ -181,7 +181,7 @@ class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
 
     def expected_response(self):
         return ReadInputRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
 
@@ -203,7 +203,7 @@ class ReadMeterProductRegistersRequest(ReadMeterProductRegisters, ReadRegistersR
 
     def expected_response(self):
         return ReadMeterProductRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
 

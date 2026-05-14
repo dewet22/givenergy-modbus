@@ -15,10 +15,10 @@ def _plant_with_caps(**kwargs) -> Plant:
     return plant
 
 
-def _prime(plant: Plant, slave: int, registers: dict) -> None:
-    if slave not in plant.register_caches:
-        plant.register_caches[slave] = RegisterCache()
-    plant.register_caches[slave].update(registers)
+def _prime(plant: Plant, device_addr: int, registers: dict) -> None:
+    if device_addr not in plant.register_caches:
+        plant.register_caches[device_addr] = RegisterCache()
+    plant.register_caches[device_addr].update(registers)
 
 
 # ---------------------------------------------------------------------------
@@ -35,31 +35,31 @@ def test_inverter_falls_back_without_capabilities():
 
 
 def test_inverter_returns_threephase_for_threephase_model():
-    plant = _plant_with_caps(device_type=Model.HYBRID_3PH, inverter_slave=0x32)
+    plant = _plant_with_caps(device_type=Model.HYBRID_3PH, inverter_address=0x32)
     assert isinstance(plant.inverter, ThreePhaseInverter)
 
 
 # ---------------------------------------------------------------------------
-# plant.batteries — uses lv_battery_slaves when capabilities set
+# plant.batteries — uses lv_battery_addresses when capabilities set
 # ---------------------------------------------------------------------------
 
 
-def test_batteries_uses_capabilities_slave_list():
-    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_slaves=[0x32, 0x33])
+def test_batteries_uses_capabilities_address_list():
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
     _prime(plant, 0x32, {IR(60): 1})
     _prime(plant, 0x33, {IR(60): 1})
     assert len(plant.batteries) == 2
 
 
 def test_batteries_skips_missing_caches():
-    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_slaves=[0x32, 0x33])
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
     _prime(plant, 0x32, {IR(60): 1})
     # 0x33 cache absent — should not raise, just omit it.
     assert len(plant.batteries) == 1
 
 
 def test_number_batteries_uses_capabilities():
-    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_slaves=[0x32, 0x33])
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
     assert plant.number_batteries == 2
 
 
@@ -84,14 +84,14 @@ def test_hv_stacks_empty_without_capabilities():
 
 
 def test_hv_stacks_returns_stack_per_bcu():
-    plant = _plant_with_caps(device_type=Model.ALL_IN_ONE, bcu_slaves=[(0, 2), (1, 3)])
+    plant = _plant_with_caps(device_type=Model.ALL_IN_ONE, bcu_stacks=[(0, 2), (1, 3)])
     _prime(plant, 0x70, {IR(64): 2})
     _prime(plant, 0x71, {IR(64): 3})
     stacks = plant.hv_stacks
     assert len(stacks) == 2
     assert all(isinstance(s, HvStack) for s in stacks)
-    assert stacks[0].slave_address == 0x70
-    assert stacks[1].slave_address == 0x71
+    assert stacks[0].device_address == 0x70
+    assert stacks[1].device_address == 0x71
     assert len(stacks[0].bmus) == 2
     assert len(stacks[1].bmus) == 3
 
@@ -106,13 +106,13 @@ def test_meters_empty_without_capabilities():
     assert plant.meters == {}
 
 
-def test_meters_empty_when_no_meter_slaves():
-    plant = _plant_with_caps(device_type=Model.HYBRID, meter_slaves=[])
+def test_meters_empty_when_no_meter_addresses():
+    plant = _plant_with_caps(device_type=Model.HYBRID, meter_addresses=[])
     assert plant.meters == {}
 
 
-def test_meters_returns_dict_keyed_by_slave():
-    plant = _plant_with_caps(device_type=Model.HYBRID, meter_slaves=[0x01, 0x02])
+def test_meters_returns_dict_keyed_by_address():
+    plant = _plant_with_caps(device_type=Model.HYBRID, meter_addresses=[0x01, 0x02])
     _prime(plant, 0x01, {IR(60): 100})
     _prime(plant, 0x02, {IR(60): 200})
     meters = plant.meters
@@ -121,7 +121,7 @@ def test_meters_returns_dict_keyed_by_slave():
 
 
 def test_meters_skips_missing_caches():
-    plant = _plant_with_caps(device_type=Model.HYBRID, meter_slaves=[0x01, 0x02])
+    plant = _plant_with_caps(device_type=Model.HYBRID, meter_addresses=[0x01, 0x02])
     _prime(plant, 0x01, {IR(60): 100})
     # 0x02 absent — only one meter returned.
     assert set(plant.meters.keys()) == {0x01}

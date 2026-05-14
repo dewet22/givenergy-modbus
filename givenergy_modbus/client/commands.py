@@ -96,17 +96,17 @@ class RegisterMap:
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
     """Refresh plant data."""
     requests: list[TransparentRequest] = [
-        ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=0x32),
-        ReadInputRegistersRequest(base_register=180, register_count=60, slave_address=0x32),
+        ReadInputRegistersRequest(base_register=0, register_count=60, device_address=0x32),
+        ReadInputRegistersRequest(base_register=180, register_count=60, device_address=0x32),
     ]
     if complete:
-        requests.append(ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=0x32))
-        requests.append(ReadHoldingRegistersRequest(base_register=60, register_count=60, slave_address=0x32))
-        requests.append(ReadHoldingRegistersRequest(base_register=120, register_count=60, slave_address=0x32))
-        requests.append(ReadInputRegistersRequest(base_register=120, register_count=60, slave_address=0x32))
+        requests.append(ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x32))
+        requests.append(ReadHoldingRegistersRequest(base_register=60, register_count=60, device_address=0x32))
+        requests.append(ReadHoldingRegistersRequest(base_register=120, register_count=60, device_address=0x32))
+        requests.append(ReadInputRegistersRequest(base_register=120, register_count=60, device_address=0x32))
         number_batteries = max_batteries
     for i in range(number_batteries):
-        requests.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=0x32 + i))
+        requests.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32 + i))
     return requests
 
 

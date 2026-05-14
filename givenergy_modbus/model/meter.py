@@ -22,7 +22,7 @@ class MeterStatus(IntEnum):
 
 
 class MeterRegisterGetter(RegisterGetter):
-    """Structured format for all meter measurement attributes (FC 0x04, slaves 0x01–0x08)."""
+    """Structured format for all meter measurement attributes (FC 0x04, device addresses 0x01–0x08)."""
 
     REGISTER_LUT = {
         # Input Registers IR(60)–IR(88)
@@ -66,7 +66,7 @@ _MeterBase = create_model(  # type: ignore[call-overload]
 
 
 class Meter(_MeterBase):  # type: ignore[misc,valid-type]
-    """GivEnergy external meter measurement data (FC 0x04, slaves 0x01–0x08)."""
+    """GivEnergy external meter measurement data (FC 0x04, device addresses 0x01–0x08)."""
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Meter":
@@ -79,7 +79,7 @@ class Meter(_MeterBase):  # type: ignore[misc,valid-type]
 
 
 class MeterProductRegisterGetter(RegisterGetter):
-    """Structured format for meter identification attributes (FC 0x16, slaves 0x01–0x08)."""
+    """Structured format for meter identification attributes (FC 0x16, device addresses 0x01–0x08)."""
 
     REGISTER_LUT = {
         # Meter Product Registers MR(60)–MR(68)
@@ -101,7 +101,7 @@ _MeterProductBase = create_model(  # type: ignore[call-overload]
 
 
 class MeterProduct(_MeterProductBase):  # type: ignore[misc,valid-type]
-    """GivEnergy external meter identification data (FC 0x16, slaves 0x01–0x08)."""
+    """GivEnergy external meter identification data (FC 0x16, device addresses 0x01–0x08)."""
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "MeterProduct":
