@@ -9,7 +9,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 A chunky update, incorporating a lot of the differences that GivTCP developed and introduced during the extended time being forked away. Kudos and credit to @britkat1980 for all the effort that I could crib from.
 
-### Added
+### ✨ Added
 
 **New device models** — all modelled as siblings of `SinglePhaseInverter` / `Battery`, with `from_register_cache()` constructors and typed fields:
 
@@ -41,26 +41,26 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - `inverter_fault_messages` field on `SinglePhaseInverter` decodes the HR(223/224) bitmask into a list of active fault name strings ([5b43be4](https://github.com/dewet22/givenergy-modbus/commit/5b43be4), @dewet22)
 - `min`/`max` physical bounds on `RegisterDefinition` for out-of-range detection across all register LUTs ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
 
-### Changed
+### 🔄 Changed
 
 - `Inverter` renamed to `SinglePhaseInverter`; `select_inverter()` is now the recommended constructor — it returns the right concrete type based on device model. `Inverter` remains importable as a deprecated alias ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
 - `Plant.update()` validates each incoming register bank before committing; banks with an invalid serial number (e.g. all-zero padding from an absent battery slot) are silently discarded rather than written into the cache ([82ba7fc](https://github.com/dewet22/givenergy-modbus/commit/82ba7fc), @dewet22)
 - Bounds violations on physical measurements are logged at ERROR level and currently still committed — enforcement (discard-on-violation) follows in a future release once the bounds have been validated in production (see [#57](https://github.com/dewet22/givenergy-modbus/issues/57)) ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
 
-### Fixed
+### 🐛 Fixed
 
 - `Converter.timeslot` now returns `None` for raw register value `60` — a hardware sentinel for an unset slot that previously caused `ValueError: minute must be in 0..59` ([f93f872](https://github.com/dewet22/givenergy-modbus/commit/f93f872), @dewet22)
 - `Client.one_shot_command()` no longer calls `connect()` internally — calling it on an already-connected client was opening a second TCP connection, spawning duplicate consumer/producer tasks, and causing both tasks to race for reads on the same `StreamReader`, permanently breaking the connection ([2b33e61](https://github.com/dewet22/givenergy-modbus/commit/2b33e61), @dewet22)
 - use dict.get() in nominal_voltage/nominal_frequency to avoid IndexError on unknown option ([b5446a2](https://github.com/dewet22/givenergy-modbus/commit/b5446a2c9b560fe9cf8a2b727b73fb7209da0329), @dewet22)
 - remove implicit connect() from one_shot_command ([87d42bf](https://github.com/dewet22/givenergy-modbus/commit/87d42bfdfc3e08388a3679a2769efafa5bea31c8), @dewet22)
 
-### Deprecated
+### ⚠️ Deprecated
 
 - `Inverter` — use `SinglePhaseInverter` directly, or `select_inverter()` to get the correct type for a given device
 - `commands.enable_charge()` / `disable_charge()` — use `set_enable_charge(bool)` instead
 - `commands.enable_discharge()` / `disable_discharge()` — use `set_enable_discharge(bool)` instead
 
-### Maintenance
+### 🔧 Maintenance
 
 - add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
 - add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
@@ -69,23 +69,23 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 ## [1.3.0] - 2026-05-13
 
-### Maintenance
+### 🔧 Maintenance
 
 - notify downstream consumers on release via repository_dispatch (#53) ([2a03623](https://github.com/dewet22/givenergy-modbus/commit/2a036231236f681451eb395ce87fe89ad3377488), @dewet22)
 
-### Fixed
+### 🐛 Fixed
 
 - prevent deadlock after inverter maintenance disconnect (#54) ([4469b7a](https://github.com/dewet22/givenergy-modbus/commit/4469b7af7713c9cfffef95e072acf9f3c38f5ca5), @dewet22)
 
 ## [1.2.0] - 2026-05-11
 
-### Changed
+### 🔄 Changed
 
 - rewrite with commit attribution and full history backfill ([1fbf3c2](https://github.com/dewet22/givenergy-modbus/commit/1fbf3c2009a4c0b63b0ab9017c6c926c9686cf00), @dewet22)
 - Update givenergy_modbus/model/battery.py ([128e3ba](https://github.com/dewet22/givenergy-modbus/commit/128e3ba83ec7be4e5fa3f52462c0a80d37dd6cec), @dewet22)
 - fix off-by-one and replace assert in Plant.number_batteries ([75f8425](https://github.com/dewet22/givenergy-modbus/commit/75f842524105936f0e3b7d5d8b64ef137171e465), @dewet22)
 
-### Fixed
+### 🐛 Fixed
 
 - stop ValueError on battery decode aborting number_batteries (#49, #51) ([27e97b3](https://github.com/dewet22/givenergy-modbus/commit/27e97b36130f938d0d2c2fa1f921fe034c9be16e), @dewet22)
 - downgrade CRITICAL shutdown logs on intentional client.close() (#50) ([d21cf66](https://github.com/dewet22/givenergy-modbus/commit/d21cf665011a1ab954c2db1eb2898a3aa10b105d), @dewet22)
@@ -93,41 +93,41 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - keep parens around multi-exception except for py313 compatibility ([cd40d2f](https://github.com/dewet22/givenergy-modbus/commit/cd40d2f2a4773686f89139de729acf574b0db531), @dewet22)
 - append every commit on push to [Unreleased], not just head_commit ([5ea934d](https://github.com/dewet22/givenergy-modbus/commit/5ea934dcc224fdcd101dff627c461cb410a3fbcd), @dewet22)
 
-### Maintenance
+### 🔧 Maintenance
 
 - align with usb_device_inserted field name retained by Codacy revert ([a471c9a](https://github.com/dewet22/givenergy-modbus/commit/a471c9a49e115aa9902d28cef6899dd30d53fd90), @dewet22)
 
 ## [1.1.2] - 2026-05-11
 
-### Maintenance
+### 🔧 Maintenance
 
 - replace tag-triggered release with workflow_dispatch ([dc78952](https://github.com/dewet22/givenergy-modbus/commit/dc789525805118aa881736ea4564cb61d207d188), @dewet22)
 - add Dependabot GitHub Actions version tracking ([e1680f9](https://github.com/dewet22/givenergy-modbus/commit/e1680f9cb597b4cea7d5f9f1526890d0c67ceae6), @dewet22)
 
 ## [1.1.1] - 2026-05-11
 
-### Maintenance
+### 🔧 Maintenance
 
 - downgrade codecov upload failure to warning ([12a3085](https://github.com/dewet22/givenergy-modbus/commit/12a30859f38966d3b9c82d32e3cf9769d8919661), @dewet22)
 
-### Changed
+### 🔄 Changed
 
 - migrate from Poetry to uv for dependency management ([c8c6156](https://github.com/dewet22/givenergy-modbus/commit/c8c615619f869bbc1f615f5fc992554cd7778a49), @dewet22)
 
-### Fixed
+### 🐛 Fixed
 
 - handle ConnectionResetError when closing client connection ([b7109f1](https://github.com/dewet22/givenergy-modbus/commit/b7109f1f11d4330ef872108aa191c429de3e144d), @dewet22)
 
 ## [1.1.0] - 2026-05-09
 
-### Changed
+### 🔄 Changed
 
 - modernise type annotations and fix bandit/prek hooks ([6d8c50f](https://github.com/dewet22/givenergy-modbus/commit/6d8c50f99779bf744e1473cef4b2094a023aa95b), @dewet22)
 - bump inverter model to 1.1.0: new registers, computed battery_capacity_kwh, enum fix ([23b9cb8](https://github.com/dewet22/givenergy-modbus/commit/23b9cb80bd1446ef1d00d2f9f3af59bab7d10ce5), @dewet22)
 
 ## [1.0.2] - 2026-05-09
 
-### Changed
+### 🔄 Changed
 
 - remove unnecessary fail-fast: false from release workflow ([2b65001](https://github.com/dewet22/givenergy-modbus/commit/2b6500157737ec58606979d3bb2e1c5b4f47ac15), @dewet22)
 - use Python 3.14 as default; fix __version__ when package not installed ([f46a4a4](https://github.com/dewet22/givenergy-modbus/commit/f46a4a41b7cf3dd21fe5e0ec9015f14e297272a2), @dewet22)
@@ -137,7 +137,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 ## [1.0.1] - 2026-05-09
 
-### Changed
+### 🔄 Changed
 
 - move docs publish to after pypi release in release workflow ([ffc0b13](https://github.com/dewet22/givenergy-modbus/commit/ffc0b133c814cf288f704452af05d2f91417ec81), @dewet22)
 - Set package-ecosystem to 'pip' in dependabot config ([93228e6](https://github.com/dewet22/givenergy-modbus/commit/93228e6a601e15709dae7336436f6914ca4e2f0a), @dewet22)
@@ -153,7 +153,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 A completely different approach to this library, handling comms in an asynchronous thread to avoid the old synchronous blocking and polling strategy. That started a rabbit hole of largely re-doing the entire architecture.
 
-### Added
+### ✨ Added
 
 - New asyncio `Client` with long-lived connections, producer/consumer task pair, and `Future`-based response tracking — replaces the old synchronous `GivEnergyClient`.
 - Passive monitoring mode: listen-only client that observes traffic without sending commands.
@@ -163,7 +163,7 @@ A completely different approach to this library, handling comms in an asynchrono
 - Custom exception hierarchy for richer, typed error handling.
 - Community contributions: inverter register additions from @holdestmade and @dominic.
 
-### Changed
+### 🔄 Changed
 
 - PDUs now encode and decode themselves; `Framer` refactored to pass raw frames to the callback and invoke it on decode failure as well as success.
 - `RegisterCache` bound to an explicit slave address; sanity-check gates stale or malformed PDU updates.
@@ -183,46 +183,46 @@ A completely different approach to this library, handling comms in an asynchrono
 - fix mkdocs deprecation warnings ([dd4f546](https://github.com/dewet22/givenergy-modbus/commit/dd4f54612d9e0af91310b47ada4ca04cc90510eb), @dewet22)
 - add security fix tests and tidy changelog ([2a22379](https://github.com/dewet22/givenergy-modbus/commit/2a22379519840747af7c3902bcdd2c97137af56a), @dewet22)
 
-### Removed
+### 🗑️ Removed
 
 - `pymodbus` runtime dependency — the Modbus protocol is now implemented entirely in-library.
 - Old synchronous CLI (spun out to a separate package).
 
-### Security
+### 🔒 Security
 
 - fix five issues identified in audit ([2e38d5e](https://github.com/dewet22/givenergy-modbus/commit/2e38d5e010a61216faed357a73b088fe4f323137), @dewet22)
 
 ## [0.10.1] - 2022-03-03
 
-### Fixed
+### 🐛 Fixed
 
 - 🛠 Make `Plant` serializable.
 
 ## [0.10.0] - 2022-03-02
 
-### Added
+### ✨ Added
 
 - 💪 Reintroduced the battery energy totals on the `Battery` model. On some firmware versions that is populated instead
   of the values from the inverter. (#7, via @britkat1980)
 
-### Changed
+### 🔄 Changed
 
 - ⚠️ Breaking change: rejigged the `Plant` model to abstract away `RegisterCache`s and remove some of the toil around
   managing state. `README.md` updated with example implementation.
 
 ## [0.9.4] - 2022-02-15
 
-### Added
+### ✨ Added
 
 - 🛠 Enable CodeQL GitHub workflow for automated code quality scans
 
-### Fixed
+### 🐛 Fixed
 
 - 🐛 Allow multiple serial number prefixes to map to the same inverter model name (#6, by @zaheerm)
 
 ## [0.9.3] - 2022-02-01
 
-### Fixed
+### 🐛 Fixed
 
 - 🧽 Update total energy registers (by @britkat1980)
 - 🛠 Re-enable builds back to python v3.7 to support e.g. Raspberry Pi current version
@@ -230,7 +230,7 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.9.2] - 2022-01-24
 
-### Fixed
+### 🐛 Fixed
 
 - 🐛 Scaled registers to use division instead of multiplication – prevents rounding errors.
 - 📖 Update README.md to match reality better
@@ -239,7 +239,7 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.9.1] - 2022-01-13
 
-### Fixed
+### 🐛 Fixed
 
 - 🐛 The `_time` fault registers don't denote a BCD-encoded timestamp, but seems to be a counter of #cycles the fault
   lasted.
@@ -247,7 +247,7 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.9.0] - 2022-01-13
 
-### Added
+### ✨ Added
 
 - 💪 Create `RegisterCache` and `RegisterGetter` to contain the custom register data structures in one place. Also
   started a `Plant` model to be a container for all devices in a given system.
@@ -260,7 +260,7 @@ A completely different approach to this library, handling comms in an asynchrono
 - 🙅 Add an `ErrorResponse` PDU so we can try and cope better when the inverter throws error responses.
 - 🧽 Added `absolufy-imports` and `autoflake` to pre-commit checks.
 
-### Changed
+### 🔄 Changed
 
 - ⚠️ Ensure we check charge and discharge limits: current hardware cannot support >50% (i.e. >2.6kW) rates.
 - ✅ Make sure we query the 180+ block of input registers too, since it contains (amongst others) battery energy
@@ -280,7 +280,7 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.8.0] - 2022-01-09
 
-### Added
+### ✨ Added
 
 - A large number of convenience methods in the client to alter the state of the inverter:
     - `enable_charge_target(target_soc: int)` & `disable_charge_target()`
@@ -298,7 +298,7 @@ A completely different approach to this library, handling comms in an asynchrono
   portal after executing queries via this library, and this seems to mitigate against it – possible the inverter TCP
   stack isn't closing half-closed sockets aggressively enough?
 
-### Changed
+### 🔄 Changed
 
 - **Potentially breaking:** Once again, pretty wholesale renaming of registers to more official designations, and
   standardising naming somewhat. Part of the motivation for adding more convenience functions is so clients never have
@@ -306,7 +306,7 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.7.0] - 2022-01-05
 
-### Added
+### ✨ Added
 
 - Another register whitelist and check in the `WriteHoldingRegisterRequest` PDU as another layer of checks to not
   inadvertently write to unsafe registers. Add a test to ensure the allow list stays in sync with the register
@@ -314,7 +314,7 @@ A completely different approach to this library, handling comms in an asynchrono
 - A bunch of convenience methods to write data to the inverter without needing any knowledge of registers.
   See `client.GivEnergyClient` which has a number of `set_*` methods.
 
-### Changed
+### 🔄 Changed
 
 - Split out the end-user client functionality from the Modbus client - they were getting too entangled unnecessarily.
   Updated example code in README for reference.
@@ -322,19 +322,19 @@ A completely different approach to this library, handling comms in an asynchrono
 
 ## [0.6.2] - 2022-01-04
 
-### Fixed
+### 🐛 Fixed
 
 - Will this fix `mindsers/changelog-reader-action@v2`?
 
 ## [0.6.1] - 2022-01-04
 
-### Fixed
+### 🐛 Fixed
 
 - Fix stupid pypi classifier strictness
 
 ## [0.6.0] - 2022-01-04
 
-### Changed
+### 🔄 Changed
 
 - **[BREAKING CHANGE]** registers have been widely renamed for consistency and clarity. The joys of a pre-release API.
 - Checked all the registers and their values to make sense. Added units for most that are self-evident. The
@@ -342,7 +342,7 @@ A completely different approach to this library, handling comms in an asynchrono
   splitting out a `Battery` representation too, to account for systems with multiple battery units (and those without
   batteries at all!). The same might make sense for the PV aspect as well.
 
-### Fixed
+### 🐛 Fixed
 
 - Avoid loading a whole batch of input registers that seem completely unused and save a network call.
 - Match prod release workflow to preview to use py3.9
