@@ -8,7 +8,7 @@
 
 A GivEnergy installation exposes two network endpoints:
 
-- **Inverter gateway** (port 8899) — the primary endpoint, using GivEnergy's proprietary transparent framing over TCP. All inverter-adjacent devices share this connection via Modbus slave addresses.
+- **Inverter gateway** (port 8899) — the primary endpoint, using GivEnergy's proprietary transparent framing over TCP. All inverter-adjacent devices share this connection via Modbus device addresses (formerly known as slave addresses; Modbus.org adopted client/server terminology in 2020).
 - **GivEVC charger** (port 502, separate IP, future) — a standard Modbus TCP device polled via a second connection.
 
 ```mermaid
@@ -28,7 +28,7 @@ graph LR
         (future)"]
     end
 
-    subgraph slaves["Modbus slaves (via gateway)"]
+    subgraph modbus_devices["Modbus devices (via gateway)"]
         inv["Inverter
         (addr 0x32)"]
         bat["LV Batteries
@@ -56,7 +56,7 @@ graph LR
     evc_tcp -.-> evc
 ```
 
-All slaves except the EVC share a single TCP connection to the gateway. The EVC requires a second connection to a different host.
+All devices except the EVC share a single TCP connection to the gateway. The EVC requires a second connection to a different host.
 
 ## Software layers
 
@@ -80,7 +80,7 @@ graph TB
 
     subgraph model["givenergy_modbus.model"]
         plant["Plant\nregister_caches · capabilities"]
-        caps["PlantCapabilities\ndevice_type · inverter_slave\nlv_battery_slaves · meter_slaves\nbcu_slaves · evc_host (future)"]
+        caps["PlantCapabilities\ndevice_type · inverter_address\nlv_battery_addresses · meter_addresses\nbcu_stacks · evc_host (future)"]
 
         subgraph devices["Device models (lazy accessors)"]
             sp["SinglePhaseInverter"]
@@ -133,13 +133,13 @@ client.load_config()   fetch HR configuration banks (slots, targets, limits)
 client.load_config()   re-read after any write to confirm the change landed
 ```
 
-`detect()` is intentionally slow — a correct topology is more important than fast startup. It uses a two-tier timeout: full retries for known slaves, short probe retries for speculative addresses (meters, batteries, BCU stacks) where absence is the common case.
+`detect()` is intentionally slow — a correct topology is more important than fast startup. It uses a two-tier timeout: full retries for known devices, short probe retries for speculative addresses (meters, batteries, BCU stacks) where absence is the common case.
 
 ## Plant data model
 
 `Plant` is passive — it stores data, drives no I/O. Its two responsibilities are:
 
-1. **`register_caches`** — `dict[int, RegisterCache]` keyed by Modbus slave address, populated by `Client` as responses arrive.
+1. **`register_caches`** — `dict[int, RegisterCache]` keyed by Modbus device address, populated by `Client` as responses arrive.
 2. **`capabilities`** — a `PlantCapabilities` dataclass describing the topology discovered by `Client.detect()`.
 
 All plant properties are lazy decoders: they read from `register_caches` and construct the appropriate concrete model class, dispatching on `capabilities.device_type` where needed.

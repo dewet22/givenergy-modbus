@@ -1,16 +1,17 @@
 """GivEnergy HV battery BCU (Battery Control Unit) and BMU (Battery Module Unit) models.
 
-BCU slaves: 0x70–0x8F
-BMU slaves: 0x50–0x6F
+BCU device addresses: 0x70–0x8F
+BMU device addresses: 0x50–0x6F
 
 `HvStack` bundles a BCU and its BMUs for one physical battery stack.
 
-The BMU register layout is offset by 120 * bmu_index within the BCU slave, which
+The BMU register layout is offset by 120 * bmu_index within the BCU device, which
 means register addresses depend on which BMU is being read.  Because Pydantic models
 require a fixed schema, `Bmu` is constructed by `Bmu.from_register_cache(cache, offset)`
 which resolves all addresses before model creation.
 """
 
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,7 +23,7 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 
 
 class BcuRegisterGetter(RegisterGetter):
-    """Structured format for HV BCU cluster-level attributes (slaves 0x70–0x8F)."""
+    """Structured format for HV BCU cluster-level attributes (device addresses 0x70–0x8F)."""
 
     REGISTER_LUT = {
         # Input Registers IR(60)–IR(105)
@@ -85,7 +86,7 @@ class Bcu(_BcuBase):  # type: ignore[misc,valid-type]
 
 # Cell count per BMU (all known HV stacks use 24 cells per module)
 _BMU_CELLS = 24
-# Register stride between BMUs within a BCU slave's address space
+# Register stride between BMUs within a BCU device's address space
 _BMU_STRIDE = 120
 
 
@@ -154,10 +155,56 @@ class Bmu(_BmuBase):  # type: ignore[misc,valid-type]
         return self.serial_number not in (None, "", "          ")  # type: ignore[attr-defined]
 
 
-@dataclass
+@dataclass(init=False)
 class HvStack:
     """One HV battery stack: a BCU and the BMUs it manages."""
 
-    slave_address: int
+    device_address: int
     bcu: Bcu
     bmus: list[Bmu] = field(default_factory=list)
+
+    def __init__(
+        self,
+        device_address: int | None = None,
+        bcu: Bcu | None = None,
+        bmus: list[Bmu] | None = None,
+        *,
+        slave_address: int | None = None,
+    ) -> None:
+        # Positional order matches the original @dataclass signature (slave_address, bcu, bmus)
+        # so legacy positional callers like HvStack(0x70, bcu_obj) keep working.
+        if slave_address is not None:
+            if device_address is not None:
+                raise TypeError("pass either device_address= or slave_address=, not both")
+            warnings.warn(
+                "HvStack.slave_address is deprecated; use device_address",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            device_address = slave_address
+        if device_address is None:
+            raise TypeError("HvStack.__init__ missing required argument: device_address")
+        if bcu is None:
+            raise TypeError("HvStack.__init__ missing required argument: bcu")
+        self.device_address = device_address
+        self.bcu = bcu
+        self.bmus = bmus if bmus is not None else []
+
+    @property
+    def slave_address(self) -> int:
+        """Deprecated alias for `device_address`."""
+        warnings.warn(
+            "HvStack.slave_address is deprecated; use device_address",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.device_address
+
+    @slave_address.setter
+    def slave_address(self, value: int) -> None:
+        warnings.warn(
+            "HvStack.slave_address is deprecated; use device_address",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.device_address = value

@@ -10,7 +10,7 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 
 
 class EmsRegisterGetter(RegisterGetter):
-    """Structured format for EMS plant-level attributes (slave 0x11)."""
+    """Structured format for EMS plant-level attributes (device address 0x11)."""
 
     REGISTER_LUT = {
         #
@@ -107,7 +107,7 @@ _EmsBase = create_model(  # type: ignore[call-overload]
 
 
 class Ems(_EmsBase):  # type: ignore[misc,valid-type]
-    """GivEnergy EMS plant-level data (slave 0x11)."""
+    """GivEnergy EMS plant-level data (device address 0x11)."""
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Ems":

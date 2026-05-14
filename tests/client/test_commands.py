@@ -184,7 +184,7 @@ async def test_set_charge_and_discharge_limits():
     ]
 
     assert commands.set_battery_discharge_limit(50) == [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 50, slave_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 50, device_address=0x11),
     ]
 
     with pytest.raises(ValueError, match=r"Specified Charge Limit \(51%\) is not in \[0-50\]\%"):
@@ -196,19 +196,19 @@ async def test_set_charge_and_discharge_limits():
 async def test_set_system_time():
     """Ensure set_system_time emits the correct requests."""
     assert commands.set_system_date_time(datetime(2022, 11, 23, 4, 34, 59)) == [
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_YEAR, 22, slave_address=0x11),
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MONTH, 11, slave_address=0x11),
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_DAY, 23, slave_address=0x11),
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_HOUR, 4, slave_address=0x11),
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MINUTE, 34, slave_address=0x11),
-        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_SECOND, 59, slave_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_YEAR, 22, device_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MONTH, 11, device_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_DAY, 23, device_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_HOUR, 4, device_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MINUTE, 34, device_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_SECOND, 59, device_address=0x11),
     ]
 
 
 async def test_set_inverter_reboot():
     """Ensure set_inverter_reboot emits the correct requests."""
     assert commands.set_inverter_reboot() == [
-        WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100, slave_address=0x11),
+        WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100, device_address=0x11),
     ]
 
 

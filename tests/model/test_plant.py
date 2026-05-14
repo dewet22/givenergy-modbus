@@ -107,14 +107,14 @@ def test_number_batteries_handles_decode_value_error(
     register_cache_battery_daytime_discharging,
     monkeypatch,
 ):
-    """Regression test for #49: ValueError from a slave's register decode is swallowed.
+    """Regression test for #49: ValueError from a device's register decode is swallowed.
 
-    A ValueError raised while probing a slave (e.g. an out-of-range enum value)
+    A ValueError raised while probing a device (e.g. an out-of-range enum value)
     must not propagate out of number_batteries — it should be treated the same
     as a missing or invalid battery and stop the probe loop.
     """
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
-    plant.register_caches[0x33] = RegisterCache()  # simulate a second slave responding
+    plant.register_caches[0x33] = RegisterCache()  # simulate a second device responding
 
     original_from_register_cache = Battery.from_register_cache
 
@@ -130,8 +130,8 @@ def test_number_batteries_handles_decode_value_error(
 
 def test_number_batteries_counts_all_six_when_all_valid(plant: Plant, monkeypatch):
     """A plant with 6 valid batteries must return 6, not 5 (no off-by-one when loop completes)."""
-    for slave in range(0x32, 0x38):
-        plant.register_caches[slave] = RegisterCache()
+    for device_addr in range(0x32, 0x38):
+        plant.register_caches[device_addr] = RegisterCache()
 
     always_valid_battery = MagicMock(spec=Battery)
     always_valid_battery.is_valid.return_value = True
@@ -182,7 +182,7 @@ async def test_update(
 
     expected_caches_keys = {0x32}
     if isinstance(pdu, (ReadRegistersResponse, WriteHoldingRegisterResponse)):
-        expected_caches_keys.add(pdu.slave_address)
+        expected_caches_keys.add(pdu.device_address)
     assert set(d["register_caches"].keys()) == expected_caches_keys
 
     if isinstance(pdu, ReadRegistersResponse):
@@ -192,21 +192,21 @@ async def test_update(
             register_type = IR
         else:
             register_type = HR
-        assert len(plant.register_caches[pdu.slave_address]) > 30
-        assert plant.register_caches[pdu.slave_address] == {
+        assert len(plant.register_caches[pdu.device_address]) > 30
+        assert plant.register_caches[pdu.device_address] == {
             register_type(k): v for k, v in enumerate(pdu.register_values, start=pdu.base_register)
         }
-        assert d["register_caches"][pdu.slave_address] == {
+        assert d["register_caches"][pdu.device_address] == {
             register_type(k): v for k, v in enumerate(pdu.register_values, start=pdu.base_register)
         }
         # assert len(j) > 1400
     elif isinstance(pdu, WriteHoldingRegisterResponse):
         assert d != orig_plant_dict
-        assert d["register_caches"][pdu.slave_address] == {HR(pdu.register): pdu.value}
+        assert d["register_caches"][pdu.device_address] == {HR(pdu.register): pdu.value}
         # assert j == ''.join(
         #     [
         #         '{"register_caches": {"',
-        #         str(pdu.slave_address),
+        #         str(pdu.device_address),
         #         '": {"HR(',
         #         str(pdu.register),
         #         ')": ',
@@ -1354,10 +1354,10 @@ def test_from_actual():
 # ---------------------------------------------------------------------------
 
 
-def _make_ir_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadInputRegistersResponse:
+def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadInputRegistersResponse:
     """Build a minimal ReadInputRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadInputRegistersResponse)
-    pdu.slave_address = slave_address
+    pdu.device_address = device_address
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1365,10 +1365,10 @@ def _make_ir_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadIn
     return pdu
 
 
-def _make_hr_pdu(registers: dict[int, int], slave_address: int = 0x32) -> ReadHoldingRegistersResponse:
+def _make_hr_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadHoldingRegistersResponse:
     """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadHoldingRegistersResponse)
-    pdu.slave_address = slave_address
+    pdu.device_address = device_address
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1407,10 +1407,10 @@ def test_commit_bank_out_of_bounds_overwrites_prior_data(plant: Plant):
     assert plant.register_caches[0x32].get(IR(5)) == 65535  # overwritten by incoming bank
 
 
-def test_commit_bank_unknown_slave_skips_validation(plant: Plant):
-    """Banks for unknown slave addresses (no getter) are committed without validation."""
+def test_commit_bank_unknown_device_skips_validation(plant: Plant):
+    """Banks for unknown device addresses (no getter) are committed without validation."""
     # 0x99 has no getter — unknown hardware passes through unchecked.
-    pdu = _make_ir_pdu({5: 65535}, slave_address=0x99)
+    pdu = _make_ir_pdu({5: 65535}, device_address=0x99)
     plant.update(pdu)
     assert plant.register_caches[0x99].get(IR(5)) == 65535
 
@@ -1418,7 +1418,7 @@ def test_commit_bank_unknown_slave_skips_validation(plant: Plant):
 def test_commit_bank_incoherent_serial_discards_bank(plant: Plant):
     """A battery bank whose serial number registers decode to garbage must be discarded."""
     # Battery serial is at IR(110-114). All zeros → empty string → incoherent.
-    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, slave_address=0x33)
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33)
     plant.update(pdu)
     assert IR(60) not in plant.register_caches.get(0x33, {})
 
@@ -1429,7 +1429,7 @@ def test_commit_bank_valid_serial_allows_bank(plant: Plant):
     # 'B'=0x42, 'G'=0x47 → 0x4247; '1'=0x31, '2'=0x32 → 0x3132; etc.
     pdu = _make_ir_pdu(
         {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221},
-        slave_address=0x33,
+        device_address=0x33,
     )
     plant.update(pdu)
     assert plant.register_caches[0x33].get(IR(60)) == 3221
@@ -1438,7 +1438,7 @@ def test_commit_bank_valid_serial_allows_bank(plant: Plant):
 def test_commit_bank_write_holding_register_bypasses_validation(plant: Plant):
     """WriteHoldingRegisterResponse is always applied — user-initiated writes are trusted."""
     pdu = MagicMock(spec=WriteHoldingRegisterResponse)
-    pdu.slave_address = 0x32
+    pdu.device_address = 0x32
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1456,16 +1456,16 @@ def test_update_error_pdu_is_ignored(plant: Plant):
     assert IR(5) not in plant.register_caches[0x32]
 
 
-def test_getter_for_slave_meter_address(plant: Plant):
-    """A bank arriving on a meter slave address (0x01–0x08) must be accepted."""
-    pdu = _make_ir_pdu({0: 1}, slave_address=0x01)
+def test_getter_for_device_meter_address(plant: Plant):
+    """A bank arriving on a meter device address (0x01–0x08) must be accepted."""
+    pdu = _make_ir_pdu({0: 1}, device_address=0x01)
     plant.update(pdu)
     assert 0x01 in plant.register_caches
 
 
-def test_getter_for_slave_bcu_address(plant: Plant):
-    """A bank arriving on a BCU slave address (0x70–0x8F) must be accepted."""
-    pdu = _make_ir_pdu({0: 42}, slave_address=0x70)
+def test_getter_for_device_bcu_address(plant: Plant):
+    """A bank arriving on a BCU device address (0x70–0x8F) must be accepted."""
+    pdu = _make_ir_pdu({0: 42}, device_address=0x70)
     plant.update(pdu)
     assert 0x70 in plant.register_caches
 

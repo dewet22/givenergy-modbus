@@ -14,16 +14,16 @@ def _client_with_caps(model: Model, **kwargs) -> Client:
 
 
 def _sig(req) -> tuple:
-    """Comparable signature for a register request: (type, slave, base, count)."""
-    return (type(req).__name__, req.slave_address, req.base_register, req.register_count)
+    """Comparable signature for a register request: (type, device_address, base, count)."""
+    return (type(req).__name__, req.device_address, req.base_register, req.register_count)
 
 
-def _hr(base, count, slave=0x32) -> tuple:
-    return ("ReadHoldingRegistersRequest", slave, base, count)
+def _hr(base, count, device=0x32) -> tuple:
+    return ("ReadHoldingRegistersRequest", device, base, count)
 
 
-def _ir(base, count, slave=0x32) -> tuple:
-    return ("ReadInputRegistersRequest", slave, base, count)
+def _ir(base, count, device=0x32) -> tuple:
+    return ("ReadInputRegistersRequest", device, base, count)
 
 
 def _reqs(mock_execute) -> list[tuple]:
@@ -139,31 +139,31 @@ async def test_refresh_gateway():
 
 
 async def test_refresh_lv_batteries():
-    """LV battery slaves each add an IR 60+60 read at their slave address."""
-    client = _client_with_caps(Model.HYBRID, lv_battery_slaves=[0x33, 0x34])
+    """LV battery devices each add an IR 60+60 read at their device address."""
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33, 0x34])
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
-    assert _ir(60, 60, slave=0x33) in reqs
-    assert _ir(60, 60, slave=0x34) in reqs
+    assert _ir(60, 60, device=0x33) in reqs
+    assert _ir(60, 60, device=0x34) in reqs
 
 
-async def test_refresh_meter_slaves():
-    """Meter slaves each add an IR 60+30 read."""
-    client = _client_with_caps(Model.HYBRID, meter_slaves=[0x01, 0x02])
+async def test_refresh_meter_addresses():
+    """Meter devices each add an IR 60+30 read."""
+    client = _client_with_caps(Model.HYBRID, meter_addresses=[0x01, 0x02])
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
-    assert _ir(60, 30, slave=0x01) in reqs
-    assert _ir(60, 30, slave=0x02) in reqs
+    assert _ir(60, 30, device=0x01) in reqs
+    assert _ir(60, 30, device=0x02) in reqs
 
 
-async def test_refresh_bcu_slaves():
-    """BCU slaves each add an IR 60+60 read at 0x70 + offset."""
+async def test_refresh_bcu_stacks():
+    """BCU stacks each add an IR 60+60 read at 0x70 + offset."""
     # Use HYBRID_HV_GEN3 which is three-phase + HV; check BCU reads are present
-    client = _client_with_caps(Model.HYBRID_HV_GEN3, bcu_slaves=[(0, 3), (1, 2)])
+    client = _client_with_caps(Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 3), (1, 2)])
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
-    assert _ir(60, 60, slave=0x70) in reqs
-    assert _ir(60, 60, slave=0x71) in reqs
+    assert _ir(60, 60, device=0x70) in reqs
+    assert _ir(60, 60, device=0x71) in reqs

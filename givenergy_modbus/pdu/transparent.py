@@ -1,10 +1,15 @@
 import logging
+import warnings
 from abc import ABC
 
 from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.pdu.base import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
 
 _logger = logging.getLogger(__name__)
+
+_SLAVE_ADDRESS_DEPRECATION_MSG = (
+    "slave_address is deprecated in line with Modbus.org's 2020 terminology update; use device_address instead"
+)
 
 
 class TransparentMessage(BasePDU, ABC):
@@ -13,17 +18,33 @@ class TransparentMessage(BasePDU, ABC):
     function_code = 2
     transparent_function_code: int
 
-    slave_address: int
+    device_address: int
     error: bool
     padding: int
     check: int
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.slave_address = kwargs.get("slave_address", 0x32)
+        if "slave_address" in kwargs:
+            if "device_address" in kwargs:
+                raise TypeError("pass either device_address= or slave_address=, not both")
+            warnings.warn(_SLAVE_ADDRESS_DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
+            kwargs["device_address"] = kwargs.pop("slave_address")
+        self.device_address = kwargs.get("device_address", 0x32)
         self.error = kwargs.get("error", False)
         self.padding = kwargs.get("padding", 0x08)  # this does seem significant
         self.check = kwargs.get("check", 0x0000)
+
+    @property
+    def slave_address(self) -> int:
+        """Deprecated alias for `device_address`."""
+        warnings.warn(_SLAVE_ADDRESS_DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
+        return self.device_address
+
+    @slave_address.setter
+    def slave_address(self, value: int) -> None:
+        warnings.warn(_SLAVE_ADDRESS_DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
+        self.device_address = value
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -33,7 +54,7 @@ class TransparentMessage(BasePDU, ABC):
         def format_kv(key, val):
             if val is None:
                 val = "?"
-            elif key == "slave_address":
+            elif key == "device_address":
                 # if val == 0x32:
                 #     return None
                 val = f"0x{val:02x}"
@@ -70,7 +91,7 @@ class TransparentMessage(BasePDU, ABC):
 
     def _encode_function_data(self):
         self._builder.add_64bit_uint(self.padding)
-        self._builder.add_8bit_uint(self.slave_address)
+        self._builder.add_8bit_uint(self.device_address)
         self._builder.add_8bit_uint(self.transparent_function_code)
         # self._update_check_code()
 
@@ -78,7 +99,7 @@ class TransparentMessage(BasePDU, ABC):
     def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> "TransparentMessage":
         attrs["data_adapter_serial_number"] = decoder.decode_string(10)
         attrs["padding"] = decoder.decode_64bit_uint()
-        attrs["slave_address"] = decoder.decode_8bit_uint()
+        attrs["device_address"] = decoder.decode_8bit_uint()
         transparent_function_code = decoder.decode_8bit_uint()
         if transparent_function_code & 0x80:
             error = True
@@ -111,7 +132,7 @@ class TransparentMessage(BasePDU, ABC):
         raise NotImplementedError()
 
     def _extra_shape_hash_keys(self):
-        return (self.slave_address,)
+        return (self.device_address,)
 
 
 class TransparentRequest(TransparentMessage, ClientOutgoingMessage, ABC):

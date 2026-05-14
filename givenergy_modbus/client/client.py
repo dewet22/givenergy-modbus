@@ -120,20 +120,21 @@ class Client:
         """Discover device type and peripheral topology.
 
         Reads HR(0) and HR(21) from the inverter to resolve the model, then
-        probes for BCUs (HV systems), meters, and LV battery slaves.
+        probes for BCUs (HV systems), meters, and LV battery devices.
 
-        Returns a PlantCapabilities instance; the caller is responsible for
-        assigning it (e.g. to plant.capabilities) and for passing it to
-        Client.refresh() once that method exists.
+        Both returns the PlantCapabilities instance and assigns it to
+        `self.plant.capabilities` — the returned object and the one stored on
+        the plant are the same. Subsequent calls to Client.refresh() and
+        Client.load_config() will use it automatically.
 
-        Uses a two-tier timeout: `timeout`/`retries` for the known inverter slave
+        Uses a two-tier timeout: `timeout`/`retries` for the known inverter device
         (where a response is expected), and `probe_timeout`/`probe_retries` for
         speculative probes where absence is the common case.
         """
         # Step 1 — read the inverter's configuration block to get DTC and ARM firmware.
         # 0x11 is the address used during initial discovery; plant.update() rewrites it to 0x32.
         await self.send_request_and_await_response(
-            ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=0x11),
+            ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11),
             timeout=timeout,
             retries=retries,
         )
@@ -141,7 +142,7 @@ class Client:
         raw_dtc = cache.get(HR(0))
         if raw_dtc is None:
             raise CommunicationError(
-                "detect: HR(0) not populated after reading slave 0x11 — cannot determine device type"
+                "detect: HR(0) not populated after reading device 0x11 — cannot determine device type"
             )
         arm_fw = cache.get(HR(21)) or 0
         caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw))
@@ -149,9 +150,9 @@ class Client:
 
         # Step 2 — BCU probing for HV systems.
         if caps.is_hv:
-            # 0xA0 is the BMS slave; IR(61) holds the number of BCUs present.
+            # 0xA0 is the BMS device address; IR(61) holds the number of BCUs present.
             if await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=5, slave_address=0xA0),
+                ReadInputRegistersRequest(base_register=60, register_count=5, device_address=0xA0),
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
@@ -159,37 +160,37 @@ class Client:
                 num_bcus = bms_cache.get(IR(61)) or 0
                 for i in range(num_bcus):
                     if await self._probe(
-                        ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=0x70 + i),
+                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + i),
                         timeout=probe_timeout,
                         retries=probe_retries,
                     ):
                         bcu_cache: RegisterCache = self.plant.register_caches.get(0x70 + i, RegisterCache())
                         num_modules = bcu_cache.get(IR(64)) or 0
-                        caps.bcu_slaves.append((i, num_modules))
-            _logger.info("detect: bcu_slaves=%s", caps.bcu_slaves)
+                        caps.bcu_stacks.append((i, num_modules))
+            _logger.info("detect: bcu_stacks=%s", caps.bcu_stacks)
 
-        # Step 3 — meter probing (slaves 0x01–0x08).
+        # Step 3 — meter probing (devices 0x01–0x08).
         for meter_addr in range(0x01, 0x09):
             if await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=30, slave_address=meter_addr),
+                ReadInputRegistersRequest(base_register=60, register_count=30, device_address=meter_addr),
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
-                caps.meter_slaves.append(meter_addr)
-        _logger.info("detect: meter_slaves=%s", caps.meter_slaves)
+                caps.meter_addresses.append(meter_addr)
+        _logger.info("detect: meter_addresses=%s", caps.meter_addresses)
 
         # Step 4 — LV battery detection. Battery #1 shares the inverter's IR bank at 0x32;
         # additional batteries are at 0x33–0x37. All slots are validated via Battery.is_valid().
         if not caps.is_hv:
             await self.send_request_and_await_response(
-                ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=0x32),
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
                 timeout=timeout,
                 retries=retries,
             )
             for batt_addr in range(0x32, 0x38):
                 if batt_addr > 0x32:
                     if not await self._probe(
-                        ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=batt_addr),
+                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=batt_addr),
                         timeout=probe_timeout,
                         retries=probe_retries,
                     ):
@@ -201,8 +202,8 @@ class Client:
                         break
                 except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
                     break
-                caps.lv_battery_slaves.append(batt_addr)
-            _logger.info("detect: lv_battery_slaves=%s", caps.lv_battery_slaves)
+                caps.lv_battery_addresses.append(batt_addr)
+            _logger.info("detect: lv_battery_addresses=%s", caps.lv_battery_addresses)
 
         self.plant.capabilities = caps
         return caps
@@ -210,36 +211,36 @@ class Client:
     async def load_config(self, timeout: float = 2.0, retries: int = 3) -> Plant:
         """Read HR configuration blocks for the inverter."""
         caps = self.plant.capabilities
-        slave = caps.inverter_slave if caps else 0x32
+        inverter = caps.inverter_address if caps else 0x32
         reqs: list[TransparentRequest] = [
-            ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=slave),
-            ReadHoldingRegistersRequest(base_register=60, register_count=60, slave_address=slave),
-            ReadHoldingRegistersRequest(base_register=120, register_count=60, slave_address=slave),
-            ReadInputRegistersRequest(base_register=120, register_count=60, slave_address=slave),
+            ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=inverter),
+            ReadHoldingRegistersRequest(base_register=60, register_count=60, device_address=inverter),
+            ReadHoldingRegistersRequest(base_register=120, register_count=60, device_address=inverter),
+            ReadInputRegistersRequest(base_register=120, register_count=60, device_address=inverter),
         ]
         if caps:
             if caps.is_three_phase:
                 reqs += [
-                    ReadHoldingRegistersRequest(base_register=1000, register_count=60, slave_address=slave),
-                    ReadHoldingRegistersRequest(base_register=1060, register_count=60, slave_address=slave),
-                    ReadHoldingRegistersRequest(base_register=1120, register_count=5, slave_address=slave),
+                    ReadHoldingRegistersRequest(base_register=1000, register_count=60, device_address=inverter),
+                    ReadHoldingRegistersRequest(base_register=1060, register_count=60, device_address=inverter),
+                    ReadHoldingRegistersRequest(base_register=1120, register_count=5, device_address=inverter),
                 ]
             if caps.has_extended_slots:
-                reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, slave_address=slave))
+                reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
             if caps.is_ems:
-                reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, slave_address=slave))
+                reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
         await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant
 
     async def refresh(self, timeout: float = 1.0, retries: int = 0) -> Plant:
-        """Read IR measurement blocks for all known slaves."""
+        """Read IR measurement blocks for all known devices."""
         caps = self.plant.capabilities
         if caps is None:
             return await self.refresh_plant(full_refresh=False)
-        slave = caps.inverter_slave
+        inverter = caps.inverter_address
         reqs: list[TransparentRequest] = [
-            ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=slave),
-            ReadInputRegistersRequest(base_register=180, register_count=60, slave_address=slave),
+            ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter),
+            ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter),
         ]
         if caps.is_three_phase:
             for base in range(1000, 1414, 60):
@@ -247,26 +248,26 @@ class Client:
                     ReadInputRegistersRequest(
                         base_register=base,
                         register_count=min(60, 1414 - base),
-                        slave_address=slave,
+                        device_address=inverter,
                     )
                 )
         if caps.is_ems:
-            reqs.append(ReadInputRegistersRequest(base_register=2040, register_count=55, slave_address=slave))
+            reqs.append(ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=inverter))
         if caps.is_gateway:
             for base in range(1600, 1860, 60):
                 reqs.append(
                     ReadInputRegistersRequest(
                         base_register=base,
                         register_count=min(60, 1860 - base),
-                        slave_address=slave,
+                        device_address=inverter,
                     )
                 )
-        for addr in caps.lv_battery_slaves:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=addr))
-        for addr in caps.meter_slaves:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, slave_address=addr))
-        for offset, _ in caps.bcu_slaves:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=0x70 + offset))
+        for addr in caps.lv_battery_addresses:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
+        for addr in caps.meter_addresses:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
+        for offset, _ in caps.bcu_stacks:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
         await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant
 
