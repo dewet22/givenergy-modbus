@@ -114,9 +114,14 @@ def set_inverter_reboot() -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100)]
 
 
-def set_calibrate_battery_soc() -> list[TransparentRequest]:
-    """Set the inverter to recalibrate the battery state of charge estimation."""
-    return [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+def set_calibrate_battery_soc(val: int = 1) -> list[TransparentRequest]:
+    """Set the inverter to recalibrate the battery state of charge estimation.
+
+    val: 0 = Stop, 1 = Start, 3 = Charge Only
+    """
+    if val not in (0, 1, 3):
+        raise ValueError(f"Battery calibration mode ({val}) must be 0 (Stop), 1 (Start) or 3 (Charge Only)")
+    return [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, val)]
 
 
 @deprecated("use set_enable_charge(True) instead")

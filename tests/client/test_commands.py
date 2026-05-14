@@ -284,3 +284,14 @@ async def test_set_export_slot_invalid_idx():
         commands.set_export_slot(0, None)
     with pytest.raises(ValueError, match="Export slot index"):
         commands.set_export_slot(4, None)
+
+
+async def test_set_calibrate_battery_soc():
+    assert commands.set_calibrate_battery_soc(0) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 0)]
+    assert commands.set_calibrate_battery_soc(1) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+    assert commands.set_calibrate_battery_soc(3) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 3)]
+    assert commands.set_calibrate_battery_soc() == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+    with pytest.raises(ValueError, match="Battery calibration mode"):
+        commands.set_calibrate_battery_soc(2)
+    with pytest.raises(ValueError, match="Battery calibration mode"):
+        commands.set_calibrate_battery_soc(4)
