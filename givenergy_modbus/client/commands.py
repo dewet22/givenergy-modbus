@@ -5,7 +5,7 @@ from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode
-from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS, SlotMap
+from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
@@ -44,6 +44,38 @@ class RegisterMap:
     CHARGE_TARGET_SOC = 116
     REBOOT = 163
     ENABLE_RTC = 166
+    CHARGE_SLOT_3_START = 246
+    CHARGE_SLOT_3_END = 247
+    CHARGE_SLOT_4_START = 249
+    CHARGE_SLOT_4_END = 250
+    CHARGE_SLOT_5_START = 252
+    CHARGE_SLOT_5_END = 253
+    CHARGE_SLOT_6_START = 255
+    CHARGE_SLOT_6_END = 256
+    CHARGE_SLOT_7_START = 258
+    CHARGE_SLOT_7_END = 259
+    CHARGE_SLOT_8_START = 261
+    CHARGE_SLOT_8_END = 262
+    CHARGE_SLOT_9_START = 264
+    CHARGE_SLOT_9_END = 265
+    CHARGE_SLOT_10_START = 267
+    CHARGE_SLOT_10_END = 268
+    DISCHARGE_SLOT_3_START = 276
+    DISCHARGE_SLOT_3_END = 277
+    DISCHARGE_SLOT_4_START = 279
+    DISCHARGE_SLOT_4_END = 280
+    DISCHARGE_SLOT_5_START = 282
+    DISCHARGE_SLOT_5_END = 283
+    DISCHARGE_SLOT_6_START = 285
+    DISCHARGE_SLOT_6_END = 286
+    DISCHARGE_SLOT_7_START = 288
+    DISCHARGE_SLOT_7_END = 289
+    DISCHARGE_SLOT_8_START = 291
+    DISCHARGE_SLOT_8_END = 292
+    DISCHARGE_SLOT_9_START = 294
+    DISCHARGE_SLOT_9_END = 295
+    DISCHARGE_SLOT_10_START = 297
+    DISCHARGE_SLOT_10_END = 298
     BATTERY_CHARGE_LIMIT_AC = 313
     BATTERY_DISCHARGE_LIMIT_AC = 314
     BATTERY_PAUSE_MODE = 318
@@ -114,9 +146,14 @@ def set_inverter_reboot() -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.REBOOT, 100)]
 
 
-def set_calibrate_battery_soc() -> list[TransparentRequest]:
-    """Set the inverter to recalibrate the battery state of charge estimation."""
-    return [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+def set_calibrate_battery_soc(val: int = 1) -> list[TransparentRequest]:
+    """Set the inverter to recalibrate the battery state of charge estimation.
+
+    val: 0 = Stop, 1 = Start, 3 = Charge Only
+    """
+    if val not in (0, 1, 3):
+        raise ValueError(f"Battery calibration mode ({val}) must be 0 (Stop), 1 (Start) or 3 (Charge Only)")
+    return [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, val)]
 
 
 @deprecated("use set_enable_charge(True) instead")
@@ -288,44 +325,84 @@ def _set_slot(discharge: bool, idx: int, slot: TimeSlot | None, slot_map: SlotMa
         ]
 
 
+def set_charge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Set charge slot start & end times by index (1-based)."""
+    n = len(slot_map.charge_slots)
+    if not 1 <= idx <= n:
+        raise ValueError(f"Charge slot index ({idx}) must be in [1-{n}] for the given slot map")
+    return _set_slot(False, idx, timeslot, slot_map)
+
+
+def reset_charge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Reset charge slot to zero/disabled by index (1-based)."""
+    n = len(slot_map.charge_slots)
+    if not 1 <= idx <= n:
+        raise ValueError(f"Charge slot index ({idx}) must be in [1-{n}] for the given slot map")
+    return _set_slot(False, idx, None, slot_map)
+
+
+def set_discharge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Set discharge slot start & end times by index (1-based)."""
+    n = len(slot_map.discharge_slots)
+    if not 1 <= idx <= n:
+        raise ValueError(f"Discharge slot index ({idx}) must be in [1-{n}] for the given slot map")
+    return _set_slot(True, idx, timeslot, slot_map)
+
+
+def reset_discharge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Reset discharge slot to zero/disabled by index (1-based)."""
+    n = len(slot_map.discharge_slots)
+    if not 1 <= idx <= n:
+        raise ValueError(f"Discharge slot index ({idx}) must be in [1-{n}] for the given slot map")
+    return _set_slot(True, idx, None, slot_map)
+
+
+@deprecated("use set_charge_slot(1, timeslot, slot_map) instead")
 def set_charge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Set first charge slot start & end times."""
-    return _set_slot(False, 1, timeslot, slot_map)
+    """Deprecated: use set_charge_slot(1, timeslot, slot_map)."""
+    return set_charge_slot(1, timeslot, slot_map)
 
 
+@deprecated("use reset_charge_slot(1, slot_map) instead")
 def reset_charge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Reset first charge slot to zero/disabled."""
-    return _set_slot(False, 1, None, slot_map)
+    """Deprecated: use reset_charge_slot(1, slot_map)."""
+    return reset_charge_slot(1, slot_map)
 
 
+@deprecated("use set_charge_slot(2, timeslot, slot_map) instead")
 def set_charge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Set second charge slot start & end times."""
-    return _set_slot(False, 2, timeslot, slot_map)
+    """Deprecated: use set_charge_slot(2, timeslot, slot_map)."""
+    return set_charge_slot(2, timeslot, slot_map)
 
 
+@deprecated("use reset_charge_slot(2, slot_map) instead")
 def reset_charge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Reset second charge slot to zero/disabled."""
-    return _set_slot(False, 2, None, slot_map)
+    """Deprecated: use reset_charge_slot(2, slot_map)."""
+    return reset_charge_slot(2, slot_map)
 
 
+@deprecated("use set_discharge_slot(1, timeslot, slot_map) instead")
 def set_discharge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Set first discharge slot start & end times."""
-    return _set_slot(True, 1, timeslot, slot_map)
+    """Deprecated: use set_discharge_slot(1, timeslot, slot_map)."""
+    return set_discharge_slot(1, timeslot, slot_map)
 
 
+@deprecated("use reset_discharge_slot(1, slot_map) instead")
 def reset_discharge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Reset first discharge slot to zero/disabled."""
-    return _set_slot(True, 1, None, slot_map)
+    """Deprecated: use reset_discharge_slot(1, slot_map)."""
+    return reset_discharge_slot(1, slot_map)
 
 
+@deprecated("use set_discharge_slot(2, timeslot, slot_map) instead")
 def set_discharge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Set second discharge slot start & end times."""
-    return _set_slot(True, 2, timeslot, slot_map)
+    """Deprecated: use set_discharge_slot(2, timeslot, slot_map)."""
+    return set_discharge_slot(2, timeslot, slot_map)
 
 
+@deprecated("use reset_discharge_slot(2, slot_map) instead")
 def reset_discharge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Reset second discharge slot to zero/disabled."""
-    return _set_slot(True, 2, None, slot_map)
+    """Deprecated: use reset_discharge_slot(2, slot_map)."""
+    return reset_discharge_slot(2, slot_map)
 
 
 def set_system_date_time(dt: datetime) -> list[TransparentRequest]:
@@ -378,9 +455,9 @@ def set_mode_storage(
     # does when selecting Timed Discharge / Timed Export presets). Callers who
     # want a specific reserve should set it explicitly via set_battery_soc_reserve().
     ret.extend(set_enable_discharge(True))  # r59=1
-    ret.extend(set_discharge_slot_1(discharge_slot_1))  # r56=1600, r57=700
+    ret.extend(set_discharge_slot(1, discharge_slot_1, SINGLE_PHASE_SLOTS))
     if discharge_slot_2:
-        ret.extend(set_discharge_slot_2(discharge_slot_2))  # r56=1600, r57=700
+        ret.extend(set_discharge_slot(2, discharge_slot_2, SINGLE_PHASE_SLOTS))
     else:
-        ret.extend(reset_discharge_slot_2())
+        ret.extend(reset_discharge_slot(2, SINGLE_PHASE_SLOTS))
     return ret

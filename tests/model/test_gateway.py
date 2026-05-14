@@ -1,6 +1,6 @@
 import pytest
 
-from givenergy_modbus.model.gateway import Gateway, Gateway2, select_gateway
+from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.inverter import WorkMode
 from givenergy_modbus.model.register import IR
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -22,26 +22,26 @@ def _fw_cache(version_suffix: int) -> dict:
 
 
 def test_gateway_empty():
-    gw = Gateway.from_register_cache(RegisterCache())
+    gw = GatewayV1.from_register_cache(RegisterCache())
     assert gw.is_valid() is False
     assert gw.software_version is None  # type: ignore[attr-defined]
 
 
 def test_gateway2_empty():
-    gw2 = Gateway2.from_register_cache(RegisterCache())
+    gw2 = GatewayV2.from_register_cache(RegisterCache())
     assert gw2.is_valid() is False
 
 
 def test_software_version_decoding():
     cache = _cache(_fw_cache(9))
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.software_version == "GA000009"  # type: ignore[attr-defined]
     assert gw.is_valid() is True
 
 
 def test_software_version_v2():
     cache = _cache(_fw_cache(10))
-    gw2 = Gateway2.from_register_cache(cache)
+    gw2 = GatewayV2.from_register_cache(cache)
     assert gw2.software_version == "GA0000010"  # type: ignore[attr-defined]
     assert gw2.is_valid() is True
 
@@ -49,18 +49,18 @@ def test_software_version_v2():
 def test_select_gateway_returns_gateway_for_v9():
     cache = _cache(_fw_cache(9))
     gw = select_gateway(cache)
-    assert isinstance(gw, Gateway)
+    assert isinstance(gw, GatewayV1)
 
 
 def test_select_gateway_returns_gateway2_for_v10():
     cache = _cache(_fw_cache(10))
     gw = select_gateway(cache)
-    assert isinstance(gw, Gateway2)
+    assert isinstance(gw, GatewayV2)
 
 
 def test_select_gateway_returns_gateway_for_empty_cache():
     gw = select_gateway(RegisterCache())
-    assert isinstance(gw, Gateway)
+    assert isinstance(gw, GatewayV1)
 
 
 def test_gateway_power_readings():
@@ -74,7 +74,7 @@ def test_gateway_power_readings():
             IR(1604): 2,  # work_mode = ON_GRID
         }
     )
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.v_grid == 231.0  # type: ignore[attr-defined]
     assert gw.i_grid == 10.0  # type: ignore[attr-defined]
     assert gw.p_pv == 3000  # type: ignore[attr-defined]
@@ -84,16 +84,16 @@ def test_gateway_power_readings():
 
 
 def test_gateway_energy_totals_v1():
-    # Gateway v1: high register first, then low
+    # GatewayV1 v1: high register first, then low
     cache = _cache({IR(1641): 1, IR(1642): 0})  # 1<<16 = 65536 raw → 6553.6 deci
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.e_grid_import_total == pytest.approx(6553.6)  # type: ignore[attr-defined]
 
 
 def test_gateway2_energy_totals_swapped():
-    # Gateway2: LOW register first (IR(1642) is high, IR(1641) is low — register order swapped)
+    # GatewayV2: LOW register first (IR(1642) is high, IR(1641) is low — register order swapped)
     cache = _cache({IR(1641): 0, IR(1642): 1})  # swap: high=IR(1642)=1, low=IR(1641)=0 → 6553.6
-    gw2 = Gateway2.from_register_cache(cache)
+    gw2 = GatewayV2.from_register_cache(cache)
     assert gw2.e_grid_import_total == pytest.approx(6553.6)  # type: ignore[attr-defined]
 
 
@@ -107,7 +107,7 @@ def test_gateway_first_inverter_serial():
             IR(1631): 0x4900,
         }
     )
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.first_inverter_serial_number == "ABCDEFGHI"  # type: ignore[attr-defined]
 
 
@@ -121,12 +121,12 @@ def test_gateway_v1_aio_serial_address():
             IR(1835): 0x5900,
         }
     )
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.aio1_serial_number == "QRSTUVWXY"  # type: ignore[attr-defined]
 
 
 def test_gateway2_aio_serial_address_different():
-    # Gateway2 aio1_serial starts at IR(1841), not IR(1831)
+    # GatewayV2 aio1_serial starts at IR(1841), not IR(1831)
     cache = _cache(
         {
             IR(1841): 0x5152,
@@ -136,13 +136,13 @@ def test_gateway2_aio_serial_address_different():
             IR(1845): 0x5900,
         }
     )
-    gw2 = Gateway2.from_register_cache(cache)
+    gw2 = GatewayV2.from_register_cache(cache)
     assert gw2.aio1_serial_number == "QRSTUVWXY"  # type: ignore[attr-defined]
 
 
 def test_gateway_aio_soc():
     cache = _cache({IR(1801): 85, IR(1802): 72, IR(1803): 60})
-    gw = Gateway.from_register_cache(cache)
+    gw = GatewayV1.from_register_cache(cache)
     assert gw.aio1_soc == 85  # type: ignore[attr-defined]
     assert gw.aio2_soc == 72  # type: ignore[attr-defined]
     assert gw.aio3_soc == 60  # type: ignore[attr-defined]

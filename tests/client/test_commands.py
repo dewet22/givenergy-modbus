@@ -6,7 +6,7 @@ from givenergy_modbus.client import commands
 from givenergy_modbus.client.commands import RegisterMap
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode
-from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS
+from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS
 from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 
@@ -65,51 +65,69 @@ async def test_set_battery_discharge_mode():
     ]
 
 
-@pytest.mark.parametrize("action", ("charge", "discharge"))
+@pytest.mark.parametrize("discharge", (False, True))
 @pytest.mark.parametrize("slot", (1, 2))
-@pytest.mark.parametrize("hour1", (0, 23))
-@pytest.mark.parametrize("min1", (0, 59))
-@pytest.mark.parametrize("hour2", (0, 23))
-@pytest.mark.parametrize("min2", (0, 59))
-async def test_set_charge_slots(action: str, slot: int, hour1: int, min1: int, hour2: int, min2: int):
-    """Ensure we can set charge time slots correctly."""
-    # test set and reset functions for the relevant {action} and {slot}
-    messages = getattr(commands, f"set_{action}_slot_{slot}")(TimeSlot.from_components(hour1, min1, hour2, min2))
+@pytest.mark.parametrize("hour1,min1,hour2,min2", [(0, 0, 23, 59), (16, 30, 7, 0)])
+async def test_set_slot_single_phase(discharge: bool, slot: int, hour1: int, min1: int, hour2: int, min2: int):
+    ts = TimeSlot.from_components(hour1, min1, hour2, min2)
+    slot_map = SINGLE_PHASE_SLOTS
+    slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
+    hr_start, hr_end = slots[slot - 1]
+    fn = commands.set_discharge_slot if discharge else commands.set_charge_slot
+    reset_fn = commands.reset_discharge_slot if discharge else commands.reset_charge_slot
 
-    hr_start = getattr(RegisterMap, f"{'CHARGE' if action == 'charge' else 'DISCHARGE'}_SLOT_{slot}_START")
-    hr_end = getattr(RegisterMap, f"{'CHARGE' if action == 'charge' else 'DISCHARGE'}_SLOT_{slot}_END")
-    assert messages == [
+    assert fn(slot, ts, slot_map) == [
         WriteHoldingRegisterRequest(hr_start, 100 * hour1 + min1),
         WriteHoldingRegisterRequest(hr_end, 100 * hour2 + min2),
     ]
-
-    assert getattr(commands, f"reset_{action}_slot_{slot}")() == [
+    assert reset_fn(slot, slot_map) == [
         WriteHoldingRegisterRequest(hr_start, 0),
         WriteHoldingRegisterRequest(hr_end, 0),
     ]
 
 
-@pytest.mark.parametrize(
-    "fn,ts_arg,discharge,idx",
-    [
-        ("set_charge_slot_1", TimeSlot.from_components(1, 0, 2, 0), False, 0),
-        ("set_charge_slot_2", TimeSlot.from_components(1, 0, 2, 0), False, 1),
-        ("set_discharge_slot_1", TimeSlot.from_components(16, 0, 7, 0), True, 0),
-        ("set_discharge_slot_2", TimeSlot.from_components(16, 0, 7, 0), True, 1),
-    ],
-)
-async def test_slot_setters_route_via_slot_map(fn, ts_arg, discharge, idx):
-    slots = THREE_PHASE_SLOTS.discharge_slots if discharge else THREE_PHASE_SLOTS.charge_slots
-    hr_start, hr_end = slots[idx]
-    result = getattr(commands, fn)(ts_arg, slot_map=THREE_PHASE_SLOTS)
+@pytest.mark.parametrize("discharge", (False, True))
+@pytest.mark.parametrize("slot", range(1, 11))
+async def test_set_slot_extended(discharge: bool, slot: int):
+    ts = TimeSlot.from_components(1, 0, 2, 0)
+    slot_map = EXTENDED_SLOTS
+    slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
+    hr_start, hr_end = slots[slot - 1]
+    fn = commands.set_discharge_slot if discharge else commands.set_charge_slot
+
+    result = fn(slot, ts, slot_map)
+    assert isinstance(result[0], WriteHoldingRegisterRequest)
+    assert isinstance(result[1], WriteHoldingRegisterRequest)
     assert result[0].register == hr_start
     assert result[1].register == hr_end
 
 
-async def test_slot_setters_default_to_single_phase():
-    result = commands.set_charge_slot_1(TimeSlot.from_components(0, 0, 1, 0))
-    assert result[0].register == SINGLE_PHASE_SLOTS.charge_slots[0][0]
-    assert result[1].register == SINGLE_PHASE_SLOTS.charge_slots[0][1]
+@pytest.mark.parametrize("discharge", (False, True))
+@pytest.mark.parametrize("slot", range(1, 11))
+async def test_set_slot_three_phase(discharge: bool, slot: int):
+    ts = TimeSlot.from_components(1, 0, 2, 0)
+    slot_map = THREE_PHASE_SLOTS
+    slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
+    hr_start, hr_end = slots[slot - 1]
+    fn = commands.set_discharge_slot if discharge else commands.set_charge_slot
+
+    result = fn(slot, ts, slot_map)
+    assert isinstance(result[0], WriteHoldingRegisterRequest)
+    assert isinstance(result[1], WriteHoldingRegisterRequest)
+    assert result[0].register == hr_start
+    assert result[1].register == hr_end
+
+
+async def test_set_slot_index_validation():
+    ts = TimeSlot.from_components(0, 0, 1, 0)
+    with pytest.raises(ValueError, match="Charge slot index"):
+        commands.set_charge_slot(0, ts, SINGLE_PHASE_SLOTS)
+    with pytest.raises(ValueError, match="Charge slot index"):
+        commands.set_charge_slot(3, ts, SINGLE_PHASE_SLOTS)
+    with pytest.raises(ValueError, match="Discharge slot index"):
+        commands.reset_discharge_slot(0, EXTENDED_SLOTS)
+    with pytest.raises(ValueError, match="Discharge slot index"):
+        commands.reset_discharge_slot(11, EXTENDED_SLOTS)
 
 
 async def test_set_mode_dynamic():
@@ -284,3 +302,14 @@ async def test_set_export_slot_invalid_idx():
         commands.set_export_slot(0, None)
     with pytest.raises(ValueError, match="Export slot index"):
         commands.set_export_slot(4, None)
+
+
+async def test_set_calibrate_battery_soc():
+    assert commands.set_calibrate_battery_soc(0) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 0)]
+    assert commands.set_calibrate_battery_soc(1) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+    assert commands.set_calibrate_battery_soc(3) == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 3)]
+    assert commands.set_calibrate_battery_soc() == [WriteHoldingRegisterRequest(RegisterMap.SOC_FORCE_ADJUST, 1)]
+    with pytest.raises(ValueError, match="Battery calibration mode"):
+        commands.set_calibrate_battery_soc(2)
+    with pytest.raises(ValueError, match="Battery calibration mode"):
+        commands.set_calibrate_battery_soc(4)

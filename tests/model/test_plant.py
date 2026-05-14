@@ -1149,6 +1149,7 @@ def test_from_actual():
         # 'work_time_total': 2754,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
+        "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
         "battery_capacity_kwh": 8.192,
@@ -1181,6 +1182,7 @@ def test_from_actual():
         "modbus_address": 0x11,
         "modbus_version": "1.40",
         "model": Model.HYBRID,
+        "inverter_max_power": 5000,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -1466,3 +1468,73 @@ def test_getter_for_slave_bcu_address(plant: Plant):
     pdu = _make_ir_pdu({0: 42}, slave_address=0x70)
     plant.update(pdu)
     assert 0x70 in plant.register_caches
+
+
+class TestPlantCapabilitiesProperties:
+    """PlantCapabilities predicate properties return correct values per device type."""
+
+    from givenergy_modbus.model.plant import PlantCapabilities
+
+    def _caps(self, model: Model) -> "PlantCapabilities":
+        """Build a minimal PlantCapabilities for the given model."""
+        from givenergy_modbus.model.plant import PlantCapabilities
+
+        return PlantCapabilities(device_type=model)
+
+    def test_is_hv_true_for_hv_models(self):
+        """HV models report is_hv True."""
+        for m in (Model.HYBRID_3PH, Model.AC_3PH, Model.ALL_IN_ONE, Model.HYBRID_HV_GEN3, Model.ALL_IN_ONE_HYBRID):
+            assert self._caps(m).is_hv, f"{m} should be HV"
+
+    def test_is_hv_false_for_single_phase(self):
+        """Single-phase hybrid reports is_hv False."""
+        assert not self._caps(Model.HYBRID).is_hv
+
+    def test_is_three_phase_true(self):
+        """Three-phase models report is_three_phase True."""
+        three_phase = (
+            Model.HYBRID_3PH,
+            Model.AC_3PH,
+            Model.AIO_COMMERCIAL,
+            Model.ALL_IN_ONE,
+            Model.ALL_IN_ONE_HYBRID,
+            Model.HYBRID_HV_GEN3,
+        )
+        for m in three_phase:
+            assert self._caps(m).is_three_phase, f"{m} should be three-phase"
+
+    def test_is_three_phase_false(self):
+        """Single-phase and non-inverter models report is_three_phase False."""
+        for m in (Model.HYBRID, Model.AC, Model.EMS, Model.GATEWAY):
+            assert not self._caps(m).is_three_phase, f"{m} should not be three-phase"
+
+    def test_has_extended_slots_true(self):
+        """Models with 10-slot support report has_extended_slots True."""
+        extended = (
+            Model.HYBRID_GEN3,
+            Model.HYBRID_GEN4,
+            Model.ALL_IN_ONE,
+            Model.ALL_IN_ONE_HYBRID,
+            Model.HYBRID_HV_GEN3,
+        )
+        for m in extended:
+            assert self._caps(m).has_extended_slots, f"{m} should have extended slots"
+
+    def test_has_extended_slots_false(self):
+        """Non-extended models report has_extended_slots False."""
+        for m in (Model.HYBRID, Model.HYBRID_GEN2, Model.AC, Model.EMS):
+            assert not self._caps(m).has_extended_slots, f"{m} should not have extended slots"
+
+    def test_is_ems_true(self):
+        """EMS and EMS_COMMERCIAL report is_ems True."""
+        assert self._caps(Model.EMS).is_ems
+        assert self._caps(Model.EMS_COMMERCIAL).is_ems
+
+    def test_is_ems_false(self):
+        """Non-EMS models report is_ems False."""
+        assert not self._caps(Model.HYBRID).is_ems
+
+    def test_is_gateway(self):
+        """GATEWAY reports is_gateway True; other models False."""
+        assert self._caps(Model.GATEWAY).is_gateway
+        assert not self._caps(Model.HYBRID).is_gateway

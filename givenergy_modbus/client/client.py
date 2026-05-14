@@ -209,13 +209,25 @@ class Client:
 
     async def load_config(self, timeout: float = 2.0, retries: int = 3) -> Plant:
         """Read HR configuration blocks for the inverter."""
-        slave = self.plant.capabilities.inverter_slave if self.plant.capabilities else 0x32
+        caps = self.plant.capabilities
+        slave = caps.inverter_slave if caps else 0x32
         reqs: list[TransparentRequest] = [
             ReadHoldingRegistersRequest(base_register=0, register_count=60, slave_address=slave),
             ReadHoldingRegistersRequest(base_register=60, register_count=60, slave_address=slave),
             ReadHoldingRegistersRequest(base_register=120, register_count=60, slave_address=slave),
             ReadInputRegistersRequest(base_register=120, register_count=60, slave_address=slave),
         ]
+        if caps:
+            if caps.is_three_phase:
+                reqs += [
+                    ReadHoldingRegistersRequest(base_register=1000, register_count=60, slave_address=slave),
+                    ReadHoldingRegistersRequest(base_register=1060, register_count=60, slave_address=slave),
+                    ReadHoldingRegistersRequest(base_register=1120, register_count=5, slave_address=slave),
+                ]
+            if caps.has_extended_slots:
+                reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, slave_address=slave))
+            if caps.is_ems:
+                reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, slave_address=slave))
         await self.execute(reqs, timeout=timeout, retries=retries)
         return self.plant
 
@@ -229,6 +241,26 @@ class Client:
             ReadInputRegistersRequest(base_register=0, register_count=60, slave_address=slave),
             ReadInputRegistersRequest(base_register=180, register_count=60, slave_address=slave),
         ]
+        if caps.is_three_phase:
+            for base in range(1000, 1414, 60):
+                reqs.append(
+                    ReadInputRegistersRequest(
+                        base_register=base,
+                        register_count=min(60, 1414 - base),
+                        slave_address=slave,
+                    )
+                )
+        if caps.is_ems:
+            reqs.append(ReadInputRegistersRequest(base_register=2040, register_count=55, slave_address=slave))
+        if caps.is_gateway:
+            for base in range(1600, 1860, 60):
+                reqs.append(
+                    ReadInputRegistersRequest(
+                        base_register=base,
+                        register_count=min(60, 1860 - base),
+                        slave_address=slave,
+                    )
+                )
         for addr in caps.lv_battery_slaves:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, slave_address=addr))
         for addr in caps.meter_slaves:

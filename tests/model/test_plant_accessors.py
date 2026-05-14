@@ -173,8 +173,8 @@ def test_gateway_none_without_capabilities():
 
 
 def test_gateway_returned_for_gateway_device():
-    from givenergy_modbus.model.gateway import Gateway, Gateway2
+    from givenergy_modbus.model.gateway import GatewayV1, GatewayV2
 
     plant = _plant_with_caps(device_type=Model.GATEWAY)
     gw = plant.gateway
-    assert isinstance(gw, (Gateway, Gateway2))
+    assert isinstance(gw, (GatewayV1, GatewayV2))
