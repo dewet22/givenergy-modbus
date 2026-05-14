@@ -64,6 +64,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
 - add coverage for deprecation alias, slot maps, getter branches, and BatteryMaintenance ([f3c3842](https://github.com/dewet22/givenergy-modbus/commit/f3c3842963d928aeba72b135af50328c1aae0c9e), @dewet22)
 - add .bandit INI file to exclude tests/ from bandit scan ([f153a30](https://github.com/dewet22/givenergy-modbus/commit/f153a30fa7917827a9364a75bbd3524d3bda0630), @dewet22)
+- remove duplicate [Unreleased] changelog entries from auto-gen ([7a0ac6a](https://github.com/dewet22/givenergy-modbus/commit/7a0ac6a13d797d8945cb129fe36ce8ed3893de71), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 
