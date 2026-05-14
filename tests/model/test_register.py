@@ -125,8 +125,6 @@ def test_converter_gateway_version():
     assert Converter.gateway_version(first, None, third, fourth) is None
 
 
-
-
 def test_battery_max_power():
     from givenergy_modbus.model.inverter import _battery_max_power
 

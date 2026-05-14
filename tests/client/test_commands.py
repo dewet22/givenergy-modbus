@@ -96,6 +96,8 @@ async def test_set_slot_extended(discharge: bool, slot: int):
     fn = commands.set_discharge_slot if discharge else commands.set_charge_slot
 
     result = fn(slot, ts, slot_map)
+    assert isinstance(result[0], WriteHoldingRegisterRequest)
+    assert isinstance(result[1], WriteHoldingRegisterRequest)
     assert result[0].register == hr_start
     assert result[1].register == hr_end
 
@@ -110,6 +112,8 @@ async def test_set_slot_three_phase(discharge: bool, slot: int):
     fn = commands.set_discharge_slot if discharge else commands.set_charge_slot
 
     result = fn(slot, ts, slot_map)
+    assert isinstance(result[0], WriteHoldingRegisterRequest)
+    assert isinstance(result[1], WriteHoldingRegisterRequest)
     assert result[0].register == hr_start
     assert result[1].register == hr_end
 

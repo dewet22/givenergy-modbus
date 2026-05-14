@@ -359,41 +359,49 @@ def reset_discharge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[T
 
 @deprecated("use set_charge_slot(1, timeslot, slot_map) instead")
 def set_charge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use set_charge_slot(1, timeslot, slot_map)."""
     return set_charge_slot(1, timeslot, slot_map)
 
 
 @deprecated("use reset_charge_slot(1, slot_map) instead")
 def reset_charge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use reset_charge_slot(1, slot_map)."""
     return reset_charge_slot(1, slot_map)
 
 
 @deprecated("use set_charge_slot(2, timeslot, slot_map) instead")
 def set_charge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use set_charge_slot(2, timeslot, slot_map)."""
     return set_charge_slot(2, timeslot, slot_map)
 
 
 @deprecated("use reset_charge_slot(2, slot_map) instead")
 def reset_charge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use reset_charge_slot(2, slot_map)."""
     return reset_charge_slot(2, slot_map)
 
 
 @deprecated("use set_discharge_slot(1, timeslot, slot_map) instead")
 def set_discharge_slot_1(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use set_discharge_slot(1, timeslot, slot_map)."""
     return set_discharge_slot(1, timeslot, slot_map)
 
 
 @deprecated("use reset_discharge_slot(1, slot_map) instead")
 def reset_discharge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use reset_discharge_slot(1, slot_map)."""
     return reset_discharge_slot(1, slot_map)
 
 
 @deprecated("use set_discharge_slot(2, timeslot, slot_map) instead")
 def set_discharge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use set_discharge_slot(2, timeslot, slot_map)."""
     return set_discharge_slot(2, timeslot, slot_map)
 
 
 @deprecated("use reset_discharge_slot(2, slot_map) instead")
 def reset_discharge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
+    """Deprecated: use reset_discharge_slot(2, slot_map)."""
     return reset_discharge_slot(2, slot_map)
 
 

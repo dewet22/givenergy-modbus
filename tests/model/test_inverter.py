@@ -32,7 +32,6 @@ def test_inverter():
             "battery_max_power": None,
             "battery_calibration_stage": None,
             "battery_capacity_ah": None,
-
             "battery_capacity_kwh": None,
             "battery_power_mode": None,
             "battery_type": None,
@@ -411,7 +410,6 @@ def test_from_registers(register_cache):
         "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
-
         "battery_capacity_kwh": 8.192,
         "battery_power_mode": BatteryPowerMode.SELF_CONSUMPTION,
         "battery_type": BatteryType.LITHIUM,
@@ -740,7 +738,6 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
-
         "battery_capacity_kwh": 8.192,
         "battery_power_mode": BatteryPowerMode.SELF_CONSUMPTION,
         "battery_type": BatteryType.LITHIUM,

@@ -406,9 +406,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "num_phases": Def((C.duint8, 1), None, HR(3)),
         # HR(4-6) unused
         "enable_ammeter": Def(C.bool, None, HR(7)),
-        "first_battery_serial_number": Def(
-            C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)
-        ),
+        "first_battery_serial_number": Def(C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
         "serial_number": Def(C.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
         "first_battery_bms_firmware_version": Def(C.uint16, None, HR(18)),
         "dsp_firmware_version": Def(C.uint16, None, HR(19)),
@@ -427,9 +425,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "charge_slot_2": Def(C.timeslot, None, HR(31), HR(32)),
         "user_code": Def(C.uint16, None, HR(33)),
         "modbus_version": Def(C.centi, (C.fstr, "0.2f"), HR(34)),
-        "system_time": Def(
-            C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)
-        ),
+        "system_time": Def(C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
         "enable_drm_rj45_port": Def(C.bool, None, HR(41)),
         "enable_reversed_ct_clamp": Def(C.bool, None, HR(42)),
         "charge_soc": Def((C.duint8, 0), None, HR(43)),
@@ -471,9 +467,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_buzzer": Def(C.bool, None, HR(113)),
         "battery_discharge_min_power_reserve": Def(C.uint16, None, HR(114)),
         # 'island_check_continue': Def(C.uint16, None, HR(115)),
-        "charge_target_soc": Def(
-            C.uint16, None, HR(116)
-        ),  # requires enable_charge_target
+        "charge_target_soc": Def(C.uint16, None, HR(116)),  # requires enable_charge_target
         "charge_soc_stop_2": Def(C.uint16, None, HR(117)),
         "discharge_soc_stop_2": Def(C.uint16, None, HR(118)),
         "charge_soc_stop_1": Def(C.uint16, None, HR(119)),
@@ -509,9 +503,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_standard_self_consumption_logic": Def(C.bool, None, HR(199)),
         "cmd_bms_flash_update": Def(C.bool, None, HR(200)),
         "inverter_errors": Def(C.uint32, None, HR(223), HR(224)),
-        "inverter_fault_messages": Def(
-            C.uint32, _inverter_fault_code, HR(223), HR(224)
-        ),
+        "inverter_fault_messages": Def(C.uint32, _inverter_fault_code, HR(223), HR(224)),
         # 202-239 - Hot Water Diverter?
         #
         # Holding Registers, block 240-299
@@ -622,12 +614,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
         "p_battery": Def(C.int16, None, IR(52)),
-        "v_ac1_output": Def(
-            C.deci, None, IR(53), min=0.0, max=500.0
-        ),  # might be v_eps_backup?
-        "f_ac1_output": Def(
-            C.centi, None, IR(54), min=40.0, max=70.0
-        ),  # might be f_eps_backup?
+        "v_ac1_output": Def(C.deci, None, IR(53), min=0.0, max=500.0),  # might be v_eps_backup?
+        "f_ac1_output": Def(C.centi, None, IR(54), min=40.0, max=70.0),  # might be f_eps_backup?
         "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
         "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
@@ -661,9 +649,7 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
     @classmethod
     def from_register_cache(cls, register_cache) -> "SinglePhaseInverter":
         """Construct a SinglePhaseInverter from a RegisterCache."""
-        return cls.model_validate(
-            SinglePhaseInverterRegisterGetter(register_cache).build()
-        )
+        return cls.model_validate(SinglePhaseInverterRegisterGetter(register_cache).build())
 
     def p_pv(self) -> int:
         """Computes the total PV power."""
