@@ -43,6 +43,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - accept mode parameter in set_calibrate_battery_soc ([8139304](https://github.com/dewet22/givenergy-modbus/commit/8139304b373625fcf13e52a90328e0eb50876c1c), @dewet22)
 - add slots 3-10 write commands and model-aware SlotMap dispatch ([e7a88d0](https://github.com/dewet22/givenergy-modbus/commit/e7a88d02e01c4d101c145a3d2d49fcedf5c51f3f), @dewet22)
 - per-model register block dispatch in load_config() and refresh() ([1568038](https://github.com/dewet22/givenergy-modbus/commit/1568038c7243a49ef410033210690b7445bbf822), @dewet22)
+- per-commit and per-push overrides for the changelog bot ([2eb890a](https://github.com/dewet22/givenergy-modbus/commit/2eb890adc8e81dc2df93df3eadee913efc3b13a4), @dewet22)
 
 ### 🔄 Changed
 
@@ -60,6 +61,8 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - whitelist battery pause registers 318-320 in WRITE_SAFE_REGISTERS ([9824e3b](https://github.com/dewet22/givenergy-modbus/commit/9824e3b825dfa693eb326b36fc199277a5aafc46), @dewet22)
 - add docstrings to deprecated slot wrappers; narrow types in slot tests ([0038349](https://github.com/dewet22/givenergy-modbus/commit/0038349737204615bf5a92b357267e73f4f94c5d), @dewet22)
 - split three-phase HR 1060-1124 load into two ≤60-register reads ([31bce62](https://github.com/dewet22/givenergy-modbus/commit/31bce6216505150050a7159bb1bf5729fe6cbb08), @dewet22)
+- read/write CHANGELOG.md as UTF-8 explicitly ([e4296d0](https://github.com/dewet22/givenergy-modbus/commit/e4296d01ebaad9cdca4830d7666471e01a310c86), @dewet22)
+- tighten loose ends spotted by Codacy + CodeRabbit + Gemini ([f2e4013](https://github.com/dewet22/givenergy-modbus/commit/f2e401398bd12c62f7b1724f9c9e646d50ed161a), @dewet22)
 
 ### ⚠️ Deprecated
 
