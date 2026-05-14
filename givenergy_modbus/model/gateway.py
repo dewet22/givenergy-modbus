@@ -1,6 +1,6 @@
 """GivEnergy Gateway data model.
 
-Two variants are needed: Gateway (firmware GA000009 and before) and Gateway2
+Two variants are needed: GatewayV1 (firmware GA000009 and before) and GatewayV2
 (GA000010 and after). The only differences are the register byte order for
 uint32 energy totals and the AIO serial number register addresses.
 
@@ -14,6 +14,49 @@ from givenergy_modbus.model.inverter import WorkMode
 from givenergy_modbus.model.register import IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
+
+
+def _gateway_fault_code(val: int) -> list[str] | None:
+    """Decode a 32-bit gateway fault bitmask (MSB-first) into active fault names."""
+    if val is None:
+        return None
+    _FAULTS = [
+        "Relay 1&2 bonding",
+        "Relay 3&4 bonding",
+        "Relay 1&2 disconnect",
+        "Relay 3&4 disconnect",
+        "AC over frequency 1",
+        "AC under frequency 1",
+        "AC over voltage 1",
+        "AC under voltage 1",
+        "AC over frequency 2",
+        "AC under frequency 2",
+        "AC over voltage 2",
+        "AC under voltage 2",
+        None,
+        "No zero-point protection",
+        "Over quarter AC voltage",
+        "Under quarter AC voltage",
+        "Over AC voltage long-time",
+        "AC over frequency constant",
+        "AC under frequency constant",
+        "AC over voltage constant",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "Grid mode Off",
+    ]
+    bits = f"{val:032b}"
+    return [f for i, b in enumerate(bits) if b == "1" and (f := _FAULTS[i]) is not None]
+
 
 # Registers shared by both firmware variants (no byte-order differences)
 _GATEWAY_COMMON_LUT = {
@@ -33,8 +76,7 @@ _GATEWAY_COMMON_LUT = {
     "p_load": Def(C.uint16, None, IR(1618), max=50000),
     "p_liberty": Def(C.int16, None, IR(1619)),
     "fault_protection": Def(C.uint32, None, IR(1620), IR(1621)),
-    # gateway_fault_codes: raw uint32; fork-specific decoder omitted
-    "gateway_fault_codes": Def(C.uint32, None, IR(1622), IR(1623)),
+    "gateway_fault_codes": Def(C.uint32, _gateway_fault_code, IR(1622), IR(1623)),
     "v_grid_relay": Def(C.deci, None, IR(1624), min=0.0, max=500.0),
     "v_inverter_relay": Def(C.deci, None, IR(1625), min=0.0, max=500.0),
     "first_inverter_serial_number": Def(C.string, None, IR(1627), IR(1628), IR(1629), IR(1630), IR(1631)),
@@ -127,58 +169,58 @@ _GATEWAY_V2_SERIALS = {
 }
 
 
-class GatewayRegisterGetter(RegisterGetter):
+class GatewayV1RegisterGetter(RegisterGetter):
     """Register getter for Gateway firmware GA000009 and earlier."""
 
     REGISTER_LUT = dict(_GATEWAY_COMMON_LUT, **_GATEWAY_V1_ENERGY_TOTALS, **_GATEWAY_V1_SERIALS)
 
 
-class Gateway2RegisterGetter(RegisterGetter):
+class GatewayV2RegisterGetter(RegisterGetter):
     """Register getter for Gateway firmware GA000010 and later (swapped uint32 byte order)."""
 
     REGISTER_LUT = dict(_GATEWAY_COMMON_LUT, **_GATEWAY_V2_ENERGY_TOTALS, **_GATEWAY_V2_SERIALS)
 
 
-_GatewayBase = create_model(  # type: ignore[call-overload]
-    "Gateway",
+_GatewayV1Base = create_model(  # type: ignore[call-overload]
+    "GatewayV1",
     __config__=ConfigDict(frozen=True, use_enum_values=True),
-    **GatewayRegisterGetter.to_fields(),
+    **GatewayV1RegisterGetter.to_fields(),
 )
 
-_Gateway2Base = create_model(  # type: ignore[call-overload]
-    "Gateway2",
+_GatewayV2Base = create_model(  # type: ignore[call-overload]
+    "GatewayV2",
     __config__=ConfigDict(frozen=True, use_enum_values=True),
-    **Gateway2RegisterGetter.to_fields(),
+    **GatewayV2RegisterGetter.to_fields(),
 )
 
 
-class Gateway(_GatewayBase):  # type: ignore[misc,valid-type]
+class GatewayV1(_GatewayV1Base):  # type: ignore[misc,valid-type]
     """GivEnergy Gateway data model (firmware GA000009 and earlier)."""
 
     @classmethod
-    def from_register_cache(cls, register_cache) -> "Gateway":
-        """Construct a Gateway from a RegisterCache."""
-        return cls.model_validate(GatewayRegisterGetter(register_cache).build())
+    def from_register_cache(cls, register_cache) -> "GatewayV1":
+        """Construct a GatewayV1 from a RegisterCache."""
+        return cls.model_validate(GatewayV1RegisterGetter(register_cache).build())
 
     def is_valid(self) -> bool:
         """Try to detect if a gateway is present based on its attributes."""
         return self.software_version is not None  # type: ignore[attr-defined]
 
 
-class Gateway2(_Gateway2Base):  # type: ignore[misc,valid-type]
+class GatewayV2(_GatewayV2Base):  # type: ignore[misc,valid-type]
     """GivEnergy Gateway data model (firmware GA000010 and later)."""
 
     @classmethod
-    def from_register_cache(cls, register_cache) -> "Gateway2":
-        """Construct a Gateway2 from a RegisterCache."""
-        return cls.model_validate(Gateway2RegisterGetter(register_cache).build())
+    def from_register_cache(cls, register_cache) -> "GatewayV2":
+        """Construct a GatewayV2 from a RegisterCache."""
+        return cls.model_validate(GatewayV2RegisterGetter(register_cache).build())
 
     def is_valid(self) -> bool:
         """Try to detect if a gateway is present based on its attributes."""
         return self.software_version is not None  # type: ignore[attr-defined]
 
 
-def select_gateway(register_cache) -> "Gateway | Gateway2":
+def select_gateway(register_cache) -> "GatewayV1 | GatewayV2":
     """Return the appropriate Gateway variant based on firmware version.
 
     Reads IR(1603) — the last register of the version string — and compares its
@@ -187,5 +229,5 @@ def select_gateway(register_cache) -> "Gateway | Gateway2":
     """
     fw_raw = register_cache.get(IR(1603))
     if fw_raw is not None and fw_raw >= 10:
-        return Gateway2.from_register_cache(register_cache)
-    return Gateway.from_register_cache(register_cache)
+        return GatewayV2.from_register_cache(register_cache)
+    return GatewayV1.from_register_cache(register_cache)

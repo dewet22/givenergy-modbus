@@ -1,9 +1,10 @@
 """GivEnergy three-phase inverter data model."""
 
-from pydantic import ConfigDict, create_model
+from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
+    _DTC_RATED_POWER,
     BatteryType,
     Model,
     PowerFactorFunctionModel,
@@ -11,10 +12,190 @@ from givenergy_modbus.model.inverter import (
     SinglePhaseInverterRegisterGetter,
     SlotMap,
     Status,
+    _battery_max_power,
 )
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
+
+
+def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
+    """Decode a 16-bit fault register for three-phase inverters.
+
+    `word` selects one of 9 fault tables (words 0–8), each covering 16 bits.
+    Three-phase inverters expose fault words at IR(1300)–IR(1307).
+    """
+    if val is None:
+        return None
+    _WORDS: list[list[str | None]] = [
+        [  # word 0
+            "Battery Voltage High",
+            None,
+            "Bus 2 Voltage high ISR",
+            "Bus Voltage high ISR",
+            "Inverter OCP fault TZ",
+            "Frequency unstable",
+            "Buck Boost Fault ISR",
+            "BDC OCP Fault",
+            "Grid Zero cross loss",
+            None,
+            None,
+            None,
+            "Grid Phase 1 voltage fault",
+            "Grid Phase 2 voltage fault",
+            "Grid Phase 3 voltage fault",
+            "Grid frequency out of range",
+        ],
+        [  # word 1
+            "Gateway Comm fault",
+            "GFCI Damage",
+            "Grid phase 1 voltage low",
+            "Grid phase 1 voltage high",
+            "Grid phase 2 voltage low",
+            "Grid phase 2 voltage high",
+            "Grid phase 3 voltage low",
+            "Grid phase 3 voltage high",
+            "Inverter OCP Fault ISR",
+            None,
+            None,
+            None,
+            "Inverter Phase 1 Current OCP (RMS)",
+            "Inverter Phase 2 Current OCP (RMS)",
+            "Inverter Phase 3 Current OCP (RMS)",
+            "No Grid connection",
+        ],
+        [  # word 2
+            "Grid Frequency Low",
+            "Grid frequency High",
+            "Grid voltage imbalance",
+            "AC PLL fault",
+            "Overload fault",
+            "Backflow timeout",
+            None,
+            "Grid connected v/f out of range",
+            "EPS phase 1 voltage loss",
+            "EPS phase 2 voltage loss",
+            "EPS phase 3 voltage loss",
+            "EPS bus voltage low",
+            "EPS overload",
+            "EPS voltage high",
+            "DCV high",
+            "Battery OCP",
+        ],
+        [  # word 3
+            "Battery reversed",
+            "Battery open",
+            "Battery voltage low",
+            None,
+            "Bus2 voltage abnormal",
+            "Buck boost soft start fail",
+            "Battery voltage high",
+            None,
+            "BMS Error",
+            "BMS comm fault",
+            None,
+            None,
+            None,
+            "Battery sleep",
+            "Lead acid NTC open",
+            "BMS power forbid",
+        ],
+        [  # word 4
+            None,
+            None,
+            None,
+            None,
+            None,
+            "PV1 voltage low",
+            "PV2 voltage low",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        ],
+        [  # word 5
+            "DCI high",
+            "PV isolation low",
+            "NTC open",
+            "Bus voltage high",
+            "PV voltage high",
+            "Boost over temperature",
+            "Buck Boost over temperature",
+            "Inverter over temperature",
+            "EPS output short circuit",
+            "Auto test fault",
+            "Init Model fault",
+            "Relay fault",
+            "Bus voltage unbalance",
+            "DSP firmware unmatched",
+            "PV1 short circuit",
+            "PV2 short circuit",
+        ],
+        [  # word 6
+            "PV voltage high",
+            "External device faulty",
+            "Acom fault",
+            "Bcom fault",
+            "Master force inverter fault",
+            "Master force SP fault",
+            "GFCI High",
+            "Virtual Load over temp",
+            "Internal com fault3",
+            "Grid consistent",
+            "EPS connected grid",
+            "Internal over temperature",
+            "Fan fault",
+            "Hardware unmatch",
+            None,
+            None,
+        ],
+        [  # word 7
+            "CT clamp L/N reversed",
+            "Pairing timeout",
+            "Meter comms loss",
+            None,
+            None,
+            None,
+            "Battery over temperature",
+            "Battery over load",
+            "Battery full",
+            "Battery needs Charge",
+            "BMS Warning",
+            "Battery weak",
+            "Battery low power",
+            "NTC open",
+            "Fan warning",
+            None,
+        ],
+        [  # word 8
+            "Parallel version different",
+            "Parallel output voltage different",
+            "Parallel battery voltage different",
+            "Parallel grid voltage different",
+            "Parallel grid frequency different",
+            "Parallel output setting different",
+            "Parallel parameter different",
+            None,
+            "Parallel host line loss",
+            "Parallel comm loss",
+            "Parallel low frequency sync line loss",
+            "Parallel high frequency sync line loss",
+            "Parallel fault",
+            None,
+            None,
+            None,
+        ],
+    ]
+    if word < 0 or word >= len(_WORDS):
+        return None
+    bits = f"{val:016b}"
+    return [f for i, b in enumerate(bits) if b == "1" and (f := _WORDS[word][i]) is not None]
+
 
 # Registers that are three-phase specific or that shadow single-phase registers at higher addresses.
 # When merged with InverterRegisterGetter.REGISTER_LUT these entries win (dict update semantics).
@@ -28,6 +209,15 @@ _THREE_PHASE_LUT = {
     "set_power_factor": Def(C.uint16, None, HR(1004)),
     "grid_connect_time": Def(C.uint16, None, HR(1007)),
     "grid_reconnect_time": Def(C.uint16, None, HR(1008)),
+    "grid_connect_slope": Def(C.deci, None, HR(1009)),
+    "com_baud_rate": Def(C.uint16, None, HR(1010)),
+    "grid_reconnect_slope": Def(C.uint16, None, HR(1011)),
+    # HR(1012) packs inverter rated power (nibble 0) and battery type (nibble 1) — encoding
+    # unverified; inverter_max_power is already a computed_field; battery_type is at HR(1080).
+    # HR(1013) nibble 1 → InverterType (SINGLE_PHASE_LV/HV, THREE_PHASE_LV/HV) — unclear whether
+    # the full register or only a nibble holds the value; needs a register capture to confirm.
+    # See open questions in fork-merge-plan.md.
+    "meter_fail_enable": Def(C.uint16, None, HR(1017)),
     "v_grid_low_limit_1": Def(C.deci, None, HR(1018), min=0.0, max=500.0),
     "v_grid_high_limit_1": Def(C.deci, None, HR(1019), min=0.0, max=500.0),
     "f_grid_low_limit_1": Def(C.centi, None, HR(1020), min=40.0, max=70.0),
@@ -76,6 +266,15 @@ _THREE_PHASE_LUT = {
     "f_under_derate_start": Def(C.centi, None, HR(1064), min=40.0, max=70.0),
     "f_under_derate_end": Def(C.centi, None, HR(1065), min=40.0, max=70.0),
     "f_over_derate_end": Def(C.centi, None, HR(1066), min=40.0, max=70.0),
+    "time_under_freq_derate_delay": Def(C.centi, None, HR(1067)),
+    # HR(1068) unused
+    "f_over_derate_stop": Def(C.centi, None, HR(1069), min=40.0, max=70.0),
+    "f_over_derate_recovery_delay": Def(C.centi, None, HR(1070)),
+    "zero_current_low_voltage": Def(C.deci, None, HR(1071), min=0.0, max=500.0),
+    "zero_current_high_voltage": Def(C.deci, None, HR(1072), min=0.0, max=500.0),
+    "f_power_on_recovery": Def(C.centi, None, HR(1073), min=40.0, max=70.0),
+    "f_under_derate_stop": Def(C.centi, None, HR(1074), min=40.0, max=70.0),
+    "f_under_derate_recovery_delay": Def(C.centi, None, HR(1075)),
     "p_export_limit": Def(C.deci, None, HR(1063), max=6500),
     "battery_power_cutoff": Def(C.uint16, None, HR(1078)),
     "ac_power_derate_delay": Def(C.centi, None, HR(1079)),
@@ -202,16 +401,16 @@ _THREE_PHASE_LUT = {
     "p_export": Def(C.uint32, C.deci, IR(1240), IR(1241), max=100000),
     "p_meter2": Def(C.uint32, C.deci, IR(1244), IR(1245), max=100000),
     #
-    # Input Registers 1300–1307 — Fault codes (raw; decode separately if needed)
+    # Input Registers 1300–1307 — Fault codes decoded per word
     #
-    "inverter_fault_code_0": Def(C.uint16, None, IR(1300)),
-    "inverter_fault_code_1": Def(C.uint16, None, IR(1301)),
-    "inverter_fault_code_2": Def(C.uint16, None, IR(1302)),
-    "inverter_fault_code_3": Def(C.uint16, None, IR(1303)),
-    "inverter_fault_code_4": Def(C.uint16, None, IR(1304)),
-    "inverter_fault_code_5": Def(C.uint16, None, IR(1305)),
-    "inverter_fault_code_6": Def(C.uint16, None, IR(1306)),
-    "inverter_fault_code_7": Def(C.uint16, None, IR(1307)),
+    "inverter_fault_codes_0": Def((_inverter_fault_code2, 0), None, IR(1300)),
+    "inverter_fault_codes_1": Def((_inverter_fault_code2, 1), None, IR(1301)),
+    "inverter_fault_codes_2": Def((_inverter_fault_code2, 2), None, IR(1302)),
+    "inverter_fault_codes_3": Def((_inverter_fault_code2, 3), None, IR(1303)),
+    "inverter_fault_codes_4": Def((_inverter_fault_code2, 4), None, IR(1304)),
+    "inverter_fault_codes_5": Def((_inverter_fault_code2, 5), None, IR(1305)),
+    "inverter_fault_codes_6": Def((_inverter_fault_code2, 6), None, IR(1306)),
+    "inverter_fault_codes_7": Def((_inverter_fault_code2, 7), None, IR(1307)),
     #
     # Input Registers 1317–1327 — Firmware identification
     #
@@ -289,6 +488,18 @@ class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,mi
     def from_register_cache(cls, register_cache) -> "ThreePhaseInverter":
         """Construct a ThreePhaseInverter from a RegisterCache."""
         return cls.model_validate(ThreePhaseInverterRegisterGetter(register_cache).build())
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_max_power(self) -> int | None:
+        """Returns the rated battery charge/discharge power in watts, derived from model and firmware."""
+        return _battery_max_power(self.device_type_code, self.arm_firmware_version)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def inverter_max_power(self) -> int | None:
+        """Returns the rated inverter power in watts, derived from the device type code."""
+        return _DTC_RATED_POWER.get(self.device_type_code)  # type: ignore[attr-defined]
 
     @property
     def slot_map(self) -> SlotMap:

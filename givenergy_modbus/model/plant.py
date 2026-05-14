@@ -7,7 +7,7 @@ from pydantic import ConfigDict
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
 from givenergy_modbus.model.ems import Ems
-from givenergy_modbus.model.gateway import Gateway, Gateway2, select_gateway
+from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
 from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, SinglePhaseInverterRegisterGetter
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
@@ -236,8 +236,8 @@ class Plant(GivEnergyBaseModel):
         return Ems.from_register_cache(cache)
 
     @property
-    def gateway(self) -> Gateway | Gateway2 | None:
-        """Return Gateway or Gateway2 model for GATEWAY device type; None otherwise."""
+    def gateway(self) -> GatewayV1 | GatewayV2 | None:
+        """Return GatewayV1 or GatewayV2 model for GATEWAY device type; None otherwise."""
         if not self.capabilities or self.capabilities.device_type != Model.GATEWAY:
             return None
         cache = self.register_caches.get(self.capabilities.inverter_slave, RegisterCache())

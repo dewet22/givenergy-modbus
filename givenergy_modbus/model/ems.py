@@ -88,6 +88,7 @@ class EmsRegisterGetter(RegisterGetter):
         "inverter_2_serial_number": Def(C.string, None, IR(2071), IR(2072), IR(2073), IR(2074), IR(2075)),
         "inverter_3_serial_number": Def(C.string, None, IR(2076), IR(2077), IR(2078), IR(2079), IR(2080)),
         "inverter_4_serial_number": Def(C.string, None, IR(2081), IR(2082), IR(2083), IR(2084), IR(2085)),
+        "e_active_generation_total": Def(C.uint16, None, IR(18)),
         "calc_load_power": Def(C.uint16, None, IR(2086)),
         "measured_load_power": Def(C.uint16, None, IR(2087)),
         "total_generation_load_power": Def(C.uint16, None, IR(2088)),

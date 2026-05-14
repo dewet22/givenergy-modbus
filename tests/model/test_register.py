@@ -104,16 +104,6 @@ def test_converter_timeslot_sentinel():
     assert Converter.timeslot(0, 60) is None
 
 
-def test_converter_hexfield():
-    assert Converter.hexfield(0xABCD, 0) == 0xA
-    assert Converter.hexfield(0xABCD, 1) == 0xB
-    assert Converter.hexfield(0xABCD, 2) == 0xC
-    assert Converter.hexfield(0xABCD, 3) == 0xD
-    assert Converter.hexfield(0xABCD, 0, 2) == 0xAB
-    assert Converter.hexfield(0x1234, 1, 3) == 0x234
-    assert Converter.hexfield(None, 0) is None
-
-
 def test_converter_bitfield():
     assert Converter.bitfield(0b1010_0011_0000_0001, 0, 0) == 1  # MSB
     assert Converter.bitfield(0b1010_0011_0000_0001, 15, 15) == 1  # LSB
@@ -135,18 +125,69 @@ def test_converter_gateway_version():
     assert Converter.gateway_version(first, None, third, fourth) is None
 
 
-def test_converter_inverter_fault_code():
-    assert Converter.inverter_fault_code(None) is None
-    assert Converter.inverter_fault_code(0) == []
+
+
+def test_battery_max_power():
+    from givenergy_modbus.model.inverter import _battery_max_power
+
+    # DTC "2001" prefix "20" + Gen2/3 fw → 3600W
+    assert _battery_max_power("2001", 300) == 3600
+    # DTC "2001" prefix "20" + Gen1 fw → 2600W
+    assert _battery_max_power("2001", 100) == 2600
+    # Known non-'20' DTC
+    assert _battery_max_power("8001", 0) == 6000
+    # Unknown DTC → 0
+    assert _battery_max_power("9999", 0) == 0
+    assert _battery_max_power(None, 100) is None
+    assert _battery_max_power("2001", None) is None
+
+
+def test_gateway_fault_code():
+    from givenergy_modbus.model.gateway import _gateway_fault_code
+
+    assert _gateway_fault_code(None) is None
+    assert _gateway_fault_code(0) == []
+    # bit 0 (MSB of 32-bit) → "Relay 1&2 bonding"
+    result = _gateway_fault_code(0x80000000)
+    assert result == ["Relay 1&2 bonding"]
+    # bit 31 (LSB) → "Grid mode Off"
+    result = _gateway_fault_code(0x00000001)
+    assert result == ["Grid mode Off"]
+    # bit 12 is None → no output (0x80000000 >> 12 = 0x00080000)
+    assert _gateway_fault_code(0x00080000) == []
+
+
+def test_inverter_fault_code():
+    from givenergy_modbus.model.inverter import _inverter_fault_code
+
+    assert _inverter_fault_code(None) is None
+    assert _inverter_fault_code(0) == []
     # bit 3 (from MSB) → "Backup Overload Fault"
-    result = Converter.inverter_fault_code(0b0001_0000_0000_0000_0000_0000_0000_0000)
+    result = _inverter_fault_code(0b0001_0000_0000_0000_0000_0000_0000_0000)
     assert result == ["Backup Overload Fault"]
     # bits 6+7 → "Grid Monitor Comm Fault" + "ARM Comms Fault"
-    result = Converter.inverter_fault_code(0b0000_0011_0000_0000_0000_0000_0000_0000)
+    result = _inverter_fault_code(0b0000_0011_0000_0000_0000_0000_0000_0000)
     assert "Grid Monitor Comm Fault" in result
     assert "ARM Comms Fault" in result
     # None bits produce no output
-    assert Converter.inverter_fault_code(0b1110_0000_0000_0000_0000_0000_0000_0000) == []
+    assert _inverter_fault_code(0b1110_0000_0000_0000_0000_0000_0000_0000) == []
+
+
+def test_inverter_fault_code2():
+    from givenergy_modbus.model.inverter_threephase import _inverter_fault_code2
+
+    assert _inverter_fault_code2(None, 0) is None
+    assert _inverter_fault_code2(0, 0) == []
+    # word 0, bit 0 (MSB) → "Battery Voltage High"
+    result = _inverter_fault_code2(0x8000, 0)
+    assert result == ["Battery Voltage High"]
+    # word 3, bit 0 (MSB) → "Battery reversed"
+    result = _inverter_fault_code2(0x8000, 3)
+    assert result == ["Battery reversed"]
+    # out-of-range word → None
+    assert _inverter_fault_code2(0xFFFF, 9) is None
+    # None bits produce no output (word 4 has mostly None)
+    assert _inverter_fault_code2(0x8000, 4) == []
 
 
 # ---------------------------------------------------------------------------

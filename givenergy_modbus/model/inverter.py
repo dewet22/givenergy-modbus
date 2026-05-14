@@ -1,3 +1,4 @@
+import math
 import warnings
 from dataclasses import dataclass
 from enum import Enum, IntEnum, StrEnum
@@ -46,13 +47,15 @@ class Model(str, Enum):
     @classmethod
     def _missing_(cls, value):
         """Pick model from the first digit of the device type code."""
+        if not isinstance(value, str) or len(value) <= 1:
+            return None
         return cls(value[0])
 
     @property
     def system_battery_voltage(self) -> float:
         """Represent nominal battery voltage for this system."""
         if self.value == Model.ALL_IN_ONE:
-            return 317.0
+            return 307.0
         elif self.value in [Model.HYBRID_3PH, Model.AC_3PH]:
             return 76.8
         else:
@@ -76,14 +79,28 @@ SINGLE_PHASE_SLOTS = SlotMap(
 # and HYBRID_GEN3 units with ARM firmware > 302.
 EXTENDED_SLOTS = SlotMap(
     charge_slots=(
-        (94, 95), (31, 32),
-        (246, 247), (249, 250), (252, 253), (255, 256),
-        (258, 259), (261, 262), (264, 265), (267, 268),
+        (94, 95),
+        (31, 32),
+        (246, 247),
+        (249, 250),
+        (252, 253),
+        (255, 256),
+        (258, 259),
+        (261, 262),
+        (264, 265),
+        (267, 268),
     ),
     discharge_slots=(
-        (56, 57), (44, 45),
-        (276, 277), (279, 280), (282, 283), (285, 286),
-        (288, 289), (291, 292), (294, 295), (297, 298),
+        (56, 57),
+        (44, 45),
+        (276, 277),
+        (279, 280),
+        (282, 283),
+        (285, 286),
+        (288, 289),
+        (291, 292),
+        (294, 295),
+        (297, 298),
     ),
 )
 
@@ -104,6 +121,117 @@ _DTC_PREFIX_TO_MODEL: dict[str, Model] = {
     "82": Model.ALL_IN_ONE_HYBRID,
     "83": Model.HYBRID_GEN4,
 }
+
+# Rated AC output power in watts, keyed by 4-char hex device type code.
+# Sourced from britkat1980/giv_tcp:dev3; likely not exhaustive for all variants.
+_DTC_RATED_POWER: dict[str, int] = {
+    "2001": 5000,
+    "2002": 4600,
+    "2003": 3600,
+    "2101": 5000,
+    "2102": 4600,
+    "2103": 3600,
+    "2104": 6000,
+    "2105": 7000,
+    "2106": 8000,
+    "2201": 5000,
+    "2202": 4600,
+    "2203": 3600,
+    "2204": 6000,
+    "2205": 7000,
+    "2206": 8000,
+    "2301": 5000,
+    "2302": 4600,
+    "2303": 3600,
+    "2304": 6000,
+    "3001": 3000,
+    "3002": 3600,
+    "4001": 6000,
+    "4002": 8000,
+    "4003": 10000,
+    "4004": 11000,
+    "7001": 12000,
+    "8001": 6000,
+    "8002": 3600,
+    "8003": 5000,
+    "8101": 6000,
+    "8102": 8000,
+    "8103": 10000,
+    "8201": 6000,
+    "8202": 8000,
+    "8203": 10000,
+    "8204": 12000,
+    "8304": 6000,
+}
+
+
+_DTC_BATPOWER: dict[str, int] = {
+    "2201": 5400,
+    "3001": 3000,
+    "3002": 3000,
+    "8001": 6000,
+    "8002": 3600,
+    "8003": 5000,
+    "8102": 8000,
+    "8103": 10000,
+}
+
+
+def _battery_max_power(dtc_str: str, fw: int) -> int | None:
+    """Map DTC hex string + ARM firmware to rated battery charge/discharge power in watts."""
+    if dtc_str is None or fw is None:
+        return None
+    if dtc_str[:2] == "20":
+        return 3600 if math.floor(int(fw) / 100) in (3, 8, 9) else 2600
+    return _DTC_BATPOWER.get(dtc_str, 0)
+
+
+def _inverter_fault_code(val: int) -> list[str] | None:
+    """Decode a 32-bit inverter fault bitmask into a list of active fault names.
+
+    Bit table sourced from britkat1980/givenergy-modbus-async; not verified against
+    official firmware documentation (contact @britkat1980 for provenance).
+    Three-phase units use a different 9-word fault register layout (IR 1300–1307).
+    """
+    if val is None:
+        return None
+    _FAULTS = [
+        None,
+        None,
+        None,
+        "Backup Overload Fault",
+        None,
+        None,
+        "Grid Monitor Comm Fault",
+        "ARM Comms Fault",
+        "Consistent Fault",
+        "EEPROM Fault",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "Inverter Frequency Fault",
+        "Relay Fault",
+        "Inverter Voltage Fault",
+        "GFCI Fault",
+        "Hail Sensor Fault",
+        "DSP Comms Fault",
+        "Bus over voltage",
+        "Inverter Current Fault",
+        "No Utility",
+        "PV Isolation Fault",
+        "Current leak high",
+        "DCI high",
+        "PV Over voltage",
+        "Grid voltage Fault",
+        "Grid Frequency Fault",
+        "Inverter NTC Fault",
+        None,
+    ]
+    bits = f"{val:032b}"
+    return [f for i, b in enumerate(bits) if b == "1" and (f := _FAULTS[i]) is not None]
 
 
 def resolve_model(raw_dtc: int, arm_fw: int) -> Model:
@@ -278,7 +406,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "num_phases": Def((C.duint8, 1), None, HR(3)),
         # HR(4-6) unused
         "enable_ammeter": Def(C.bool, None, HR(7)),
-        "first_battery_serial_number": Def(C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
+        "first_battery_serial_number": Def(
+            C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)
+        ),
         "serial_number": Def(C.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
         "first_battery_bms_firmware_version": Def(C.uint16, None, HR(18)),
         "dsp_firmware_version": Def(C.uint16, None, HR(19)),
@@ -297,7 +427,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "charge_slot_2": Def(C.timeslot, None, HR(31), HR(32)),
         "user_code": Def(C.uint16, None, HR(33)),
         "modbus_version": Def(C.centi, (C.fstr, "0.2f"), HR(34)),
-        "system_time": Def(C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)),
+        "system_time": Def(
+            C.datetime, None, HR(35), HR(36), HR(37), HR(38), HR(39), HR(40)
+        ),
         "enable_drm_rj45_port": Def(C.bool, None, HR(41)),
         "enable_reversed_ct_clamp": Def(C.bool, None, HR(42)),
         "charge_soc": Def((C.duint8, 0), None, HR(43)),
@@ -339,7 +471,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_buzzer": Def(C.bool, None, HR(113)),
         "battery_discharge_min_power_reserve": Def(C.uint16, None, HR(114)),
         # 'island_check_continue': Def(C.uint16, None, HR(115)),
-        "charge_target_soc": Def(C.uint16, None, HR(116)),  # requires enable_charge_target
+        "charge_target_soc": Def(
+            C.uint16, None, HR(116)
+        ),  # requires enable_charge_target
         "charge_soc_stop_2": Def(C.uint16, None, HR(117)),
         "discharge_soc_stop_2": Def(C.uint16, None, HR(118)),
         "charge_soc_stop_1": Def(C.uint16, None, HR(119)),
@@ -375,7 +509,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_standard_self_consumption_logic": Def(C.bool, None, HR(199)),
         "cmd_bms_flash_update": Def(C.bool, None, HR(200)),
         "inverter_errors": Def(C.uint32, None, HR(223), HR(224)),
-        "inverter_fault_messages": Def(C.uint32, C.inverter_fault_code, HR(223), HR(224)),
+        "inverter_fault_messages": Def(
+            C.uint32, _inverter_fault_code, HR(223), HR(224)
+        ),
         # 202-239 - Hot Water Diverter?
         #
         # Holding Registers, block 240-299
@@ -486,8 +622,12 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
         "p_battery": Def(C.int16, None, IR(52)),
-        "v_ac1_output": Def(C.deci, None, IR(53), min=0.0, max=500.0),  # might be v_eps_backup?
-        "f_ac1_output": Def(C.centi, None, IR(54), min=40.0, max=70.0),  # might be f_eps_backup?
+        "v_ac1_output": Def(
+            C.deci, None, IR(53), min=0.0, max=500.0
+        ),  # might be v_eps_backup?
+        "f_ac1_output": Def(
+            C.centi, None, IR(54), min=40.0, max=70.0
+        ),  # might be f_eps_backup?
         "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
         "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
@@ -521,7 +661,9 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
     @classmethod
     def from_register_cache(cls, register_cache) -> "SinglePhaseInverter":
         """Construct a SinglePhaseInverter from a RegisterCache."""
-        return cls.model_validate(SinglePhaseInverterRegisterGetter(register_cache).build())
+        return cls.model_validate(
+            SinglePhaseInverterRegisterGetter(register_cache).build()
+        )
 
     def p_pv(self) -> int:
         """Computes the total PV power."""
@@ -552,6 +694,18 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
         if self.battery_capacity_ah is None or self.model is None:  # type: ignore[attr-defined]
             return None
         return self.battery_capacity_ah * self.model.system_battery_voltage / 1000  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_max_power(self) -> int | None:
+        """Returns the rated battery charge/discharge power in watts, derived from model and firmware."""
+        return _battery_max_power(self.device_type_code, self.arm_firmware_version)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def inverter_max_power(self) -> int | None:
+        """Returns the rated inverter power in watts, derived from the device type code."""
+        return _DTC_RATED_POWER.get(self.device_type_code)  # type: ignore[attr-defined]
 
 
 def __getattr__(name: str):

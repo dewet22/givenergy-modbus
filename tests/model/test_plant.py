@@ -1149,8 +1149,10 @@ def test_from_actual():
         # 'work_time_total': 2754,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
+        "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
+
         "battery_capacity_kwh": 8.192,
         "battery_power_mode": BatteryPowerMode.SELF_CONSUMPTION,
         "battery_type": BatteryType.LITHIUM,
@@ -1181,6 +1183,7 @@ def test_from_actual():
         "modbus_address": 0x11,
         "modbus_version": "1.40",
         "model": Model.HYBRID,
+        "inverter_max_power": 5000,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
