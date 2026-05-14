@@ -272,8 +272,7 @@ class Client:
                 await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
 
     async def one_shot_command(self, requests: list[TransparentRequest], timeout=1.5, retries=0) -> None:
-        """Run a single set of requests and return."""
-        await self.connect()
+        """Execute a set of requests. Caller is responsible for connecting first."""
         await self.execute(requests, timeout=timeout, retries=retries)
 
     async def _task_network_consumer(self):
