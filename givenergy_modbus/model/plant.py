@@ -38,6 +38,29 @@ _HV_MODELS: frozenset[Model] = frozenset(
     }
 )
 
+# Models with registers in the 1000-range (HR 1000–1124, IR 1000–1413).
+_THREE_PHASE_MODELS: frozenset[Model] = frozenset(
+    {
+        Model.HYBRID_3PH,
+        Model.AC_3PH,
+        Model.AIO_COMMERCIAL,
+        Model.ALL_IN_ONE,
+        Model.ALL_IN_ONE_HYBRID,
+        Model.HYBRID_HV_GEN3,
+    }
+)
+
+# Models that use the extended 10-slot map (HR 240–299 for slots 3–10).
+_EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
+    {
+        Model.HYBRID_GEN3,
+        Model.HYBRID_GEN4,
+        Model.ALL_IN_ONE,
+        Model.ALL_IN_ONE_HYBRID,
+        Model.HYBRID_HV_GEN3,
+    }
+)
+
 
 @dataclass
 class PlantCapabilities:
@@ -58,6 +81,26 @@ class PlantCapabilities:
     def is_hv(self) -> bool:
         """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
         return self.device_type in _HV_MODELS
+
+    @property
+    def is_three_phase(self) -> bool:
+        """Return True if this system uses three-phase registers (HR/IR 1000-range)."""
+        return self.device_type in _THREE_PHASE_MODELS
+
+    @property
+    def has_extended_slots(self) -> bool:
+        """Return True if this system supports the extended 10-slot map (HR 240–299)."""
+        return self.device_type in _EXTENDED_SLOT_MODELS
+
+    @property
+    def is_ems(self) -> bool:
+        """Return True if this system is an EMS plant controller (HR/IR 2040-range)."""
+        return self.device_type in (Model.EMS, Model.EMS_COMMERCIAL)
+
+    @property
+    def is_gateway(self) -> bool:
+        """Return True if this system is a Gateway (IR 1600-range)."""
+        return self.device_type == Model.GATEWAY
 
     def to_dict(self) -> dict:
         """Serialise to a JSON-safe dict for persistence."""
