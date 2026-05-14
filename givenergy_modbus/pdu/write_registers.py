@@ -86,12 +86,10 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             kwargs["register"] = args[0]
             kwargs["value"] = args[1]
         # WriteHoldingRegister defaults to 0x11 (the inverter's setup address) rather than the
-        # 0x32 inherited from TransparentMessage. The fold below normalises either alias before
-        # delegating; the base __init__ still emits a DeprecationWarning if slave_address was used.
-        if "slave_address" in kwargs and "device_address" not in kwargs:
-            kwargs.setdefault("slave_address", 0x11)
-        else:
-            kwargs["device_address"] = kwargs.get("device_address", 0x11)
+        # 0x32 inherited from TransparentMessage. Only fill the default if neither alias was
+        # supplied; the base __init__ handles slave_address→device_address mapping and warning.
+        if "device_address" not in kwargs and "slave_address" not in kwargs:
+            kwargs["device_address"] = 0x11
         super().__init__(**kwargs)
         if not isinstance(register, int):
             raise ValueError(f"Register type {type(register)} is unacceptable")

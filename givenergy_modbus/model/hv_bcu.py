@@ -165,12 +165,14 @@ class HvStack:
 
     def __init__(
         self,
-        bcu: Bcu,
         device_address: int | None = None,
+        bcu: Bcu | None = None,
         bmus: list[Bmu] | None = None,
         *,
         slave_address: int | None = None,
     ) -> None:
+        # Positional order matches the original @dataclass signature (slave_address, bcu, bmus)
+        # so legacy positional callers like HvStack(0x70, bcu_obj) keep working.
         if slave_address is not None:
             if device_address is not None:
                 raise TypeError("pass either device_address= or slave_address=, not both")
@@ -181,7 +183,9 @@ class HvStack:
             )
             device_address = slave_address
         if device_address is None:
-            raise TypeError("HvStack.__init__ missing required keyword argument: device_address")
+            raise TypeError("HvStack.__init__ missing required argument: device_address")
+        if bcu is None:
+            raise TypeError("HvStack.__init__ missing required argument: bcu")
         self.device_address = device_address
         self.bcu = bcu
         self.bmus = bmus if bmus is not None else []

@@ -122,9 +122,10 @@ class Client:
         Reads HR(0) and HR(21) from the inverter to resolve the model, then
         probes for BCUs (HV systems), meters, and LV battery devices.
 
-        Returns a PlantCapabilities instance; the caller is responsible for
-        assigning it (e.g. to plant.capabilities) and for passing it to
-        Client.refresh() once that method exists.
+        Both returns the PlantCapabilities instance and assigns it to
+        `self.plant.capabilities` — the returned object and the one stored on
+        the plant are the same. Subsequent calls to Client.refresh() and
+        Client.load_config() will use it automatically.
 
         Uses a two-tier timeout: `timeout`/`retries` for the known inverter device
         (where a response is expected), and `probe_timeout`/`probe_retries` for

@@ -18,7 +18,7 @@ from givenergy_modbus.model.hv_bcu import Bcu, HvStack
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
 from givenergy_modbus.model.register_cache import RegisterCache
-from givenergy_modbus.pdu import ReadInputRegistersRequest
+from givenergy_modbus.pdu import ReadInputRegistersRequest, WriteHoldingRegisterRequest
 
 
 def test_pdu_slave_address_kwarg_warns_and_maps():
@@ -51,6 +51,19 @@ def test_pdu_slave_address_property_set_warns():
 def test_pdu_both_kwargs_raises():
     with pytest.raises(TypeError, match="not both"):
         ReadInputRegistersRequest(base_register=0, register_count=60, device_address=0x33, slave_address=0x55)
+
+
+def test_write_holding_register_request_slave_address_kwarg_warns_and_maps():
+    """WriteHoldingRegisterRequest has its own __init__ wrapping the base; legacy kwarg must still flow through."""
+    with pytest.warns(DeprecationWarning, match="slave_address is deprecated"):
+        req = WriteHoldingRegisterRequest(register=20, value=1, slave_address=0x33)
+    assert req.device_address == 0x33
+
+
+def test_write_holding_register_request_defaults_to_0x11():
+    """When neither device_address nor slave_address is passed, the address defaults to 0x11."""
+    req = WriteHoldingRegisterRequest(register=20, value=1)
+    assert req.device_address == 0x11
 
 
 def test_capabilities_legacy_kwargs_warn():
@@ -92,6 +105,31 @@ def test_capabilities_legacy_properties_warn_on_read():
 def test_capabilities_both_kwarg_forms_raises():
     with pytest.raises(TypeError, match="not both"):
         PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x32, inverter_slave=0x32)
+
+
+def test_capabilities_unexpected_kwarg_raises():
+    with pytest.raises(TypeError, match="unexpected keyword arguments"):
+        PlantCapabilities(device_type=Model.HYBRID, nonexistent=42)
+
+
+def test_capabilities_legacy_setters_warn_and_assign():
+    """Setting a legacy property must update the canonical field and emit a DeprecationWarning."""
+    caps = PlantCapabilities(device_type=Model.HYBRID)
+    with pytest.warns(DeprecationWarning, match="inverter_slave is deprecated"):
+        caps.inverter_slave = 0x55
+    assert caps.inverter_address == 0x55
+
+    with pytest.warns(DeprecationWarning, match="meter_slaves is deprecated"):
+        caps.meter_slaves = [0x02]
+    assert caps.meter_addresses == [0x02]
+
+    with pytest.warns(DeprecationWarning, match="lv_battery_slaves is deprecated"):
+        caps.lv_battery_slaves = [0x34]
+    assert caps.lv_battery_addresses == [0x34]
+
+    with pytest.warns(DeprecationWarning, match="bcu_slaves is deprecated"):
+        caps.bcu_slaves = [(0, 4)]
+    assert caps.bcu_stacks == [(0, 4)]
 
 
 def test_capabilities_from_dict_accepts_legacy_keys():
@@ -139,3 +177,37 @@ def test_hv_stack_slave_address_property_read_warns():
     stack = HvStack(bcu=bcu, device_address=0x70)
     with pytest.warns(DeprecationWarning, match="HvStack.slave_address is deprecated"):
         assert stack.slave_address == 0x70
+
+
+def test_hv_stack_slave_address_setter_warns_and_assigns():
+    bcu = Bcu.from_register_cache(RegisterCache())
+    stack = HvStack(bcu=bcu, device_address=0x70)
+    with pytest.warns(DeprecationWarning, match="HvStack.slave_address is deprecated"):
+        stack.slave_address = 0x71
+    assert stack.device_address == 0x71
+
+
+def test_hv_stack_both_kwargs_raises():
+    bcu = Bcu.from_register_cache(RegisterCache())
+    with pytest.raises(TypeError, match="not both"):
+        HvStack(bcu=bcu, device_address=0x70, slave_address=0x71)
+
+
+def test_hv_stack_missing_address_raises():
+    bcu = Bcu.from_register_cache(RegisterCache())
+    with pytest.raises(TypeError, match="missing required argument: device_address"):
+        HvStack(bcu=bcu)
+
+
+def test_hv_stack_missing_bcu_raises():
+    with pytest.raises(TypeError, match="missing required argument: bcu"):
+        HvStack(device_address=0x70)
+
+
+def test_hv_stack_positional_args_compatible_with_pre_rename_order():
+    """Legacy callers using positional args (slave_address, bcu) must still work after the rename."""
+    bcu = Bcu.from_register_cache(RegisterCache())
+    stack = HvStack(0x70, bcu)
+    assert stack.device_address == 0x70
+    assert stack.bcu is bcu
+    assert stack.bmus == []
