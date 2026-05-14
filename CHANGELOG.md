@@ -22,9 +22,9 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 
 **Plant and client lifecycle:**
 
-- `PlantCapabilities` dataclass captures full device topology from `detect()`: device type, inverter slave address, LV battery / meter / HV BCU slave addresses ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc), @dewet22)
+- `PlantCapabilities` dataclass captures full device topology from `detect()`: device type, inverter address, LV battery / meter / HV BCU device addresses ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc), @dewet22)
 - `Client.detect()` for one-time device and peripheral discovery; `Client.refresh()` for fast IR measurement polling; `Client.load_config()` for HR configuration reads — replacing the old `refresh_plant_data()` monolith ([ffa78fc](https://github.com/dewet22/givenergy-modbus/commit/ffa78fc), [9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e98), @dewet22)
-- Typed plant accessors — `plant.inverter`, `plant.batteries`, `plant.hv_stacks`, `plant.meters`, `plant.ems`, `plant.gateway` — all dispatch via `capabilities` rather than hardcoded slave-address arithmetic ([9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e98), @dewet22)
+- Typed plant accessors — `plant.inverter`, `plant.batteries`, `plant.hv_stacks`, `plant.meters`, `plant.ems`, `plant.gateway` — all dispatch via `capabilities` rather than hardcoded device-address arithmetic ([9936e98](https://github.com/dewet22/givenergy-modbus/commit/9936e98), @dewet22)
 
 **Commands:**
 
@@ -47,6 +47,7 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 ### 🔄 Changed
 
 - `Inverter` renamed to `SinglePhaseInverter`; `select_inverter()` is now the recommended constructor — it returns the right concrete type based on device model. `Inverter` remains importable as a deprecated alias ([071c755](https://github.com/dewet22/givenergy-modbus/commit/071c755), @dewet22)
+- Renamed `slave_address` → `device_address` across PDUs, and the matching capability fields on `PlantCapabilities` (`inverter_slave` → `inverter_address`, `meter_slaves` → `meter_addresses`, `lv_battery_slaves` → `lv_battery_addresses`, `bcu_slaves` → `bcu_stacks`) and `HvStack` (`slave_address` → `device_address`), aligning with Modbus.org's 2020 terminology update. Legacy names remain as deprecation-warning aliases ([#61](https://github.com/dewet22/givenergy-modbus/pull/61), @dewet22)
 - `Plant.update()` validates each incoming register bank before committing; banks with an invalid serial number (e.g. all-zero padding from an absent battery slot) are silently discarded rather than written into the cache ([82ba7fc](https://github.com/dewet22/givenergy-modbus/commit/82ba7fc), @dewet22)
 - Bounds violations on physical measurements are logged at ERROR level and currently still committed — enforcement (discard-on-violation) follows in a future release once the bounds have been validated in production (see [#57](https://github.com/dewet22/givenergy-modbus/issues/57)) ([5e55be0](https://github.com/dewet22/givenergy-modbus/commit/5e55be0), @dewet22)
 
@@ -59,13 +60,13 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - whitelist battery pause registers 318-320 in WRITE_SAFE_REGISTERS ([9824e3b](https://github.com/dewet22/givenergy-modbus/commit/9824e3b825dfa693eb326b36fc199277a5aafc46), @dewet22)
 - add docstrings to deprecated slot wrappers; narrow types in slot tests ([0038349](https://github.com/dewet22/givenergy-modbus/commit/0038349737204615bf5a92b357267e73f4f94c5d), @dewet22)
 - split three-phase HR 1060-1124 load into two ≤60-register reads ([31bce62](https://github.com/dewet22/givenergy-modbus/commit/31bce6216505150050a7159bb1bf5729fe6cbb08), @dewet22)
-- address PR #61 review feedback on slave→device rename ([f1c8235](https://github.com/dewet22/givenergy-modbus/commit/f1c8235e74953ec7ed5d5b94d83a9a17ae475fc8), @dewet22)
 
 ### ⚠️ Deprecated
 
 - `Inverter` — use `SinglePhaseInverter` directly, or `select_inverter()` to get the correct type for a given device
 - `commands.enable_charge()` / `disable_charge()` — use `set_enable_charge(bool)` instead
 - `commands.enable_discharge()` / `disable_discharge()` — use `set_enable_discharge(bool)` instead
+- `slave_address` kwarg/attribute on PDUs and `slave_address` on `HvStack` — use `device_address`. `PlantCapabilities.inverter_slave` / `meter_slaves` / `lv_battery_slaves` / `bcu_slaves` — use `inverter_address` / `meter_addresses` / `lv_battery_addresses` / `bcu_stacks`. All emit `DeprecationWarning` on access
 
 ### 🔧 Maintenance
 
@@ -77,7 +78,6 @@ A chunky update, incorporating a lot of the differences that GivTCP developed an
 - purify Converter class and backfill three-phase/EMS register fields ([851d4a9](https://github.com/dewet22/givenergy-modbus/commit/851d4a9e6d2cd42dc85ae5e66d7095577b30876e), @dewet22)
 - add architecture overview with topology and component diagrams ([7a7eca4](https://github.com/dewet22/givenergy-modbus/commit/7a7eca43b05210e937a96d073c277033cad6109e), @dewet22)
 - add load_config/refresh dispatch tests; drop email from CLAUDE.md ([da4d218](https://github.com/dewet22/givenergy-modbus/commit/da4d218322232173b491f715f21ff51fbd1e04d8), @dewet22)
-- rename slave→device terminology in line with Modbus.org 2020 update ([48404e5](https://github.com/dewet22/givenergy-modbus/commit/48404e55a104a0857493c29af9a32056e3b1bc9b), @dewet22)
 
 ## [1.3.0] - 2026-05-13
 
