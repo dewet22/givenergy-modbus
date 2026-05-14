@@ -72,6 +72,21 @@ SINGLE_PHASE_SLOTS = SlotMap(
     discharge_slots=((56, 57), (44, 45)),
 )
 
+# Extended 10-slot map for ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3,
+# and HYBRID_GEN3 units with ARM firmware > 302.
+EXTENDED_SLOTS = SlotMap(
+    charge_slots=(
+        (94, 95), (31, 32),
+        (246, 247), (249, 250), (252, 253), (255, 256),
+        (258, 259), (261, 262), (264, 265), (267, 268),
+    ),
+    discharge_slots=(
+        (56, 57), (44, 45),
+        (276, 277), (279, 280), (282, 283), (285, 286),
+        (288, 289), (291, 292), (294, 295), (297, 298),
+    ),
+)
+
 
 # ARM firmware version century → HYBRID generation for DTC prefix "20"
 _HYBRID_FW_CENTURY_TO_GEN: dict[int, Model] = {
@@ -519,6 +534,15 @@ class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,
     @property
     def slot_map(self) -> SlotMap:
         """Register address pairs for the charge/discharge time slots on this model."""
+        dtc = self.device_type_code  # type: ignore[attr-defined]
+        arm_fw = self.arm_firmware_version  # type: ignore[attr-defined]
+        if dtc is None or arm_fw is None:
+            return SINGLE_PHASE_SLOTS
+        model = resolve_model(int(dtc, 16), int(arm_fw))
+        if model in (Model.ALL_IN_ONE, Model.HYBRID_GEN4, Model.HYBRID_HV_GEN3):
+            return EXTENDED_SLOTS
+        if model is Model.HYBRID_GEN3 and int(arm_fw) > 302:
+            return EXTENDED_SLOTS
         return SINGLE_PHASE_SLOTS
 
     @computed_field  # type: ignore[prop-decorator]

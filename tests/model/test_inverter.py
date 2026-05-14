@@ -949,10 +949,29 @@ def test_model_system_battery_voltage(model, expected):
 
 
 def test_single_phase_inverter_slot_map():
-    from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS
+    from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS
+    from givenergy_modbus.model.register import HR
 
-    inv = SinglePhaseInverter.from_register_cache(RegisterCache())
-    assert inv.slot_map is SINGLE_PHASE_SLOTS
+    # Default (no DTC set) → legacy 2-slot map
+    assert SinglePhaseInverter.from_register_cache(RegisterCache()).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN1 / GEN2 → legacy
+    for dtc_hex in (0x2001, 0x2002):
+        cache = RegisterCache({HR(0): dtc_hex, HR(21): 100})
+        assert SinglePhaseInverter.from_register_cache(cache).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN3 with fw ≤ 302 → legacy
+    cache = RegisterCache({HR(0): 0x2003, HR(21): 302})
+    assert SinglePhaseInverter.from_register_cache(cache).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN3 with fw > 302 → extended
+    cache = RegisterCache({HR(0): 0x2003, HR(21): 303})
+    assert SinglePhaseInverter.from_register_cache(cache).slot_map is EXTENDED_SLOTS
+
+    # ALL_IN_ONE (80xx), HYBRID_GEN4 (83xx), HYBRID_HV_GEN3 (81xx) → extended
+    for dtc_hex in (0x8001, 0x8301, 0x8101):
+        cache = RegisterCache({HR(0): dtc_hex, HR(21): 100})
+        assert SinglePhaseInverter.from_register_cache(cache).slot_map is EXTENDED_SLOTS
 
 
 def test_single_phase_inverter_p_pv_and_e_pv_day():
