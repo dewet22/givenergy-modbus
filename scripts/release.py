@@ -45,10 +45,12 @@ _CHANGELOG_TRAILER_RE = re.compile(r"^changelog\s*:\s*(.+?)\s*$", re.IGNORECASE 
 
 
 def _resolve_section_alias(name: str) -> str | None:
-    """Match a section name (e.g. 'Changed') to its emoji-prefixed form."""
+    """Match a section name (e.g. 'Changed' or '✨ Added') to its emoji-prefixed form."""
     name = name.strip().lower()
     for section in _SECTION_ORDER:
-        # Strip leading emoji + space, e.g. "✨ Added" → "Added"
+        # Accept both the full form ("✨ Added") and the textual suffix ("Added").
+        if section.lower() == name:
+            return section
         textual = section.split(" ", 1)[-1].lower()
         if textual == name:
             return section
@@ -247,7 +249,7 @@ def _commit_attribution(changelog_text: str) -> str:
 def cmd_append(_args) -> None:
     """Append a conventional commit (from $COMMIT_MSG) to [Unreleased]."""
     message = os.environ.get("COMMIT_MSG", "").strip()
-    if not message:
+    if not message or _is_skippable_commit(message):
         return
     section, description = _parse_commit(message)
     cl = Changelog()
@@ -282,14 +284,16 @@ def _is_skippable_commit(message: str) -> bool:
 
 
 def _push_touched_changelog(commits: list[dict]) -> bool:
-    """Return True if any commit in the push added/modified CHANGELOG.md.
+    """Return True if any commit in the push added/modified/removed CHANGELOG.md.
 
     Used as an opt-out: if a branch maintained its own changelog entries (e.g. for
     a complex PR where per-commit auto-bucketing isn't expressive enough), the bot
     should not also append entries on top — that would double-record the change.
+    `removed` is included so that a push deleting the file doesn't cause the
+    subsequent read_text() to raise FileNotFoundError.
     """
     for c in commits:
-        for key in ("added", "modified"):
+        for key in ("added", "modified", "removed"):
             files = c.get(key) or []
             if "CHANGELOG.md" in files:
                 return True

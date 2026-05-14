@@ -94,6 +94,11 @@ def test_last_trailer_wins_when_multiple_present():
     assert release._parse_commit(msg)[0] == "🔄 Changed"
 
 
+def test_trailer_accepts_emoji_prefixed_section_name():
+    msg = "refactor: rename API\n\nChangelog: ✨ Added"
+    assert release._parse_commit(msg)[0] == "✨ Added"
+
+
 def test_trailer_inside_body_text_still_matches():
     # The trailer detector uses MULTILINE rather than strict end-of-message position,
     # so a `Changelog:` line anywhere in the body counts.
@@ -164,6 +169,12 @@ def test_push_with_one_commit_touching_changelog_marks_whole_push():
         {"modified": ["bar.py"]},
     ]
     assert release._push_touched_changelog(commits) is True
+
+
+def test_push_removed_changelog_is_also_detected():
+    # If a branch deletes CHANGELOG.md, skip too — otherwise the bot's next
+    # read_text() would raise FileNotFoundError.
+    assert release._push_touched_changelog([{"removed": ["CHANGELOG.md"]}]) is True
 
 
 # ---------------------------------------------------------------------------
@@ -249,4 +260,29 @@ def test_append_many_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
 def test_append_many_with_empty_stdin_is_noop(tmp_changelog, monkeypatch):
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
     release.cmd_append_many(None)
+    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
+
+
+# ---------------------------------------------------------------------------
+# cmd_append (single-commit path) — must apply the same skip rules
+# ---------------------------------------------------------------------------
+
+
+def test_append_writes_entry_for_normal_commit(tmp_changelog, monkeypatch):
+    monkeypatch.setenv("COMMIT_MSG", "feat: add widget")
+    release.cmd_append(None)
+    text = tmp_changelog.read_text(encoding="utf-8")
+    assert "✨ Added" in text
+    assert "add widget" in text
+
+
+def test_append_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
+    monkeypatch.setenv("COMMIT_MSG", "fix: tiny follow-up\n\nChangelog: skip")
+    release.cmd_append(None)
+    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
+
+
+def test_append_skips_merge_commits(tmp_changelog, monkeypatch):
+    monkeypatch.setenv("COMMIT_MSG", "Merge pull request #99 from foo/bar")
+    release.cmd_append(None)
     assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG

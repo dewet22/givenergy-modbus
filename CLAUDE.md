@@ -63,7 +63,7 @@ uv run ruff check --fix && uv run ruff format
 
 When the conventional-commit prefix doesn't reflect the user impact, add a `Changelog:` git trailer to the commit body:
 
-```
+```text
 refactor: rename slave_address → device_address
 
 Changelog: Changed
