@@ -55,20 +55,14 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
     $ git clone git@github.com:your_name_here/givenergy-modbus.git
     ```
 
-3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
-4. Install dependencies and start your virtualenv:
+3. Ensure [uv](https://docs.astral.sh/uv/) is installed.
+4. Install dependencies:
 
     ```
-    $ poetry install --with test --with docs --with dev
+    $ uv sync --group test --group docs --group dev
     ```
 
-5. Install git hooks with [prek](https://prek.j178.dev):
-
-    ```
-    $ prek install
-    ```
-
-6. Create a branch for local development:
+5. Create a branch for local development:
 
     ```
     $ git checkout -b name-of-your-bugfix-or-feature
@@ -76,14 +70,14 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
 
     Now you can make your changes locally.
 
-7. When you're done making changes, check that your changes pass the
+6. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
 
     ```
-    $ poetry run tox
+    $ uv run --group test tox
     ```
 
-8. Commit your changes and push your branch to GitHub:
+7. Commit your changes and push your branch to GitHub:
 
     ```
     $ git add .
@@ -108,19 +102,14 @@ Before you submit a pull request, check that it meets these guidelines:
 ## Tips
 
 ```
-$ poetry run pytest tests/test_givenergy_modbus.py
+$ uv run --group test pytest tests/client/
 ```
 
 To run a subset of tests.
 
 ## Deploying
 
-A reminder for the maintainers on how to deploy. Make sure all your changes are
-committed (including an entry in CHANGELOG.md). Then tag the release and push:
-
-```
-$ git tag v<version>
-$ git push origin v<version>
-```
-
-GitHub Actions will deploy to PyPI and publish the docs automatically.
+Releases are triggered automatically on every merge to `main` via GitHub Actions.
+The release workflow infers the version bump (patch/minor/major) from the
+conventional commit types in the `[Unreleased]` changelog section and publishes
+to PyPI. No manual tagging is required.
