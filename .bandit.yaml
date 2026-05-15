@@ -1,6 +1,7 @@
 # https://bandit.readthedocs.io/en/latest/config.html
 
 skips:
+  - B101  # assert used — only ever appears in tests, where it's the entire idiom
   - B313  # xml.etree.ElementTree — not used in this codebase
   - B314
   - B315

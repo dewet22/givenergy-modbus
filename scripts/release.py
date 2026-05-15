@@ -4,7 +4,8 @@
 import argparse
 import os
 import re
-import subprocess
+# Release tooling: invokes git with controlled arg lists only. PATH is controlled in CI.
+import subprocess  # nosec B404
 import sys
 from datetime import date
 from pathlib import Path
@@ -161,8 +162,9 @@ def _git_commits_since_last_tag() -> list[tuple[str, str]]:
     oldest-first so the rendered section reads chronologically.
     """
     try:
-        prev_tag = subprocess.check_output(
-            ["git", "describe", "--tags", "--abbrev=0", "--match=v*", "HEAD"],
+        # Fully literal arg list; PATH controlled in CI.
+        prev_tag = subprocess.check_output(  # nosec B603 B607
+            ["git", "describe", "--tags", "--abbrev=0", "--match=v*", "HEAD"],  # nosec B603 B607
             text=True,
             stderr=subprocess.DEVNULL,
         ).strip()
@@ -170,8 +172,9 @@ def _git_commits_since_last_tag() -> list[tuple[str, str]]:
     except subprocess.CalledProcessError:
         rev_range = "HEAD"
 
-    raw = subprocess.check_output(
-        ["git", "log", rev_range, "--format=%H%x00%B%x1e", "--reverse"],
+    # `rev_range` is derived from `git describe` output (or "HEAD"), not user input.
+    raw = subprocess.check_output(  # nosec B603 B607
+        ["git", "log", rev_range, "--format=%H%x00%B%x1e", "--reverse"],  # nosec B603 B607
         text=True,
     )
     commits: list[tuple[str, str]] = []
