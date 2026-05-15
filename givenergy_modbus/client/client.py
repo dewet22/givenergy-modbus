@@ -373,9 +373,15 @@ class Client:
                 handler()
             await asyncio.sleep(refresh_period)
             if not passive:
-                reqs = commands.refresh_plant_data(False, self.plant.number_batteries)
-                await self.execute(
-                    reqs, timeout=timeout, retries=retries, retry_delay=retry_delay, return_exceptions=True
+                # Defer to refresh_plant so capability-aware polling (EMS, gateway,
+                # three-phase, HV stacks, meters) is included on each tick rather
+                # than the legacy single-phase IR(0)/IR(180) + battery shape.
+                await self.refresh_plant(
+                    full_refresh=False,
+                    max_batteries=max_batteries,
+                    timeout=timeout,
+                    retries=retries,
+                    retry_delay=retry_delay,
                 )
 
     async def one_shot_command(
@@ -407,14 +413,15 @@ class Client:
                     else:
                         _logger.info(f"{message}")
 
+                # Update the plant cache *before* resolving the awaiting future so
+                # the awaiter is guaranteed to see the updated cache regardless of
+                # asyncio scheduling order. Today this happens to work either way
+                # because nothing yields between set_result and plant.update, but
+                # that's fragile to future refactors — make it explicit.
+                self.plant.update(message)
                 future = self.expected_responses.get(message.shape_hash(), None)
                 if future and not future.done():
                     future.set_result(message)
-                # try:
-                self.plant.update(message)
-                # except RegisterCacheUpdateFailed as e:
-                #     # await self.debug_frames['error'].put(frame)
-                #     _logger.debug(f'Ignoring {message}: {e}')
         if self._shutting_down:
             _logger.debug("network_consumer exiting on intentional shutdown")
         else:
