@@ -213,41 +213,78 @@ def test_bounds_at_limits():
     assert _getter(defn, 100).get("field") == 100
 
 
-def test_bounds_below_min_logs_error_and_passes_through(caplog):
-    defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
-    with caplog.at_level(logging.ERROR):
-        val = _getter(defn, 65535).get("field")
-    assert val == 65535
-    assert caplog.records
+def test_bounds_below_min_logs_and_passes_through(caplog):
+    defn = RegisterDefinition(Converter.uint16, None, IR(1), min=10, max=100)
+    cache = RegisterCache({IR(1): 5})
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
+        val = _G(cache).get("field")
+    assert val == 5
+    assert any("out of bounds" in r.message for r in caplog.records)
 
 
-def test_bounds_above_max_logs_error_and_passes_through(caplog):
+def test_bounds_above_max_logs_and_passes_through(caplog):
     defn = RegisterDefinition(Converter.uint16, None, IR(0), max=100)
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 101).get("field")
     assert val == 101
-    assert caplog.records
+    assert any("out of bounds" in r.message for r in caplog.records)
 
 
 def test_bounds_checked_post_conversion(caplog):
     # Raw value 550 → deci → 55.0; bounds 0.0–100.0 should pass
     defn = RegisterDefinition(Converter.uint16, Converter.deci, IR(0), min=0.0, max=100.0)
     assert _getter(defn, 550).get("field") == pytest.approx(55.0)
-    # Raw value 1010 → deci → 101.0; exceeds max=100.0 — logs error, value passes through
-    with caplog.at_level(logging.ERROR):
+    # Raw value 1010 → deci → 101.0; exceeds max=100.0 — logs at debug, value passes through
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 1010).get("field")
     assert val == pytest.approx(101.0)
-    assert caplog.records
+    assert any("out of bounds" in r.message for r in caplog.records)
 
 
 def test_bounds_checked_post_signed_conversion(caplog):
-    # int16 of raw 65535 → -1; below min=0 — logs error, value passes through
+    # int16 of raw 65535 → -1; below min=0 — logs at debug, value passes through
     defn = RegisterDefinition(Converter.int16, None, IR(0), min=0)
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 65535).get("field")
     assert val == -1
-    assert caplog.records
+    assert any("out of bounds" in r.message for r in caplog.records)
     assert _getter(defn, 10).get("field") == 10
+
+
+def test_all_zero_raw_registers_exempt_from_bounds(caplog):
+    # Mirrors the meter `frequency` case: hardware pads unwired devices with 0x0000, which
+    # would otherwise spam the log when min > 0. The exemption is checked at the raw register
+    # level, not post-conv, so the intent ("hardware didn't populate this") stays unambiguous.
+    defn = RegisterDefinition(Converter.uint16, Converter.centi, IR(0), min=40.0, max=70.0)
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
+        val = _getter(defn, 0).get("field")
+    assert val == pytest.approx(0.0)
+    assert not any("out of bounds" in r.message for r in caplog.records)
+
+
+def test_multi_register_all_zero_exempt_from_bounds(caplog):
+    # Multi-register field: both raw registers must be 0x0000 for the exemption to apply.
+    defn = RegisterDefinition(Converter.uint32, None, IR(0), IR(1), min=100, max=1_000_000)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"field": defn}
+
+    # Both registers zero → exempt.
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
+        val = _G(RegisterCache({IR(0): 0, IR(1): 0})).get("field")
+    assert val == 0
+    assert not any("out of bounds" in r.message for r in caplog.records)
+
+    # One register non-zero → still bounds-checked (and flagged).
+    caplog.clear()
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
+        val = _G(RegisterCache({IR(0): 0, IR(1): 5})).get("field")
+    assert val == 5
+    assert any("out of bounds" in r.message for r in caplog.records)
 
 
 def test_no_bounds_unchanged():

@@ -327,12 +327,14 @@ class Plant(GivEnergyBaseModel):
                 return
             violations = getter_cls.validate_bank(incoming, self.register_caches[device_address])
             if violations:
-                _logger.error(
+                _logger.debug(
                     "Bounds violations in register bank for device 0x%02x: %s",
                     device_address,
                     violations,
                 )
                 # TODO(enforcement): add `return` here to discard the entire bank on any violation.
+                # When that happens, also raise this back to WARNING — at that point it has
+                # user-visible consequences (a poll cycle's data is dropped).
         self.register_caches[device_address].update(incoming)
 
     @property

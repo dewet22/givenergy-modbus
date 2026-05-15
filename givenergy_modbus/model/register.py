@@ -218,10 +218,16 @@ class RegisterGetter:
             else:
                 val = defn.post_conv(val)
 
-        if val is not None and (defn.min is not None or defn.max is not None):
+        if val is not None and (defn.min is not None or defn.max is not None) and not all(r == 0 for r in regs):
+            # An all-zero raw bank means the hardware didn't populate these registers (e.g. an
+            # absent external meter slot); skip bounds checks for that case rather than spamming
+            # the log every poll. Doing this at the raw level rather than post-conv keeps the
+            # "0x0000 means unset" intent unambiguous.
             if (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max):
                 # TODO(enforcement): change to `return None` to suppress out-of-bounds values.
-                _logger.error("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
+                # When that happens, keep the all-zero-raw carve-out above — or push it down into
+                # the decoder so missing registers come back as None rather than 0.
+                _logger.debug("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
 
         return val
 
@@ -253,6 +259,10 @@ class RegisterGetter:
             if not any(r in incoming for r in defn.registers):
                 continue
             if any(candidate.get(r) is None for r in defn.registers):
+                continue
+            if all(candidate.get(r) == 0 for r in defn.registers):
+                # All-zero raw registers: hardware sentinel for "unpopulated" — skip bounds
+                # check to match get()'s behaviour.
                 continue
             val = getter.get(name)
             # TODO(enforcement): once get() suppresses OOB values (returns None), this explicit

@@ -1384,13 +1384,13 @@ def test_commit_bank_valid_registers_are_committed(plant: Plant):
     assert plant.register_caches[0x32].get(IR(5)) == 2367
 
 
-def test_commit_bank_bounds_violation_logs_error_and_commits(plant: Plant, caplog):
-    """A bank with out-of-bounds values must still be committed; violations are logged at ERROR."""
+def test_commit_bank_bounds_violation_logs_and_commits(plant: Plant, caplog):
+    """A bank with out-of-bounds values must still be committed; violations are logged at DEBUG."""
     import logging
 
     # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=500.0.
     pdu = _make_ir_pdu({5: 65535, 59: 50})
-    with caplog.at_level(logging.ERROR):
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.plant"):
         plant.update(pdu)
     assert IR(5) in plant.register_caches[0x32]
     assert IR(59) in plant.register_caches[0x32]
