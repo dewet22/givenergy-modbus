@@ -52,10 +52,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Check [Unreleased] has content
-        if: inputs.republish_tag == ''
-        run: python3 scripts/release.py check
-
       - name: Determine version
         id: version
         env:
@@ -85,11 +81,13 @@ jobs:
             echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Update CHANGELOG
+      - name: Generate CHANGELOG section
         if: inputs.republish_tag == ''
         id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          BODY=$(python3 scripts/release.py update "${{ steps.version.outputs.version }}")
+          BODY=$(python3 scripts/release.py generate "$VERSION")
           {
             echo 'body<<EOF'
             echo "$BODY"

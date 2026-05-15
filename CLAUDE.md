@@ -47,7 +47,7 @@ uv run ruff check --fix && uv run ruff format
 
 ## Changelog
 
-`CHANGELOG.md` is maintained automatically by `.github/workflows/changelog.yml` (driven by `scripts/release.py append-many`), which appends entries to `[Unreleased]` on every push to `main`. The conventional-commit prefix determines the section:
+`CHANGELOG.md` is generated at release time by `scripts/release.py generate`, which walks `git log <last-v-tag>..HEAD` on the current branch and writes a new versioned section. There is no `[Unreleased]` section maintained between releases — release sections appear only at release time. The conventional-commit prefix determines the section:
 
 | Prefix | Section |
 |---|---|
@@ -57,7 +57,7 @@ uv run ruff check --fix && uv run ruff format
 | `security:` | 🔒 Security |
 | `refactor:` / `docs:` / `chore:` / `ci:` / `test:` / `style:` / `build:` / `wip:` | 🔧 Maintenance |
 
-**Default rule: don't touch `CHANGELOG.md` on a feature branch.** Let the bot handle it — touching `CHANGELOG.md` on a long-lived branch invites stale-`[Unreleased]`-section conflicts.
+**Default rule: don't edit `CHANGELOG.md` directly.** Let `release.py generate` build it from commits at release time. Editing by hand is reserved for fixing past mistakes in already-released sections; the most-recent section will be rewritten on the next release if you do touch it.
 
 ### Per-commit overrides (`Changelog:` trailer)
 
@@ -72,8 +72,14 @@ Changelog: Changed
 - `Changelog: <section>` redirects the entry to that section (case-insensitive; matches `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Maintenance`).
 - `Changelog: skip` suppresses the entry entirely. Useful for fixup commits whose narrative is already captured by their parent.
 
-The last `Changelog:` trailer in the message wins, matching standard git-trailer semantics.
+Trailer must live in the final paragraph of the commit body (standard git trailer semantics). Last `Changelog:` trailer in the final paragraph wins.
 
-### Branch-managed changelog (escape hatch)
+### Previewing the upcoming section
 
-If a PR's narrative is too complex for per-commit overrides, the branch can edit `CHANGELOG.md` directly. **If any commit in a push touches `CHANGELOG.md`, the bot skips that push entirely** — the assumption is the branch has authored its own fine-tuned entries. Be aware of the stale-`[Unreleased]` merge-conflict risk on long-lived branches.
+`CHANGELOG.md` doesn't reflect upcoming changes between releases. To see what would land in the next release:
+
+```bash
+python3 scripts/release.py generate <next-version> --preview
+```
+
+Walks the same commits and prints the rendered section without modifying the file. `git log <last-v-tag>..HEAD --oneline` is the lighter-weight alternative.

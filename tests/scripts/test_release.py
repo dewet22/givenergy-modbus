@@ -1,21 +1,12 @@
-"""Tests for the changelog-bot helper in scripts/release.py.
+"""Tests for the release-helper logic in scripts/release.py."""
 
-Covers the auto-bucketing of conventional commits and the three opt-in
-overrides:
-
-- `Changelog: <section>` trailer to redirect a commit's entry
-- `Changelog: skip` trailer to suppress an entry
-- Branch-managed CHANGELOG.md: any push that touches the file skips the bot
-"""
-
-import io
-import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-# scripts/ isn't a package, so make release.py importable by name.
+# scripts/ isn't a package; make release.py importable by filename.
 _SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
@@ -23,335 +14,335 @@ if str(_SCRIPTS_DIR) not in sys.path:
 import release  # noqa: E402, I001
 
 
-# ---------------------------------------------------------------------------
-# _parse_commit — automatic bucketing
-# ---------------------------------------------------------------------------
-
-
-def test_feat_lands_in_added():
-    assert release._parse_commit("feat: add foo")[0] == "✨ Added"
-
-
-def test_fix_lands_in_fixed():
-    assert release._parse_commit("fix: correct bar")[0] == "🐛 Fixed"
-
-
-def test_refactor_lands_in_maintenance_by_default():
-    assert release._parse_commit("refactor: extract helper")[0] == "🔧 Maintenance"
-
-
-def test_breaking_change_lands_in_changed_with_prefix():
-    section, description = release._parse_commit("feat!: redesign API")
-    assert section == "🔄 Changed"
-    assert description.startswith("⚠️ Breaking: ")
-
-
-def test_unknown_type_falls_back_to_changed():
-    assert release._parse_commit("flarble: something odd")[0] == "🔄 Changed"
-
-
-def test_non_conventional_subject_falls_back_to_changed():
-    section, description = release._parse_commit("just a plain sentence")
-    assert section == "🔄 Changed"
-    assert description == "just a plain sentence"
-
-
-def test_scoped_type_still_parses():
-    assert release._parse_commit("feat(api): add endpoint")[0] == "✨ Added"
+ADDED = "✨ Added"
+CHANGED = "🔄 Changed"
+FIXED = "🐛 Fixed"
+SECURITY = "🔒 Security"
+MAINTENANCE = "🔧 Maintenance"
 
 
 # ---------------------------------------------------------------------------
-# Changelog: <section> trailer override
+# _parse_commit: section classification from conventional prefixes
 # ---------------------------------------------------------------------------
 
 
-def test_trailer_overrides_section():
-    msg = "refactor: rename slave→device\n\nLonger body\n\nChangelog: Changed"
-    assert release._parse_commit(msg)[0] == "🔄 Changed"
+@pytest.mark.parametrize(
+    "subject,expected_section,expected_description",
+    [
+        ("feat: add fancy thing", ADDED, "add fancy thing"),
+        ("fix: stop the crash", FIXED, "stop the crash"),
+        ("fix(client): scope to client", FIXED, "scope to client"),
+        ("perf: faster", CHANGED, "faster"),
+        ("refactor: tidy up", MAINTENANCE, "tidy up"),
+        ("revert: undo the thing", FIXED, "undo the thing"),
+        ("security: patch the hole", SECURITY, "patch the hole"),
+        ("docs: explain better", MAINTENANCE, "explain better"),
+        ("chore: bump dep", MAINTENANCE, "bump dep"),
+        ("ci: tweak workflow", MAINTENANCE, "tweak workflow"),
+        ("test: add coverage", MAINTENANCE, "add coverage"),
+        ("Just a normal subject", CHANGED, "Just a normal subject"),
+    ],
+)
+def test_parse_commit_routes_by_prefix(subject, expected_section, expected_description):
+    section, description = release._parse_commit(subject)
+    assert section == expected_section
+    assert description == expected_description
 
 
-def test_trailer_is_case_insensitive():
-    msg = "refactor: rename slave→device\n\nchangelog: changed"
-    assert release._parse_commit(msg)[0] == "🔄 Changed"
+def test_parse_commit_breaking_marker_routes_to_changed():
+    section, description = release._parse_commit("feat!: rewrite the world")
+    assert section == CHANGED
+    assert description == "⚠️ Breaking: rewrite the world"
 
 
-def test_trailer_with_unknown_section_is_ignored():
-    msg = "feat: add foo\n\nChangelog: Whatever"
-    # Falls back to the conventional-commit default, not silently picking something else.
-    assert release._parse_commit(msg)[0] == "✨ Added"
-
-
-def test_trailer_skip_does_not_override_section_in_parse():
-    # _parse_commit shouldn't crash on skip; skipping is _is_skippable_commit's job.
-    msg = "fix: process noise\n\nChangelog: skip"
-    section, _ = release._parse_commit(msg)
-    assert section == "🐛 Fixed"
-
-
-def test_last_trailer_wins_when_multiple_present():
-    # Standard git-trailer semantics: the final occurrence is authoritative.
-    msg = "refactor: foo\n\nChangelog: Maintenance\nChangelog: Changed"
-    assert release._parse_commit(msg)[0] == "🔄 Changed"
-
-
-def test_trailer_accepts_emoji_prefixed_section_name():
-    msg = "refactor: rename API\n\nChangelog: ✨ Added"
-    assert release._parse_commit(msg)[0] == "✨ Added"
-
-
-def test_trailer_inside_body_text_still_matches():
-    # The trailer detector uses MULTILINE rather than strict end-of-message position,
-    # so a `Changelog:` line anywhere in the body counts.
-    msg = "refactor: foo\n\nSome context here.\nChangelog: Added\n\nMore narrative."
-    assert release._parse_commit(msg)[0] == "✨ Added"
+def test_parse_commit_breaking_with_scope():
+    section, description = release._parse_commit("feat(api)!: drop legacy endpoint")
+    assert section == CHANGED
+    assert description == "⚠️ Breaking: drop legacy endpoint"
 
 
 # ---------------------------------------------------------------------------
-# _is_skippable_commit
+# Changelog: trailer overrides
 # ---------------------------------------------------------------------------
 
 
-def test_merge_pr_commits_are_skipped():
-    assert release._is_skippable_commit("Merge pull request #61 from foo/bar") is True
+def test_changelog_trailer_skip_returns_skip_section():
+    message = "fix: tiny tweak\n\nbody text\n\nChangelog: skip"
+    section, description = release._parse_commit(message)
+    assert section == "skip"
+    assert description == "tiny tweak"
 
 
-def test_merge_branch_commits_are_skipped():
-    assert release._is_skippable_commit("Merge branch 'main' into feature") is True
+def test_changelog_trailer_overrides_section_by_textual_name():
+    message = "refactor: rename slave_address → device_address\n\nChangelog: Changed"
+    section, _ = release._parse_commit(message)
+    assert section == CHANGED
 
 
-def test_bot_changelog_commit_is_skipped():
-    assert release._is_skippable_commit("chore: update [Unreleased] changelog") is True
+def test_changelog_trailer_accepts_full_emoji_form():
+    message = "chore: noise\n\nChangelog: 🐛 Fixed"
+    section, _ = release._parse_commit(message)
+    assert section == FIXED
 
 
-def test_other_chore_changelog_commits_are_skipped():
-    assert release._is_skippable_commit("chore: tidy changelog formatting") is True
+def test_changelog_trailer_is_case_insensitive():
+    message = "chore: noise\n\nchangelog: fixed"
+    section, _ = release._parse_commit(message)
+    assert section == FIXED
 
 
-def test_normal_commit_is_not_skipped():
-    assert release._is_skippable_commit("feat: add new thing") is False
+def test_last_changelog_trailer_wins():
+    message = "fix: something\n\nbody\n\nChangelog: Added\nChangelog: Removed"
+    section, _ = release._parse_commit(message)
+    assert section == "🗑️ Removed"
 
 
-def test_changelog_skip_trailer_skips_commit():
-    msg = "fix: fold in review feedback\n\nChangelog: skip"
-    assert release._is_skippable_commit(msg) is True
+def test_changelog_trailer_unknown_section_falls_back_to_prefix():
+    """Unrecognised override drops back to the conventional-prefix-derived section."""
+    message = "fix: real bug\n\nChangelog: NotARealSection"
+    section, _ = release._parse_commit(message)
+    assert section == FIXED
 
 
-def test_changelog_skip_trailer_is_case_insensitive():
-    msg = "fix: fold in review feedback\n\nchangelog: SKIP"
-    assert release._is_skippable_commit(msg) is True
+def test_changelog_trailer_not_in_final_paragraph_is_ignored():
+    """Trailers live in the last paragraph only — earlier mentions don't count."""
+    message = "fix: a thing\n\nChangelog: Added\n\nsome trailing prose"
+    section, _ = release._parse_commit(message)
+    assert section == FIXED
 
 
 # ---------------------------------------------------------------------------
-# _push_touched_changelog
+# Skippable commits
 # ---------------------------------------------------------------------------
 
 
-def test_push_touched_changelog_modified():
-    assert release._push_touched_changelog([{"modified": ["CHANGELOG.md", "foo.py"]}]) is True
+@pytest.mark.parametrize(
+    "subject",
+    [
+        "Merge pull request #42 from foo/bar",
+        "Merge branch 'feature/x' into main",
+        "chore: release 2.0.0a1",
+        "chore: release 1.3.0",
+        "chore: update [Unreleased] changelog",
+        "chore: rewrite changelog entry",
+    ],
+)
+def test_skippable_commits(subject):
+    assert release._is_skippable_commit(subject) is True
 
 
-def test_push_touched_changelog_added():
-    assert release._push_touched_changelog([{"added": ["CHANGELOG.md"]}]) is True
+def test_non_skippable_commits():
+    assert release._is_skippable_commit("fix: a real bug") is False
+    assert release._is_skippable_commit("chore: not about logs") is False
 
 
-def test_push_did_not_touch_changelog():
-    assert release._push_touched_changelog([{"modified": ["foo.py", "bar.py"]}]) is False
+# ---------------------------------------------------------------------------
+# Classification and rendering
+# ---------------------------------------------------------------------------
 
 
-def test_push_with_no_file_info_does_not_touch():
-    assert release._push_touched_changelog([{}, {"message": "x"}]) is False
-
-
-def test_push_with_one_commit_touching_changelog_marks_whole_push():
+def test_classify_and_render_groups_by_section(monkeypatch):
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     commits = [
-        {"modified": ["foo.py"]},
-        {"modified": ["CHANGELOG.md"]},
-        {"modified": ["bar.py"]},
+        ("aaaaaaa", "feat: new thing"),
+        ("bbbbbbb", "fix: a bug"),
+        ("ccccccc", "chore: bump dep"),
+        ("ddddddd", "fix: another bug"),
     ]
-    assert release._push_touched_changelog(commits) is True
+    sections = release._classify_commits(commits)
+    body = release._render_body(sections)
+    expected = (
+        f"### {ADDED}\n\n- new thing\n\n### {FIXED}\n\n- a bug\n- another bug\n\n### {MAINTENANCE}\n\n- bump dep\n"
+    )
+    assert body == expected
 
 
-def test_push_removed_changelog_is_also_detected():
-    # If a branch deletes CHANGELOG.md, skip too — otherwise the bot's next
-    # read_text() would raise FileNotFoundError.
-    assert release._push_touched_changelog([{"removed": ["CHANGELOG.md"]}]) is True
+def test_classify_drops_skip_trailer_and_skippable(monkeypatch):
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    commits = [
+        ("aaaaaaa", "fix: keeper"),
+        ("bbbbbbb", "fix: dropped\n\nChangelog: skip"),
+        ("ccccccc", "chore: release 1.2.3"),
+        ("ddddddd", "Merge pull request #99 from foo/bar"),
+    ]
+    sections = release._classify_commits(commits)
+    body = release._render_body(sections)
+    assert body == f"### {FIXED}\n\n- keeper\n"
+
+
+def test_render_body_empty_when_no_entries():
+    assert release._render_body({k: [] for k in release._SECTION_ORDER}) == ""
+
+
+def test_render_body_section_order(monkeypatch):
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    commits = [
+        ("h1", "chore: maint"),
+        ("h2", "security: lockdown"),
+        ("h3", "feat: new"),
+        ("h4", "fix: bug"),
+    ]
+    body = release._render_body(release._classify_commits(commits))
+    assert (
+        body.index(f"### {ADDED}")
+        < body.index(f"### {FIXED}")
+        < body.index(f"### {SECURITY}")
+        < body.index(f"### {MAINTENANCE}")
+    )
 
 
 # ---------------------------------------------------------------------------
-# cmd_append_many — integration via tmp CHANGELOG.md
+# Entry formatting with attribution
 # ---------------------------------------------------------------------------
 
-_MINIMAL_CHANGELOG = """\
-# Changelog
 
-## [Unreleased]
+def test_format_entry_with_repo(monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    entry = release._format_entry("abcdef1234567", "fix something")
+    assert entry == "- fix something ([abcdef1](https://github.com/owner/repo/commit/abcdef1234567))"
 
-## [1.0.0] - 2026-01-01
-"""
+
+def test_format_entry_respects_custom_server(monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://ghe.example.com/")
+    entry = release._format_entry("abcdef1234567", "x")
+    assert "https://ghe.example.com/owner/repo/commit/abcdef1234567" in entry
 
 
-@pytest.fixture
-def tmp_changelog(tmp_path, monkeypatch):
-    """Point the Changelog class at a temporary file populated with a minimal skeleton."""
+def test_format_entry_without_repo_omits_attribution(monkeypatch):
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    assert release._format_entry("abcdef1234567", "y") == "- y"
+
+
+# ---------------------------------------------------------------------------
+# cmd_bump — covers patch/minor/major and the prerelease lifecycle
+# ---------------------------------------------------------------------------
+
+
+def _bump_args(current, bump, prerelease=None):
+    class _Ns:
+        pass
+
+    a = _Ns()
+    a.current = current
+    a.bump = bump
+    a.prerelease = prerelease
+    return a
+
+
+def test_cmd_bump_patch(capsys):
+    release.cmd_bump(_bump_args("1.2.3", "patch"))
+    assert capsys.readouterr().out.strip() == "1.2.4"
+
+
+def test_cmd_bump_minor_resets_patch(capsys):
+    release.cmd_bump(_bump_args("1.2.5", "minor"))
+    assert capsys.readouterr().out.strip() == "1.3.0"
+
+
+def test_cmd_bump_major_resets_minor_and_patch(capsys):
+    release.cmd_bump(_bump_args("1.9.9", "major"))
+    assert capsys.readouterr().out.strip() == "2.0.0"
+
+
+def test_cmd_bump_major_with_prerelease_starts_new_prerelease_line(capsys):
+    release.cmd_bump(_bump_args("1.3.0", "major", prerelease="alpha"))
+    assert capsys.readouterr().out.strip() == "2.0.0a1"
+
+
+def test_cmd_bump_prerelease_increments_counter(capsys):
+    release.cmd_bump(_bump_args("2.0.0a1", "prerelease"))
+    assert capsys.readouterr().out.strip() == "2.0.0a2"
+
+
+def test_cmd_bump_prerelease_requires_existing_suffix(capsys):
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_bump_args("1.2.3", "prerelease"))
+    assert "requires current to have a prerelease suffix" in capsys.readouterr().err
+
+
+def test_cmd_bump_finalize_drops_prerelease_suffix(capsys):
+    release.cmd_bump(_bump_args("2.0.0a3", "finalize"))
+    assert capsys.readouterr().out.strip() == "2.0.0"
+
+
+def test_cmd_bump_unparseable_version_errors(capsys):
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_bump_args("not-a-version", "patch"))
+    assert "cannot parse version" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# cmd_generate end-to-end
+# ---------------------------------------------------------------------------
+
+
+def _generate_args(version, preview=False):
+    class _Ns:
+        pass
+
+    a = _Ns()
+    a.version = version
+    a.preview = preview
+    return a
+
+
+def test_cmd_generate_writes_section_to_changelog(tmp_path, monkeypatch, capsys):
     cl_path = tmp_path / "CHANGELOG.md"
-    cl_path.write_text(_MINIMAL_CHANGELOG, encoding="utf-8")
+    cl_path.write_text(
+        "# Changelog\n\nHistorical preamble.\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(release, "CHANGELOG", cl_path)
-    return cl_path
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
 
-
-def _drive_append_many(commits: list[dict], monkeypatch) -> None:
-    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(commits)))
-    release.cmd_append_many(None)
-
-
-def test_append_many_writes_entries(tmp_changelog, monkeypatch):
-    commits = [
-        {"id": "abc1234", "message": "feat: add widget", "author": {"username": "alice"}, "modified": ["src/foo.py"]},
-        {"id": "def5678", "message": "fix: bar", "author": {"username": "alice"}, "modified": ["src/bar.py"]},
+    fake_commits = [
+        ("aaaaaaa", "feat: shiny"),
+        ("bbbbbbb", "fix: oops"),
     ]
-    _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text(encoding="utf-8")
-    assert "✨ Added" in text
-    assert "add widget" in text
-    assert "🐛 Fixed" in text
-    assert "bar" in text
+    with patch.object(release, "_git_commits_since_last_tag", return_value=fake_commits):
+        release.cmd_generate(_generate_args("1.1.0"))
+
+    written = cl_path.read_text(encoding="utf-8")
+    assert "## [1.1.0]" in written
+    assert written.index("## [1.1.0]") < written.index("## [1.0.0]")
+    assert "- shiny" in written
+    assert "- oops" in written
+    out = capsys.readouterr().out
+    assert f"### {ADDED}" in out
+    assert f"### {FIXED}" in out
+    assert "## [" not in out  # body only, no version header
 
 
-def test_append_many_skips_when_changelog_touched_in_push(tmp_changelog, monkeypatch):
-    commits = [
-        {"id": "abc1234", "message": "feat: add widget", "modified": ["src/foo.py"]},
-        {"id": "def5678", "message": "docs: hand-write changelog entry", "modified": ["CHANGELOG.md"]},
-    ]
-    _drive_append_many(commits, monkeypatch)
-    # File is untouched — no entries appended for either commit.
-    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
+def test_cmd_generate_preview_does_not_modify_file(tmp_path, monkeypatch, capsys):
+    cl_path = tmp_path / "CHANGELOG.md"
+    original = "# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n"
+    cl_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("1.1.0", preview=True))
+
+    assert cl_path.read_text(encoding="utf-8") == original
+    out = capsys.readouterr().out
+    assert "## [1.1.0]" in out
+    assert "- shiny" in out
 
 
-def test_append_many_honours_changelog_section_trailer(tmp_changelog, monkeypatch):
-    commits = [
-        {
-            "id": "abc1234",
-            "message": "refactor: rename API\n\nChangelog: Changed",
-            "modified": ["src/foo.py"],
-        },
-    ]
-    _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text(encoding="utf-8")
-    assert "🔄 Changed" in text
-    # Should NOT land in Maintenance, the default for refactor:
-    assert "🔧 Maintenance" not in text
+def test_cmd_generate_empty_commit_list_warns_but_writes(tmp_path, monkeypatch, capsys):
+    cl_path = tmp_path / "CHANGELOG.md"
+    cl_path.write_text(
+        "# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
 
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[]):
+        release.cmd_generate(_generate_args("1.0.1"))
 
-def test_append_many_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
-    commits = [
-        {"id": "abc1234", "message": "feat: add widget", "modified": ["src/foo.py"]},
-        {
-            "id": "def5678",
-            "message": "fix: fixup review feedback\n\nChangelog: skip",
-            "modified": ["src/foo.py"],
-        },
-    ]
-    _drive_append_many(commits, monkeypatch)
-    text = tmp_changelog.read_text(encoding="utf-8")
-    assert "add widget" in text
-    assert "fixup review feedback" not in text
-
-
-def test_append_many_with_empty_stdin_is_noop(tmp_changelog, monkeypatch):
-    monkeypatch.setattr("sys.stdin", io.StringIO(""))
-    release.cmd_append_many(None)
-    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
-
-
-# ---------------------------------------------------------------------------
-# cmd_append (single-commit path) — must apply the same skip rules
-# ---------------------------------------------------------------------------
-
-
-def test_append_writes_entry_for_normal_commit(tmp_changelog, monkeypatch):
-    monkeypatch.setenv("COMMIT_MSG", "feat: add widget")
-    release.cmd_append(None)
-    text = tmp_changelog.read_text(encoding="utf-8")
-    assert "✨ Added" in text
-    assert "add widget" in text
-
-
-def test_append_honours_changelog_skip_trailer(tmp_changelog, monkeypatch):
-    monkeypatch.setenv("COMMIT_MSG", "fix: tiny follow-up\n\nChangelog: skip")
-    release.cmd_append(None)
-    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
-
-
-def test_append_skips_merge_commits(tmp_changelog, monkeypatch):
-    monkeypatch.setenv("COMMIT_MSG", "Merge pull request #99 from foo/bar")
-    release.cmd_append(None)
-    assert tmp_changelog.read_text(encoding="utf-8") == _MINIMAL_CHANGELOG
-
-
-# ---------------------------------------------------------------------------
-# cmd_bump — version bumping (release + prerelease semantics)
-# ---------------------------------------------------------------------------
-
-
-class _BumpArgs:
-    """Minimal stand-in for argparse Namespace passed to cmd_bump."""
-
-    def __init__(self, current: str, bump: str, prerelease: str | None = None) -> None:
-        self.current = current
-        self.bump = bump
-        self.prerelease = prerelease
-
-
-def _bump(capsys, current: str, bump: str, prerelease: str | None = None) -> str:
-    release.cmd_bump(_BumpArgs(current, bump, prerelease))
-    return capsys.readouterr().out.strip()
-
-
-def test_bump_major_minor_patch(capsys):
-    assert _bump(capsys, "1.3.0", "major") == "2.0.0"
-    assert _bump(capsys, "1.3.0", "minor") == "1.4.0"
-    assert _bump(capsys, "1.3.0", "patch") == "1.3.1"
-
-
-def test_bump_major_with_alpha_starts_prerelease(capsys):
-    assert _bump(capsys, "1.3.0", "major", "alpha") == "2.0.0a1"
-    assert _bump(capsys, "1.3.0", "minor", "beta") == "1.4.0b1"
-    assert _bump(capsys, "1.3.0", "patch", "rc") == "1.3.1rc1"
-
-
-def test_bump_prerelease_increments_counter(capsys):
-    assert _bump(capsys, "2.0.0a1", "prerelease") == "2.0.0a2"
-    assert _bump(capsys, "2.0.0b5", "prerelease") == "2.0.0b6"
-    assert _bump(capsys, "1.4.0rc1", "prerelease") == "1.4.0rc2"
-
-
-def test_bump_prerelease_requires_existing_prerelease():
-    with pytest.raises(SystemExit):
-        release.cmd_bump(_BumpArgs("2.0.0", "prerelease"))
-
-
-def test_bump_finalize_drops_prerelease_suffix(capsys):
-    assert _bump(capsys, "2.0.0a3", "finalize") == "2.0.0"
-    assert _bump(capsys, "1.4.0rc2", "finalize") == "1.4.0"
-
-
-def test_bump_finalize_requires_existing_prerelease():
-    with pytest.raises(SystemExit):
-        release.cmd_bump(_BumpArgs("2.0.0", "finalize"))
-
-
-def test_bump_release_drops_prerelease_from_current(capsys):
-    # Bumping major/minor/patch from a prerelease ignores the suffix on `current`.
-    assert _bump(capsys, "2.0.0a3", "major") == "3.0.0"
-    assert _bump(capsys, "2.0.0a3", "minor") == "2.1.0"
-    assert _bump(capsys, "2.0.0a3", "patch") == "2.0.1"
-
-
-def test_bump_rejects_unparseable_version():
-    with pytest.raises(SystemExit):
-        release.cmd_bump(_BumpArgs("not-a-version", "patch"))
-
-
-def test_bump_prerelease_flag_invalid_with_prerelease_bump():
-    with pytest.raises(SystemExit):
-        release.cmd_bump(_BumpArgs("2.0.0a1", "prerelease", "alpha"))
+    captured = capsys.readouterr()
+    assert "no changelog-worthy commits" in captured.err
+    assert "## [1.0.1]" in cl_path.read_text(encoding="utf-8")

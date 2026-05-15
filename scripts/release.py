@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Release helper: version bumping and CHANGELOG management."""
+"""Release helper: version bumping and CHANGELOG generation."""
 
 import argparse
-import json
 import os
 import re
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -29,7 +29,6 @@ _COMMIT_TYPE_TO_SECTION: dict[str, str] = {
     "revert": "🐛 Fixed",
     "security": "🔒 Security",
     "docs": "🔧 Maintenance",
-    # Non-functional but recorded for completeness
     "ci": "🔧 Maintenance",
     "chore": "🔧 Maintenance",
     "test": "🔧 Maintenance",
@@ -39,8 +38,8 @@ _COMMIT_TYPE_TO_SECTION: dict[str, str] = {
 }
 
 # Trailer key that overrides automatic section bucketing on a per-commit basis.
-# Recognised values are either `skip` (suppress the entry) or any of the textual
-# section names in _SECTION_ORDER (case-insensitive, emoji optional).
+# Values are either `skip` (suppress the entry) or any section name in _SECTION_ORDER
+# (case-insensitive, emoji optional — `Changed` and `🔄 Changed` both resolve).
 _CHANGELOG_TRAILER_RE = re.compile(r"^changelog\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 
 
@@ -48,7 +47,6 @@ def _resolve_section_alias(name: str) -> str | None:
     """Match a section name (e.g. 'Changed' or '✨ Added') to its emoji-prefixed form."""
     name = name.strip().lower()
     for section in _SECTION_ORDER:
-        # Accept both the full form ("✨ Added") and the textual suffix ("Added").
         if section.lower() == name:
             return section
         textual = section.split(" ", 1)[-1].lower()
@@ -58,126 +56,58 @@ def _resolve_section_alias(name: str) -> str | None:
 
 
 def _find_changelog_trailer(message: str) -> str | None:
-    """Return the value of the last `Changelog:` trailer in the message, or None."""
-    matches = _CHANGELOG_TRAILER_RE.findall(message)
+    """Return the value of the last `Changelog:` trailer in the message, or None.
+
+    Trailer must live in the final paragraph of the body to match git's own
+    trailer semantics. Last `Changelog:` wins.
+    """
+    paragraphs = re.split(r"\n\s*\n", message.strip())
+    if len(paragraphs) < 2:
+        return None
+    last = paragraphs[-1]
+    matches = _CHANGELOG_TRAILER_RE.findall(last)
     return matches[-1].strip() if matches else None
 
 
 class Changelog:
-    """Line-by-line reader/editor for Keep a Changelog files."""
+    """Line-by-line reader/writer for Keep a Changelog files."""
 
     def __init__(self, path: Path | None = None) -> None:
-        # Resolve the default at call time (not as a parameter default) so tests can
-        # redirect the module-level CHANGELOG to a temp file via monkeypatch.
+        # Resolve at call time so monkeypatching `release.CHANGELOG` in tests is honoured.
         self.path = path if path is not None else CHANGELOG
-        # Always read/write as UTF-8; the section headers contain emoji which fall
-        # outside Windows' default cp1252 codec.
+        # Section headers contain emoji; force UTF-8 to dodge Windows' cp1252 default.
         self.lines = self.path.read_text(encoding="utf-8").splitlines(keepends=True)
 
     def save(self) -> None:
         """Write the current line buffer back to disk."""
         self.path.write_text("".join(self.lines), encoding="utf-8")
 
-    def unreleased_has_content(self) -> bool:
-        """Return True if [Unreleased] contains any non-blank, non-header lines."""
-        in_section = False
-        for line in self.lines:
-            if line.startswith("## [Unreleased]"):
-                in_section = True
-                continue
-            if in_section:
-                if line.startswith("## ["):
-                    break
-                if line.strip():
-                    return True
-        return False
+    def prepend_version_section(self, version: str, today: str, body: str) -> None:
+        r"""Insert a new versioned section above the most recent existing one.
 
-    def insert_version_header(self, version: str, today: str) -> None:
-        """Insert a new versioned header immediately after [Unreleased].
-
-        The existing [Unreleased] content naturally becomes the body of the new version,
-        leaving [Unreleased] empty and ready for the next cycle.
+        `body` is the rendered section body (the lines under the version header,
+        e.g. `### 🐛 Fixed\n\n- ...`). The `## [version] - date` header is added here.
         """
+        new_header = f"## [{version}] - {today}\n"
+        block = [new_header, "\n", *body.splitlines(keepends=True)]
+        if block and not block[-1].endswith("\n"):
+            block[-1] += "\n"
+        block.append("\n")
+
         for i, line in enumerate(self.lines):
-            if line.startswith("## [Unreleased]"):
-                self.lines[i + 1 : i + 1] = ["\n", f"## [{version}] - {today}\n"]
+            if line.startswith("## ["):
+                self.lines[i:i] = block
                 return
-
-    def extract_version_entry(self, version: str) -> str:
-        """Return the body of a versioned section as a stripped string."""
-        in_section = False
-        body_lines: list[str] = []
-        for line in self.lines:
-            if line.startswith(f"## [{version}]"):
-                in_section = True
-                continue
-            if in_section:
-                if line.startswith("## ["):
-                    break
-                body_lines.append(line)
-        return "".join(body_lines).strip()
-
-    def append_to_unreleased(self, section: str, entry: str) -> None:
-        """Append a bullet to a ### section under [Unreleased], creating it if needed."""
-        block_start = block_end = -1
-        for i, line in enumerate(self.lines):
-            if line.startswith("## [Unreleased]"):
-                block_start = i + 1
-            elif block_start != -1 and line.startswith("## ["):
-                block_end = i
-                break
-        if block_start == -1:
-            return
-        if block_end == -1:
-            block_end = len(self.lines)
-
-        block = self.lines[block_start:block_end]
-        section_header = f"### {section}\n"
-
-        try:
-            idx = block.index(section_header)
-        except ValueError:
-            # Section doesn't exist — insert before the first existing section that
-            # comes after this one in _SECTION_ORDER, or at the end of the block.
-            new_rank = _SECTION_ORDER.index(section) if section in _SECTION_ORDER else len(_SECTION_ORDER)
-            insert_at = block_end
-            for j, line in enumerate(block):
-                if line.startswith("### "):
-                    name = line[4:].strip()
-                    rank = _SECTION_ORDER.index(name) if name in _SECTION_ORDER else len(_SECTION_ORDER)
-                    if rank > new_rank:
-                        abs_pos = block_start + j
-                        while abs_pos > block_start and not self.lines[abs_pos - 1].strip():
-                            abs_pos -= 1
-                        insert_at = abs_pos
-                        break
-            else:
-                while insert_at > block_start and not self.lines[insert_at - 1].strip():
-                    insert_at -= 1
-            self.lines[insert_at:insert_at] = ["\n", section_header, "\n", f"{entry}\n"]
-            return
-
-        # Section exists — insert before its trailing blank lines
-        abs_header = block_start + idx
-        next_section_offset = next(
-            (j for j, line in enumerate(block[idx + 1 :], start=idx + 1) if line.startswith("### ")),
-            len(block),
-        )
-        abs_section_end = block_start + next_section_offset
-        insert_at = abs_section_end
-        while insert_at > abs_header and not self.lines[insert_at - 1].strip():
-            insert_at -= 1
-        self.lines.insert(insert_at, f"{entry}\n")
+        # No existing version sections — append to the end of the preamble
+        self.lines.extend(["\n", *block])
 
 
 def _parse_commit(message: str) -> tuple[str, str]:
     """Return (changelog_section, description) for a conventional commit message.
 
-    A `Changelog: <Section>` trailer (case-insensitive) overrides the section that
-    the conventional-commit prefix would normally map to. Useful when the prefix
-    doesn't reflect the change's user impact (e.g. a `refactor:` that renames public
-    API → `Changelog: Changed`). Unrecognised values are ignored. `Changelog: skip`
-    is handled separately by `_is_skippable_commit`.
+    Honours the `Changelog:` trailer if present — `Changelog: skip` returns ("skip", "")
+    so the caller can drop the commit, and `Changelog: <Section>` overrides the
+    conventional-prefix-derived section.
     """
     subject = message.splitlines()[0].strip()
     m = re.match(r"^(\w+)(?:\([^)]*\))?(!)?\s*:\s*(.+)", subject)
@@ -190,16 +120,105 @@ def _parse_commit(message: str) -> tuple[str, str]:
             description = f"⚠️ Breaking: {description}"
 
     trailer = _find_changelog_trailer(message)
-    if trailer and trailer.lower() != "skip":
-        section = _resolve_section_alias(trailer) or section
+    if trailer is not None:
+        if trailer.lower() == "skip":
+            return "skip", description
+        override = _resolve_section_alias(trailer)
+        if override:
+            section = override
+
     return section, description
 
 
-def cmd_check(_args) -> None:
-    """Fail if [Unreleased] has no entries."""
-    if not Changelog().unreleased_has_content():
-        print("ERROR: [Unreleased] section is empty — add changelog entries before releasing.", file=sys.stderr)
-        sys.exit(1)
+def _is_skippable_commit(message: str) -> bool:
+    """Return True for commits that shouldn't produce changelog entries.
+
+    Skips:
+    - Merge commits (the underlying feature commits are present separately).
+    - The release commit itself (`chore: release <version>`).
+    - Bot-generated `chore: update [Unreleased] changelog` commits (historical: the
+      bot is retired, but these commits remain in the history of branches predating
+      the changelog rework).
+    - Any chore: commit whose subject mentions "changelog" — housekeeping edits to
+      CHANGELOG.md itself, not user-visible changes.
+    """
+    subject = message.splitlines()[0].strip()
+    if subject.startswith(("Merge pull request", "Merge branch")):
+        return True
+    if re.match(r"^chore: release \d", subject):
+        return True
+    if subject == "chore: update [Unreleased] changelog":
+        return True
+    if subject.startswith("chore:") and "changelog" in subject.lower():
+        return True
+    return False
+
+
+def _git_commits_since_last_tag() -> list[tuple[str, str]]:
+    """Return [(sha, message), ...] for commits between the most recent v* tag and HEAD.
+
+    If no tag is reachable from HEAD, walks all of history. Commits are returned
+    oldest-first so the rendered section reads chronologically.
+    """
+    try:
+        prev_tag = subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0", "--match=v*", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+        rev_range = f"{prev_tag}..HEAD"
+    except subprocess.CalledProcessError:
+        rev_range = "HEAD"
+
+    raw = subprocess.check_output(
+        ["git", "log", rev_range, "--format=%H%x00%B%x1e", "--reverse"],
+        text=True,
+    )
+    commits: list[tuple[str, str]] = []
+    for record in raw.split("\x1e"):
+        record = record.strip()
+        if not record or "\x00" not in record:
+            continue
+        sha, message = record.split("\x00", 1)
+        commits.append((sha.strip(), message.strip()))
+    return commits
+
+
+def _format_entry(sha: str, description: str) -> str:
+    """Render a single changelog bullet with commit-hash attribution."""
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if repo:
+        return f"- {description} ([{sha[:7]}]({server}/{repo}/commit/{sha}))"
+    return f"- {description}"
+
+
+def _render_body(sections: dict[str, list[str]]) -> str:
+    """Render section dict to a CHANGELOG body string (no version header)."""
+    parts: list[str] = []
+    for name in _SECTION_ORDER:
+        entries = sections.get(name)
+        if not entries:
+            continue
+        if parts:
+            parts.append("")
+        parts.append(f"### {name}")
+        parts.append("")
+        parts.extend(entries)
+    return "\n".join(parts) + "\n" if parts else ""
+
+
+def _classify_commits(commits: list[tuple[str, str]]) -> dict[str, list[str]]:
+    """Bucket commits into changelog sections, honouring skip-trailer and skippable rules."""
+    sections: dict[str, list[str]] = {k: [] for k in _SECTION_ORDER}
+    for sha, message in commits:
+        if _is_skippable_commit(message):
+            continue
+        section, description = _parse_commit(message)
+        if section == "skip":
+            continue
+        sections[section].append(_format_entry(sha, description))
+    return sections
 
 
 _VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
@@ -230,8 +249,7 @@ def cmd_bump(args) -> None:
     if args.bump == "prerelease":
         if pre_stage is None:
             print(
-                f"ERROR: prerelease bump requires current to have a prerelease suffix "
-                f"(got {args.current!r})",
+                f"ERROR: prerelease bump requires current to have a prerelease suffix (got {args.current!r})",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -244,8 +262,7 @@ def cmd_bump(args) -> None:
     if args.bump == "finalize":
         if pre_stage is None:
             print(
-                f"ERROR: finalize requires current to have a prerelease suffix "
-                f"(got {args.current!r})",
+                f"ERROR: finalize requires current to have a prerelease suffix (got {args.current!r})",
                 file=sys.stderr,
             )
             sys.exit(1)
@@ -268,126 +285,39 @@ def cmd_bump(args) -> None:
         print(f"{major}.{minor}.{patch}")
 
 
-def cmd_update(args) -> None:
-    """Move [Unreleased] entries under a new versioned header and print the entry body."""
-    cl = Changelog()
-    cl.insert_version_header(args.version, date.today().isoformat())
-    cl.save()
-    print(cl.extract_version_entry(args.version))
+def cmd_generate(args) -> None:
+    """Generate a new versioned CHANGELOG section from commits since the last tag.
 
-
-def _commit_attribution(changelog_text: str) -> str:
-    """Return an attribution suffix like ' ([abc1234](url) by @login 🎉)' if env vars are set."""
-    sha = os.environ.get("COMMIT_SHA", "").strip()
-    login = os.environ.get("COMMIT_AUTHOR_LOGIN", "").strip()
-    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
-    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
-
-    if not sha:
-        return ""
-
-    parts: list[str] = []
-    if repo:
-        short_sha = sha[:7]
-        parts.append(f"[{short_sha}]({server}/{repo}/commit/{sha})")
-    if login:
-        is_first = f"@{login}" not in changelog_text
-        parts.append(f"@{login}" + (" 🎉" if is_first else ""))
-
-    return f" ({', '.join(parts)})" if parts else ""
-
-
-def cmd_append(_args) -> None:
-    """Append a conventional commit (from $COMMIT_MSG) to [Unreleased]."""
-    message = os.environ.get("COMMIT_MSG", "").strip()
-    if not message or _is_skippable_commit(message):
-        return
-    section, description = _parse_commit(message)
-    cl = Changelog()
-    attribution = _commit_attribution(cl.path.read_text(encoding="utf-8"))
-    cl.append_to_unreleased(section, f"- {description}{attribution}")
-    cl.save()
-
-
-def _is_skippable_commit(message: str) -> bool:
-    """Return True for commits that shouldn't produce changelog entries.
-
-    Skips:
-    - Merge commits ("Merge pull request" / "Merge branch") — the feature commits
-      they wrap are already in the push's `commits` list separately.
-    - The bot's own changelog-update commits — would otherwise recurse.
-    - Any chore: commit whose subject mentions "changelog" — these are housekeeping
-      edits to CHANGELOG.md itself and don't belong as entries within it.
-    - Commits with a `Changelog: skip` trailer — author opt-out for follow-up
-      commits whose narrative is already captured by their parent commit.
+    Writes the section into CHANGELOG.md and prints the body (without the version
+    header) to stdout — the release workflow captures stdout as the GitHub Release
+    description. With `--preview`, only prints; does not modify the file.
     """
-    subject = message.splitlines()[0].strip()
-    if subject.startswith(("Merge pull request", "Merge branch")):
-        return True
-    if subject == "chore: update [Unreleased] changelog":
-        return True
-    if subject.startswith("chore:") and "changelog" in subject.lower():
-        return True
-    trailer = _find_changelog_trailer(message)
-    if trailer and trailer.lower() == "skip":
-        return True
-    return False
+    commits = _git_commits_since_last_tag()
+    sections = _classify_commits(commits)
+    body = _render_body(sections)
+    today = date.today().isoformat()
 
-
-def _push_touched_changelog(commits: list[dict]) -> bool:
-    """Return True if any commit in the push added/modified/removed CHANGELOG.md.
-
-    Used as an opt-out: if a branch maintained its own changelog entries (e.g. for
-    a complex PR where per-commit auto-bucketing isn't expressive enough), the bot
-    should not also append entries on top — that would double-record the change.
-    `removed` is included so that a push deleting the file doesn't cause the
-    subsequent read_text() to raise FileNotFoundError.
-    """
-    for c in commits:
-        for key in ("added", "modified", "removed"):
-            files = c.get(key) or []
-            if "CHANGELOG.md" in files:
-                return True
-    return False
-
-
-def cmd_append_many(_args) -> None:
-    """Append every commit from a JSON push-event `commits` array (read from stdin).
-
-    Each commit object must have `id`, `message`, and optionally `author.username`,
-    `added`, `modified`. Commits where _is_skippable_commit returns True are dropped
-    silently. If any commit in the push touched CHANGELOG.md, the entire append step
-    is skipped — see `_push_touched_changelog` for the rationale.
-    """
-    raw = sys.stdin.read().strip()
-    if not raw:
+    if args.preview:
+        print(f"## [{args.version}] - {today}\n")
+        print(body, end="")
         return
-    commits = json.loads(raw)
-    if _push_touched_changelog(commits):
-        return
+
+    if not body:
+        print(
+            f"WARNING: no changelog-worthy commits since the last tag — emitting an empty section for {args.version}",
+            file=sys.stderr,
+        )
+
     cl = Changelog()
-    for c in commits:
-        message = (c.get("message") or "").strip()
-        if not message or _is_skippable_commit(message):
-            continue
-        sha = c.get("id", "")
-        login = (c.get("author") or {}).get("username", "")
-        # _commit_attribution reads from env vars; set them per-commit so the
-        # attribution string reflects this commit (not a stale value from $COMMIT_SHA).
-        os.environ["COMMIT_SHA"] = sha
-        os.environ["COMMIT_AUTHOR_LOGIN"] = login
-        section, description = _parse_commit(message)
-        attribution = _commit_attribution("".join(cl.lines))
-        cl.append_to_unreleased(section, f"- {description}{attribution}")
+    cl.prepend_version_section(args.version, today, body)
     cl.save()
+    print(body, end="")
 
 
 def main() -> None:
-    """CLI entry point: parse argv and dispatch to the chosen subcommand."""
+    """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-
-    sub.add_parser("check", help="Fail if [Unreleased] section is empty")
 
     bump_p = sub.add_parser("bump", help="Print next version number")
     bump_p.add_argument("current", help="Current version (e.g. 1.2.3 or 2.0.0a1)")
@@ -398,23 +328,19 @@ def main() -> None:
         help="With major/minor/patch: start a prerelease line (e.g. 1.3.0 + major + alpha -> 2.0.0a1).",
     )
 
-    update_p = sub.add_parser("update", help="Move [Unreleased] to a versioned section and print the entry")
-    update_p.add_argument("version", help="New version (e.g. 1.2.3)")
-
-    sub.add_parser("append", help="Append $COMMIT_MSG to [Unreleased] (conventional commits)")
-    sub.add_parser(
-        "append-many",
-        help="Append every commit from a JSON push-event `commits` array (read from stdin)",
+    gen_p = sub.add_parser(
+        "generate",
+        help="Write a new versioned CHANGELOG section from commits since the last v* tag",
+    )
+    gen_p.add_argument("version", help="New version (e.g. 1.2.3 or 2.0.0a2)")
+    gen_p.add_argument(
+        "--preview",
+        action="store_true",
+        help="Print the rendered section without modifying CHANGELOG.md",
     )
 
     args = parser.parse_args()
-    {
-        "check": cmd_check,
-        "bump": cmd_bump,
-        "update": cmd_update,
-        "append": cmd_append,
-        "append-many": cmd_append_many,
-    }[args.command](args)
+    {"bump": cmd_bump, "generate": cmd_generate}[args.command](args)
 
 
 if __name__ == "__main__":
