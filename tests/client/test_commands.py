@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import time as dt_time
 
 import pytest
 
@@ -128,6 +129,90 @@ async def test_set_slot_index_validation():
         commands.reset_discharge_slot(0, EXTENDED_SLOTS)
     with pytest.raises(ValueError, match="Discharge slot index"):
         commands.reset_discharge_slot(11, EXTENDED_SLOTS)
+
+
+@pytest.mark.parametrize("discharge", (False, True))
+@pytest.mark.parametrize("slot", (1, 2))
+async def test_set_slot_endpoint_single_phase(discharge: bool, slot: int):
+    """Setting just one endpoint of a charge/discharge slot writes exactly one register."""
+    slot_map = SINGLE_PHASE_SLOTS
+    slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
+    hr_start, hr_end = slots[slot - 1]
+    start_fn = commands.set_discharge_slot_start if discharge else commands.set_charge_slot_start
+    end_fn = commands.set_discharge_slot_end if discharge else commands.set_charge_slot_end
+
+    # Setting a time writes HHMM-encoded value
+    assert start_fn(slot, dt_time(16, 30), slot_map) == [WriteHoldingRegisterRequest(hr_start, 1630)]
+    assert end_fn(slot, dt_time(7, 0), slot_map) == [WriteHoldingRegisterRequest(hr_end, 700)]
+    # Setting None clears just that end (other end untouched)
+    assert start_fn(slot, None, slot_map) == [WriteHoldingRegisterRequest(hr_start, 0)]
+    assert end_fn(slot, None, slot_map) == [WriteHoldingRegisterRequest(hr_end, 0)]
+
+
+@pytest.mark.parametrize("discharge", (False, True))
+async def test_set_slot_endpoint_index_validation(discharge: bool):
+    """Endpoint setters share the same index validation as the whole-slot setters."""
+    start_fn = commands.set_discharge_slot_start if discharge else commands.set_charge_slot_start
+    end_fn = commands.set_discharge_slot_end if discharge else commands.set_charge_slot_end
+    label = "Discharge" if discharge else "Charge"
+
+    with pytest.raises(ValueError, match=f"{label} slot index"):
+        start_fn(0, dt_time(1, 0), SINGLE_PHASE_SLOTS)
+    with pytest.raises(ValueError, match=f"{label} slot index"):
+        end_fn(11, dt_time(1, 0), EXTENDED_SLOTS)
+
+
+async def test_set_pause_slot_endpoint():
+    """Pause slot has its own endpoint setters that write a single register each."""
+    assert commands.set_pause_slot_start(dt_time(13, 45)) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 1345)
+    ]
+    assert commands.set_pause_slot_end(dt_time(14, 0)) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 1400)
+    ]
+    assert commands.set_pause_slot_start(None) == [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 0)]
+    assert commands.set_pause_slot_end(None) == [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 0)]
+
+
+@pytest.mark.parametrize("idx", (1, 2, 3))
+async def test_set_export_slot_endpoint(idx: int):
+    """Export slot endpoint setters write a single register each."""
+    hr_start = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START")
+    hr_end = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
+
+    assert commands.set_export_slot_start(idx, dt_time(10, 15)) == [WriteHoldingRegisterRequest(hr_start, 1015)]
+    assert commands.set_export_slot_end(idx, dt_time(11, 30)) == [WriteHoldingRegisterRequest(hr_end, 1130)]
+    assert commands.set_export_slot_start(idx, None) == [WriteHoldingRegisterRequest(hr_start, 0)]
+    assert commands.set_export_slot_end(idx, None) == [WriteHoldingRegisterRequest(hr_end, 0)]
+
+
+async def test_set_export_slot_endpoint_index_validation():
+    with pytest.raises(ValueError, match="Export slot index"):
+        commands.set_export_slot_start(0, dt_time(1, 0))
+    with pytest.raises(ValueError, match="Export slot index"):
+        commands.set_export_slot_end(4, dt_time(1, 0))
+
+
+async def test_whole_slot_setters_defer_to_endpoint_setters():
+    """Whole-slot setters must produce identical output to manually composing the endpoint setters."""
+    ts = TimeSlot.from_components(8, 15, 18, 45)
+    slot_map = SINGLE_PHASE_SLOTS
+
+    composed_charge = commands.set_charge_slot_start(1, ts.start, slot_map) + commands.set_charge_slot_end(
+        1, ts.end, slot_map
+    )
+    assert commands.set_charge_slot(1, ts, slot_map) == composed_charge
+
+    composed_discharge = commands.set_discharge_slot_start(2, ts.start, slot_map) + commands.set_discharge_slot_end(
+        2, ts.end, slot_map
+    )
+    assert commands.set_discharge_slot(2, ts, slot_map) == composed_discharge
+
+    composed_pause = commands.set_pause_slot_start(ts.start) + commands.set_pause_slot_end(ts.end)
+    assert commands.set_pause_slot(ts) == composed_pause
+
+    composed_export = commands.set_export_slot_start(2, ts.start) + commands.set_export_slot_end(2, ts.end)
+    assert commands.set_export_slot(2, ts) == composed_export
 
 
 async def test_set_mode_dynamic():

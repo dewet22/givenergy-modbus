@@ -136,12 +136,26 @@ All commands live in `givenergy_modbus.client.commands` and return
 | Function | Description |
 |---|---|
 | `set_charge_slot(idx, timeslot, slot_map)` | Set charge slot `idx` (1-based) |
+| `set_charge_slot_start(idx, t, slot_map)` | Set just the start of charge slot `idx` (or `None` to clear that end) |
+| `set_charge_slot_end(idx, t, slot_map)` | Set just the end of charge slot `idx` (or `None` to clear that end) |
 | `reset_charge_slot(idx, slot_map)` | Clear charge slot `idx` |
 | `set_discharge_slot(idx, timeslot, slot_map)` | Set discharge slot `idx` (1-based) |
+| `set_discharge_slot_start(idx, t, slot_map)` | Set just the start of discharge slot `idx` (or `None` to clear that end) |
+| `set_discharge_slot_end(idx, t, slot_map)` | Set just the end of discharge slot `idx` (or `None` to clear that end) |
 | `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` |
 | `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` |
+| `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` |
+| `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` |
 | `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) |
 | `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) |
+| `set_pause_slot_start(t)` | Set just the start of the battery pause slot |
+| `set_pause_slot_end(t)` | Set just the end of the battery pause slot |
+
+The whole-slot setters (`set_charge_slot`, `set_discharge_slot`, `set_pause_slot`,
+`set_export_slot`) write both endpoints in one call. The `_start` / `_end` variants
+each write a single register and exist for callers (notably Home Assistant) whose UI
+models start and end as independent entities. Either form is fine — they produce the
+same wire frames when used in sequence.
 
 ### Operating modes
 

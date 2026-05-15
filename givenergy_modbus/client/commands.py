@@ -1,6 +1,7 @@
 """High-level methods for interacting with a remote system."""
 
 from datetime import datetime
+from datetime import time as dt_time
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
@@ -261,17 +262,21 @@ def set_battery_pause_mode(val: BatteryPauseMode) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, val)]
 
 
+def set_pause_slot_start(t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the start of the battery pause slot, or clear it if t is None."""
+    return _set_slot_endpoint(RegisterMap.BATTERY_PAUSE_SLOT_START, t)
+
+
+def set_pause_slot_end(t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the end of the battery pause slot, or clear it if t is None."""
+    return _set_slot_endpoint(RegisterMap.BATTERY_PAUSE_SLOT_END, t)
+
+
 def set_pause_slot(slot: TimeSlot | None) -> list[TransparentRequest]:
     """Set the battery pause time slot, or clear it if slot is None."""
-    if slot:
-        return [
-            WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, int(slot.start.strftime("%H%M"))),
-            WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, int(slot.end.strftime("%H%M"))),
-        ]
-    return [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_START, 0),
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_SLOT_END, 0),
-    ]
+    start = slot.start if slot else None
+    end = slot.end if slot else None
+    return set_pause_slot_start(start) + set_pause_slot_end(end)
 
 
 def set_ac_charge(enabled: bool) -> list[TransparentRequest]:
@@ -294,67 +299,94 @@ def set_ems_plant(enabled: bool) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, enabled)]
 
 
-def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
-    """Set an export time slot by index (1–3), or clear it if slot is None."""
+def _export_slot_registers(idx: int) -> tuple[int, int]:
     if not 1 <= idx <= 3:
         raise ValueError(f"Export slot index ({idx}) must be in [1-3]")
-    hr_start = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START")
-    hr_end = getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
-    if slot:
-        return [
-            WriteHoldingRegisterRequest(hr_start, int(slot.start.strftime("%H%M"))),
-            WriteHoldingRegisterRequest(hr_end, int(slot.end.strftime("%H%M"))),
-        ]
-    return [
-        WriteHoldingRegisterRequest(hr_start, 0),
-        WriteHoldingRegisterRequest(hr_end, 0),
-    ]
+    return getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START"), getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
 
 
-def _set_slot(discharge: bool, idx: int, slot: TimeSlot | None, slot_map: SlotMap) -> list[TransparentRequest]:
-    hr_start, hr_end = (slot_map.discharge_slots if discharge else slot_map.charge_slots)[idx - 1]
-    if slot:
-        return [
-            WriteHoldingRegisterRequest(hr_start, int(slot.start.strftime("%H%M"))),
-            WriteHoldingRegisterRequest(hr_end, int(slot.end.strftime("%H%M"))),
-        ]
-    else:
-        return [
-            WriteHoldingRegisterRequest(hr_start, 0),
-            WriteHoldingRegisterRequest(hr_end, 0),
-        ]
+def set_export_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the start of an export time slot by index (1–3), or clear it if t is None."""
+    hr_start, _ = _export_slot_registers(idx)
+    return _set_slot_endpoint(hr_start, t)
+
+
+def set_export_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the end of an export time slot by index (1–3), or clear it if t is None."""
+    _, hr_end = _export_slot_registers(idx)
+    return _set_slot_endpoint(hr_end, t)
+
+
+def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set an export time slot by index (1–3), or clear it if slot is None."""
+    _export_slot_registers(idx)  # index validation
+    start = slot.start if slot else None
+    end = slot.end if slot else None
+    return set_export_slot_start(idx, start) + set_export_slot_end(idx, end)
+
+
+def _set_slot_endpoint(hr: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Write a single slot-endpoint register: HHMM-encoded time, or 0 to clear."""
+    return [WriteHoldingRegisterRequest(hr, int(t.strftime("%H%M")) if t else 0)]
+
+
+def _resolve_slot_registers(discharge: bool, idx: int, slot_map: SlotMap) -> tuple[int, int]:
+    slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
+    n = len(slots)
+    if not 1 <= idx <= n:
+        label = "Discharge" if discharge else "Charge"
+        raise ValueError(f"{label} slot index ({idx}) must be in [1-{n}] for the given slot map")
+    return slots[idx - 1]
+
+
+def set_charge_slot_start(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Set just the start of a charge slot by index (1-based), or clear it if t is None."""
+    hr_start, _ = _resolve_slot_registers(False, idx, slot_map)
+    return _set_slot_endpoint(hr_start, t)
+
+
+def set_charge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Set just the end of a charge slot by index (1-based), or clear it if t is None."""
+    _, hr_end = _resolve_slot_registers(False, idx, slot_map)
+    return _set_slot_endpoint(hr_end, t)
+
+
+def set_discharge_slot_start(
+    idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS
+) -> list[TransparentRequest]:
+    """Set just the start of a discharge slot by index (1-based), or clear it if t is None."""
+    hr_start, _ = _resolve_slot_registers(True, idx, slot_map)
+    return _set_slot_endpoint(hr_start, t)
+
+
+def set_discharge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+    """Set just the end of a discharge slot by index (1-based), or clear it if t is None."""
+    _, hr_end = _resolve_slot_registers(True, idx, slot_map)
+    return _set_slot_endpoint(hr_end, t)
 
 
 def set_charge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
     """Set charge slot start & end times by index (1-based)."""
-    n = len(slot_map.charge_slots)
-    if not 1 <= idx <= n:
-        raise ValueError(f"Charge slot index ({idx}) must be in [1-{n}] for the given slot map")
-    return _set_slot(False, idx, timeslot, slot_map)
+    start = timeslot.start if timeslot else None
+    end = timeslot.end if timeslot else None
+    return set_charge_slot_start(idx, start, slot_map) + set_charge_slot_end(idx, end, slot_map)
 
 
 def reset_charge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
     """Reset charge slot to zero/disabled by index (1-based)."""
-    n = len(slot_map.charge_slots)
-    if not 1 <= idx <= n:
-        raise ValueError(f"Charge slot index ({idx}) must be in [1-{n}] for the given slot map")
-    return _set_slot(False, idx, None, slot_map)
+    return set_charge_slot_start(idx, None, slot_map) + set_charge_slot_end(idx, None, slot_map)
 
 
 def set_discharge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
     """Set discharge slot start & end times by index (1-based)."""
-    n = len(slot_map.discharge_slots)
-    if not 1 <= idx <= n:
-        raise ValueError(f"Discharge slot index ({idx}) must be in [1-{n}] for the given slot map")
-    return _set_slot(True, idx, timeslot, slot_map)
+    start = timeslot.start if timeslot else None
+    end = timeslot.end if timeslot else None
+    return set_discharge_slot_start(idx, start, slot_map) + set_discharge_slot_end(idx, end, slot_map)
 
 
 def reset_discharge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
     """Reset discharge slot to zero/disabled by index (1-based)."""
-    n = len(slot_map.discharge_slots)
-    if not 1 <= idx <= n:
-        raise ValueError(f"Discharge slot index ({idx}) must be in [1-{n}] for the given slot map")
-    return _set_slot(True, idx, None, slot_map)
+    return set_discharge_slot_start(idx, None, slot_map) + set_discharge_slot_end(idx, None, slot_map)
 
 
 @deprecated("use set_charge_slot(1, timeslot, slot_map) instead")
