@@ -515,9 +515,7 @@ class Client:
             self.expected_responses[expected_shape_hash] = response_future
             frame_sent = asyncio.get_running_loop().create_future()
             try:
-                await asyncio.wait_for(
-                    self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0
-                )
+                await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0)
             except TimeoutError as exc:
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
             await asyncio.wait_for(

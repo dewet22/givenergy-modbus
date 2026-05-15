@@ -433,7 +433,7 @@ async def test_producer_skips_wire_send_when_response_already_resolved():
         producer.cancel()
         try:
             await producer
-        except asyncio.CancelledError, Exception:
+        except asyncio.CancelledError:
             pass
 
     writer.write.assert_not_called()
@@ -460,7 +460,7 @@ async def test_producer_sends_normally_when_response_future_pending():
         producer.cancel()
         try:
             await producer
-        except asyncio.CancelledError, Exception:
+        except asyncio.CancelledError:
             pass
 
     writer.write.assert_called_once_with(b"the-frame")
