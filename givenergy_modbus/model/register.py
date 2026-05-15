@@ -34,11 +34,12 @@ class Converter:
             return (high_val << 16) + low_val
 
     @staticmethod
-    def int32(high_val: int, low_val: int) -> int:
+    def int32(high_val: int | None, low_val: int | None) -> int | None:
         """Combine two registers into a signed 32-bit int (two's complement)."""
         if high_val is not None and low_val is not None:
             raw = (high_val << 16) + low_val
             return raw if raw < 0x80000000 else raw - 0x100000000
+        return None
 
     @staticmethod
     def timeslot(start_time: int, end_time: int) -> "TimeSlot | None":
@@ -130,11 +131,14 @@ class Converter:
         return {0: 50, 1: 60}.get(option)
 
     @staticmethod
-    def bitfield(val: int, low: int, high: int) -> int | None:
-        """Extract the bit range [low, high] (inclusive) from a 16-bit register value."""
-        if val is not None:
-            return int(f"{val:016b}"[low : high + 1], 2)
-        return None
+    def bitfield(val: int | None, low: int, high: int) -> int | None:
+        """Extract the bit range [low, high] (inclusive) from a 16-bit register value.
+
+        Indices are MSB-first: 0 = bit 15, 15 = bit 0.
+        """
+        if val is None:
+            return None
+        return (val >> (15 - high)) & ((1 << (high - low + 1)) - 1)
 
     @staticmethod
     def gateway_version(first: int, second: int, third: int, fourth: int) -> str | None:
