@@ -11,6 +11,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - quieten bounds-violation logs and exempt all-zero raw banks ([a4501d7](https://github.com/dewet22/givenergy-modbus/commit/a4501d78a6bc78979126cbd18b66ae8587251b42), @dewet22)
 - thread timeout/retries through refresh_plant() post-detect ([260af42](https://github.com/dewet22/givenergy-modbus/commit/260af4272817aaf77bab2f1f609babd969d2374a), @dewet22)
+- use address-prefixed byte-swapped CRC for FC 0x16 requests ([a5b0b2c](https://github.com/dewet22/givenergy-modbus/commit/a5b0b2c036eeb26445e2ddf2085a11c66e8c1fa6), @dewet22)
+- make Client.connect() idempotent and reset _shutting_down ([6c56889](https://github.com/dewet22/givenergy-modbus/commit/6c56889c68c63d323b5ce70ddf15b86345e1c61d), @dewet22)
 
 ### 🔧 Maintenance
 
