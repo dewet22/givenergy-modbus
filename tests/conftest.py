@@ -15,6 +15,7 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
+    ReadMeterProductRegistersRequest,
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
@@ -276,6 +277,24 @@ _server_messages: PduTestCases = [
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\x14\x00\x01\xc4\x2d",
+        None,
+    ),
+    (
+        # FC 0x16 uses the address-prefixed, byte-swapped CRC layout — see issue #58.
+        # Bytes (and CRC) taken from a real wire capture; see tests/test_framer.py.
+        "2:22/ReadMeterProductRegistersRequest(device_address=0x01 base_register=60)",
+        ReadMeterProductRegistersRequest,
+        {
+            "base_register": 0x3C,
+            "register_count": 0x3C,
+            "check": 0x8814,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "device_address": 0x01,
+        },
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x01\x16\x00\x3c\x00\x3c\x88\x14",
         None,
     ),
     (

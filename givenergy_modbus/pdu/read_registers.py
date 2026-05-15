@@ -206,6 +206,19 @@ class ReadMeterProductRegistersRequest(ReadMeterProductRegisters, ReadRegistersR
             base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
+    def _update_check_code(self):
+        # FC 0x16 uses a different CRC layout from FC 0x03/0x04 — it includes the device address
+        # in the hash input and byte-swaps the result. Confirmed against a wire capture
+        # (device=0x01, base=0x3c, count=0x3c → wire CRC 0x8814). See issue #58.
+        crc_builder = PayloadEncoder()
+        crc_builder.add_8bit_uint(self.device_address)
+        crc_builder.add_8bit_uint(self.transparent_function_code)
+        crc_builder.add_16bit_uint(self.base_register)
+        crc_builder.add_16bit_uint(self.register_count)
+        raw = crc_builder.crc
+        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
+        self._builder.add_16bit_uint(self.check)
+
 
 class ReadMeterProductRegistersResponse(ReadMeterProductRegisters, ReadRegistersResponse):
     """Concrete PDU implementation for handling function #0x16/Read Meter Product Registers response messages."""
