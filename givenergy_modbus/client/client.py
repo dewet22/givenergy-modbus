@@ -58,7 +58,17 @@ class Client:
         # }
 
     async def connect(self) -> None:
-        """Connect to the remote host and start background tasks."""
+        """Connect to the remote host and start background tasks.
+
+        Idempotent: if the client is already connected, the existing connection
+        and background tasks are torn down before establishing a new one. This
+        makes ``connect()`` safe to use as a reconnect primitive without a
+        separate ``close()`` step, and guarantees the new background tasks see
+        ``_shutting_down`` as False even after a prior ``close()``.
+        """
+        if self.connected:
+            await self.close()
+        self._shutting_down = False
         try:
             connection = asyncio.open_connection(host=self.host, port=self.port, flags=socket.TCP_NODELAY)
             self.reader, self.writer = await asyncio.wait_for(connection, timeout=self.connect_timeout)

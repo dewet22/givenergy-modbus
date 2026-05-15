@@ -186,6 +186,63 @@ async def test_close_sets_shutting_down_flag():
     assert client._shutting_down is True
 
 
+def _stub_open_connection(reader=None, writer=None):
+    """Build an AsyncMock for asyncio.open_connection returning a (reader, writer) pair."""
+    reader = reader or MagicMock(spec=StreamReader)
+    writer = writer or MagicMock()
+    return AsyncMock(return_value=(reader, writer))
+
+
+async def test_connect_resets_shutting_down_after_close():
+    """Regression for #62: close() → connect() must clear _shutting_down so the new tasks log correctly on EOF."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock()
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+
+    await client.close()
+    assert client._shutting_down is True
+
+    with patch("asyncio.open_connection", _stub_open_connection()):
+        # Stub out the background tasks so we don't actually run the network loops.
+        with patch.object(client, "_task_network_consumer", new=AsyncMock()):
+            with patch.object(client, "_task_network_producer", new=AsyncMock()):
+                await client.connect()
+
+    assert client._shutting_down is False
+    assert client.connected is True
+
+
+async def test_connect_is_idempotent_on_already_connected_client():
+    """Regression for #62: connect() on a live client must tear down the previous connection first."""
+    client = Client(host="foo", port=4321)
+    first_writer = MagicMock()
+    first_writer.wait_closed = AsyncMock()
+    client.writer = first_writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+    client.connected = True
+
+    second_writer = MagicMock()
+    second_reader = MagicMock(spec=StreamReader)
+
+    with patch("asyncio.open_connection", _stub_open_connection(reader=second_reader, writer=second_writer)):
+        with patch.object(client, "_task_network_consumer", new=AsyncMock()):
+            with patch.object(client, "_task_network_producer", new=AsyncMock()):
+                await client.connect()
+
+    # The previous writer was closed as part of the teardown, and the new one is in place.
+    first_writer.close.assert_called_once()
+    assert client.writer is second_writer
+    assert client.reader is second_reader
+    assert client.connected is True
+    assert client._shutting_down is False
+
+
 async def test_consumer_clears_connected_on_unexpected_eof():
     """Bug fix: connected must be set to False when the consumer exits due to remote EOF."""
     client = Client(host="foo", port=4321)
