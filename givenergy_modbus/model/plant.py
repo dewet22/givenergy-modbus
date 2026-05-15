@@ -202,6 +202,61 @@ class PlantCapabilities:
         """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
         return self.device_type in _HV_MODELS
 
+    SCHEMA_VERSION = 1
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a JSON-safe dict for caller-managed persistence.
+
+        Round-trips through from_dict(). Addresses render as `0x..` strings to
+        match the form used in logs, exceptions, and code. The schema_version
+        field gives future-us an escape hatch for format changes.
+        """
+        return {
+            "schema_version": self.SCHEMA_VERSION,
+            "device_type": self.device_type.name,
+            "inverter_address": f"0x{self.inverter_address:02x}",
+            "meter_addresses": [f"0x{a:02x}" for a in self.meter_addresses],
+            "lv_battery_addresses": [f"0x{a:02x}" for a in self.lv_battery_addresses],
+            "bcu_stacks": [[offset, modules] for offset, modules in self.bcu_stacks],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PlantCapabilities":
+        """Reconstruct from a to_dict() payload.
+
+        Schema version mismatch raises ValueError — callers can catch and re-run
+        detect() without prior. Pre-rename `*_slave(s)` key aliases are
+        normalised silently so state persisted under the older conventions
+        still loads cleanly.
+        """
+        normalised: dict[str, Any] = dict(data)
+        for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
+            if old in normalised and new not in normalised:
+                normalised[new] = normalised.pop(old)
+        version = normalised.get("schema_version")
+        if version != cls.SCHEMA_VERSION:
+            raise ValueError(f"unsupported PlantCapabilities schema_version {version!r}; expected {cls.SCHEMA_VERSION}")
+        return cls(
+            device_type=Model[normalised["device_type"]],
+            inverter_address=int(normalised["inverter_address"], 0),
+            meter_addresses=[int(a, 0) for a in normalised["meter_addresses"]],
+            lv_battery_addresses=[int(a, 0) for a in normalised["lv_battery_addresses"]],
+            bcu_stacks=[(offset, modules) for offset, modules in normalised["bcu_stacks"]],
+        )
+
+    def __repr__(self) -> str:
+        meters = ", ".join(f"0x{a:02x}" for a in self.meter_addresses)
+        batts = ", ".join(f"0x{a:02x}" for a in self.lv_battery_addresses)
+        bcus = ", ".join(f"({o}, {n})" for o, n in self.bcu_stacks)
+        return (
+            f"PlantCapabilities("
+            f"device_type=Model.{self.device_type.name}, "
+            f"inverter_address=0x{self.inverter_address:02x}, "
+            f"meter_addresses=[{meters}], "
+            f"lv_battery_addresses=[{batts}], "
+            f"bcu_stacks=[{bcus}])"
+        )
+
     @property
     def is_three_phase(self) -> bool:
         """Return True if this system uses three-phase registers (HR/IR 1000-range)."""
@@ -221,39 +276,6 @@ class PlantCapabilities:
     def is_gateway(self) -> bool:
         """Return True if this system is a Gateway (IR 1600-range)."""
         return self.device_type == Model.GATEWAY
-
-    def to_dict(self) -> dict:
-        """Serialise to a JSON-safe dict for persistence."""
-        return {
-            "device_type": self.device_type.value,
-            "inverter_address": self.inverter_address,
-            "meter_addresses": self.meter_addresses,
-            "lv_battery_addresses": self.lv_battery_addresses,
-            "bcu_stacks": [list(s) for s in self.bcu_stacks],
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "PlantCapabilities":
-        """Deserialise from a previously persisted dict.
-
-        Accepts both the current key names and the pre-deprecation `*_slave(s)` keys
-        so that state persisted by older versions still loads cleanly.
-        """
-        # Tolerate legacy keys without warning — persisted state shouldn't churn the caller.
-        normalised: dict[str, Any] = dict(data)
-        for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
-            if old in normalised and new not in normalised:
-                normalised[new] = normalised.pop(old)
-        # Only forward keys that are present; let __init__ supply its defaults for any
-        # missing fields. This protects against partial snapshots persisted by older
-        # versions that didn't know about every field we now track.
-        kwargs: dict[str, Any] = {}
-        for key in ("inverter_address", "meter_addresses", "lv_battery_addresses"):
-            if key in normalised:
-                kwargs[key] = normalised[key]
-        if "bcu_stacks" in normalised:
-            kwargs["bcu_stacks"] = [tuple(s) for s in normalised["bcu_stacks"]]
-        return cls(device_type=Model(normalised["device_type"]), **kwargs)
 
 
 class Plant(GivEnergyBaseModel):
