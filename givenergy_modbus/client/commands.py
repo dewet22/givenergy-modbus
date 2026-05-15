@@ -6,7 +6,7 @@ from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode
-from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS, SlotMap
+from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
@@ -342,52 +342,50 @@ def _resolve_slot_registers(discharge: bool, idx: int, slot_map: SlotMap) -> tup
     return slots[idx - 1]
 
 
-def set_charge_slot_start(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def set_charge_slot_start(idx: int, t: dt_time | None, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set just the start of a charge slot by index (1-based), or clear it if t is None."""
     hr_start, _ = _resolve_slot_registers(False, idx, slot_map)
     return _set_slot_endpoint(hr_start, t)
 
 
-def set_charge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def set_charge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set just the end of a charge slot by index (1-based), or clear it if t is None."""
     _, hr_end = _resolve_slot_registers(False, idx, slot_map)
     return _set_slot_endpoint(hr_end, t)
 
 
-def set_discharge_slot_start(
-    idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS
-) -> list[TransparentRequest]:
+def set_discharge_slot_start(idx: int, t: dt_time | None, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set just the start of a discharge slot by index (1-based), or clear it if t is None."""
     hr_start, _ = _resolve_slot_registers(True, idx, slot_map)
     return _set_slot_endpoint(hr_start, t)
 
 
-def set_discharge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def set_discharge_slot_end(idx: int, t: dt_time | None, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set just the end of a discharge slot by index (1-based), or clear it if t is None."""
     _, hr_end = _resolve_slot_registers(True, idx, slot_map)
     return _set_slot_endpoint(hr_end, t)
 
 
-def set_charge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def set_charge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set charge slot start & end times by index (1-based)."""
     start = timeslot.start if timeslot else None
     end = timeslot.end if timeslot else None
     return set_charge_slot_start(idx, start, slot_map) + set_charge_slot_end(idx, end, slot_map)
 
 
-def reset_charge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def reset_charge_slot(idx: int, slot_map: SlotMap) -> list[TransparentRequest]:
     """Reset charge slot to zero/disabled by index (1-based)."""
     return set_charge_slot_start(idx, None, slot_map) + set_charge_slot_end(idx, None, slot_map)
 
 
-def set_discharge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def set_discharge_slot(idx: int, timeslot: TimeSlot, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set discharge slot start & end times by index (1-based)."""
     start = timeslot.start if timeslot else None
     end = timeslot.end if timeslot else None
     return set_discharge_slot_start(idx, start, slot_map) + set_discharge_slot_end(idx, end, slot_map)
 
 
-def reset_discharge_slot(idx: int, slot_map: SlotMap = EXTENDED_SLOTS) -> list[TransparentRequest]:
+def reset_discharge_slot(idx: int, slot_map: SlotMap) -> list[TransparentRequest]:
     """Reset discharge slot to zero/disabled by index (1-based)."""
     return set_discharge_slot_start(idx, None, slot_map) + set_discharge_slot_end(idx, None, slot_map)
 

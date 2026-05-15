@@ -119,6 +119,39 @@ async def test_set_slot_three_phase(discharge: bool, slot: int):
     assert result[1].register == hr_end
 
 
+async def test_slot_setters_require_explicit_slot_map():
+    """The new-API slot setters must require `slot_map` rather than defaulting it.
+
+    Per dewet22/givenergy-modbus#68 review: defaulting to EXTENDED_SLOTS silently
+    wrote to the wrong registers on single-phase / three-phase hardware. Forcing
+    callers to thread `inverter.slot_map` makes the dependency explicit and turns
+    wrong-register writes into a TypeError at call time.
+    """
+    ts = TimeSlot.from_components(0, 0, 1, 0)
+    setters_with_timeslot = (
+        commands.set_charge_slot,
+        commands.set_discharge_slot,
+    )
+    for fn in setters_with_timeslot:
+        with pytest.raises(TypeError, match="slot_map"):
+            fn(1, ts)  # type: ignore[call-arg]
+
+    reset_setters = (commands.reset_charge_slot, commands.reset_discharge_slot)
+    for fn in reset_setters:
+        with pytest.raises(TypeError, match="slot_map"):
+            fn(1)  # type: ignore[call-arg]
+
+    endpoint_setters = (
+        commands.set_charge_slot_start,
+        commands.set_charge_slot_end,
+        commands.set_discharge_slot_start,
+        commands.set_discharge_slot_end,
+    )
+    for fn in endpoint_setters:
+        with pytest.raises(TypeError, match="slot_map"):
+            fn(1, dt_time(0, 0))  # type: ignore[call-arg]
+
+
 async def test_set_slot_index_validation():
     ts = TimeSlot.from_components(0, 0, 1, 0)
     with pytest.raises(ValueError, match="Charge slot index"):

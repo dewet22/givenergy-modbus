@@ -157,6 +157,11 @@ each write a single register and exist for callers (notably Home Assistant) whos
 models start and end as independent entities. Either form is fine — they produce the
 same wire frames when used in sequence.
 
+The charge and discharge variants require `slot_map` as a non-default argument —
+always pass `plant.inverter.slot_map` so the call routes to the right registers for
+the inverter type. Defaulting it would mean a slot index that's valid on one inverter
+family silently targeting wrong registers on another.
+
 ### Operating modes
 
 | Function | Description |
