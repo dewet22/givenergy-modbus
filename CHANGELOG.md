@@ -5,18 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-05-15
 
-### Changed
 
-- add AGENTS.md with accurate architecture and dependency info ([d7bc6a2](https://github.com/dewet22/givenergy-modbus/commit/d7bc6a26af689ed66e8d5453105cc3a6c172e642), @dewet22)
-- update claude config ([6cd077e](https://github.com/dewet22/givenergy-modbus/commit/6cd077e74c08ea6fc79f4e4e69683af7127d8761), @dewet22)
-- add logo; rationalise badges; fix Python capitalisation in blurb ([6c4ef4d](https://github.com/dewet22/givenergy-modbus/commit/6c4ef4d234213196c4fd95d4eca130fa7c8e319d), @dewet22)
+## [1.1.0] - 2026-05-15
 
-### Maintenance
+### Added
 
-- add Claude Code automations (hooks, skills, MCP, subagent) ([00929f9](https://github.com/dewet22/givenergy-modbus/commit/00929f941733b6f27a60676c0b94a91a5ffcccdf), @dewet22)
-- ignore Claude Code local settings and worktrees ([634dd08](https://github.com/dewet22/givenergy-modbus/commit/634dd08d1bebc1aac1a47d87356c57af4ae26254), @dewet22)
+- shiny
+
+### Fixed
+
+- oops
 
 ## [1.3.0] - 2026-05-13
 

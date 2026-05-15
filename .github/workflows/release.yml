@@ -30,9 +30,6 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Check [Unreleased] has content
-        run: python3 scripts/release.py check
-
       - name: Bump version
         id: version
         env:
@@ -44,10 +41,12 @@ jobs:
           uv lock
           echo "version=$NEW" >> $GITHUB_OUTPUT
 
-      - name: Update CHANGELOG
+      - name: Generate CHANGELOG section
         id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          BODY=$(python3 scripts/release.py update "${{ steps.version.outputs.version }}")
+          BODY=$(python3 scripts/release.py generate "$VERSION")
           {
             echo 'body<<EOF'
             echo "$BODY"
