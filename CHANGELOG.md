@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0a5] - 2026-05-15
+
+### 🔧 Maintenance
+
+- bring Codacy-equivalent coverage in-house; suppress noise ([945641a](https://github.com/dewet22/givenergy-modbus/commit/945641a5c1d1b56ecc62d1a05eec4291b60f754e))
+
 ## [2.0.0a4] - 2026-05-15
 
 ### ✨ Added
