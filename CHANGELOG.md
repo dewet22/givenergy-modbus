@@ -7,6 +7,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0a2] - 2026-05-15
+
 ### 🐛 Fixed
 
 - quieten bounds-violation logs and exempt all-zero raw banks ([a4501d7](https://github.com/dewet22/givenergy-modbus/commit/a4501d78a6bc78979126cbd18b66ae8587251b42), @dewet22)
