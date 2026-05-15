@@ -300,6 +300,10 @@ async def test_set_inverter_reboot():
 async def test_set_active_power_rate():
     assert commands.set_active_power_rate(100) == [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, 100)]
     assert commands.set_active_power_rate(0) == [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, 0)]
+    with pytest.raises(ValueError, match=r"Active power rate \(-1\) must be in \[0-100\]%"):
+        commands.set_active_power_rate(-1)
+    with pytest.raises(ValueError, match=r"Active power rate \(101\) must be in \[0-100\]%"):
+        commands.set_active_power_rate(101)
 
 
 async def test_set_enable_rtc():

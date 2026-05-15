@@ -233,7 +233,10 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 def set_active_power_rate(target: int) -> list[TransparentRequest]:
     """Set the inverter's active power output as a percentage of its rated capacity."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, int(target))]
+    target = int(target)
+    if not 0 <= target <= 100:
+        raise ValueError(f"Active power rate ({target}) must be in [0-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, target)]
 
 
 def set_enable_rtc(enabled: bool) -> list[TransparentRequest]:
