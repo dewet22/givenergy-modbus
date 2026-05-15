@@ -25,7 +25,49 @@ _logger = logging.getLogger(__name__)
 
 
 class Client:
-    """Asynchronous client utilising long-lived connections to a network device."""
+    """Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.
+
+    Holds a long-lived connection drained by a single producer/consumer task pair.
+    All public methods are coroutines and assume they're awaited from the same
+    asyncio event loop.
+
+    Concurrency contract
+    --------------------
+
+    The client is designed to be used from multiple concurrent callers — e.g. a
+    polling loop calling ``refresh_plant()`` and entity-write handlers calling
+    ``one_shot_command()`` independently. The following invariants hold:
+
+    **Safe to interleave**
+
+    - Reads (``refresh_plant``, ``load_config``, ``refresh``) and writes
+      (``one_shot_command``) may run concurrently. Their request/response pairs
+      occupy disjoint shape-hash spaces, so they never collide in the in-flight
+      tracking dict.
+    - ``tx_queue`` is a FIFO drained by a single producer task with rate limiting
+      between frames; bytes from one frame never interleave with another.
+    - Incoming frames are reassembled and dispatched serially by the consumer
+      task, so register-cache mutations are applied one PDU at a time.
+
+    **Must be serialised**
+
+    - ``detect()`` mutates ``plant.capabilities`` (including in-place appends to
+      its address lists) and must not run concurrently with anything that reads
+      those fields — most importantly ``refresh()`` and ``load_config()``.
+      In typical use ``detect()`` runs once at connect time before the polling
+      loop starts, which satisfies this naturally. Downstream consumers caching
+      capabilities across restarts can bypass ``detect()`` on reconnect entirely.
+
+    **Practical guidance for downstream consumers**
+
+    - Take a per-client lock around ``refresh_plant()`` so successive polls don't
+      overlap. Writes don't need the same lock — they're free to land between
+      polls.
+    - Connection loss is surfaced via ``self.connected`` flipping to ``False``;
+      the consumer task logs CRITICAL when this happens. ``connect()`` is
+      idempotent and tears down the previous connection on its own, so it can
+      be called directly as a reconnect primitive.
+    """
 
     framer: Framer
     expected_responses: dict[int, Future[TransparentResponse]] = {}
