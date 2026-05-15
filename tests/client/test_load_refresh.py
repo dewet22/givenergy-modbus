@@ -169,8 +169,8 @@ async def test_refresh_bcu_stacks():
     assert _ir(60, 60, device=0x71) in reqs
 
 
-async def test_refresh_plant_forwards_timeout_and_retries_post_detect():
-    """Once capabilities is set, refresh_plant() must thread timeout/retries through.
+async def test_refresh_plant_forwards_timeout_retries_and_retry_delay_post_detect():
+    """Once capabilities is set, refresh_plant() must thread timeout/retries/retry_delay through.
 
     load_config() and refresh() each accept these params; the capability-aware branch
     used to call them bare, silently dropping anything the caller passed in.
@@ -180,23 +180,43 @@ async def test_refresh_plant_forwards_timeout_and_retries_post_detect():
         patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
         patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
     ):
-        await client.refresh_plant(full_refresh=True, timeout=3.5, retries=4)
+        await client.refresh_plant(full_refresh=True, timeout=3.5, retries=4, retry_delay=1.2)
 
-    mock_lc.assert_awaited_once_with(timeout=3.5, retries=4)
-    mock_rf.assert_awaited_once_with(timeout=3.5, retries=4)
+    mock_lc.assert_awaited_once_with(timeout=3.5, retries=4, retry_delay=1.2)
+    mock_rf.assert_awaited_once_with(timeout=3.5, retries=4, retry_delay=1.2)
 
 
 async def test_refresh_plant_skips_load_config_when_not_full_refresh():
     """full_refresh=False on a capability-known client must call only refresh().
 
-    The timeout/retries params still need to thread through to refresh().
+    The timeout/retries/retry_delay params still need to thread through to refresh().
     """
     client = _client_with_caps(Model.HYBRID)
     with (
         patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
         patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
     ):
-        await client.refresh_plant(full_refresh=False, timeout=2.0, retries=1)
+        await client.refresh_plant(full_refresh=False, timeout=2.0, retries=1, retry_delay=0.3)
 
     mock_lc.assert_not_awaited()
-    mock_rf.assert_awaited_once_with(timeout=2.0, retries=1)
+    mock_rf.assert_awaited_once_with(timeout=2.0, retries=1, retry_delay=0.3)
+
+
+async def test_probe_passes_zero_retry_delay():
+    """_probe() must explicitly use retry_delay=0.
+
+    Detect() does many speculative absent-device probes and most are expected to fail;
+    a non-zero retry_delay there would add seconds to discovery for no diagnostic value.
+    """
+    client = Client("localhost", 8899)
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_send:
+        from givenergy_modbus.pdu import ReadInputRegistersRequest
+
+        await client._probe(
+            ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x05),
+            timeout=0.5,
+            retries=1,
+        )
+
+    _, kwargs = mock_send.call_args
+    assert kwargs["retry_delay"] == 0

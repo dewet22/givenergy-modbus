@@ -45,7 +45,10 @@ class Client:
       occupy disjoint shape-hash spaces, so they never collide in the in-flight
       tracking dict.
     - ``tx_queue`` is a FIFO drained by a single producer task with rate limiting
-      between frames; bytes from one frame never interleave with another.
+      between frames; bytes from one frame never interleave with another. A queued
+      frame whose response future is already done (i.e. resolved by a late arrival
+      from a previous attempt) is skipped at dequeue time rather than written to
+      the wire, so retry storms don't duplicate work the inverter has already done.
     - Incoming frames are reassembled and dispatched serially by the consumer
       task, so register-cache mutations are applied one PDU at a time.
 
@@ -81,7 +84,11 @@ class Client:
     network_consumer_task: Task | None
     network_producer_task: Task | None
 
-    tx_queue: Queue[tuple[bytes, Future | None]]
+    # (raw_frame, frame_sent_future, response_future). frame_sent_future is signalled by
+    # the producer once the frame has been written; response_future, when present, is
+    # consulted before writing so a frame whose response already arrived (e.g. as a late
+    # arrival to a previous attempt) is skipped rather than duplicated on the wire.
+    tx_queue: Queue[tuple[bytes, Future | None, Future | None]]
 
     def __init__(self, host: str, port: int, connect_timeout: float = 2.0) -> None:
         self.host = host
@@ -128,9 +135,9 @@ class Client:
         self._shutting_down = True
         if self.tx_queue:
             while not self.tx_queue.empty():
-                _, future = self.tx_queue.get_nowait()
-                if future:
-                    future.cancel()
+                _, frame_sent, _ = self.tx_queue.get_nowait()
+                if frame_sent:
+                    frame_sent.cancel()
         if self.network_producer_task:
             self.network_producer_task.cancel()
         if hasattr(self, "writer") and self.writer:
@@ -155,9 +162,16 @@ class Client:
         # }
 
     async def _probe(self, request: TransparentRequest, timeout: float, retries: int) -> bool:
-        """Send a request; return True on success, False on TimeoutError."""
+        """Send a request; return True on success, False on TimeoutError.
+
+        Uses ``retry_delay=0`` so absent-device probes don't pay the silent-
+        window-survival cost — detect() does many of these and most are
+        expected to fail.
+        """
         try:
-            await self.send_request_and_await_response(request, timeout=timeout, retries=retries, warn_timeout=False)
+            await self.send_request_and_await_response(
+                request, timeout=timeout, retries=retries, retry_delay=0, warn_timeout=False
+            )
             return True
         except TimeoutError:
             return False
@@ -260,7 +274,7 @@ class Client:
         self.plant.capabilities = caps
         return caps
 
-    async def load_config(self, timeout: float = 2.0, retries: int = 3) -> Plant:
+    async def load_config(self, timeout: float = 2.0, retries: int = 3, retry_delay: float = 0.5) -> Plant:
         """Read HR configuration blocks for the inverter."""
         caps = self.plant.capabilities
         inverter = caps.inverter_address if caps else 0x32
@@ -281,10 +295,10 @@ class Client:
                 reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
             if caps.is_ems:
                 reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
-        await self.execute(reqs, timeout=timeout, retries=retries)
+        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
-    async def refresh(self, timeout: float = 1.0, retries: int = 0) -> Plant:
+    async def refresh(self, timeout: float = 1.0, retries: int = 0, retry_delay: float = 0.5) -> Plant:
         """Read IR measurement blocks for all known devices."""
         caps = self.plant.capabilities
         if caps is None:
@@ -320,20 +334,25 @@ class Client:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
         for offset, _ in caps.bcu_stacks:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
-        await self.execute(reqs, timeout=timeout, retries=retries)
+        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
     async def refresh_plant(
-        self, full_refresh: bool = True, max_batteries: int = 5, timeout: float = 1.0, retries: int = 0
+        self,
+        full_refresh: bool = True,
+        max_batteries: int = 5,
+        timeout: float = 1.0,
+        retries: int = 0,
+        retry_delay: float = 0.5,
     ) -> Plant:
         """Refresh data about the Plant."""
         if self.plant.capabilities:
             if full_refresh:
-                await self.load_config(timeout=timeout, retries=retries)
-            await self.refresh(timeout=timeout, retries=retries)
+                await self.load_config(timeout=timeout, retries=retries, retry_delay=retry_delay)
+            await self.refresh(timeout=timeout, retries=retries, retry_delay=retry_delay)
             return self.plant
         reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
-        await self.execute(reqs, timeout=timeout, retries=retries)
+        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
     async def watch_plant(
@@ -343,6 +362,7 @@ class Client:
         max_batteries: int = 5,
         timeout: float = 1.0,
         retries: int = 0,
+        retry_delay: float = 0.5,
         passive: bool = False,
     ):
         """Refresh data about the Plant."""
@@ -354,11 +374,15 @@ class Client:
             await asyncio.sleep(refresh_period)
             if not passive:
                 reqs = commands.refresh_plant_data(False, self.plant.number_batteries)
-                await self.execute(reqs, timeout=timeout, retries=retries, return_exceptions=True)
+                await self.execute(
+                    reqs, timeout=timeout, retries=retries, retry_delay=retry_delay, return_exceptions=True
+                )
 
-    async def one_shot_command(self, requests: list[TransparentRequest], timeout=1.5, retries=0) -> None:
+    async def one_shot_command(
+        self, requests: list[TransparentRequest], timeout=1.5, retries=0, retry_delay: float = 0.5
+    ) -> None:
         """Execute a set of requests. Caller is responsible for connecting first."""
-        await self.execute(requests, timeout=timeout, retries=retries)
+        await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
 
     async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
@@ -372,7 +396,7 @@ class Client:
                     continue
                 if isinstance(message, HeartbeatRequest):
                     _logger.debug("Responding to HeartbeatRequest")
-                    await self.tx_queue.put((message.expected_response().encode(), None))
+                    await self.tx_queue.put((message.expected_response().encode(), None, None))
                     continue
                 if not isinstance(message, TransparentResponse):
                     _logger.warning(f"Received unexpected message type for a client: {message}")
@@ -398,14 +422,27 @@ class Client:
             _logger.critical("network_consumer reader at EOF, cannot continue")
 
     async def _task_network_producer(self, tx_message_wait: float = 0.25):
-        """Producer loop to transmit queued frames with an appropriate delay."""
+        """Producer loop to transmit queued frames with an appropriate delay.
+
+        Frames whose response_future is already done (i.e. resolved by a late
+        arrival from a previous attempt that happened to arrive in the queueing
+        window) are skipped — there's no point writing a request whose answer
+        we already have. The frame_sent future is still signalled so the
+        caller-side awaiter unblocks normally.
+        """
         while hasattr(self, "writer") and self.writer and not self.writer.is_closing():
-            message, future = await self.tx_queue.get()
+            message, frame_sent, response_future = await self.tx_queue.get()
+            if response_future is not None and response_future.done():
+                _logger.debug("Skipping wire send — response already resolved")
+                self.tx_queue.task_done()
+                if frame_sent and not frame_sent.done():
+                    frame_sent.set_result(True)
+                continue
             self.writer.write(message)
             await self.writer.drain()
             self.tx_queue.task_done()
-            if future and not future.done():
-                future.set_result(True)
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
             await asyncio.sleep(tx_message_wait)
         if self._shutting_down:
             _logger.debug("network_producer exiting on intentional shutdown")
@@ -428,18 +465,40 @@ class Client:
     #                             await str_file.write(item.hex() + '\n')
 
     def execute(
-        self, requests: list[TransparentRequest], timeout: float, retries: int, return_exceptions: bool = False
+        self,
+        requests: list[TransparentRequest],
+        timeout: float,
+        retries: int,
+        retry_delay: float = 0.5,
+        return_exceptions: bool = False,
     ) -> Future[list[TransparentResponse]]:
         """Helper to perform multiple requests in bulk."""
         return asyncio.gather(  # type: ignore[return-value]
-            *[self.send_request_and_await_response(m, timeout=timeout, retries=retries) for m in requests],
+            *[
+                self.send_request_and_await_response(m, timeout=timeout, retries=retries, retry_delay=retry_delay)
+                for m in requests
+            ],
             return_exceptions=return_exceptions,
         )
 
     async def send_request_and_await_response(
-        self, request: TransparentRequest, timeout: float, retries: int, warn_timeout: bool = True
+        self,
+        request: TransparentRequest,
+        timeout: float,
+        retries: int,
+        retry_delay: float = 0.5,
+        warn_timeout: bool = True,
     ) -> TransparentResponse:
-        """Send a request to the remote, await and return the response."""
+        """Send a request to the remote, await and return the response.
+
+        On timeout, ``retry_delay`` seconds pass before the next attempt is
+        enqueued. The default of 0.5s was chosen to overcome the multi-second
+        silent-window failure mode observed in the field — firing the retry
+        immediately tends to land it inside the same silent window as the
+        original request, accomplishing nothing. Callers that want the
+        original "retry immediately" behaviour (e.g. fast probes, latency-
+        sensitive interactive commands) should pass ``retry_delay=0``.
+        """
         # mark the expected response
         expected_response = request.expected_response()
         expected_shape_hash = expected_response.shape_hash()
@@ -456,7 +515,9 @@ class Client:
             self.expected_responses[expected_shape_hash] = response_future
             frame_sent = asyncio.get_running_loop().create_future()
             try:
-                await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent)), timeout=5.0)
+                await asyncio.wait_for(
+                    self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0
+                )
             except TimeoutError as exc:
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
             await asyncio.wait_for(
@@ -470,6 +531,11 @@ class Client:
                     f"Timeout awaiting {expected_response} (future: {response_future}), "
                     f"attempting retry {tries} of {retries}"
                 )
+                if tries <= retries and retry_delay > 0:
+                    # Discard the orphaned future so a late response from this attempt
+                    # doesn't accidentally resolve into the next attempt's future.
+                    response_future.cancel()
+                    await asyncio.sleep(retry_delay)
                 continue
             response = response_future.result()
             if tries > 0:
@@ -477,6 +543,8 @@ class Client:
             if response.error:
                 _logger.error(f"Received error response, retrying: {response}")
                 tries += 1
+                if tries <= retries and retry_delay > 0:
+                    await asyncio.sleep(retry_delay)
                 continue
             return response
 

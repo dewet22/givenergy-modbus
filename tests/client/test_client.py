@@ -19,10 +19,12 @@ async def test_expected_response():
     network_consumer = asyncio.create_task(client._task_network_consumer())
 
     # enqueue the request
-    send_and_wait = asyncio.create_task(client.send_request_and_await_response(req, timeout=0.1, retries=2))
+    send_and_wait = asyncio.create_task(
+        client.send_request_and_await_response(req, timeout=0.1, retries=2, retry_delay=0)
+    )
 
     # simulate the message being transmitted
-    tx_msg, tx_fut = await client.tx_queue.get()
+    tx_msg, tx_fut, _ = await client.tx_queue.get()
     assert tx_msg == req.encode()
     client.tx_queue.task_done()
     tx_fut.set_result(True)
@@ -273,7 +275,7 @@ async def test_send_request_raises_timeout_when_tx_queue_is_full():
     client = Client(host="foo", port=4321)
     # Fill the queue to capacity so the next put() will block.
     for _ in range(client.tx_queue.maxsize):
-        client.tx_queue.put_nowait((b"", None))
+        client.tx_queue.put_nowait((b"", None, None))
 
     from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
@@ -304,7 +306,7 @@ async def test_send_request_raises_timeout_after_all_retries_exhausted():
 
     async def drain_queue():
         while True:
-            _, frame_sent = await client.tx_queue.get()
+            _, frame_sent, _ = await client.tx_queue.get()
             client.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
@@ -312,7 +314,7 @@ async def test_send_request_raises_timeout_after_all_retries_exhausted():
     drainer = asyncio.create_task(drain_queue())
     try:
         with pytest.raises(TimeoutError):
-            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1, retry_delay=0)
     finally:
         drainer.cancel()
 
@@ -327,7 +329,7 @@ async def test_send_request_succeeds_after_timeout_retry():
     async def drain_and_respond():
         nonlocal attempt
         while True:
-            _, frame_sent = await client.tx_queue.get()
+            _, frame_sent, _ = await client.tx_queue.get()
             client.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
@@ -341,7 +343,7 @@ async def test_send_request_succeeds_after_timeout_retry():
 
     drainer = asyncio.create_task(drain_and_respond())
     try:
-        result = await client.send_request_and_await_response(req, timeout=0.02, retries=2)
+        result = await client.send_request_and_await_response(req, timeout=0.02, retries=2, retry_delay=0)
         assert result.register == 35  # nosec
     finally:
         drainer.cancel()
@@ -355,7 +357,7 @@ async def test_send_request_retries_on_error_response():
 
     async def drain_and_error():
         while True:
-            _, frame_sent = await client.tx_queue.get()
+            _, frame_sent, _ = await client.tx_queue.get()
             client.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
@@ -369,6 +371,125 @@ async def test_send_request_retries_on_error_response():
     drainer = asyncio.create_task(drain_and_error())
     try:
         with pytest.raises(TimeoutError):
-            await client.send_request_and_await_response(req, timeout=0.02, retries=1)
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1, retry_delay=0)
+    finally:
+        drainer.cancel()
+
+
+async def test_send_request_sleeps_between_retries_on_timeout():
+    """A retry_delay > 0 must impose a sleep between a timed-out attempt and the next.
+
+    This protects against the multi-second silent-window failure mode where firing
+    the retry immediately would land it inside the same window as the original.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    send_times: list[float] = []
+
+    async def drain_queue():
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            send_times.append(asyncio.get_running_loop().time())
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+
+    drainer = asyncio.create_task(drain_queue())
+    try:
+        with pytest.raises(TimeoutError):
+            # 20ms timeout, one retry, 80ms delay → second send happens ~100ms after first.
+            await client.send_request_and_await_response(req, timeout=0.02, retries=1, retry_delay=0.08)
+        assert len(send_times) == 2
+        gap = send_times[1] - send_times[0]
+        assert gap >= 0.08, f"expected gap of at least 80ms between retries, got {gap * 1000:.0f}ms"
+    finally:
+        drainer.cancel()
+
+
+async def test_producer_skips_wire_send_when_response_already_resolved():
+    """Producer must skip the wire write when response_future is already done.
+
+    Models the late-arrival case where a response from a previous attempt
+    resolved the future between enqueue and dequeue — no point writing a
+    duplicate request whose answer we already have. frame_sent still gets
+    released so the caller-side awaiter unblocks normally.
+    """
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock()
+    client.writer = writer
+
+    loop = asyncio.get_running_loop()
+    resolved_response = loop.create_future()
+    resolved_response.set_result("already here")
+    frame_sent = loop.create_future()
+    await client.tx_queue.put((b"the-frame", frame_sent, resolved_response))
+
+    producer = asyncio.create_task(client._task_network_producer(tx_message_wait=0))
+    try:
+        await asyncio.wait_for(frame_sent, timeout=0.5)
+    finally:
+        producer.cancel()
+        try:
+            await producer
+        except asyncio.CancelledError, Exception:
+            pass
+
+    writer.write.assert_not_called()
+    assert frame_sent.result() is True
+
+
+async def test_producer_sends_normally_when_response_future_pending():
+    """Sanity check the inverse: when response_future is pending, the producer writes."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock()
+    client.writer = writer
+
+    loop = asyncio.get_running_loop()
+    pending_response = loop.create_future()
+    frame_sent = loop.create_future()
+    await client.tx_queue.put((b"the-frame", frame_sent, pending_response))
+
+    producer = asyncio.create_task(client._task_network_producer(tx_message_wait=0))
+    try:
+        await asyncio.wait_for(frame_sent, timeout=0.5)
+    finally:
+        producer.cancel()
+        try:
+            await producer
+        except asyncio.CancelledError, Exception:
+            pass
+
+    writer.write.assert_called_once_with(b"the-frame")
+    assert frame_sent.result() is True
+
+
+async def test_send_request_no_sleep_after_final_retry_exhausted():
+    """retry_delay only applies between retries — no sleep after the last attempt fails.
+
+    Otherwise every timed-out call would pay an extra retry_delay before raising,
+    inflating wall-clock for callers that just want to fail fast.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    async def drain_queue():
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+
+    drainer = asyncio.create_task(drain_queue())
+    try:
+        start = asyncio.get_running_loop().time()
+        with pytest.raises(TimeoutError):
+            # retries=0, large retry_delay — should never sleep since we never retry.
+            await client.send_request_and_await_response(req, timeout=0.02, retries=0, retry_delay=5.0)
+        elapsed = asyncio.get_running_loop().time() - start
+        assert elapsed < 0.1, f"expected fast fail (~20ms), took {elapsed * 1000:.0f}ms"
     finally:
         drainer.cancel()

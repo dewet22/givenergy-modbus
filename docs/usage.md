@@ -57,6 +57,23 @@ async def main():
     await client.watch_plant(handler=on_update, refresh_period=15.0)
 ```
 
+## Tuning timeouts and retries
+
+`refresh_plant`, `refresh`, `load_config`, `one_shot_command` and `watch_plant` all accept
+the same three knobs:
+
+- `timeout` (default 1.0s for refresh, 1.5s for `one_shot_command`) — how long to wait for
+  each response.
+- `retries` (default 0) — number of additional attempts after a timeout.
+- `retry_delay` (default 0.5s) — seconds to wait between a timed-out attempt and the next.
+
+The retry delay exists because some inverters exhibit multi-second silent windows where
+they stop responding to anything; firing the retry immediately tends to land it inside
+the same window, accomplishing nothing. The 0.5s default matches what GivTCP independently
+arrived at and works for most hardware. If you observe sustained timeout clusters longer
+than ~1s in your logs, try increasing it; if you need fail-fast behaviour for an
+interactive command, pass `retry_delay=0`.
+
 ## Charge and discharge slots
 
 The number of available slots depends on the inverter model. Always pass
