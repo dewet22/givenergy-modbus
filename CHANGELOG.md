@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0a6] - 2026-05-15
+
+### 🔧 Maintenance
+
+- address Gemini review on Converter.int32 and Converter.bitfield ([67af9c8](https://github.com/dewet22/givenergy-modbus/commit/67af9c80b82c9986cd4c2aa487849984faa422ce))
+
 ## [2.0.0a5] - 2026-05-15
 
 ### 🔧 Maintenance
