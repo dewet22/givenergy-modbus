@@ -164,18 +164,19 @@ jobs:
               | gh api -X POST "repos/${repo}/dispatches" --input -
           done
 
-      # Skip docs publishing for prereleases so the public mkdocs site stays
-      # pinned to the latest stable release.
+      # Skip docs publishing for prereleases (site stays pinned to latest stable)
+      # and for republish runs (re-publishing an old tag must not roll the live
+      # docs back to that tag's snapshot).
       - name: Install docs dependencies
-        if: steps.version.outputs.prerelease != 'true'
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         run: uv sync --group docs
 
       - name: Build documentation
-        if: steps.version.outputs.prerelease != 'true'
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         run: uv run mkdocs build
 
       - name: Publish documentation
-        if: steps.version.outputs.prerelease != 'true'
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}

@@ -109,7 +109,13 @@ To run a subset of tests.
 
 ## Deploying
 
-Releases are triggered automatically on every merge to `main` via GitHub Actions.
-The release workflow infers the version bump (patch/minor/major) from the
-conventional commit types in the `[Unreleased]` changelog section and publishes
-to PyPI. No manual tagging is required.
+Releases run via the `Release` workflow under GitHub Actions, triggered manually
+through `workflow_dispatch`. The operator picks a `bump` (`patch` / `minor` /
+`major` / `prerelease` / `finalize`) and an optional `prerelease_stage` to start
+a new prerelease line (alpha / beta / rc). A `republish_tag` input is also
+available for re-publishing an existing tag to PyPI without bumping the version.
+
+The workflow generates the release's changelog section from conventional-commit
+messages since the previous tag (via `scripts/release.py generate`), commits and
+tags the new version, publishes to PyPI (OIDC), and notifies downstream
+consumers. No manual tagging or `[Unreleased]` section editing is required.
