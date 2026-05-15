@@ -182,7 +182,8 @@ def test_inverter_fault_code2():
     # word 3, bit 0 (MSB) → "Battery reversed"
     result = _inverter_fault_code2(0x8000, 3)
     assert result == ["Battery reversed"]
-    # out-of-range word → None
+    # out-of-range word → None (LUT covers 0..7 only; word 8+ unreachable)
+    assert _inverter_fault_code2(0xFFFF, 8) is None
     assert _inverter_fault_code2(0xFFFF, 9) is None
     # None bits produce no output (word 4 has mostly None)
     assert _inverter_fault_code2(0x8000, 4) == []

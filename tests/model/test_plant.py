@@ -1483,6 +1483,52 @@ def test_getter_for_device_bcu_address(plant: Plant):
     assert 0x70 in plant.register_caches
 
 
+def test_update_rewrites_setup_address_to_capabilities_inverter_address(plant: Plant):
+    """Cloud/app frames (0x11 / 0x00) must route to the discovered inverter address.
+
+    On the default-address case this is 0x32; on plants with a non-default
+    inverter_address the rewrite must follow capabilities, not the hardcoded
+    default — otherwise the same inverter splits across two register caches.
+    """
+    from givenergy_modbus.model.plant import PlantCapabilities
+
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x42)
+    pdu = _make_ir_pdu({5: 2367}, device_address=0x11)
+    plant.update(pdu)
+    assert 0x42 in plant.register_caches
+    assert plant.register_caches[0x42].get(IR(5)) == 2367
+
+
+def test_update_rewrites_setup_address_to_default_when_no_capabilities(plant: Plant):
+    """Before detect() runs, capabilities is None — fall back to 0x32 as before."""
+    assert plant.capabilities is None
+    pdu = _make_ir_pdu({5: 2367}, device_address=0x11)
+    plant.update(pdu)
+    assert plant.register_caches[0x32].get(IR(5)) == 2367
+
+
+def test_update_routes_meter_product_response_to_mr_namespace(plant: Plant):
+    """ReadMeterProductRegistersResponse populates MR(...) keys via MeterProductRegisterGetter."""
+    from unittest.mock import MagicMock
+
+    from givenergy_modbus.model.register import MR
+    from givenergy_modbus.pdu import ReadMeterProductRegistersResponse
+
+    pdu = MagicMock(spec=ReadMeterProductRegistersResponse)
+    pdu.device_address = 0x01
+    pdu.error = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    # MR(60-61) decode to a valid serial via Converter.string. "SA1234A567" as
+    # five big-endian 16-bit values: 0x5341, 0x3132, 0x3334, 0x4135, 0x3637.
+    pdu.to_dict.return_value = {60: 0x5341, 61: 0x3132, 62: 0x3334, 63: 0x4135, 64: 0x3637}
+
+    plant.update(pdu)
+    assert 0x01 in plant.register_caches
+    assert plant.register_caches[0x01].get(MR(60)) == 0x5341
+    assert plant.register_caches[0x01].get(MR(64)) == 0x3637
+
+
 class TestPlantCapabilitiesProperties:
     """PlantCapabilities predicate properties return correct values per device type."""
 

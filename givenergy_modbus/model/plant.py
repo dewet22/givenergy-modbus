@@ -13,13 +13,14 @@ from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
 from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, SinglePhaseInverterRegisterGetter
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
-from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, MR, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
     NullResponse,
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
+    ReadMeterProductRegistersResponse,
     TransparentResponse,
     WriteHoldingRegisterResponse,
 )
@@ -244,13 +245,16 @@ class PlantCapabilities:
         for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
             if old in normalised and new not in normalised:
                 normalised[new] = normalised.pop(old)
-        return cls(
-            device_type=Model(normalised["device_type"]),
-            inverter_address=normalised["inverter_address"],
-            meter_addresses=normalised["meter_addresses"],
-            lv_battery_addresses=normalised["lv_battery_addresses"],
-            bcu_stacks=[tuple(s) for s in normalised["bcu_stacks"]],  # type: ignore[misc]
-        )
+        # Only forward keys that are present; let __init__ supply its defaults for any
+        # missing fields. This protects against partial snapshots persisted by older
+        # versions that didn't know about every field we now track.
+        kwargs: dict[str, Any] = {}
+        for key in ("inverter_address", "meter_addresses", "lv_battery_addresses"):
+            if key in normalised:
+                kwargs[key] = normalised[key]
+        if "bcu_stacks" in normalised:
+            kwargs["bcu_stacks"] = [tuple(s) for s in normalised["bcu_stacks"]]
+        return cls(device_type=Model(normalised["device_type"]), **kwargs)
 
 
 class Plant(GivEnergyBaseModel):
@@ -294,8 +298,11 @@ class Plant(GivEnergyBaseModel):
         _logger.debug(f"Handling {pdu}")
 
         if pdu.device_address in (0x11, 0x00):
-            # rewrite cloud and mobile app responses to "normal" inverter address
-            device_address = 0x32
+            # Cloud and mobile app responses report from the inverter's setup address
+            # (0x11) or as broadcast (0x00); rewrite to the actual inverter address so
+            # they land in the right cache. Falls back to the 0x32 default before
+            # detect() has run (where capabilities is still None).
+            device_address = self.capabilities.inverter_address if self.capabilities else 0x32
         else:
             device_address = pdu.device_address
 
@@ -312,6 +319,15 @@ class Plant(GivEnergyBaseModel):
         elif isinstance(pdu, ReadInputRegistersResponse):
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             self._commit_bank(device_address, incoming)
+        elif isinstance(pdu, ReadMeterProductRegistersResponse):
+            # Meter-product registers (FC 0x16) live in the MR namespace and are
+            # identification data, not measurement data — there are no bounds to
+            # check and the serial-based coherence guard doesn't fit (the meter
+            # serial is only 4 chars, shorter than is_valid_serial's threshold).
+            # Write straight to the cache instead of routing through _commit_bank.
+            self.register_caches[device_address].update(
+                {MR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
+            )
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
