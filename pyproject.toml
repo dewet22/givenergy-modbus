@@ -147,7 +147,7 @@ dependency_groups =
 commands =
     ruff check givenergy_modbus tests
     mypy givenergy_modbus tests
-    bandit -r givenergy_modbus -c .bandit.yaml
+    bandit -r givenergy_modbus scripts tests -c .bandit.yaml
 
 [testenv:build]
 runner = uv-venv-lock-runner
