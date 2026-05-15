@@ -113,17 +113,3 @@ def test_to_timeslot():
     )
     assert TimeSlot.from_components(10, 30, 23, 59) == rc.to_timeslot(HR(14), IR(17))
     assert TimeSlot.from_components(0, 0, 0, 0) == rc.to_timeslot(IR(22), IR(23))
-
-
-def test_to_timeslot_returns_none_for_unset_slot_sentinel():
-    """Raw value 60 is the hardware sentinel for an unset slot — mirror Converter.timeslot."""
-    rc = RegisterCache(
-        registers={
-            HR(0): 60,
-            HR(1): 60,
-            HR(2): 1030,
-        }
-    )
-    assert rc.to_timeslot(HR(0), HR(1)) is None
-    assert rc.to_timeslot(HR(0), HR(2)) is None
-    assert rc.to_timeslot(HR(2), HR(0)) is None

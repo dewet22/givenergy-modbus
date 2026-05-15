@@ -79,16 +79,8 @@ class RegisterCache(defaultdict[Register, int]):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
         return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
 
-    def to_timeslot(self, start: Register, end: Register) -> "TimeSlot | None":
-        """Combine two registers into a time slot, or None if either is the 60-sentinel.
-
-        Mirrors Converter.timeslot: raw value 60 is a hardware sentinel for an
-        unset slot (the portal shows '--:--'). Passing 60 as minutes to
-        TimeSlot.from_repr raises ValueError, so treat it as unset here too.
-        """
+    def to_timeslot(self, start: Register, end: Register) -> "TimeSlot":
+        """Combine two registers into a time slot."""
         from givenergy_modbus.model import TimeSlot
 
-        start_val, end_val = self[start], self[end]
-        if start_val == 60 or end_val == 60:
-            return None
-        return TimeSlot.from_repr(start_val, end_val)
+        return TimeSlot.from_repr(self[start], self[end])
