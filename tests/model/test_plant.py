@@ -1415,12 +1415,25 @@ def test_commit_bank_unknown_device_skips_validation(plant: Plant):
     assert plant.register_caches[0x99].get(IR(5)) == 65535
 
 
-def test_commit_bank_incoherent_serial_discards_bank(plant: Plant):
-    """A battery bank whose serial number registers decode to garbage must be discarded."""
+def test_commit_bank_incoherent_serial_discards_bank(plant: Plant, caplog):
+    """A battery bank whose serial number registers decode to garbage must be discarded.
+
+    The discard is logged at DEBUG, not WARNING — this fires routinely on a shared bus
+    when other clients poll empty battery slots and we observe the responses, which
+    isn't actionable for the end user.
+    """
+    import logging
+
     # Battery serial is at IR(110-114). All zeros → empty string → incoherent.
     pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33)
-    plant.update(pdu)
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.plant"):
+        plant.update(pdu)
     assert IR(60) not in plant.register_caches.get(0x33, {})
+    discard_records = [r for r in caplog.records if "Discarding register bank" in r.message]
+    assert len(discard_records) == 1
+    assert discard_records[0].levelno == logging.DEBUG, (
+        f"discard log must be DEBUG (not actionable for end users), got {discard_records[0].levelname}"
+    )
 
 
 def test_commit_bank_valid_serial_allows_bank(plant: Plant):

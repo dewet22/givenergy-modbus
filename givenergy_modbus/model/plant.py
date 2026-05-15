@@ -323,7 +323,10 @@ class Plant(GivEnergyBaseModel):
         getter_cls = self._getter_for_device_address(device_address)
         if getter_cls is not None:
             if not getter_cls.is_coherent(incoming, self.register_caches[device_address]):
-                _logger.warning("Discarding incoherent register bank for device 0x%02x", device_address)
+                # Common on a shared bus: other clients (cloud, mobile app, GivTCP) poll
+                # empty slots beyond the user's actual hardware, and we see the responses
+                # go by. The discard is correct; logging at WARNING was actionable noise.
+                _logger.debug("Discarding register bank with invalid serial for device 0x%02x", device_address)
                 return
             violations = getter_cls.validate_bank(incoming, self.register_caches[device_address])
             if violations:
