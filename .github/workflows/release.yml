@@ -83,6 +83,27 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
+      - name: Wait for PyPI to index the new version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # pypa/gh-action-pypi-publish returns once PyPI accepts the upload, but
+          # there is a brief eventual-consistency window before the new version
+          # is resolvable by `pip install` / `uv lock`. Downstream bump workflows
+          # firing inside that window fail to resolve the version. Poll until the
+          # JSON API confirms the version is indexed.
+          URL="https://pypi.org/pypi/givenergy-modbus/$VERSION/json"
+          for attempt in $(seq 1 60); do
+            if curl -fsSL "$URL" > /dev/null 2>&1; then
+              echo "PyPI has indexed $VERSION (attempt $attempt)"
+              exit 0
+            fi
+            echo "Attempt $attempt/60: $VERSION not yet resolvable, sleeping 10s..."
+            sleep 10
+          done
+          echo "::error::PyPI did not index $VERSION within 10 minutes — downstream notification would race"
+          exit 1
+
       - name: Notify downstream consumers
         env:
           # Fine-grained PAT with `Contents: write` on dewet22/givenergy-cli
