@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- drop incoherent-bank discard log from WARNING to DEBUG ([1238975](https://github.com/dewet22/givenergy-modbus/commit/1238975cd96342d65dc5052d3adfb3bdbc047245), @dewet22)
+
 ## [2.0.0a2] - 2026-05-15
 
 ### 🐛 Fixed
