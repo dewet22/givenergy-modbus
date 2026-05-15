@@ -51,21 +51,21 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
 1. Fork the `givenergy-modbus` repo on GitHub.
 2. Clone your fork locally:
 
-    ```
-    $ git clone git@github.com:your_name_here/givenergy-modbus.git
+    ```bash
+    git clone git@github.com:your_name_here/givenergy-modbus.git
     ```
 
 3. Ensure [uv](https://docs.astral.sh/uv/) is installed.
 4. Install dependencies:
 
-    ```
-    $ uv sync --group test --group docs --group dev
+    ```bash
+    uv sync --group test --group docs --group dev
     ```
 
 5. Create a branch for local development:
 
-    ```
-    $ git checkout -b name-of-your-bugfix-or-feature
+    ```bash
+    git checkout -b name-of-your-bugfix-or-feature
     ```
 
     Now you can make your changes locally.
@@ -73,16 +73,16 @@ Ready to contribute? Here's how to set up `givenergy-modbus` for local developme
 6. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
 
-    ```
-    $ uv run --group test tox
+    ```bash
+    uv run --group test tox
     ```
 
 7. Commit your changes and push your branch to GitHub:
 
-    ```
-    $ git add .
-    $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
+    ```bash
+    git add .
+    git commit -m "Your detailed description of your changes."
+    git push origin name-of-your-bugfix-or-feature
     ```
 
 9. Submit a pull request through the GitHub website.
@@ -101,8 +101,8 @@ Before you submit a pull request, check that it meets these guidelines:
 
 ## Tips
 
-```
-$ uv run --group test pytest tests/client/
+```bash
+uv run --group test pytest tests/client/
 ```
 
 To run a subset of tests.

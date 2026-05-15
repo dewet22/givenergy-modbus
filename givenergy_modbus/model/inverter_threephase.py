@@ -300,8 +300,9 @@ _THREE_PHASE_LUT = {
     "battery_charge_limit_ac": Def(C.uint16, None, HR(1110)),
     # charge_target_soc at HR(1111) shadows single-phase HR(116)
     "charge_target_soc": Def(C.uint16, None, HR(1111)),
-    # enable_charge at HR(1112) shadows single-phase HR(96)
-    "enable_charge": Def(C.bool, None, HR(1112)),
+    # HR(1112) is AC_CHARGE_ENABLE per commands.RegisterMap — distinct semantically
+    # from single-phase HR(96) (master ENABLE_CHARGE), so don't shadow that field name.
+    "ac_charge_enable": Def(C.bool, None, HR(1112)),
     # charge_slot_1 at HR(1113/1114) shadows single-phase HR(94/95)
     "charge_slot_1": Def(C.timeslot, None, HR(1113), HR(1114)),
     # charge_slot_2 at HR(1115/1116) shadows single-phase HR(31/32)
@@ -311,8 +312,9 @@ _THREE_PHASE_LUT = {
     "discharge_slot_1": Def(C.timeslot, None, HR(1118), HR(1119)),
     # discharge_slot_2 at HR(1120/1121) shadows single-phase HR(44/45)
     "discharge_slot_2": Def(C.timeslot, None, HR(1120), HR(1121)),
-    # enable_discharge at HR(1122) shadows single-phase HR(59)
-    "enable_discharge": Def(C.bool, None, HR(1122)),
+    # HR(1122) is FORCE_DISCHARGE_ENABLE per commands.RegisterMap — distinct semantically
+    # from single-phase HR(59) (master ENABLE_DISCHARGE), so don't shadow that field name.
+    "force_discharge_enable": Def(C.bool, None, HR(1122)),
     "force_charge_enable": Def(C.bool, None, HR(1123)),
     "battery_maintenance_mode": Def(C.uint16, BatteryMaintenance, HR(1124)),
     #

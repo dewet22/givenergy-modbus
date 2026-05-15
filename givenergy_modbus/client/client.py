@@ -115,7 +115,18 @@ class Client:
         separate ``close()`` step, and guarantees the new background tasks see
         ``_shutting_down`` as False even after a prior ``close()``.
         """
-        if self.connected:
+        # After an unexpected EOF the consumer sets ``connected = False`` and exits,
+        # but the reader/writer/producer-task can still be live — calling
+        # ``connect()`` again without a tear-down would leave the old producer task
+        # running against shared state alongside the new one. Treat any of those
+        # leftover resources as "needs cleanup", not just the ``connected`` flag.
+        if (
+            self.connected
+            or self.network_consumer_task is not None
+            or self.network_producer_task is not None
+            or getattr(self, "reader", None) is not None
+            or getattr(self, "writer", None) is not None
+        ):
             await self.close()
         self._shutting_down = False
         try:
@@ -367,7 +378,13 @@ class Client:
     ):
         """Refresh data about the Plant."""
         await self.connect()
-        await self.refresh_plant(True, max_batteries=max_batteries)
+        await self.refresh_plant(
+            True,
+            max_batteries=max_batteries,
+            timeout=timeout,
+            retries=retries,
+            retry_delay=retry_delay,
+        )
         while True:
             if handler:
                 handler()

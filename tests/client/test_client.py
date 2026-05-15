@@ -245,6 +245,36 @@ async def test_connect_is_idempotent_on_already_connected_client():
     assert client._shutting_down is False
 
 
+async def test_connect_also_tears_down_leftover_resources_after_eof():
+    """connect() must clean up leftover reader/writer/tasks even if connected=False.
+
+    After an unexpected EOF the consumer sets connected=False but the
+    writer/reader/producer-task can still exist. A subsequent connect() that
+    only checks `connected` would skip the cleanup and start a second
+    producer pair racing against the leftover state.
+    """
+    client = Client(host="foo", port=4321)
+    leftover_writer = MagicMock()
+    leftover_writer.wait_closed = AsyncMock()
+    client.writer = leftover_writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+    client.connected = False  # ← EOF case: flag is already False, but resources remain
+
+    new_writer = MagicMock()
+    new_reader = MagicMock(spec=StreamReader)
+
+    with patch("asyncio.open_connection", _stub_open_connection(reader=new_reader, writer=new_writer)):
+        with patch.object(client, "_task_network_consumer", new=AsyncMock()):
+            with patch.object(client, "_task_network_producer", new=AsyncMock()):
+                await client.connect()
+
+    leftover_writer.close.assert_called_once()
+    assert client.writer is new_writer
+    assert client.connected is True
+
+
 async def test_consumer_clears_connected_on_unexpected_eof():
     """Bug fix: connected must be set to False when the consumer exits due to remote EOF."""
     client = Client(host="foo", port=4321)
