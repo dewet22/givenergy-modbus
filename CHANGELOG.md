@@ -7,6 +7,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- quieten bounds-violation logs and exempt all-zero raw banks ([a4501d7](https://github.com/dewet22/givenergy-modbus/commit/a4501d78a6bc78979126cbd18b66ae8587251b42), @dewet22)
+
 ### 🔧 Maintenance
 
 - switch PyPI publishing to OIDC; add publish-tag.yml recovery workflow ([27a1dc4](https://github.com/dewet22/givenergy-modbus/commit/27a1dc4ad2604e72ed63feb10715bc11127d2917), @dewet22)
