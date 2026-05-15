@@ -167,3 +167,36 @@ async def test_refresh_bcu_stacks():
     reqs = _reqs(mock_exec)
     assert _ir(60, 60, device=0x70) in reqs
     assert _ir(60, 60, device=0x71) in reqs
+
+
+async def test_refresh_plant_forwards_timeout_and_retries_post_detect():
+    """Once capabilities is set, refresh_plant() must thread timeout/retries through.
+
+    load_config() and refresh() each accept these params; the capability-aware branch
+    used to call them bare, silently dropping anything the caller passed in.
+    """
+    client = _client_with_caps(Model.HYBRID)
+    with (
+        patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
+        patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
+    ):
+        await client.refresh_plant(full_refresh=True, timeout=3.5, retries=4)
+
+    mock_lc.assert_awaited_once_with(timeout=3.5, retries=4)
+    mock_rf.assert_awaited_once_with(timeout=3.5, retries=4)
+
+
+async def test_refresh_plant_skips_load_config_when_not_full_refresh():
+    """full_refresh=False on a capability-known client must call only refresh().
+
+    The timeout/retries params still need to thread through to refresh().
+    """
+    client = _client_with_caps(Model.HYBRID)
+    with (
+        patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
+        patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
+    ):
+        await client.refresh_plant(full_refresh=False, timeout=2.0, retries=1)
+
+    mock_lc.assert_not_awaited()
+    mock_rf.assert_awaited_once_with(timeout=2.0, retries=1)

@@ -277,8 +277,8 @@ class Client:
         """Refresh data about the Plant."""
         if self.plant.capabilities:
             if full_refresh:
-                await self.load_config()
-            await self.refresh()
+                await self.load_config(timeout=timeout, retries=retries)
+            await self.refresh(timeout=timeout, retries=retries)
             return self.plant
         reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
         await self.execute(reqs, timeout=timeout, retries=retries)
