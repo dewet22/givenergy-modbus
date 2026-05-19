@@ -43,7 +43,7 @@ class RegisterCache(defaultdict[Register, int]):
                     continue
                 try:
                     ret[lookup[reg](int(idx))] = v
-                except (KeyError, ValueError):
+                except KeyError, ValueError:
                     # KeyError: unknown register prefix (e.g. a future namespace
                     # we don't know about yet). ValueError: idx wasn't an int.
                     # Either way, skip the entry rather than aborting the load.

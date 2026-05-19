@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from datetime import time as dt_time
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
@@ -514,6 +514,18 @@ class _InverterCommands:
     the model-vs-firmware ambiguities flagged on #75 are resolved against
     real wire data.
     """
+
+    # The slot setters below read self.slot_map. The attribute is provided by
+    # the composed inverter class as a @property on SinglePhaseInverter /
+    # ThreePhaseInverter — declare it under TYPE_CHECKING as a property here
+    # so mypy sees the contract without creating a runtime annotation that
+    # pydantic would try to register as a model field. Matching the subclass
+    # property shape (read-only) keeps mypy happy that the subclass override
+    # isn't widening the type.
+    if TYPE_CHECKING:
+
+        @property
+        def slot_map(self) -> SlotMap: ...
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
     # Excludes 313/314 (BATTERY_*_LIMIT_AC — ambiguous), 318-320 (pause mode),
