@@ -4,6 +4,7 @@
 import argparse
 import os
 import re
+
 # Release tooling: invokes git with controlled arg lists only. PATH is controlled in CI.
 import subprocess  # nosec B404
 import sys
@@ -227,6 +228,10 @@ def _classify_commits(commits: list[tuple[str, str]]) -> dict[str, list[str]]:
 _VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
 _PRERELEASE_STAGES = {"alpha": "a", "beta": "b", "rc": "rc"}
 
+# PEP 440 prerelease ordering — `a` < `b` < `rc` < (release).
+# Used by the prerelease-stage-switch path in cmd_bump to reject backwards moves.
+_STAGE_ORDER: dict[str, int] = {"a": 0, "b": 1, "rc": 2}
+
 
 def cmd_bump(args) -> None:
     """Print the next version given a current version and bump type.
@@ -238,7 +243,10 @@ def cmd_bump(args) -> None:
                                prerelease line (e.g. 1.3.0 -> 2.0.0a1).
       prerelease             — increment the prerelease counter only
                                (2.0.0a1 -> 2.0.0a2). Requires current to
-                               already have a prerelease suffix.
+                               already have a prerelease suffix. Combine with
+                               `--prerelease beta|rc` to advance the stage
+                               (2.0.0a6 -> 2.0.0rc1); stage moves are
+                               forward-only per PEP 440 ordering.
       finalize               — drop the prerelease suffix without changing
                                the release tuple (2.0.0a3 -> 2.0.0).
     """
@@ -257,8 +265,22 @@ def cmd_bump(args) -> None:
             )
             sys.exit(1)
         if args.prerelease:
-            print("ERROR: --prerelease cannot be combined with bump=prerelease", file=sys.stderr)
-            sys.exit(1)
+            # Stage switch: a6 -> rc1, b2 -> rc1, etc. Counter resets to 1.
+            new_stage = _PRERELEASE_STAGES[args.prerelease]
+            if _STAGE_ORDER[new_stage] < _STAGE_ORDER[pre_stage]:
+                print(
+                    f"ERROR: cannot move backwards from {pre_stage!r} to {new_stage!r} (PEP 440 ordering: a < b < rc)",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            if _STAGE_ORDER[new_stage] == _STAGE_ORDER[pre_stage]:
+                print(
+                    f"ERROR: already in stage {pre_stage!r}; omit --prerelease to increment the counter",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            print(f"{major}.{minor}.{patch}{new_stage}1")
+            return
         print(f"{major}.{minor}.{patch}{pre_stage}{int(pre_n) + 1}")
         return
 

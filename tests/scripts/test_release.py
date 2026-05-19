@@ -262,6 +262,36 @@ def test_cmd_bump_prerelease_requires_existing_suffix(capsys):
     assert "requires current to have a prerelease suffix" in capsys.readouterr().err
 
 
+def test_cmd_bump_prerelease_switches_stage_alpha_to_rc(capsys):
+    """`bump=prerelease --prerelease rc` advances the stage and resets the counter to 1."""
+    release.cmd_bump(_bump_args("2.0.0a6", "prerelease", prerelease="rc"))
+    assert capsys.readouterr().out.strip() == "2.0.0rc1"
+
+
+def test_cmd_bump_prerelease_switches_stage_alpha_to_beta(capsys):
+    release.cmd_bump(_bump_args("2.0.0a3", "prerelease", prerelease="beta"))
+    assert capsys.readouterr().out.strip() == "2.0.0b1"
+
+
+def test_cmd_bump_prerelease_switches_stage_beta_to_rc(capsys):
+    release.cmd_bump(_bump_args("2.0.0b2", "prerelease", prerelease="rc"))
+    assert capsys.readouterr().out.strip() == "2.0.0rc1"
+
+
+def test_cmd_bump_prerelease_stage_switch_rejects_backwards_move(capsys):
+    """PEP 440 ordering: a < b < rc. Moving backwards is rejected."""
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_bump_args("2.0.0rc1", "prerelease", prerelease="alpha"))
+    assert "cannot move backwards" in capsys.readouterr().err
+
+
+def test_cmd_bump_prerelease_stage_switch_rejects_same_stage(capsys):
+    """Same-stage with --prerelease is ambiguous; require explicit increment instead."""
+    with pytest.raises(SystemExit):
+        release.cmd_bump(_bump_args("2.0.0a3", "prerelease", prerelease="alpha"))
+    assert "already in stage" in capsys.readouterr().err
+
+
 def test_cmd_bump_finalize_drops_prerelease_suffix(capsys):
     release.cmd_bump(_bump_args("2.0.0a3", "finalize"))
     assert capsys.readouterr().out.strip() == "2.0.0"

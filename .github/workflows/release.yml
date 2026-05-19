@@ -14,7 +14,7 @@ on:
           - prerelease
           - finalize
       prerelease_stage:
-        description: With major/minor/patch only — start a prerelease line (e.g. major + alpha → 2.0.0a1)
+        description: With major/minor/patch — start a prerelease line (e.g. major + alpha → 2.0.0a1). With prerelease — advance the stage forward-only (e.g. prerelease + rc on 2.0.0a6 → 2.0.0rc1).
         required: false
         default: none
         type: choice
