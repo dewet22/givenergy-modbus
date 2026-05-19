@@ -34,10 +34,22 @@ set at the same time.
 
 ## Testing
 
+**Run `tox` before every commit, not just before a PR.** The CI matrix runs the
+same envs; `pytest` alone misses things CI catches in ~20s of local tox:
+
+- `lint` runs mypy, which spots mixin-pattern cross-class invariants (e.g. a
+  mixin reading `self.slot_map` when the attribute lives on the composed
+  inverter class) that pytest can't see.
+- `format` runs `ruff format --check`, which catches preferred-syntax drift —
+  notably PEP 758 unparenthesised `except` clauses on the py314 target.
+- `build` runs `mkdocs build`, `twine check`, and the wheel build, which is
+  where docstring problems, broken nav links, and packaging regressions
+  surface before they fail a release.
+
 ```bash
-uv run --group test pytest tests/
-uv run --group test tox        # full matrix
-uv run ruff check --fix && uv run ruff format
+uv run --group test tox        # full check — pytest + ruff + mypy + bandit + build + docs
+uv run --group test pytest     # faster: tests only
+uv run ruff check --fix && uv run ruff format  # faster: format + lint only
 ```
 
 ## Git
