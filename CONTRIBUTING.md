@@ -119,3 +119,30 @@ The workflow generates the release's changelog section from conventional-commit
 messages since the previous tag (via `scripts/release.py generate`), commits and
 tags the new version, publishes to PyPI (OIDC), and notifies downstream
 consumers. No manual tagging or `[Unreleased]` section editing is required.
+
+### Dropping a Python version
+
+Bumping `requires-python` in `pyproject.toml` (and the matching `target-version`
+in the ruff config and tox/CI matrices) is technically a one-commit change here,
+but the downstream blast radius is larger than it looks.
+
+Both [givenergy-cli](https://github.com/dewet22/givenergy-cli) and
+[givenergy-hass](https://github.com/dewet22/givenergy-hass) pin
+`givenergy-modbus` on long-lived `v1.0` branches. Those branches carry their
+own `requires-python` floor. When this library's floor moves up, the v1.0
+branches keep their old floor and the resolver hits a Python-version split
+the next time the downstream auto-bump workflow runs — e.g. with this project
+at `>=3.14` and a downstream at `>=3.13`, `uv lock --upgrade-package
+givenergy-modbus` fails with:
+
+```
+Because the requested Python version (>=3.13) does not satisfy Python>=3.14
+and givenergy-modbus==X.Y.Z depends on Python>=3.14, we can conclude that
+givenergy-modbus==X.Y.Z cannot be used.
+```
+
+When dropping a Python version, open companion PRs on the downstream `v1.0`
+branches in the same session, bumping their `requires-python` to match. If the
+new floor maps to a Home Assistant Core version, double-check HA's own floor
+hasn't drifted away from where this project now sits — Home Assistant's
+minimum-Python lives in its release notes, not in our pyproject.toml.
