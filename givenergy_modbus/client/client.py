@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import re
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
+from typing import Literal
 
 from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
@@ -22,6 +24,29 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# GivEnergy serial numbers are 10 ASCII bytes: AA0000A000 (two letters, four
+# digits, one letter, three digits). Only the digits identify the unit; the
+# prefix is documented to indicate hardware family (Gen 2 vs Gen 3 vs AIO,
+# dongle vs inverter). The middle letter's semantics aren't documented — we
+# preserve it on the same principle in case it later turns out to carry
+# signal worth keeping. Zero only the digits so the family info survives for
+# diagnostics.
+_SERIAL_PATTERN = re.compile(rb"([A-Z]{2})\d{4}([A-Z])\d{3}")
+
+Direction = Literal["rx", "tx"]
+
+
+def redact(frame: bytes) -> bytes:
+    """Replace serial-number byte runs with the unit's digits zeroed.
+
+    Preserves the surrounding letters (the prefix carries documented family
+    info; the middle letter is preserved on the same principle, in case it
+    later turns out to be diagnostically useful). Same length, same byte
+    offsets — frame-level CRC/length fields remain consistent so offline
+    parsing tools still work on the redacted output.
+    """
+    return _SERIAL_PATTERN.sub(rb"\g<1>0000\g<2>000", frame)
 
 
 class Client:
@@ -79,6 +104,7 @@ class Client:
     # debug_frames: Dict[str, Queue]
     connected = False
     _shutting_down = False
+    _capture_sink: Callable[[Direction, bytes], None] | None = None
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task | None
@@ -407,11 +433,37 @@ class Client:
         """Execute a set of requests. Caller is responsible for connecting first."""
         await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
 
+    async def capture_frames(
+        self,
+        sink: Callable[[Direction, bytes], None],
+        duration: float = 60.0,
+    ) -> None:
+        """Tee redacted TX/RX wire frames to *sink* for *duration* seconds.
+
+        *sink* is called once per frame with the direction ('rx' or 'tx') and
+        the *redacted* bytes. The library always redacts before invoking the
+        sink so callers can't accidentally see raw hardware identifiers;
+        persistence, formatting and forwarding are the caller's choice.
+
+        Runs alongside the normal refresh loop — does not suspend reads or
+        writes, just tees a copy of each frame to *sink*. Only one capture
+        may run on a Client at a time; calling while one is in flight raises
+        RuntimeError.
+        """
+        if self._capture_sink is not None:
+            raise RuntimeError("a frame capture is already running on this client")
+        self._capture_sink = sink
+        try:
+            await asyncio.sleep(duration)
+        finally:
+            self._capture_sink = None
+
     async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
         while hasattr(self, "reader") and self.reader and not self.reader.at_eof():
             frame = await self.reader.read(300)
-            # await self.debug_frames['all'].put(frame)
+            if self._capture_sink is not None and frame:
+                self._capture_sink("rx", redact(frame))
             async for message in self.framer.decode(frame):
                 _logger.debug(f"Processing {message}")
                 if isinstance(message, ExceptionBase):
@@ -463,6 +515,8 @@ class Client:
                     frame_sent.set_result(True)
                 continue
             self.writer.write(message)
+            if self._capture_sink is not None:
+                self._capture_sink("tx", redact(message))
             await self.writer.drain()
             self.tx_queue.task_done()
             if frame_sent and not frame_sent.done():

@@ -198,3 +198,27 @@ All model objects are pydantic v2 models:
 plant.inverter.model_dump()       # dict
 plant.inverter.model_dump_json()  # JSON string
 ```
+
+## Capturing frames for bug reports
+
+`Client.capture_frames(sink, duration=60.0)` tees raw TX/RX bytes to a caller-supplied sink callable while the normal refresh loop continues — useful when a bug report needs to include the actual wire bytes. Inverter and dongle serial numbers are redacted by the library before the sink is invoked: only the digits are zeroed; the prefix and model letter survive because they carry diagnostic signal.
+
+The library does the redaction; persistence and format are the caller's choice. A minimal file-based capture looks like:
+
+```python
+from datetime import UTC, datetime
+
+with open("capture.txt", "w") as f:
+    def write_line(direction, frame):
+        ts = datetime.now(UTC).isoformat(timespec="microseconds")
+        f.write(f"{ts} {direction} {frame.hex()}\n")
+        f.flush()
+    async with Client("inverter.local", 8899) as client:
+        await client.refresh_plant(full_refresh=True)
+        await asyncio.gather(
+            client.watch_plant(refresh_period=5),
+            client.capture_frames(write_line, duration=60),
+        )
+```
+
+Only one capture may run on a Client at a time — starting a second raises `RuntimeError`.
