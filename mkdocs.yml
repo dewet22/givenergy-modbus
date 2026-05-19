@@ -10,6 +10,8 @@ nav:
   - Modules: api.md
   - Contributing: contributing.md
   - Changelog: changelog.md
+  - Release notes:
+      - v2.0: release-notes/v2.0.md
 theme:
   name: material
   language: en
