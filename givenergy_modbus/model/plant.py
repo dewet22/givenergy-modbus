@@ -244,13 +244,16 @@ class PlantCapabilities:
         for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
             if old in normalised and new not in normalised:
                 normalised[new] = normalised.pop(old)
-        return cls(
-            device_type=Model(normalised["device_type"]),
-            inverter_address=normalised["inverter_address"],
-            meter_addresses=normalised["meter_addresses"],
-            lv_battery_addresses=normalised["lv_battery_addresses"],
-            bcu_stacks=[tuple(s) for s in normalised["bcu_stacks"]],  # type: ignore[misc]
-        )
+        # Only forward keys that are present; let __init__ supply its defaults for any
+        # missing fields. This protects against partial snapshots persisted by older
+        # versions that didn't know about every field we now track.
+        kwargs: dict[str, Any] = {}
+        for key in ("inverter_address", "meter_addresses", "lv_battery_addresses"):
+            if key in normalised:
+                kwargs[key] = normalised[key]
+        if "bcu_stacks" in normalised:
+            kwargs["bcu_stacks"] = [tuple(s) for s in normalised["bcu_stacks"]]
+        return cls(device_type=Model(normalised["device_type"]), **kwargs)
 
 
 class Plant(GivEnergyBaseModel):

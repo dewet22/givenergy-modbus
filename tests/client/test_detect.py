@@ -63,6 +63,19 @@ def test_plant_capabilities_round_trip_with_bcus():
     assert restored.bcu_stacks == [(0, 3), (1, 2)]
 
 
+def test_plant_capabilities_from_dict_tolerates_missing_fields():
+    """Older persisted snapshots may omit fields the current __init__ supports."""
+    # Minimal dict — only device_type is non-defaultable. Everything else should
+    # fall through to __init__'s defaults rather than raising KeyError.
+    minimal = {"device_type": Model.HYBRID.value}
+    caps = PlantCapabilities.from_dict(minimal)
+    assert caps.device_type == Model.HYBRID
+    assert caps.inverter_address == 0x32
+    assert caps.meter_addresses == []
+    assert caps.lv_battery_addresses == []
+    assert caps.bcu_stacks == []
+
+
 def test_plant_capabilities_is_hv():
     assert PlantCapabilities(device_type=Model.ALL_IN_ONE).is_hv is True
     assert PlantCapabilities(device_type=Model.HYBRID_HV_GEN3).is_hv is True
