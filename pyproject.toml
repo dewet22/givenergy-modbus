@@ -14,13 +14,12 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Home Automation",
     "Topic :: Scientific/Engineering",
     "Topic :: System :: Networking :: Monitoring",
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "crccheck>=1.1,<2",
     "pydantic>=2.0,<3",
@@ -69,7 +68,7 @@ include = ["/givenergy_modbus", "/tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "D", "C90"]
@@ -115,12 +114,11 @@ asyncio_mode = "auto"
 legacy_tox_ini = """
 [tox]
 isolated_build = true
-envlist = py313, py314, format, lint, build
+envlist = py314, format, lint, build
 
 [gh-actions]
 python =
     3.14: py314, format, lint, build
-    3.13: py313
 
 [testenv]
 runner = uv-venv-lock-runner

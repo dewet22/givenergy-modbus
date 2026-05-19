@@ -1,6 +1,6 @@
 # Installation
 
-Requires **Python 3.13 or later**.
+Requires **Python 3.14 or later**.
 
 ## Stable release
 
