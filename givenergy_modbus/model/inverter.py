@@ -558,8 +558,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Holding Registers, block 4080-4139
         #
         "pv_power_setting": Def(C.uint32, None, HR(4107), HR(4108)),
-        "e_battery_discharge_total2": Def(C.uint32, None, HR(4109), HR(4110)),
-        "e_battery_charge_total2": Def(C.uint32, None, HR(4111), HR(4112)),
+        "e_battery_discharge_total_alt": Def(C.uint32, None, HR(4109), HR(4110)),
+        "e_battery_charge_total_alt": Def(C.uint32, None, HR(4111), HR(4112)),
         "e_battery_discharge_today": Def(C.uint16, None, HR(4113)),
         "e_battery_charge_today": Def(C.uint16, None, HR(4114)),
         #
@@ -624,10 +624,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Input Registers, block 180-239
         #
-        "e_battery_discharge_2": Def(C.deci, None, IR(180)),
-        "e_battery_charge_2": Def(C.deci, None, IR(181)),
-        "e_battery_discharge_day_2": Def(C.deci, None, IR(182)),
-        "e_battery_charge_day_2": Def(C.deci, None, IR(183)),
+        "e_battery_discharge_alt": Def(C.deci, None, IR(180)),
+        "e_battery_charge_alt": Def(C.deci, None, IR(181)),
+        "e_battery_discharge_day_alt": Def(C.deci, None, IR(182)),
+        "e_battery_charge_day_alt": Def(C.deci, None, IR(183)),
         #
         # Input Registers, block 240-300
         # Gen3
