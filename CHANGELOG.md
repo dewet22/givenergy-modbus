@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0rc1] - 2026-05-19
+
+### ✨ Added
+
+- support prerelease stage transitions in release.py bump ([00ce5c3](https://github.com/dewet22/givenergy-modbus/commit/00ce5c3069faa16d3c772eb38cef768e6044970e))
+
 ## [2.0.0a6] - 2026-05-15
 
 ### 🔧 Maintenance
