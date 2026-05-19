@@ -76,25 +76,26 @@ interactive command, pass `retry_delay=0`.
 
 ## Charge and discharge slots
 
-The number of available slots depends on the inverter model. Always pass
-`inverter.slot_map` to slot commands so the correct register addresses are used:
+The number of available slots depends on the inverter model. The inverter command API (see below) reads `slot_map` from the instance so you don't have to thread it through:
 
 ```python
-slot_map = plant.inverter.slot_map
+inverter = plant.inverter
 
 # Set slot 1 (available on all models)
 await client.one_shot_command(
-    commands.set_charge_slot(1, TimeSlot.from_components(0, 30, 4, 30), slot_map)
+    inverter.set_charge_slot(1, TimeSlot.from_components(0, 30, 4, 30))
 )
 
 # Set slot 5 (only available on extended-slot models)
 await client.one_shot_command(
-    commands.set_charge_slot(5, TimeSlot.from_components(12, 0, 14, 0), slot_map)
+    inverter.set_charge_slot(5, TimeSlot.from_components(12, 0, 14, 0))
 )
 
 # Clear slot 3
-await client.one_shot_command(commands.reset_charge_slot(3, slot_map))
+await client.one_shot_command(inverter.reset_charge_slot(3))
 ```
+
+If you call the underlying primitives directly (`commands.set_charge_slot(...)`), you must pass `inverter.slot_map` explicitly — see the [Available commands](#available-commands) reference further down.
 
 Models and their slot counts:
 
@@ -105,10 +106,38 @@ Models and their slot counts:
 | HYBRID_GEN3 (ARM fw > 302), ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3 | 10 | 10 |
 | Three-phase (HYBRID_3PH, AC_3PH) | 10 | 10 |
 
+## Inverter command API
+
+The recommended entry point is the inverter instance itself:
+
+```python
+inverter = plant.inverter
+
+await client.one_shot_command(inverter.set_charge_target(80))
+await client.one_shot_command(inverter.set_enable_discharge(True))
+await client.one_shot_command(inverter.set_charge_slot(1, my_timeslot))
+```
+
+The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`; the methods listed below ("Available commands") are universally available.
+
+Three-phase-only and EMS-only commands (`set_ac_charge`, `set_force_charge`/`_discharge`, `set_battery_*_limit_ac`, `set_battery_pause_mode`, `set_pause_slot_*`, `set_ems_plant`, `set_export_slot_*`) are not yet exposed via the inverter API — call them on `commands.*` directly while their model-vs-firmware applicability is resolved (see [#75](https://github.com/dewet22/givenergy-modbus/issues/75)). They will appear on model-specific mixins in later 2.x minors.
+
 ## Available commands
 
 All commands live in `givenergy_modbus.client.commands` and return
-`list[TransparentRequest]` for passing to `one_shot_command` or `execute`.
+`list[TransparentRequest]` for passing to `one_shot_command` or `execute`. The
+inverter API above delegates to these; using them directly remains supported
+for tests and lower-level integration.
+
+### Stability
+
+Both surfaces are supported within the 2.x line. `inverter.set_*` is the
+recommended high-level API; `commands.*` is the primitive layer that the
+mixin delegates to. There is no plan to deprecate `commands.*` within 2.x —
+the two are not duplicate paths but two layers of the same stack. If
+individual primitives turn out to be persistent footguns when used without an
+inverter (e.g. routing the wrong `slot_map`), they may be `@deprecated`
+case-by-case as model-specific mixins land in later 2.x minors.
 
 ### Charging
 

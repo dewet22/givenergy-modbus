@@ -2,11 +2,12 @@
 
 from datetime import datetime
 from datetime import time as dt_time
+from typing import ClassVar
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode
-from givenergy_modbus.model.inverter import SINGLE_PHASE_SLOTS, SlotMap
+from givenergy_modbus.model.slot_map import SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
@@ -494,3 +495,208 @@ def set_mode_storage(
     else:
         ret.extend(reset_discharge_slot(2, SINGLE_PHASE_SLOTS))
     return ret
+
+
+class _InverterCommands:
+    """Commands every inverter supports, mixed into Inverter model classes.
+
+    Methods delegate to the module-level primitive functions above so the
+    primitives stay accessible to lower-level callers (tests, alternate code
+    paths). The mixin's value-add is twofold: it removes the boilerplate of
+    threading `slot_map` through every slot call (it's read from `self`), and
+    it carries a per-model `WRITE_SAFE_REGISTERS` set so model-specific
+    mixins can constrain the allowlist further than the global one.
+
+    The base mixin's `WRITE_SAFE_REGISTERS` is the universally-applicable
+    subset — registers every inverter accepts writes to. Three-phase / EMS /
+    pause-mode commands and their registers will land in additional mixins
+    (composed onto the relevant inverter classes) in later 2.x minors once
+    the model-vs-firmware ambiguities flagged on #75 are resolved against
+    real wire data.
+    """
+
+    # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
+    # Excludes 313/314 (BATTERY_*_LIMIT_AC — ambiguous), 318-320 (pause mode),
+    # 1112/1122/1123 (three-phase), and 2040/2062-2069 (EMS).
+    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
+        {
+            20,  # ENABLE_CHARGE_TARGET
+            27,  # BATTERY_POWER_MODE
+            29,  # SOC_FORCE_ADJUST
+            31,
+            32,  # CHARGE_SLOT_2
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,  # SYSTEM_TIME_*
+            44,
+            45,  # DISCHARGE_SLOT_2
+            50,  # ACTIVE_POWER_RATE
+            56,
+            57,  # DISCHARGE_SLOT_1
+            59,  # ENABLE_DISCHARGE
+            94,
+            95,  # CHARGE_SLOT_1
+            96,  # ENABLE_CHARGE
+            110,  # BATTERY_SOC_RESERVE
+            111,  # BATTERY_CHARGE_LIMIT
+            112,  # BATTERY_DISCHARGE_LIMIT
+            114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
+            116,  # CHARGE_TARGET_SOC
+            163,  # REBOOT
+            166,  # ENABLE_RTC
+            246,
+            247,
+            249,
+            250,
+            252,
+            253,
+            255,
+            256,
+            258,
+            259,
+            261,
+            262,
+            264,
+            265,
+            267,
+            268,  # CHARGE_SLOT_3..10
+            276,
+            277,
+            279,
+            280,
+            282,
+            283,
+            285,
+            286,
+            288,
+            289,
+            291,
+            292,
+            294,
+            295,
+            297,
+            298,  # DISCHARGE_SLOT_3..10
+        }
+    )
+
+    # --- charge target -------------------------------------------------------
+
+    def disable_charge_target(self) -> list[TransparentRequest]:
+        """Disable use of a charge target so the battery charges to 100%."""
+        return disable_charge_target()
+
+    def set_charge_target(self, target_soc: int) -> list[TransparentRequest]:
+        """Sets inverter to stop charging when SOC reaches the desired level (4-100)."""
+        return set_charge_target(target_soc)
+
+    # --- charge/discharge enable --------------------------------------------
+
+    def set_enable_charge(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable battery charging."""
+        return set_enable_charge(enabled)
+
+    def set_enable_discharge(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable battery discharging."""
+        return set_enable_discharge(enabled)
+
+    # --- inverter-level controls --------------------------------------------
+
+    def set_inverter_reboot(self) -> list[TransparentRequest]:
+        """Trigger the inverter to reboot."""
+        return set_inverter_reboot()
+
+    def set_calibrate_battery_soc(self, val: int = 1) -> list[TransparentRequest]:
+        """Set the inverter to recalibrate the battery SOC estimation."""
+        return set_calibrate_battery_soc(val)
+
+    def set_active_power_rate(self, target: int) -> list[TransparentRequest]:
+        """Limit the inverter's total output power as a percentage of its rated value (0-100)."""
+        return set_active_power_rate(target)
+
+    def set_enable_rtc(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable the inverter's real-time clock."""
+        return set_enable_rtc(enabled)
+
+    def set_system_date_time(self, dt: datetime) -> list[TransparentRequest]:
+        """Set the date & time of the inverter."""
+        return set_system_date_time(dt)
+
+    # --- discharge mode ------------------------------------------------------
+
+    def set_discharge_mode_max_power(self) -> list[TransparentRequest]:
+        """Set the battery discharge mode to maximum power, exporting to the grid if it exceeds load demand."""
+        return set_discharge_mode_max_power()
+
+    def set_discharge_mode_to_match_demand(self) -> list[TransparentRequest]:
+        """Set the battery discharge mode to match demand, avoiding exporting to the grid."""
+        return set_discharge_mode_to_match_demand()
+
+    # --- battery limits/reserves --------------------------------------------
+
+    def set_battery_soc_reserve(self, val: int) -> list[TransparentRequest]:
+        """Set the minimum SOC reserve the battery is kept at, even in dynamic mode (4-100)."""
+        return set_battery_soc_reserve(val)
+
+    def set_battery_charge_limit(self, val: int) -> list[TransparentRequest]:
+        """Set the battery charge power limit as a percentage of the rated charge power (0-50)."""
+        return set_battery_charge_limit(val)
+
+    def set_battery_discharge_limit(self, val: int) -> list[TransparentRequest]:
+        """Set the battery discharge power limit as a percentage of the rated discharge power (0-50)."""
+        return set_battery_discharge_limit(val)
+
+    def set_battery_power_reserve(self, val: int) -> list[TransparentRequest]:
+        """Set the minimum SOC reserve below which the battery will not discharge (4-100)."""
+        return set_battery_power_reserve(val)
+
+    # --- slots (use self.slot_map) ------------------------------------------
+
+    def set_charge_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of a charge slot by index (1-based), or clear it if t is None."""
+        return set_charge_slot_start(idx, t, self.slot_map)
+
+    def set_charge_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of a charge slot by index (1-based), or clear it if t is None."""
+        return set_charge_slot_end(idx, t, self.slot_map)
+
+    def set_discharge_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of a discharge slot by index (1-based), or clear it if t is None."""
+        return set_discharge_slot_start(idx, t, self.slot_map)
+
+    def set_discharge_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of a discharge slot by index (1-based), or clear it if t is None."""
+        return set_discharge_slot_end(idx, t, self.slot_map)
+
+    def set_charge_slot(self, idx: int, timeslot: TimeSlot) -> list[TransparentRequest]:
+        """Set charge slot start & end times by index (1-based)."""
+        return set_charge_slot(idx, timeslot, self.slot_map)
+
+    def reset_charge_slot(self, idx: int) -> list[TransparentRequest]:
+        """Reset charge slot to zero/disabled by index (1-based)."""
+        return reset_charge_slot(idx, self.slot_map)
+
+    def set_discharge_slot(self, idx: int, timeslot: TimeSlot) -> list[TransparentRequest]:
+        """Set discharge slot start & end times by index (1-based)."""
+        return set_discharge_slot(idx, timeslot, self.slot_map)
+
+    def reset_discharge_slot(self, idx: int) -> list[TransparentRequest]:
+        """Reset discharge slot to zero/disabled by index (1-based)."""
+        return reset_discharge_slot(idx, self.slot_map)
+
+    # --- preset modes --------------------------------------------------------
+
+    def set_mode_dynamic(self) -> list[TransparentRequest]:
+        """Set system to Dynamic / Eco mode."""
+        return set_mode_dynamic()
+
+    def set_mode_storage(
+        self,
+        discharge_slot_1: TimeSlot,
+        discharge_slot_2: TimeSlot | None = None,
+        discharge_for_export: bool = False,
+    ) -> list[TransparentRequest]:
+        """Set system to Storage mode with specific discharge slot(s)."""
+        return set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)

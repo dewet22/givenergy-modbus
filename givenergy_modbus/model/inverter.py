@@ -1,10 +1,10 @@
 import math
 import warnings
-from dataclasses import dataclass
 from enum import Enum, IntEnum, StrEnum
 
 from pydantic import ConfigDict, computed_field, create_model
 
+from givenergy_modbus.client.commands import _InverterCommands
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
@@ -62,48 +62,12 @@ class Model(str, Enum):
             return 51.2
 
 
-@dataclass(frozen=True)
-class SlotMap:
-    """Register address pairs for charge and discharge time slots."""
-
-    charge_slots: tuple[tuple[int, int], ...]
-    discharge_slots: tuple[tuple[int, int], ...]
-
-
-SINGLE_PHASE_SLOTS = SlotMap(
-    charge_slots=((94, 95), (31, 32)),
-    discharge_slots=((56, 57), (44, 45)),
-)
-
-# Extended 10-slot map for ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3,
-# and HYBRID_GEN3 units with ARM firmware > 302.
-EXTENDED_SLOTS = SlotMap(
-    charge_slots=(
-        (94, 95),
-        (31, 32),
-        (246, 247),
-        (249, 250),
-        (252, 253),
-        (255, 256),
-        (258, 259),
-        (261, 262),
-        (264, 265),
-        (267, 268),
-    ),
-    discharge_slots=(
-        (56, 57),
-        (44, 45),
-        (276, 277),
-        (279, 280),
-        (282, 283),
-        (285, 286),
-        (288, 289),
-        (291, 292),
-        (294, 295),
-        (297, 298),
-    ),
-)
-
+# SlotMap, SINGLE_PHASE_SLOTS, EXTENDED_SLOTS live in model.slot_map so they can
+# be referenced by client.commands without producing a circular import (the
+# inverter command mixin in client.commands needs to be importable here for
+# class composition). Re-exported here for backward compatibility with existing
+# `from givenergy_modbus.model.inverter import ...` callers.
+from givenergy_modbus.model.slot_map import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS, SlotMap  # noqa: E402
 
 # ARM firmware version century → HYBRID generation for DTC prefix "20"
 _HYBRID_FW_CENTURY_TO_GEN: dict[int, Model] = {
@@ -643,8 +607,16 @@ _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class SinglePhaseInverter(_SinglePhaseInverterBase):  # type: ignore[valid-type,misc]
-    """GivEnergy single-phase inverter data model."""
+class SinglePhaseInverter(_SinglePhaseInverterBase, _InverterCommands):  # type: ignore[valid-type,misc]
+    """GivEnergy single-phase inverter data model.
+
+    Composes the `_InverterCommands` mixin so consumers can call
+    `inverter.set_*(...)` directly instead of routing through
+    `givenergy_modbus.client.commands.*`. The mixin reads `self.slot_map` so
+    slot setters no longer need it threaded through by callers. Model-specific
+    command mixins (three-phase, EMS, pause-mode) will compose in additively
+    in later 2.x minors — see #75.
+    """
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "SinglePhaseInverter":

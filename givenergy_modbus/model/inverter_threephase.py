@@ -2,6 +2,7 @@
 
 from pydantic import ConfigDict, computed_field, create_model
 
+from givenergy_modbus.client.commands import _InverterCommands
 from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
     _DTC_RATED_POWER,
@@ -469,36 +470,18 @@ _ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
 )
 
 
-THREE_PHASE_SLOTS = SlotMap(
-    charge_slots=(
-        (1113, 1114),
-        (1115, 1116),
-        (246, 247),
-        (249, 250),
-        (252, 253),
-        (255, 256),
-        (258, 259),
-        (261, 262),
-        (264, 265),
-        (267, 268),
-    ),
-    discharge_slots=(
-        (1118, 1119),
-        (1120, 1121),
-        (276, 277),
-        (279, 280),
-        (282, 283),
-        (285, 286),
-        (288, 289),
-        (291, 292),
-        (294, 295),
-        (297, 298),
-    ),
-)
+# THREE_PHASE_SLOTS lives in model.slot_map alongside the single-phase variants.
+# Re-exported here for backward compatibility.
+from givenergy_modbus.model.slot_map import THREE_PHASE_SLOTS  # noqa: E402
 
 
-class ThreePhaseInverter(_ThreePhaseInverterBase):  # type: ignore[valid-type,misc]
-    """GivEnergy three-phase inverter data model."""
+class ThreePhaseInverter(_ThreePhaseInverterBase, _InverterCommands):  # type: ignore[valid-type,misc]
+    """GivEnergy three-phase inverter data model.
+
+    Composes the `_InverterCommands` mixin (same base mixin used by
+    `SinglePhaseInverter`). Three-phase-specific command mixins land later in
+    2.x once the register ambiguities flagged on #75 are resolved.
+    """
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "ThreePhaseInverter":
