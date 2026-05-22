@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-05-22
+
+### 🔧 Maintenance
+
+- enrich cli section of v2.0 release notes with v1.0 ecosystem story ([e87c8fe](https://github.com/dewet22/givenergy-modbus/commit/e87c8fe3ad730fc488feb2e6df55130a7b891f13))
+
 ## [2.0.0rc1] - 2026-05-19
 
 ### ✨ Added
