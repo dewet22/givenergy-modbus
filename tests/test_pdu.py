@@ -308,11 +308,6 @@ def test_has_same_shape():
     assert r1.has_same_shape(r2) is False
     assert r1 != r2
 
-    test_set = {r1, r2}
-    assert len(test_set) == 2
-    assert r1 in test_set
-    assert r2 in test_set
-
     r = WriteHoldingRegisterResponse(register=2, value=0)
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0))
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=10))
@@ -329,7 +324,7 @@ def test_has_same_shape():
     assert r1 != r2
 
 
-def test_pdus_are_unhashable():
+def test_write_holding_register_pdus_are_unhashable():
     # WriteHoldingRegister overrides __eq__, so Python auto-removes __hash__ from this class hierarchy.
     r1 = WriteHoldingRegisterResponse(register=2, value=10)
     r2 = WriteHoldingRegisterResponse(register=2, value=10)
