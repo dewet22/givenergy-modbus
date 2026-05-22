@@ -11,7 +11,7 @@ a GitHub milestone. Some items below overlap existing issues:
 
 | Plan item | Existing coverage |
 |---|---|
-| Execution-time write policy | Partly covered by [#75](https://github.com/dewet22/givenergy-modbus/issues/75), which moves commands onto inverter models so model-specific command contracts are enforceable. The extra client-boundary rejection remains distinct. |
+| Model-aware write policy at the Client boundary | Partly covered by [#75](https://github.com/dewet22/givenergy-modbus/issues/75), which moves commands onto inverter models so model-specific command contracts are enforceable. The extra Client-boundary rejection remains distinct. |
 | Dry-run write validation | Not currently captured. |
 | Internal refresh serialization | Not currently captured. |
 | Fail CI on async resource warnings | Not currently captured. |
@@ -31,14 +31,17 @@ The remaining v2.1-labelled issues are tracked independently of this plan:
 [#76](https://github.com/dewet22/givenergy-modbus/issues/76). They're
 roadmap items rather than the infrastructure focus of this document.
 
-## 1. Execution-time write policy
+## 1. Model-aware write policy at the Client boundary
 
-Add a write policy check at the client execution boundary, not only at command
-construction time.
+Add a model-aware write policy check at the `Client` execution boundary,
+complementing the existing PDU-level enforcement.
 
-Current protection is centered on `WriteHoldingRegisterRequest` and the global
-`WRITE_SAFE_REGISTERS` allowlist. Model-specific command mixins also define
-smaller safe-write sets, but callers can still manually construct write PDUs.
+Current protection runs in `WriteHoldingRegisterRequest.ensure_valid_state()`
+(invoked from `encode()`) against the global `WRITE_SAFE_REGISTERS` allowlist —
+so it already fires at execution time, but only knows about register-level
+safety, not the detected inverter model. Model-specific command mixins define
+smaller safe-write sets, but callers can still manually construct write PDUs
+that bypass them.
 
 Target outcome:
 
