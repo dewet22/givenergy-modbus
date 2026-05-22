@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/contributing/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/architecture/">
       
       
-        <link rel="prev" href="../api/">
+        <link rel="prev" href="../usage/">
       
       
-        <link rel="next" href="../changelog/">
+        <link rel="next" href="../api/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Contributing - GivEnergy Modbus</title>
+        <title>Architecture - GivEnergy Modbus</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing" class="md-skip">
+        <a href="#architecture" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              Architecture
             
           </span>
         </div>
@@ -338,10 +338,35 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -357,6 +382,107 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physical-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical topology
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#software-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Software layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#client-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plant-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plant data model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register infrastructure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -392,35 +518,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -436,174 +537,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#contributing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Contributing
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Contributing">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#types-of-contributions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Types of Contributions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Types of Contributions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#report-bugs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Report Bugs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fix-bugs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fix Bugs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#implement-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Implement Features
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#write-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Write Documentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#submit-feedback" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Submit Feedback
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Get Started!
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pull-request-guidelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pull Request Guidelines
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploying" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploying
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Deploying">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dropping-a-python-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dropping a Python version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -746,34 +679,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#contributing" class="md-nav__link">
+  <a href="#architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Contributing
+        Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Contributing">
+    <nav class="md-nav" aria-label="Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#types-of-contributions" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Types of Contributions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Types of Contributions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#report-bugs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Report Bugs
+        Overview
       
     </span>
   </a>
@@ -781,10 +702,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fix-bugs" class="md-nav__link">
+  <a href="#physical-topology" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fix Bugs
+        Physical topology
       
     </span>
   </a>
@@ -792,10 +713,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#implement-features" class="md-nav__link">
+  <a href="#software-layers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Implement Features
+        Software layers
       
     </span>
   </a>
@@ -803,10 +724,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#write-documentation" class="md-nav__link">
+  <a href="#client-lifecycle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Write Documentation
+        Client lifecycle
       
     </span>
   </a>
@@ -814,26 +735,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#submit-feedback" class="md-nav__link">
+  <a href="#plant-data-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submit Feedback
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get-started" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Get Started!
+        Plant data model
       
     </span>
   </a>
@@ -841,52 +746,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pull-request-guidelines" class="md-nav__link">
+  <a href="#register-infrastructure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pull Request Guidelines
+        Register infrastructure
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deploying" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Deploying
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Deploying">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dropping-a-python-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dropping a Python version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -915,126 +781,191 @@
   
 
 
-  <h1>Contributing</h1>
+  <h1>Architecture</h1>
 
-<h2 id="contributing">Contributing<a class="headerlink" href="#contributing" title="Permanent link">&para;</a></h2>
-<p>Contributions are welcome, and they are greatly appreciated! Every little bit
-helps, and credit will always be given.</p>
-<p>You can contribute in many ways:</p>
-<h3 id="types-of-contributions">Types of Contributions<a class="headerlink" href="#types-of-contributions" title="Permanent link">&para;</a></h3>
-<h4 id="report-bugs">Report Bugs<a class="headerlink" href="#report-bugs" title="Permanent link">&para;</a></h4>
-<p>Report bugs at https://github.com/dewet22/givenergy-modbus/issues.</p>
-<p>If you are reporting a bug, please include:</p>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<h3 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h3>
+<p><code>givenergy-modbus</code> is a layered library for communicating with GivEnergy inverters and peripherals over Modbus TCP. It handles framing, PDU encoding/decoding, register caching, and data model construction, exposing a high-level async <code>Client</code> and a <code>Plant</code> data model to application code.</p>
+<h3 id="physical-topology">Physical topology<a class="headerlink" href="#physical-topology" title="Permanent link">&para;</a></h3>
+<p>A GivEnergy installation exposes two network endpoints:</p>
 <ul>
-<li>Your operating system name and version.</li>
-<li>Any details about your local setup that might be helpful in troubleshooting.</li>
-<li>Detailed steps to reproduce the bug.</li>
+<li><strong>Inverter gateway</strong> (port 8899) — the primary endpoint, using GivEnergy's proprietary transparent framing over TCP. All inverter-adjacent devices share this connection via Modbus device addresses (formerly known as slave addresses; Modbus.org adopted client/server terminology in 2020).</li>
+<li><strong>GivEVC charger</strong> (port 502, separate IP, future) — a standard Modbus TCP device polled via a second connection.</li>
 </ul>
-<h4 id="fix-bugs">Fix Bugs<a class="headerlink" href="#fix-bugs" title="Permanent link">&para;</a></h4>
-<p>Look through the GitHub issues for bugs. Anything tagged with "bug" and "help
-wanted" is open to whoever wants to implement it.</p>
-<h4 id="implement-features">Implement Features<a class="headerlink" href="#implement-features" title="Permanent link">&para;</a></h4>
-<p>Look through the GitHub issues for features. Anything tagged with "enhancement"
-and "help wanted" is open to whoever wants to implement it.</p>
-<h4 id="write-documentation">Write Documentation<a class="headerlink" href="#write-documentation" title="Permanent link">&para;</a></h4>
-<p>GivEnergy Modbus could always use more documentation, whether as part of the
-official GivEnergy Modbus docs, in docstrings, or even on the web in blog posts,
-articles, and such.</p>
-<h4 id="submit-feedback">Submit Feedback<a class="headerlink" href="#submit-feedback" title="Permanent link">&para;</a></h4>
-<p>The best way to send feedback is to file an issue at https://github.com/dewet22/givenergy-modbus/issues.</p>
-<p>If you are proposing a feature:</p>
+<pre class="mermaid"><code>graph LR
+    app1(["givenergy-cli"])
+    app2(["givenergy-hass"])
+    app3(["GivTCP"])
+
+    lib(["givenergy-modbus
+    library"])
+
+    subgraph conn["Network connections"]
+        gw["Inverter gateway
+        (Modbus TCP, port 8899)"]
+        evc_tcp["EV Charger gateway
+        (Modbus TCP, port 502)
+        (future)"]
+    end
+
+    subgraph modbus_devices["Modbus devices (via gateway)"]
+        inv["Inverter
+        (addr 0x32)"]
+        bat["LV Batteries
+        (addr 0x32–0x37)"]
+        bcu["HV BCU stacks
+        (addr 0x70+)"]
+        meter["Meters
+        (addr 0x01–0x08)"]
+        ems["Plant controller (EMS models only)
+        (addr 0x11 / 0x32)"]
+        gateway["Gateway (Gateway product)
+        (addr 0x32)"]
+    end
+
+    evc(["EV Charger
+    (future)"])
+
+    app1 --&gt; lib
+    app2 --&gt; lib
+    app3 --&gt; lib
+
+    lib --&gt; gw
+    lib -.-&gt;|future| evc_tcp
+    gw --&gt; inv &amp; bat &amp; bcu &amp; meter &amp; ems &amp; gateway
+    evc_tcp -.-&gt; evc</code></pre>
+<p>All devices except the EVC share a single TCP connection to the gateway. The EVC requires a second connection to a different host.</p>
+<h3 id="software-layers">Software layers<a class="headerlink" href="#software-layers" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph app["Application layer"]
+        user(["givenergy-hass\ngivenergy-cli\ncustom code"])
+    end
+
+    subgraph client["givenergy_modbus.client"]
+        detect["detect()\ndiscover topology"]
+        loadcfg["load_config()\nread HR banks"]
+        refresh["refresh()\nread IR banks"]
+        cmds["commands\nwrite operations"]
+    end
+
+    subgraph pdu["givenergy_modbus.pdu / .framer"]
+        pdus["ReadHoldingRegisters\nReadInputRegisters\nReadMeterProduct\nWriteHoldingRegister"]
+        framer["GivEnergy transparent\nframing over TCP"]
+    end
+
+    subgraph model["givenergy_modbus.model"]
+        plant["Plant\nregister_caches · capabilities"]
+        caps["PlantCapabilities\ndevice_type · inverter_address\nlv_battery_addresses · meter_addresses\nbcu_stacks · evc_host (future)"]
+
+        subgraph devices["Device models (lazy accessors)"]
+            sp["SinglePhaseInverter"]
+            tp["ThreePhaseInverter"]
+            battery["Battery (LV)"]
+            hvstack["HvStack\nBcu + Bmu"]
+            mtr["Meter + MeterProduct"]
+            ems["Ems"]
+            gw["GatewayV1 / GatewayV2"]
+            evc["Evc (future)"]
+        end
+
+        subgraph reg["Register infrastructure"]
+            cache["RegisterCache\ndict[HR|IR|MR → int]"]
+            getter["RegisterGetter\nbounds · coherence · decode"]
+            defn["RegisterDefinition\nconverters · min/max bounds"]
+        end
+    end
+
+    user --&gt; detect &amp; loadcfg &amp; refresh &amp; cmds
+    detect &amp; loadcfg &amp; refresh &amp; cmds --&gt; pdus
+    pdus --&gt; framer
+    framer --&gt;|"TCP"| user
+
+    detect --&gt;|"writes"| caps
+    loadcfg &amp; refresh --&gt;|"updates"| cache
+    plant --&gt; caps
+    plant --&gt; cache
+    cache --&gt; getter --&gt; defn
+    getter --&gt;|"decoded"| sp &amp; tp &amp; battery &amp; hvstack &amp; mtr &amp; ems &amp; gw &amp; evc</code></pre>
+<h3 id="client-lifecycle">Client lifecycle<a class="headerlink" href="#client-lifecycle" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>client.connect()       establish TCP connection(s)
+       │
+client.detect()        read HR(0)/HR(21) to resolve model; probe peripherals
+       │               → writes PlantCapabilities to plant.capabilities
+       │
+client.load_config()   fetch HR configuration banks (slots, targets, limits)
+       │               extra banks dispatched per device type (three-phase,
+       │               extended slots, EMS)
+       │
+       ╔══ polling loop ══════════════════════════════════════╗
+       ║  client.refresh()   fast poll: IR measurement banks  ║
+       ║                     extra banks per device type      ║
+       ╚══════════════════════════════════════════════════════╝
+       │
+client.load_config()   re-read after any write to confirm the change landed
+</code></pre></div>
+<p><code>detect()</code> is intentionally slow — a correct topology is more important than fast startup. It uses a two-tier timeout: full retries for known devices, short probe retries for speculative addresses (meters, batteries, BCU stacks) where absence is the common case.</p>
+<h3 id="plant-data-model">Plant data model<a class="headerlink" href="#plant-data-model" title="Permanent link">&para;</a></h3>
+<p><code>Plant</code> is passive — it stores data, drives no I/O. Its two responsibilities are:</p>
+<ol>
+<li><strong><code>register_caches</code></strong> — <code>dict[int, RegisterCache]</code> keyed by Modbus device address, populated by <code>Client</code> as responses arrive.</li>
+<li><strong><code>capabilities</code></strong> — a <code>PlantCapabilities</code> dataclass describing the topology discovered by <code>Client.detect()</code>.</li>
+</ol>
+<p>All plant properties are lazy decoders: they read from <code>register_caches</code> and construct the appropriate concrete model class, dispatching on <code>capabilities.device_type</code> where needed.</p>
+<table>
+<thead>
+<tr>
+<th>Accessor</th>
+<th>Returns</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plant.inverter</code></td>
+<td><code>SinglePhaseInverter \| ThreePhaseInverter</code></td>
+<td>always</td>
+</tr>
+<tr>
+<td><code>plant.batteries</code></td>
+<td><code>list[Battery]</code></td>
+<td>LV systems only</td>
+</tr>
+<tr>
+<td><code>plant.hv_stacks</code></td>
+<td><code>list[HvStack]</code></td>
+<td>HV systems only</td>
+</tr>
+<tr>
+<td><code>plant.meters</code></td>
+<td><code>dict[int, Meter]</code></td>
+<td>when meters detected</td>
+</tr>
+<tr>
+<td><code>plant.ems</code></td>
+<td><code>Ems \| None</code></td>
+<td><code>Model.EMS</code> / <code>EMS_COMMERCIAL</code> only</td>
+</tr>
+<tr>
+<td><code>plant.gateway</code></td>
+<td><code>GatewayV1 \| GatewayV2 \| None</code></td>
+<td><code>Model.GATEWAY</code> only</td>
+</tr>
+<tr>
+<td><code>plant.evc</code></td>
+<td><code>Evc \| None</code></td>
+<td>future</td>
+</tr>
+</tbody>
+</table>
+<h3 id="register-infrastructure">Register infrastructure<a class="headerlink" href="#register-infrastructure" title="Permanent link">&para;</a></h3>
+<p>Each device model is backed by a <code>RegisterGetter</code> subclass that holds a <code>REGISTER_LUT</code> — a dict mapping field names to <code>RegisterDefinition</code> instances. Each definition specifies:</p>
 <ul>
-<li>Explain in detail how it would work.</li>
-<li>Keep the scope as narrow as possible, to make it easier to implement.</li>
-<li>Remember that this is a volunteer-driven project, and that contributions
-  are welcome :)</li>
+<li><strong>Converter(s)</strong> — how to decode raw <code>uint16</code> register values (e.g. <code>C.deci</code> divides by 10, <code>C.timeslot</code> reconstructs a <code>TimeSlot</code>, <code>C.bitfield</code> extracts bit ranges).</li>
+<li><strong>Post-converter</strong> — optional second-stage transform or enum lookup.</li>
+<li><strong>Register address(es)</strong> — one or more <code>HR</code>/<code>IR</code>/<code>MR</code> addresses; multi-register fields (e.g. <code>uint32</code>, strings) list all constituent registers.</li>
+<li><strong>Bounds</strong> — optional <code>min</code>/<code>max</code> in real-world units (post-conversion), used to detect physically impossible values and log violations before committing a bank.</li>
 </ul>
-<h3 id="get-started">Get Started!<a class="headerlink" href="#get-started" title="Permanent link">&para;</a></h3>
-<p>Ready to contribute? Here's how to set up <code>givenergy-modbus</code> for local development.</p>
-<ol>
-<li>Fork the <code>givenergy-modbus</code> repo on GitHub.</li>
-<li>
-<p>Clone your fork locally:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>git@github.com:your_name_here/givenergy-modbus.git
-</code></pre></div>
-</li>
-<li>
-<p>Ensure <a href="https://docs.astral.sh/uv/">uv</a> is installed.</p>
-</li>
-<li>
-<p>Install dependencies:</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--group<span class="w"> </span>docs<span class="w"> </span>--group<span class="w"> </span>dev
-</code></pre></div>
-</li>
-<li>
-<p>Create a branch for local development:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>name-of-your-bugfix-or-feature
-</code></pre></div>
-<p>Now you can make your changes locally.</p>
-</li>
-<li>
-<p>When you're done making changes, check that your changes pass the
-   tests, including testing other Python versions, with tox:</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span><span class="nb">test</span><span class="w"> </span>tox
-</code></pre></div>
-</li>
-<li>
-<p>Commit your changes and push your branch to GitHub:</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>.
-git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Your detailed description of your changes.&quot;</span>
-git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>name-of-your-bugfix-or-feature
-</code></pre></div>
-</li>
-<li>
-<p>Submit a pull request through the GitHub website.</p>
-</li>
-</ol>
-<h3 id="pull-request-guidelines">Pull Request Guidelines<a class="headerlink" href="#pull-request-guidelines" title="Permanent link">&para;</a></h3>
-<p>Before you submit a pull request, check that it meets these guidelines:</p>
-<ol>
-<li>The pull request should include tests.</li>
-<li>If the pull request adds functionality, the docs should be updated. Put
-   your new functionality into a function with a docstring, and add the
-   feature to the list in README.md.</li>
-<li>The pull request should work for Python 3.13 and above. Check
-   https://github.com/dewet22/givenergy-modbus/actions
-   and make sure that the tests pass for all supported Python versions.</li>
-</ol>
-<h3 id="tips">Tips<a class="headerlink" href="#tips" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span><span class="nb">test</span><span class="w"> </span>pytest<span class="w"> </span>tests/client/
-</code></pre></div>
-<p>To run a subset of tests.</p>
-<h3 id="deploying">Deploying<a class="headerlink" href="#deploying" title="Permanent link">&para;</a></h3>
-<p>Releases run via the <code>Release</code> workflow under GitHub Actions, triggered manually
-through <code>workflow_dispatch</code>. The operator picks a <code>bump</code> (<code>patch</code> / <code>minor</code> /
-<code>major</code> / <code>prerelease</code> / <code>finalize</code>) and an optional <code>prerelease_stage</code> to start
-a new prerelease line (alpha / beta / rc). A <code>republish_tag</code> input is also
-available for re-publishing an existing tag to PyPI without bumping the version.</p>
-<p>The workflow generates the release's changelog section from conventional-commit
-messages since the previous tag (via <code>scripts/release.py generate</code>), commits and
-tags the new version, publishes to PyPI (OIDC), and notifies downstream
-consumers. No manual tagging or <code>[Unreleased]</code> section editing is required.</p>
-<h4 id="dropping-a-python-version">Dropping a Python version<a class="headerlink" href="#dropping-a-python-version" title="Permanent link">&para;</a></h4>
-<p>Bumping <code>requires-python</code> in <code>pyproject.toml</code> (and the matching <code>target-version</code>
-in the ruff config and tox/CI matrices) is technically a one-commit change here,
-but the downstream blast radius is larger than it looks.</p>
-<p>Both <a href="https://github.com/dewet22/givenergy-cli">givenergy-cli</a> and
-<a href="https://github.com/dewet22/givenergy-hass">givenergy-hass</a> pin
-<code>givenergy-modbus</code> on long-lived <code>v1.0</code> branches. Those branches carry their
-own <code>requires-python</code> floor. When this library's floor moves up, the v1.0
-branches keep their old floor and the resolver hits a Python-version split
-the next time the downstream auto-bump workflow runs — e.g. with this project
-at <code>&gt;=3.14</code> and a downstream at <code>&gt;=3.13</code>, <code>uv lock --upgrade-package
-givenergy-modbus</code> fails with:</p>
-<div class="highlight"><pre><span></span><code>Because the requested Python version (&gt;=3.13) does not satisfy Python&gt;=3.14
-and givenergy-modbus==X.Y.Z depends on Python&gt;=3.14, we can conclude that
-givenergy-modbus==X.Y.Z cannot be used.
-</code></pre></div>
-<p>When dropping a Python version, open companion PRs on the downstream <code>v1.0</code>
-branches in the same session, bumping their <code>requires-python</code> to match. If the
-new floor maps to a Home Assistant Core version, double-check HA's own floor
-hasn't drifted away from where this project now sits — Home Assistant's
-minimum-Python lives in its release notes, not in our pyproject.toml.</p>
+<p><code>RegisterCache</code> is a plain <code>dict[HR|IR|MR, int]</code> with coherence checking (serial-number validity) and bounds validation on each incoming bank. Violations are currently logged at ERROR and the bank committed; a future enforcement step will discard the whole bank on any violation.</p>
 
 
 

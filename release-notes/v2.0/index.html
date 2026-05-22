@@ -1,0 +1,1747 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/release-notes/v2.0/">
+      
+      
+        <link rel="prev" href="../../changelog/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>v2.0 - GivEnergy Modbus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#givenergy-modbus-v20-ecosystem-release-notes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="GivEnergy Modbus" class="md-header__button md-logo" aria-label="GivEnergy Modbus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GivEnergy Modbus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              v2.0
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dewet22/givenergy-modbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewet22/givenergy-modbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="GivEnergy Modbus" class="md-nav__button md-logo" aria-label="GivEnergy Modbus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GivEnergy Modbus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dewet22/givenergy-modbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewet22/givenergy-modbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v2.0
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#givenergy-modbus-v20-ecosystem-release-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-modbus v2.0 — ecosystem release notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-modbus v2.0 — ecosystem release notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whats-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's new
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What&#39;s new">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-model-device-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-model device support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-aware-command-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model-aware command surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#naming-and-structure-clean-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming and structure clean-up
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reliability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reliability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-and-tooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python and tooling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-the-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        By the numbers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="By the numbers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-quiet-years" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The quiet years
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface-growth-v130-v200rc1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface growth, v1.3.0 → v2.0.0rc1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registers-tracked-per-device-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registers tracked per device model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-10-day-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 10-day burst
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#across-the-ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Across the ecosystem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Across the ecosystem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-cli
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-cli">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-code-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the code lives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-hass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-hass
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-hass">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-v0x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from v0.x
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-v1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from v1.x
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migrating from v1.x">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imports-and-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Imports and classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-call-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command call style
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-renames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field renames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavioural-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavioural changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-coming-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's coming next
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What&#39;s coming next">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-hass-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-hass v1.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-cli-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-cli v1.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#givenergy-modbus-v20-ecosystem-release-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-modbus v2.0 — ecosystem release notes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-modbus v2.0 — ecosystem release notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#whats-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's new
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What&#39;s new">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multi-model-device-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-model device support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#device-discovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Device discovery
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-aware-command-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model-aware command surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#naming-and-structure-clean-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Naming and structure clean-up
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reliability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reliability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-and-tooling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python and tooling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#by-the-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        By the numbers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="By the numbers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-quiet-years" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The quiet years
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#surface-growth-v130-v200rc1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surface growth, v1.3.0 → v2.0.0rc1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registers-tracked-per-device-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registers tracked per device model
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-10-day-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The 10-day burst
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#across-the-ecosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Across the ecosystem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Across the ecosystem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-cli
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-cli">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-code-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the code lives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-hass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-hass
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="givenergy-hass">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-v0x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from v0.x
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migrating-from-v1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from v1.x
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migrating from v1.x">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imports-and-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Imports and classes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-call-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command call style
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-renames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field renames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavioural-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavioural changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-floor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python floor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#whats-coming-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's coming next
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What&#39;s coming next">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-hass-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-hass v1.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy-cli-v11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        givenergy-cli v1.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>v2.0</h1>
+
+<h2 id="givenergy-modbus-v20-ecosystem-release-notes">givenergy-modbus v2.0 — ecosystem release notes<a class="headerlink" href="#givenergy-modbus-v20-ecosystem-release-notes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">3 years</th>
+<th style="text-align: center;">10 days</th>
+<th style="text-align: center;">+9</th>
+<th style="text-align: center;">636</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">of dormancy</td>
+<td style="text-align: center;">of integration</td>
+<td style="text-align: center;">new device models</td>
+<td style="text-align: center;">registers mapped</td>
+</tr>
+</tbody>
+</table>
+<p>This library went quiet for several years. In that gap, <a href="https://github.com/britkat1980">@britkat1980</a> carried a fork inside <a href="https://github.com/britkat1980/giv_tcp">GivTCP</a> and pushed it forward against a growing range of GivEnergy kit — three-phase inverters, the All-In-One, HV battery stacks, EMS controllers, gateway and meter devices — that the original 1.x line had never seen.</p>
+<p>v2.0 is the reunion. The protocol, model and client work that britkat developed in the fork has been integrated into a maintained main line, alongside the architectural and tooling changes that were needed to make this sustainable rather than just up-to-date. It isn't a clean-slate rewrite — much of the device-modelling reflects what the fork already learned — but it is a deliberate consolidation, with the parts that were inherited on faith now tagged for empirical verification rather than just trusted forever.</p>
+<p>What follows is the ecosystem picture: what changed in <code>givenergy-modbus</code> itself, what's flowing through to <code>givenergy-cli</code> and <code>givenergy-hass</code>, and what to expect when migrating from 1.x.</p>
+<h3 id="whats-new">What's new<a class="headerlink" href="#whats-new" title="Permanent link">&para;</a></h3>
+<h4 id="multi-model-device-support">Multi-model device support<a class="headerlink" href="#multi-model-device-support" title="Permanent link">&para;</a></h4>
+<p>Single-phase, three-phase, EMS, HV BCU/BMU, meters, and gateways now each have their own pydantic v2 data model. Plant assembles them through capability-aware dispatch (<code>select_inverter</code>, <code>select_gateway</code>) rather than assuming a single inverter topology. <code>ThreePhaseInverter</code> lives alongside <code>SinglePhaseInverter</code>; HV stacks are modelled as <code>Bcu</code> + <code>Bmu</code> composing into <code>HvStack</code>; external meter identification arrives via <code>MeterProduct</code> on its own MR register namespace.</p>
+<h4 id="device-discovery">Device discovery<a class="headerlink" href="#device-discovery" title="Permanent link">&para;</a></h4>
+<p>A new <code>Client.detect()</code> probes the bus for the topology, builds <code>PlantCapabilities</code>, and persists it so the next session doesn't re-discover from scratch. <code>Client.load_config()</code> and <code>Client.refresh()</code> then route per-device-kind rather than blasting a single inverter-shaped poll at whatever responds. This is the foundation that lets a mixed topology — e.g. a three-phase inverter with HV stacks and an external meter — be polled correctly without the caller hand-rolling a request list.</p>
+<h4 id="model-aware-command-surface">Model-aware command surface<a class="headerlink" href="#model-aware-command-surface" title="Permanent link">&para;</a></h4>
+<p>A new <code>_InverterCommands</code> mixin is composed onto the inverter model classes, so commands can be called on the instance directly:</p>
+<div class="highlight"><pre><span></span><code><span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
+</code></pre></div>
+<p>The mixin reads <code>self.slot_map</code> so slot setters route to the correct register pair for the model without callers having to thread it through. The underlying <code>commands.*</code> primitive layer stays public and supported — the mixin delegates to it — so lower-level integrations don't lose access. The lean v2.0 mixin covers ~25 universally-applicable commands plus 12 slot setters; model-specific mixins (three-phase, EMS, pause-mode) follow in 2.x once two register-categorisation ambiguities flagged on <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a> are resolved against captured wire data.</p>
+<h4 id="naming-and-structure-clean-up">Naming and structure clean-up<a class="headerlink" href="#naming-and-structure-clean-up" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>slave_address</code> → <code>device_address</code> throughout the protocol and model layers, matching the Modbus.org 2020 terminology change. The old kwargs still work and emit <code>DeprecationWarning</code>.</li>
+<li>Battery-energy alt-source fields renamed from <code>_2</code> / <code>total2</code> to <code>_alt</code>. The <code>_2</code> suffix had been reading as "battery 2" in downstream consumers — see <a href="https://github.com/dewet22/givenergy-hass/issues/32">givenergy-hass#32</a> for the original report. The companion v2.1 work (<a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a>) will add computed-property facades that pick across the source registers, deferred until real wire data is available from a few inverters across firmware versions.</li>
+<li>All model classes now ride on pydantic v2.</li>
+</ul>
+<h4 id="reliability">Reliability<a class="headerlink" href="#reliability" title="Permanent link">&para;</a></h4>
+<p>A handful of concurrency and resilience fixes have landed: connection-cleanup correctly tears down stale reader/writer/tasks before a reconnect (covering unexpected EOF), a late-arrival wire-skip optimisation prevents duplicated frames when probes retry at zero delay, and the bounds-checker's all-zero-bank carve-out stops absent-meter slots flooding the logs each poll. The producer/consumer task pair has had a number of small hardening passes.</p>
+<h4 id="diagnostics">Diagnostics<a class="headerlink" href="#diagnostics" title="Permanent link">&para;</a></h4>
+<p><code>Client.capture_frames(sink, duration=60.0)</code> tees a redacted copy of each TX/RX wire frame to a caller-supplied callback while the normal refresh loop continues. The library guarantees redaction before invoking the sink — serial numbers come through with their prefix letters intact (those carry hardware-family signal: Gen 2 vs Gen 3 vs AIO; dongle vs inverter) and only the digits zeroed. Same byte length, same offsets, so frame-level CRCs stay consistent for offline parsing tools. This unblocks empirical-evidence-led decisions for the v2.1 design questions noted above.</p>
+<h4 id="python-and-tooling">Python and tooling<a class="headerlink" href="#python-and-tooling" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Floor moved to Python 3.14, tracking where Home Assistant Core itself has gone (HA 2026.5.2 and main both require 3.14.2+).</li>
+<li>Release machinery rebuilt: per-push changelog bot replaced with release-time generation from conventional-commit history, PyPI publishing on OIDC (no API tokens), a <code>republish_tag</code> mode for re-shipping an existing tag without bumping, and prerelease stage transitions (a → b → rc) in the bump tooling so an RC can actually be cut from an alpha line.</li>
+<li>Workflow files audited for command-injection patterns and downstream consumers' <code>requires-python</code> floors documented as needing to move in lockstep when this project drops a Python version — that bit caught me out during the rc1 release, so it's in <a href="https://github.com/dewet22/givenergy-modbus/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> now.</li>
+</ul>
+<h3 id="by-the-numbers">By the numbers<a class="headerlink" href="#by-the-numbers" title="Permanent link">&para;</a></h3>
+<p>The shape of this delta tells the phoenix story almost more clearly than the prose.</p>
+<h4 id="the-quiet-years">The quiet years<a class="headerlink" href="#the-quiet-years" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code> v0.10.1     v0.99.0    v1.0.0-dev.0                              v1.0.0 → v2.0.0rc1
+  2022-03 ── 2023-04 ── 2023-04 ─────────────────────────────── 2026-05 ─── 2026-05
+               │                  3 years 1 month of silence                  ▲
+               └─ false start                                       10 days of integration
+</code></pre></div>
+<p>The 1,121-day gap between <code>v1.0.0-dev.0</code> and <code>v1.0.0</code> is the actual dormancy; the 404 days between <code>v0.10.1</code> and <code>v0.99.0</code> was a false start. The 10-day burst at the end is what you're looking at when you read v2.0 — but most of the work it absorbs was happening in the GivTCP fork the whole way through.</p>
+<h4 id="surface-growth-v130-v200rc1">Surface growth, <code>v1.3.0</code> → <code>v2.0.0rc1</code><a class="headerlink" href="#surface-growth-v130-v200rc1" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">v1.3.0</th>
+<th style="text-align: right;">v2.0.0rc1</th>
+<th style="text-align: right;">Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pydantic device models</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;"><strong>+9</strong></td>
+</tr>
+<tr>
+<td>Tracked registers across all models</td>
+<td style="text-align: right;">191</td>
+<td style="text-align: right;">636</td>
+<td style="text-align: right;"><strong>3.3×</strong></td>
+</tr>
+<tr>
+<td>Write-safe register set</td>
+<td style="text-align: right;">26</td>
+<td style="text-align: right;">74</td>
+<td style="text-align: right;"><strong>2.8×</strong></td>
+</tr>
+<tr>
+<td>Public <code>commands.*</code> functions</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">52</td>
+<td style="text-align: right;">+23</td>
+</tr>
+<tr>
+<td><code>Client.*</code> public async methods</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">+4</td>
+</tr>
+<tr>
+<td>Test functions</td>
+<td style="text-align: right;">84</td>
+<td style="text-align: right;">348</td>
+<td style="text-align: right;"><strong>4.1×</strong></td>
+</tr>
+<tr>
+<td>Library LOC (<code>givenergy_modbus/</code>)</td>
+<td style="text-align: right;">2,766</td>
+<td style="text-align: right;">5,743</td>
+<td style="text-align: right;">+2,977</td>
+</tr>
+<tr>
+<td>Model layer LOC (<code>model/</code>)</td>
+<td style="text-align: right;">989</td>
+<td style="text-align: right;">3,080</td>
+<td style="text-align: right;"><strong>3.1×</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The "1 → 10 pydantic models" line is the technical version of the phoenix story: a single monolithic <code>Inverter</code> class became a family — <code>SinglePhaseInverter</code>, <code>ThreePhaseInverter</code>, <code>Bcu</code>, <code>Bmu</code>, <code>Battery</code>, <code>Ems</code>, <code>GatewayV1</code>, <code>GatewayV2</code>, <code>Meter</code>, <code>MeterProduct</code> — each modelling a distinct piece of hardware that the original library never saw but the fork did.</p>
+<h4 id="registers-tracked-per-device-model">Registers tracked per device model<a class="headerlink" href="#registers-tracked-per-device-model" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SinglePhaseInverter  ████████████████████████████  192
+ThreePhaseInverter   ███████████████████████████   186
+Ems                  ███████████                    75
+GatewayV1/V2         ███████████                    75
+Battery              ██████                         44
+Meter                █████                          36
+Bcu                  ████                           28
+</code></pre></div>
+<p>The single-phase count barely moved (191 → 192); the rest of the growth came from device classes that didn't exist as separate models before v2.0.</p>
+<h4 id="the-10-day-burst">The 10-day burst<a class="headerlink" href="#the-10-day-burst" title="Permanent link">&para;</a></h4>
+<p>124 commits between <code>v1.3.0</code> and <code>v2.0.0rc1</code>. Of those, 98 are human-authored; the other 26 are release-tagging and per-push housekeeping (most of which were retired mid-burst when changelog generation moved to release time).</p>
+<pre class="mermaid"><code>pie title Human commits v1.3.0 → v2.0.0rc1 (n=98)
+    "feat" : 30
+    "fix" : 24
+    "chore" : 12
+    "ci" : 7
+    "refactor" : 7
+    "docs" : 5
+    "build" : 5
+    "test" : 2</code></pre>
+<div class="highlight"><pre><span></span><code>43 files changed, 6,788 insertions(+), 352 deletions(-)
+20 new files, 0 deletions
+3 breaking changes (refactor!, fix!, build!)
+</code></pre></div>
+<p>A 19:1 insertions-to-deletions ratio is the integration shape: this release absorbs surface rather than replacing it. The three <code>!</code> commits are the rename of <code>_2</code>/<code>total2</code> battery-energy fields, the slot-map-required-arg change, and the Python 3.13 drop. Everything else is additive.</p>
+<h3 id="across-the-ecosystem">Across the ecosystem<a class="headerlink" href="#across-the-ecosystem" title="Permanent link">&para;</a></h3>
+<p>v2.0 isn't only a library change. The two consumers in this ecosystem are bringing parallel updates.</p>
+<h4 id="givenergy-cli">givenergy-cli<a class="headerlink" href="#givenergy-cli" title="Permanent link">&para;</a></h4>
+<p><a href="https://github.com/dewet22/givenergy-cli"><code>givenergy-cli</code></a> v1.0 ships alongside the library — the first release where it's something I'd actually reach for. The repo had been sitting as a thin wrapper over the v1.x library for the better part of three years; this is its rewrite around the v2.0 client lifecycle, with a real TUI and an operator-facing command surface.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">4</th>
+<th style="text-align: center;">10 days</th>
+<th style="text-align: center;">~1.7k</th>
+<th style="text-align: center;">7 min</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">commands</td>
+<td style="text-align: center;">of build</td>
+<td style="text-align: center;">lines of code</td>
+<td style="text-align: center;">of sparkline history</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>tui</code> — live terminal dashboard.</strong> <code>uv run givenergy-cli --host &lt;ip&gt; tui</code> brings up a tabbed Textual app: a power-flow topology box and an energy-balance ledger on the left, an inverter / battery details column on the right. The topology has animated connector arrows whose speed is proportional to flow magnitude (<code>sqrt(power_kw)</code>, so a 4 kW flow reads as twice as fast as a 1 kW one rather than four times); in-box sparklines next to each value show a trailing ~7-minute view of PV, load, EPS and SOC. The energy-balance ledger uses a 60-second windowed imbalance reading rather than the noisy instantaneous value — register banks aren't sampled atomically, so individual flows can be tens of ms apart even in a real steady state — and the 30-minute energy delta is suppressed when the 0.1 kWh quantisation step dominates the signal.</p>
+<p><strong><code>export</code> — register dump to JSON.</strong> Connects, runs <code>Client.detect()</code> to discover the plant topology, loads the holding-register config blocks, and writes every register from every discovered device address to a single portable JSON file. Partial captures on timeout are still written with a warning, so even a flaky inverter produces something to share.</p>
+<p><strong><code>inspect</code> — render an exported dump.</strong> Reconstructs the <code>Plant</code> from JSON and prints decoded model fields plus per-device raw register tables (decimal + hex). No network needed; works on any machine with the library installed, which makes it the easiest way to share inverter state with someone debugging from a different LAN.</p>
+<p><strong><code>capture</code> — record redacted wire frames.</strong> <code>uv run givenergy-cli --host &lt;ip&gt; capture -o frames.log -d 60</code> writes timestamped <code>&lt;iso&gt; &lt;rx|tx&gt; &lt;hex&gt;</code> lines to a file for the duration. The library applies redaction before the bytes reach the CLI: serial numbers come through with their prefix letters intact (those carry hardware-family signal — Gen 2 vs Gen 3 vs AIO, dongle vs inverter) and only the digits zeroed. Same byte length, same offsets, so the resulting file is safe to attach to a public GitHub issue without a separate sanitisation pass. Closes <a href="https://github.com/dewet22/givenergy-cli/issues/4">givenergy-cli#4</a>.</p>
+<p><strong>v2.0 client lifecycle uptake.</strong> The TUI's refresh loop and the export command now both ride on <code>Client.detect()</code> + <code>load_config()</code> + <code>refresh()</code> rather than the v1.x single-shot poll, so a mixed-topology plant (three-phase + HV stack + external meter) renders correctly once the library can model it end-to-end. The <code>Inverter</code> → <code>SinglePhaseInverter</code> rename and the slot-map required-argument change are reflected through every code path that touches inverter fields.</p>
+<h5 id="where-the-code-lives">Where the code lives<a class="headerlink" href="#where-the-code-lives" title="Permanent link">&para;</a></h5>
+<div class="highlight"><pre><span></span><code>app.py         ████████████████████████████████████  1,097   TUI (topology, ledger, panels)
+history.py     ██████████                              282   ring buffers + sparkline
+registers.py   ███████                                 214   export / inspect
+__main__.py    ████                                    120   typer wiring
+capture.py     ██                                       43   wire-frame logger
+</code></pre></div>
+<p>Most of the line count is the TUI's compositional plumbing — the power-flow box alone is ~400 lines because it pre-renders every row with per-cell colour spans rather than letting Rich format on the fly. That's the difference between a 7 Hz redraw feeling smooth and seeing connector arrows stutter.</p>
+<h4 id="givenergy-hass">givenergy-hass<a class="headerlink" href="#givenergy-hass" title="Permanent link">&para;</a></h4>
+<p><a href="https://github.com/dewet22/givenergy-hass"><code>givenergy-hass</code></a> is cutting <a href="https://github.com/dewet22/givenergy-hass/pull/41">its own v1.0 release</a> alongside the library — the first stable release of a native HA integration for GivEnergy hardware that requires no external components. The previous path into Home Assistant ran through <a href="https://github.com/britkat1980/giv_tcp">GivTCP</a>: a Docker add-on that polls the inverter over Modbus and surfaces entities via MQTT. GivTCP is thorough and battle-tested, and the device-model work it accumulated in the gap is a large part of the foundation v2.0 builds on — but it is an additional moving part, with its own scheduler, MQTT bridge, and configuration surface sitting between the inverter and HA. <code>givenergy-hass</code> cuts that path: Modbus TCP directly from HA to the inverter, a standard config flow, and native entities with no dependencies beyond the integration itself.</p>
+<p>v1.0 is the first release where that's been coherently packaged. The codebase was carrying several years of incremental fixes without a clear story; v1.0 gives it one.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">44</th>
+<th style="text-align: center;">4</th>
+<th style="text-align: center;">110</th>
+<th style="text-align: center;">+18</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">commits</td>
+<td style="text-align: center;">new services</td>
+<td style="text-align: center;">HA entities</td>
+<td style="text-align: center;">new entities</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dashboard generator.</strong> A new <code>givenergy_local.generate_dashboard</code> service builds a full, topology-aware Lovelace dashboard for the discovered inverter and battery configuration, writes the YAML to <code>/local/</code>, and surfaces a download link via persistent notification. The dashboard is versioned: when a new schema ships, the integration raises a fixable HA Repairs issue so users can regenerate with one click and have their settings preserved.</p>
+<p><strong>Wire-frame capture.</strong> <code>givenergy_local.capture_frames</code> wraps <code>Client.capture_frames()</code> directly from HA Developer Tools or an automation — same redaction guarantees as the CLI tool, so the resulting file is safe to attach to a GitHub issue without stripping serial numbers manually (<a href="https://github.com/dewet22/givenergy-hass/issues/45">hass#45</a>).</p>
+<p><strong>Config surface simplified.</strong> The <code>retries</code> and <code>timeout_tolerance</code> config-flow knobs are removed; both invited tuning that extended downtime rather than shortened it, and the library now ships calibrated defaults. <code>async_migrate_entry</code> strips the fields from existing entries on first load. A reconfigure flow was added so connection settings can be changed without removing and re-adding the integration.</p>
+<p><strong>Battery pause is now writable.</strong> <code>battery_pause_mode</code> moves from a read-only sensor to a <code>select</code> (Disabled / Pause Charge / Pause Discharge / Pause Both), with a pair of time entities for the pause slot.</p>
+<p><strong>Alt battery energy sensors corrected.</strong> The <code>e_battery_*_2</code> sensors — previously misread as "Battery 2" but actually an alternate register bank on certain single-phase models — are renamed to <code>e_battery_*_alt</code> to match the library rename, and suppressed on models that don't populate that register bank. Closes the long-standing "Battery 2 with no Battery 1" confusion (<a href="https://github.com/dewet22/givenergy-hass/issues/32">hass#32</a>, <a href="https://github.com/dewet22/givenergy-hass/issues/44">hass#44</a>).</p>
+<p><strong>Reliability.</strong> Coordinator reset semantics corrected (resets on the Nth consecutive failure, matching what <code>timeout_tolerance=N</code> implies); default dropped from 5 to 3. Slot edits write a single endpoint rather than round-tripping a stale read on the other end. Close/reconnect log lines now appear under the integration's own logger.</p>
+<p><strong>Inverter-bound command API migration</strong> (<a href="https://github.com/dewet22/givenergy-hass/issues/43">hass#43</a>) is deferred to v1.1 — <code>commands.*</code> carries no deprecation in 2.x, and the migration is cleaner once the model-specific mixins from givenergy-modbus#75 land.</p>
+<p>The HV battery stack support that britkat carried in the fork — <code>Bcu</code> / <code>Bmu</code> / <code>HvStack</code> — surfaces in HA naturally through the v2.0 device-discovery path; no extra integration work was needed beyond the library bump.</p>
+<h5 id="migrating-from-v0x">Migrating from v0.x<a class="headerlink" href="#migrating-from-v0x" title="Permanent link">&para;</a></h5>
+<p>Entity IDs that change or move platform:</p>
+<table>
+<thead>
+<tr>
+<th>Was</th>
+<th>Is</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sensor…battery_pause_mode</code></td>
+<td><code>select…battery_pause_mode</code></td>
+<td>Now writable</td>
+</tr>
+<tr>
+<td><code>sensor…e_battery_charge_2</code></td>
+<td><code>sensor…e_battery_charge_alt</code></td>
+<td>Library rename; absent on models that don't populate it</td>
+</tr>
+<tr>
+<td><code>sensor…e_battery_discharge_2</code></td>
+<td><code>sensor…e_battery_discharge_alt</code></td>
+<td>"</td>
+</tr>
+<tr>
+<td><code>sensor…e_battery_charge_day_2</code></td>
+<td><code>sensor…e_battery_charge_day_alt</code></td>
+<td>"</td>
+</tr>
+<tr>
+<td><code>sensor…e_battery_discharge_day_2</code></td>
+<td><code>sensor…e_battery_discharge_day_alt</code></td>
+<td>"</td>
+</tr>
+</tbody>
+</table>
+<p><code>…</code> is <code>givenergy_inverter_&lt;serial&gt;_</code>. Orphaned entries from the old IDs can be removed via <strong>Settings → Devices &amp; Services → GivEnergy Local → the inverter device → "+ N entities not shown"</strong>.</p>
+<p>Config entries are migrated automatically on first load: <code>retries</code> and <code>timeout_tolerance</code> are stripped and the integration runs on the library's calibrated defaults. No user action needed.</p>
+<h3 id="migrating-from-v1x">Migrating from v1.x<a class="headerlink" href="#migrating-from-v1x" title="Permanent link">&para;</a></h3>
+<h4 id="imports-and-classes">Imports and classes<a class="headerlink" href="#imports-and-classes" title="Permanent link">&para;</a></h4>
+<p>The single-class inverter model has split. If you wrote against v1.x:</p>
+<ul>
+<li><code>Inverter</code> → <code>SinglePhaseInverter</code>. A module-level <code>Inverter</code> alias still exists and emits <code>DeprecationWarning</code>; prefer <code>Plant.inverter</code>, which returns the correct concrete type for the discovered hardware (<code>SinglePhaseInverter | ThreePhaseInverter</code>).</li>
+<li><code>InverterRegisterGetter</code> → <code>SinglePhaseInverterRegisterGetter</code>. Same shape, just renamed.</li>
+<li>New models you may need to be aware of when handling mixed topologies: <code>ThreePhaseInverter</code>, <code>Bcu</code>, <code>Bmu</code>, <code>HvStack</code>, <code>Meter</code>, <code>MeterProduct</code>, <code>Ems</code>, <code>GatewayV1</code>, <code>GatewayV2</code>.</li>
+</ul>
+<h4 id="command-call-style">Command call style<a class="headerlink" href="#command-call-style" title="Permanent link">&para;</a></h4>
+<p>The recommended pattern is now:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Before (v1.x):</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+
+<span class="c1"># After (v2.0):</span>
+<span class="n">inverter</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+</code></pre></div>
+<p><code>commands.*</code> remains supported as the primitive layer the mixin delegates to. There's no deprecation planned within 2.x — see the <a href="../../usage/#stability">stability note in usage.md</a>.</p>
+<h4 id="field-renames">Field renames<a class="headerlink" href="#field-renames" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Was</th>
+<th>Is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>e_battery_discharge_2</code></td>
+<td><code>e_battery_discharge_alt</code></td>
+</tr>
+<tr>
+<td><code>e_battery_charge_2</code></td>
+<td><code>e_battery_charge_alt</code></td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_day_2</code></td>
+<td><code>e_battery_discharge_day_alt</code></td>
+</tr>
+<tr>
+<td><code>e_battery_charge_day_2</code></td>
+<td><code>e_battery_charge_day_alt</code></td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_total2</code></td>
+<td><code>e_battery_discharge_total_alt</code></td>
+</tr>
+<tr>
+<td><code>e_battery_charge_total2</code></td>
+<td><code>e_battery_charge_total_alt</code></td>
+</tr>
+</tbody>
+</table>
+<p>The unsuffixed <code>e_battery_charge_day</code> / <code>e_battery_discharge_day</code> are unchanged. The unified <code>e_battery_charge_total</code> / <code>e_battery_discharge_total</code> computed properties land in v2.1.</p>
+<h4 id="behavioural-changes">Behavioural changes<a class="headerlink" href="#behavioural-changes" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>slot_map</code> is now a required positional argument on <code>commands.set_*_slot*</code> primitives (it used to default to <code>EXTENDED_SLOTS</code>, which silently mis-routed on single-phase inverters with only 2 slots). The inverter-bound API removes the need to pass it at all.</li>
+<li><code>Client.detect()</code> is now part of the connection lifecycle if you want capability-aware refresh. Existing code that called <code>connect()</code> + <code>refresh_plant()</code> continues to work but won't get the device-specific routing.</li>
+</ul>
+<h4 id="python-floor">Python floor<a class="headerlink" href="#python-floor" title="Permanent link">&para;</a></h4>
+<p>Python 3.14+. If you pin <code>givenergy-modbus</code> on a long-lived release branch, drop your <code>requires-python</code> to match — uv will otherwise fail the next lock refresh with a Python-version split.</p>
+<h3 id="whats-coming-next">What's coming next<a class="headerlink" href="#whats-coming-next" title="Permanent link">&para;</a></h3>
+<p>v2.1 is the home for things that depend on real wire data rather than inherited assumptions:</p>
+<ul>
+<li>The computed-property facade unifying the battery-energy <code>_alt</code> sources behind canonical <code>e_battery_charge_total</code> / <code>e_battery_discharge_total</code> attributes (<a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a> v2.1 piece). Blocked on capture data from a few inverters across firmware versions via <a href="https://github.com/dewet22/givenergy-modbus/issues/66">#66</a>.</li>
+<li>Model-specific command mixins for three-phase, EMS, and pause-mode on top of the v2.0 scaffolding (<a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a> v2.1 piece). Pending verification of the register-categorisation ambiguities flagged on the issue.</li>
+<li>Re-applying the model-layer correctness fixes from <a href="https://github.com/dewet22/givenergy-modbus/issues/74">#74</a> that were deferred to keep v2.0 scope tight.</li>
+<li>Bounds-enforcement flip (<a href="https://github.com/dewet22/givenergy-modbus/issues/57">#57</a>) — the corruption-pattern evidence in <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a> makes the case for shipping all three enforcement steps together, including bank-level discard in <code>Plant._commit_bank</code>. Field-level rejection alone would miss the in-bounds anomalies that account for the majority of observed corruption events. Plus field-validation of the inherited register mappings (<a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a>).</li>
+</ul>
+<p>The shape of those is mostly settled; what's not is the empirical signal that should drive the implementation choices. v2.0 establishes the surface that lets that data come in — through the capture tool, through downstream consumers using the new attributes, through actual deployments on mixed topologies.</p>
+<p>The capture tool has already produced its first substantial finding: <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a> characterises two distinct corruption patterns observed on my own plant — a deterministic 16-field response substitution at the dongle's IR(0-59) read of device 0x32 (Pattern A), and field-targeted zero substitution on specific BMS temperature fields (Pattern B). Both pre-date v2.0; neither is fixable upstream now that GivEnergy firmware updates have stopped. The v2.1 bounds-enforcement flip is the library-side mitigation — anyone running v2.0 in HA today will see these patterns as occasional graph spikes; v2.1 will discard the bad poll cycles cleanly.</p>
+<h4 id="givenergy-hass-v11">givenergy-hass v1.1<a class="headerlink" href="#givenergy-hass-v11" title="Permanent link">&para;</a></h4>
+<p>Two items deferred from v1.0 land here, both gated on givenergy-modbus v2.1:</p>
+<ul>
+<li><strong>Inverter-bound command API</strong> (<a href="https://github.com/dewet22/givenergy-hass/issues/43">hass#43</a>): migrate the ~15 <code>commands.*</code> call sites across the platform modules to the <code>inverter.*</code> instance methods, removing the need to pass <code>slot_map</code> at call sites. Gated on the model-specific mixins from <a href="https://github.com/dewet22/givenergy-modbus/issues/75">givenergy-modbus#75</a>.</li>
+<li><strong>Unified battery energy sensors</strong>: once the computed-property facade from <a href="https://github.com/dewet22/givenergy-modbus/issues/76">givenergy-modbus#76</a> lands, the <code>_alt</code> sensor variants can be retired in favour of canonical <code>e_battery_charge_total</code> / <code>e_battery_discharge_total</code> attributes that pick correctly across register banks regardless of model.</li>
+</ul>
+<h4 id="givenergy-cli-v11">givenergy-cli v1.1<a class="headerlink" href="#givenergy-cli-v11" title="Permanent link">&para;</a></h4>
+<p>Honest "not yet" items rather than commitments to a particular release:</p>
+<ul>
+<li><strong>Energy tab.</strong> The TUI exposes a second "Energy" tab that's currently a placeholder. The plan is a cumulative-energy view of the day's flows alongside the existing instantaneous-power view — a counterpart to the imbalance ledger but in kWh.</li>
+<li><strong>Write commands.</strong> No CLI surface yet for setting charge targets, slots or modes. The library's inverter-bound command API has them, and the TUI is the obvious home, but the model-specific mixins from <a href="https://github.com/dewet22/givenergy-modbus/issues/75">givenergy-modbus#75</a> are landing in 2.1 and the cli would rather wait for that scaffolding than build a parallel layer.</li>
+<li><strong>Reconnect re-entrancy.</strong> The TUI's auto-reconnect leans on the assumption that the previous reader/writer tasks have self-terminated on EOF before a new <code>connect()</code> runs. Tracked upstream at <a href="https://github.com/dewet22/givenergy-modbus/issues/62">givenergy-modbus#62</a>; the TODO sits inline in cli's <code>app.py</code> so it doesn't get forgotten when that lands.</li>
+<li><strong><code>debug</code> command group.</strong> <code>capture</code> sits at the top level for now; if more diagnostic tools accrue, a <code>debug</code> namespace would be the natural home and <code>capture</code> could move alongside them without changing what it does.</li>
+</ul>
+<p>If you ran on v1.x, thanks for sticking around. If you ran on the GivTCP fork in the gap, the work you did with it is the reason v2.0 has the shape it does — particularly the device coverage and the model boundaries.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/dewet22/givenergy-modbus" target="_blank" rel="noopener" title="Github" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="mailto:givenergy-modbus@dewet.org" target="_blank" rel="noopener" title="" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20 8-8 5-8-5V6l8 5 8-5m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs.sticky"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

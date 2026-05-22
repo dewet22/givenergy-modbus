@@ -432,6 +432,33 @@
   
   
     <li class="md-nav__item">
+      <a href="architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="api/" class="md-nav__link">
         
   
@@ -502,6 +529,92 @@
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release notes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Release notes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="release-notes/v2.0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -603,16 +716,15 @@
   <h1>Home</h1>
 
 <h2 id="givenergy-modbus">GivEnergy Modbus<a class="headerlink" href="#givenergy-modbus" title="Permanent link">&para;</a></h2>
+<p align="center"><img src="../logo.png" alt="GivEnergy" width="320"></p>
+
 <p><a href="https://pypi.org/project/givenergy-modbus/"><img alt="pypi" src="https://img.shields.io/pypi/v/givenergy-modbus" /></a>
 <a href="https://pypi.org/project/givenergy-modbus/"><img alt="python" src="https://img.shields.io/pypi/pyversions/givenergy-modbus" /></a>
-<a href="https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain"><img alt="GitHub branch status" src="https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main" /></a>
-<a href="https://github.com/dewet22/givenergy-modbus/actions/workflows/release.yml"><img alt="release workflow" src="https://img.shields.io/github/actions/workflow/status/dewet22/givenergy-modbus/release.yml" /></a>
+<a href="https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain"><img alt="CI" src="https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main" /></a>
 <a href="https://codecov.io/github/dewet22/givenergy-modbus"><img alt="codecov" src="https://img.shields.io/codecov/c/github/dewet22/givenergy-modbus" /></a>
-<img alt="PyPI - License" src="https://img.shields.io/pypi/l/givenergy-modbus" />
+<a href="../LICENSE"><img alt="license" src="https://img.shields.io/github/license/dewet22/givenergy-modbus" /></a>
 <a href="https://github.com/astral-sh/ruff"><img alt="Ruff" src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" /></a></p>
-<p>A python library to access GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy
-Cloud. Inspired by and originally built on <a href="https://pymodbus.readthedocs.io/">pymodbus</a>, it now provides its own
-asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.</p>
+<p>A Python library for communicating with GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy Cloud. Inspired by and originally built on <a href="https://pymodbus.readthedocs.io/">pymodbus</a>, it now provides its own asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.</p>
 <blockquote>
 <p>⚠️ This project makes no representations as to its completeness or correctness. You use it at your own risk — if your
 inverter mysteriously explodes because you accidentally set the <code>BOOMTIME</code> register or you consume a MWh of
@@ -643,15 +755,18 @@ which you send via <code>one_shot_command</code> or <code>execute</code>:</p>
     <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 
-    <span class="c1"># change configuration on the device:</span>
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
-    <span class="c1"># set a charging slot from 00:30 to 04:30</span>
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot_1</span><span class="p">(</span><span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">)))</span>
-    <span class="c1"># set the inverter to charge from excess solar and discharge to meet demand</span>
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_mode_dynamic</span><span class="p">())</span>
-
+    <span class="c1"># Read current state first (needed for slot_map)</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">plant</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">plant</span>
+
+    <span class="c1"># Write configuration to the device</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+    <span class="c1"># set a charging slot from 00:30 to 04:30; slot_map selects correct registers for this model</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span>
+        <span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">slot_map</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="c1"># set the inverter to charge from excess solar and discharge to meet demand</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_mode_dynamic</span><span class="p">())</span>
 
     <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter_serial_number</span> <span class="o">==</span> <span class="s1">&#39;SA1234G567&#39;</span>
     <span class="k">assert</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">model</span> <span class="o">==</span> <span class="n">Model</span><span class="o">.</span><span class="n">HYBRID</span>
