@@ -236,11 +236,17 @@ class PlantCapabilities:
         version = normalised.get("schema_version")
         if version != cls.SCHEMA_VERSION:
             raise ValueError(f"unsupported PlantCapabilities schema_version {version!r}; expected {cls.SCHEMA_VERSION}")
+
+        def _addr(v: Any) -> int:
+            # Accept either hex strings (the canonical to_dict() form) or raw ints
+            # for resilience against hand-edited or differently-serialised payloads.
+            return int(v, 0) if isinstance(v, str) else int(v)
+
         return cls(
             device_type=Model[normalised["device_type"]],
-            inverter_address=int(normalised["inverter_address"], 0),
-            meter_addresses=[int(a, 0) for a in normalised["meter_addresses"]],
-            lv_battery_addresses=[int(a, 0) for a in normalised["lv_battery_addresses"]],
+            inverter_address=_addr(normalised["inverter_address"]),
+            meter_addresses=[_addr(a) for a in normalised["meter_addresses"]],
+            lv_battery_addresses=[_addr(a) for a in normalised["lv_battery_addresses"]],
             bcu_stacks=[(offset, modules) for offset, modules in normalised["bcu_stacks"]],
         )
 

@@ -262,6 +262,7 @@ empty-slot scan on next start.
 
 ```python
 import json
+from pathlib import Path
 
 caps = await client.detect()
 Path("~/.givenergy-caps.json").expanduser().write_text(json.dumps(caps.to_dict()))
@@ -270,6 +271,9 @@ Path("~/.givenergy-caps.json").expanduser().write_text(json.dumps(caps.to_dict()
 On next start, hand the previously-captured caps back via `prior=`:
 
 ```python
+import json
+from pathlib import Path
+
 from givenergy_modbus.exceptions import PlantTopologyMismatch
 from givenergy_modbus.model.plant import PlantCapabilities
 

@@ -319,10 +319,13 @@ async def test_detect_hinted_raises_when_hinted_address_missing():
 
 @pytest.mark.asyncio
 async def test_detect_hinted_hv_skips_bms_read():
-    """Hinted HV mode uses prior.bcu_stacks directly and skips the 0xA0 BMS probe."""
+    """Hinted HV mode probes the BCUs (skipping BMS at 0xA0) and reads actual module counts."""
     client = _make_client()
     _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
     # Crucially: no cache primed at 0xA0 — if hinted mode tries to read it, it'll fail downstream.
+    # Prime each BCU's IR(64) so the actual-module read returns the expected count.
+    _prime_cache(client, 0x70, {IR(64): 3})
+    _prime_cache(client, 0x71, {IR(64): 2})
 
     prior = PlantCapabilities(
         device_type=Model.ALL_IN_ONE,
@@ -341,3 +344,29 @@ async def test_detect_hinted_hv_skips_bms_read():
             caps = await client.detect(prior=prior)
 
     assert caps.bcu_stacks == [(0, 3), (1, 2)]
+
+
+@pytest.mark.asyncio
+async def test_detect_hinted_raises_on_bcu_module_count_drift():
+    """If a BCU now reports a different module count than prior, the final topology check raises."""
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
+    # Stack 0 originally had 3 modules; it now reports 2 (a module was removed).
+    _prime_cache(client, 0x70, {IR(64): 2})
+    _prime_cache(client, 0x71, {IR(64): 2})
+
+    prior = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        bcu_stacks=[(0, 3), (1, 2)],
+    )
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in {0x70, 0x71}
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            with pytest.raises(PlantTopologyMismatch) as exc_info:
+                await client.detect(prior=prior)
+
+    assert exc_info.value.prior.bcu_stacks == [(0, 3), (1, 2)]
+    assert exc_info.value.actual.bcu_stacks == [(0, 2), (1, 2)]

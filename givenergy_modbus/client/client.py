@@ -222,15 +222,22 @@ class Client:
     ) -> None:
         """Populate caps.bcu_stacks. Hinted mode trusts prior layout; cold mode reads BMS at 0xA0."""
         if prior is not None:
-            # Hinted: confirm each previously-seen BCU is still answering. Skips the
-            # BMS read at 0xA0 entirely since prior tells us the layout.
-            for offset, num_modules in prior.bcu_stacks:
+            # Hinted: probe each previously-seen BCU and record what the BCU actually
+            # reports for its module count (rather than trusting `prior`). The probe
+            # populates IR(60–64) into the register cache; IR(64) is the BCU's own
+            # module count. Letting actual values flow into `caps` here means a
+            # change in stack composition is surfaced by the subsequent comparison
+            # against `prior` rather than silently accepted. BMS read at 0xA0 is
+            # skipped entirely — prior already tells us which BCUs to look at.
+            for offset, _stored_modules in prior.bcu_stacks:
                 if await self._probe(
                     ReadInputRegistersRequest(base_register=60, register_count=5, device_address=0x70 + offset),
                     timeout=probe_timeout,
                     retries=probe_retries,
                 ):
-                    caps.bcu_stacks.append((offset, num_modules))
+                    bcu_cache = self.plant.register_caches.get(0x70 + offset, RegisterCache())
+                    actual_modules = bcu_cache.get(IR(64)) or 0
+                    caps.bcu_stacks.append((offset, actual_modules))
             return
 
         # Cold path: ask the BMS how many BCUs exist, then probe each.
@@ -249,7 +256,7 @@ class Client:
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
-                bcu_cache: RegisterCache = self.plant.register_caches.get(0x70 + i, RegisterCache())
+                bcu_cache = self.plant.register_caches.get(0x70 + i, RegisterCache())
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
