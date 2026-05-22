@@ -127,6 +127,7 @@ class WriteHoldingRegister(TransparentMessage, ABC):
             and self.has_same_shape(o)
             and o.register == self.register
             and o.value == self.value
+            and o.error == self.error
         )
 
     def _encode_function_data(self):
