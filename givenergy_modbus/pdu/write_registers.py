@@ -35,6 +35,54 @@ WRITE_SAFE_REGISTERS = {
     114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
     116,  # CHARGE_TARGET_SOC
     163,  # REBOOT
+    246,  # CHARGE_SLOT_3_START
+    247,  # CHARGE_SLOT_3_END
+    249,  # CHARGE_SLOT_4_START
+    250,  # CHARGE_SLOT_4_END
+    252,  # CHARGE_SLOT_5_START
+    253,  # CHARGE_SLOT_5_END
+    255,  # CHARGE_SLOT_6_START
+    256,  # CHARGE_SLOT_6_END
+    258,  # CHARGE_SLOT_7_START
+    259,  # CHARGE_SLOT_7_END
+    261,  # CHARGE_SLOT_8_START
+    262,  # CHARGE_SLOT_8_END
+    264,  # CHARGE_SLOT_9_START
+    265,  # CHARGE_SLOT_9_END
+    267,  # CHARGE_SLOT_10_START
+    268,  # CHARGE_SLOT_10_END
+    276,  # DISCHARGE_SLOT_3_START
+    277,  # DISCHARGE_SLOT_3_END
+    279,  # DISCHARGE_SLOT_4_START
+    280,  # DISCHARGE_SLOT_4_END
+    282,  # DISCHARGE_SLOT_5_START
+    283,  # DISCHARGE_SLOT_5_END
+    285,  # DISCHARGE_SLOT_6_START
+    286,  # DISCHARGE_SLOT_6_END
+    288,  # DISCHARGE_SLOT_7_START
+    289,  # DISCHARGE_SLOT_7_END
+    291,  # DISCHARGE_SLOT_8_START
+    292,  # DISCHARGE_SLOT_8_END
+    294,  # DISCHARGE_SLOT_9_START
+    295,  # DISCHARGE_SLOT_9_END
+    297,  # DISCHARGE_SLOT_10_START
+    298,  # DISCHARGE_SLOT_10_END
+    166,  # ENABLE_RTC
+    313,  # BATTERY_CHARGE_LIMIT_AC
+    314,  # BATTERY_DISCHARGE_LIMIT_AC
+    318,  # BATTERY_PAUSE_MODE
+    319,  # BATTERY_PAUSE_SLOT_START
+    320,  # BATTERY_PAUSE_SLOT_END
+    1112,  # AC_CHARGE_ENABLE
+    1122,  # FORCE_DISCHARGE_ENABLE
+    1123,  # FORCE_CHARGE_ENABLE
+    2040,  # EMS_PLANT_ENABLE
+    2062,  # EXPORT_SLOT_1_START
+    2063,  # EXPORT_SLOT_1_END
+    2065,  # EXPORT_SLOT_2_START
+    2066,  # EXPORT_SLOT_2_END
+    2068,  # EXPORT_SLOT_3_START
+    2069,  # EXPORT_SLOT_3_END
 }
 
 
@@ -50,7 +98,11 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         if len(args) == 2:
             kwargs["register"] = args[0]
             kwargs["value"] = args[1]
-        kwargs["slave_address"] = kwargs.get("slave_address", 0x11)
+        # WriteHoldingRegister defaults to 0x11 (the inverter's setup address) rather than the
+        # 0x32 inherited from TransparentMessage. Only fill the default if neither alias was
+        # supplied; the base __init__ handles slave_address→device_address mapping and warning.
+        if "device_address" not in kwargs and "slave_address" not in kwargs:
+            kwargs["device_address"] = 0x11
         super().__init__(**kwargs)
         if not isinstance(register, int):
             raise ValueError(f"Register type {type(register)} is unacceptable")
@@ -122,7 +174,9 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
         self._builder.add_16bit_uint(self.check)
 
     def expected_response(self):
-        return WriteHoldingRegisterResponse(register=self.register, value=self.value, slave_address=self.slave_address)
+        return WriteHoldingRegisterResponse(
+            register=self.register, value=self.value, device_address=self.device_address
+        )
 
 
 class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse):

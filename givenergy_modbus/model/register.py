@@ -1,3 +1,5 @@
+import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -5,6 +7,8 @@ from json import JSONEncoder
 from typing import Any, get_type_hints
 
 from givenergy_modbus.model import TimeSlot
+
+_logger = logging.getLogger(__name__)
 
 
 class Converter:
@@ -30,9 +34,21 @@ class Converter:
             return (high_val << 16) + low_val
 
     @staticmethod
-    def timeslot(start_time: int, end_time: int) -> TimeSlot:
+    def int32(high_val: int | None, low_val: int | None) -> int | None:
+        """Combine two registers into a signed 32-bit int (two's complement)."""
+        if high_val is not None and low_val is not None:
+            raw = (high_val << 16) + low_val
+            return raw if raw < 0x80000000 else raw - 0x100000000
+        return None
+
+    @staticmethod
+    def timeslot(start_time: int, end_time: int) -> "TimeSlot | None":
         """Interpret register as a time slot."""
         if start_time is not None and end_time is not None:
+            # Some inverters store 60 as a sentinel for an unset slot (portal shows '--:--').
+            # Passing 60 as minutes to TimeSlot.from_repr raises ValueError, so treat it as unset.
+            if start_time == 60 or end_time == 60:
+                return None
             return TimeSlot.from_repr(start_time, end_time)
 
     @staticmethod
@@ -104,6 +120,35 @@ class Converter:
             return datetime(year + 2000, month, day, hour, min, sec)
         return None
 
+    @staticmethod
+    def nominal_voltage(option: int) -> int | None:
+        """Map register option index to nominal grid voltage (V): 0→230, 1→208, 2→240."""
+        return {0: 230, 1: 208, 2: 240}.get(option)
+
+    @staticmethod
+    def nominal_frequency(option: int) -> int | None:
+        """Map register option index to nominal grid frequency (Hz): 0→50, 1→60."""
+        return {0: 50, 1: 60}.get(option)
+
+    @staticmethod
+    def bitfield(val: int | None, low: int, high: int) -> int | None:
+        """Extract the bit range [low, high] (inclusive) from a 16-bit register value.
+
+        Indices are MSB-first: 0 = bit 15, 15 = bit 0.
+        """
+        if val is None:
+            return None
+        return (val >> (15 - high)) & ((1 << (high - low + 1)) - 1)
+
+    @staticmethod
+    def gateway_version(first: int, second: int, third: int, fourth: int) -> str | None:
+        """Decode gateway firmware version string from 4 registers (e.g. 'GA000009')."""
+        if None in (first, second, third, fourth):
+            return None
+        prefix = b"".join(v.to_bytes(2, "big") for v in (first, second)).decode("latin1").replace("\x00", "")
+        digits = "".join(str(b) for v in (third, fourth) for b in v.to_bytes(2, "big"))
+        return prefix + digits
+
 
 @dataclass(init=False)
 class RegisterDefinition:
@@ -112,14 +157,34 @@ class RegisterDefinition:
     pre_conv: Callable | tuple | None
     post_conv: Callable | tuple[Callable, Any] | None
     registers: tuple["Register"]
+    min: int | float | None
+    max: int | float | None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, min: int | float | None = None, max: int | float | None = None):
         self.pre_conv = args[0]
         self.post_conv = args[1]
         self.registers = args[2:]  # type: ignore[assignment]
+        self.min = min
+        self.max = max
 
     def __hash__(self):
         return hash(self.registers)
+
+
+_SERIAL_PATTERN = re.compile(r"[A-Z]{2}\d{4}[A-Z]\d{3}")
+
+
+def is_valid_serial(s: str | None) -> bool:
+    """Return True if s looks like a real GivEnergy serial number (exactly 10 [A-Z0-9] chars).
+
+    Also logs a warning when the value passes the length/charset gate but does not match the
+    expected AA0000A000 pattern — preserving compatibility with unknown real-world variants.
+    """
+    if not (s and len(s) == 10 and s.isalnum() and s == s.upper()):
+        return False
+    if not _SERIAL_PATTERN.fullmatch(s):
+        _logger.warning("serial number %r is valid but does not match expected pattern AA0000A000", s)
+    return True
 
 
 class RegisterGetter:
@@ -153,14 +218,82 @@ class RegisterGetter:
 
         if defn.post_conv:
             if isinstance(defn.post_conv, tuple):
-                return defn.post_conv[0](val, *defn.post_conv[1:])
+                val = defn.post_conv[0](val, *defn.post_conv[1:])
             else:
-                return defn.post_conv(val)
+                val = defn.post_conv(val)
+
+        if val is not None and (defn.min is not None or defn.max is not None) and not all(r == 0 for r in regs):
+            # An all-zero raw bank means the hardware didn't populate these registers (e.g. an
+            # absent external meter slot); skip bounds checks for that case rather than spamming
+            # the log every poll. Doing this at the raw level rather than post-conv keeps the
+            # "0x0000 means unset" intent unambiguous.
+            if (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max):
+                # TODO(enforcement): change to `return None` to suppress out-of-bounds values.
+                # When that happens, keep the all-zero-raw carve-out above — or push it down into
+                # the decoder so missing registers come back as None rather than 0.
+                _logger.debug("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
+
         return val
 
     def build(self) -> dict[str, Any]:
         """Resolve all fields in REGISTER_LUT against the wrapped cache."""
         return {key: self.get(key) for key in self.REGISTER_LUT}
+
+    @classmethod
+    def validate_bank(
+        cls,
+        incoming: dict["Register", int],
+        committed: Any,
+    ) -> list[str]:
+        """Check incoming registers against bounds-constrained fields.
+
+        Returns the names of any fields whose post-conversion value falls outside
+        the defined bounds. Only fields that have bounds defined and whose registers
+        overlap the incoming bank are checked.
+        """
+        from givenergy_modbus.model.register_cache import RegisterCache
+
+        candidate = RegisterCache({**committed, **incoming})
+        getter = cls(candidate)
+        violations = []
+
+        for name, defn in cls.REGISTER_LUT.items():
+            if defn.min is None and defn.max is None:
+                continue
+            if not any(r in incoming for r in defn.registers):
+                continue
+            if any(candidate.get(r) is None for r in defn.registers):
+                continue
+            if all(candidate.get(r) == 0 for r in defn.registers):
+                # All-zero raw registers: hardware sentinel for "unpopulated" — skip bounds
+                # check to match get()'s behaviour.
+                continue
+            val = getter.get(name)
+            # TODO(enforcement): once get() suppresses OOB values (returns None), this explicit
+            # bounds check can be replaced with the simpler `if getter.get(name) is None`.
+            if val is not None and (
+                (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max)
+            ):
+                violations.append(name)
+
+        return violations
+
+    @classmethod
+    def is_coherent(cls, incoming: dict["Register", int], committed: Any) -> bool:
+        """Return False if the incoming bank contains a serial number that is not valid.
+
+        Only fires when the serial number registers are present in the incoming bank.
+        Getters without a 'serial_number' field always return True.
+        """
+        if "serial_number" not in cls.REGISTER_LUT:
+            return True
+        serial_regs = set(cls.REGISTER_LUT["serial_number"].registers)
+        if not serial_regs & set(incoming):
+            return True
+        from givenergy_modbus.model.register_cache import RegisterCache
+
+        candidate = RegisterCache({**committed, **incoming})
+        return is_valid_serial(cls(candidate).get("serial_number"))
 
     @classmethod
     def to_fields(cls) -> dict[str, tuple[Any, None]]:
@@ -218,6 +351,7 @@ class Register:
 
     TYPE_HOLDING = "HR"
     TYPE_INPUT = "IR"
+    TYPE_METER = "MR"
 
     _type: str
     _idx: int
@@ -247,3 +381,9 @@ class IR(Register):
     """Input Register."""
 
     _type = Register.TYPE_INPUT
+
+
+class MR(Register):
+    """Meter Product Register."""
+
+    _type = Register.TYPE_METER

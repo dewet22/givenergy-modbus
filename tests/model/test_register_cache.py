@@ -1,7 +1,7 @@
 import datetime
 
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.model.register import HR, IR, MR
 from givenergy_modbus.model.register_cache import RegisterCache
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
@@ -16,6 +16,23 @@ def test_register_cache(register_cache):
 def test_to_from_json():
     """Ensure we can unserialize a RegisterCache from JSON."""
     assert RegisterCache.from_json('{"HR(1)": 2, "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
+
+
+def test_to_from_json_mr():
+    """Ensure MR keys round-trip through JSON serialisation."""
+    assert RegisterCache.from_json('{"MR(0)": 1, "MR:5": 99}') == {MR(0): 1, MR(5): 99}
+
+
+def test_from_json_skips_unknown_register_prefix():
+    """An unknown register prefix (e.g. from a future namespace) must be skipped, not crash.
+
+    The previous behaviour was to abort the entire deserialisation with KeyError
+    on encountering anything outside the HR/IR/MR lookup table.
+    """
+    # Known + unknown mixed — unknown silently dropped, known retained.
+    assert RegisterCache.from_json('{"HR(1)": 2, "XR(99)": 42, "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
+    # Entirely unknown — yields an empty cache, not an exception.
+    assert RegisterCache.from_json('{"XR(0)": 1, "ZR(2)": 3}') == {}
 
 
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):

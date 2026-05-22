@@ -159,7 +159,7 @@ class ReadHoldingRegistersRequest(ReadHoldingRegisters, ReadRegistersRequest):
 
     def expected_response(self):
         return ReadHoldingRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
 
@@ -181,7 +181,7 @@ class ReadInputRegistersRequest(ReadInputRegisters, ReadRegistersRequest):
 
     def expected_response(self):
         return ReadInputRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
 
@@ -192,23 +192,36 @@ class ReadInputRegistersResponse(ReadInputRegisters, ReadRegistersResponse):
         return
 
 
-class ReadBatteryInputRegisters(ReadRegistersMessage, ABC):
-    """Request & Response PDUs for function #4/Read Input Registers."""
+class ReadMeterProductRegisters(ReadRegistersMessage, ABC):
+    """Request & Response PDUs for function #0x16/Read Meter Product Registers."""
 
     transparent_function_code = 0x16
 
 
-class ReadBatteryInputRegistersRequest(ReadBatteryInputRegisters, ReadRegistersRequest):
-    """Concrete PDU implementation for handling function #4/Read Input Registers request messages."""
+class ReadMeterProductRegistersRequest(ReadMeterProductRegisters, ReadRegistersRequest):
+    """Concrete PDU implementation for handling function #0x16/Read Meter Product Registers request messages."""
 
     def expected_response(self):
-        return ReadInputRegistersResponse(
-            base_register=self.base_register, register_count=self.register_count, slave_address=self.slave_address
+        return ReadMeterProductRegistersResponse(
+            base_register=self.base_register, register_count=self.register_count, device_address=self.device_address
         )
 
+    def _update_check_code(self):
+        # FC 0x16 uses a different CRC layout from FC 0x03/0x04 — it includes the device address
+        # in the hash input and byte-swaps the result. Confirmed against a wire capture
+        # (device=0x01, base=0x3c, count=0x3c → wire CRC 0x8814). See issue #58.
+        crc_builder = PayloadEncoder()
+        crc_builder.add_8bit_uint(self.device_address)
+        crc_builder.add_8bit_uint(self.transparent_function_code)
+        crc_builder.add_16bit_uint(self.base_register)
+        crc_builder.add_16bit_uint(self.register_count)
+        raw = crc_builder.crc
+        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
+        self._builder.add_16bit_uint(self.check)
 
-class ReadBatteryInputRegistersResponse(ReadBatteryInputRegisters, ReadRegistersResponse):
-    """Concrete PDU implementation for handling function #4/Read Input Registers response messages."""
+
+class ReadMeterProductRegistersResponse(ReadMeterProductRegisters, ReadRegistersResponse):
+    """Concrete PDU implementation for handling function #0x16/Read Meter Product Registers response messages."""
 
     def expected_response(self):
         return

@@ -109,7 +109,7 @@ class BasePDU(ABC):
     def has_same_shape(self, o: object):
         """Calculates whether a given message has the "same shape".
 
-        Messages are similarly shaped when they match message type (response, error state), location (slave device,
+        Messages are similarly shaped when they match message type (response, error state), location (device address,
         register type, register indexes) etc. but not data / register values.
 
         This is not an identity check but could be used both for creating template expected responses from

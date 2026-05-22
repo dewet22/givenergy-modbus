@@ -103,7 +103,7 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
 
 
 def test_from_registers_unsure_data(register_cache_battery_unsure):
-    """Test case of battery registers returned for non-existent slave."""
+    """Test case of battery registers returned for non-existent device address."""
     b = Battery.from_register_cache(register_cache_battery_unsure)
     assert b.serial_number == ""
     assert b.is_valid() is False

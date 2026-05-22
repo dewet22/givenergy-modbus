@@ -19,6 +19,9 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
+    ReadMeterProductRegisters,
+    ReadMeterProductRegistersRequest,
+    ReadMeterProductRegistersResponse,
     ReadRegistersMessage,
     ReadRegistersRequest,
     TransparentMessage,
@@ -54,29 +57,29 @@ def test_str():
         "1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)"
     )
 
-    assert str(TransparentMessage(foo=3, bar=6)) == "2:_/TransparentMessage(slave_address=0x32)"
-    assert str(TransparentRequest(foo=3, bar=6)) == "2:_/TransparentRequest(slave_address=0x32)"
-    assert str(TransparentRequest(inner_function_code=44)) == "2:_/TransparentRequest(slave_address=0x32)"
-    assert str(TransparentResponse(foo=3, bar=6)) == "2:_/TransparentResponse(slave_address=0x32)"
-    assert str(TransparentResponse(inner_function_code=44)) == "2:_/TransparentResponse(slave_address=0x32)"
+    assert str(TransparentMessage(foo=3, bar=6)) == "2:_/TransparentMessage(device_address=0x32)"
+    assert str(TransparentRequest(foo=3, bar=6)) == "2:_/TransparentRequest(device_address=0x32)"
+    assert str(TransparentRequest(inner_function_code=44)) == "2:_/TransparentRequest(device_address=0x32)"
+    assert str(TransparentResponse(foo=3, bar=6)) == "2:_/TransparentResponse(device_address=0x32)"
+    assert str(TransparentResponse(inner_function_code=44)) == "2:_/TransparentResponse(device_address=0x32)"
 
     assert str(ReadRegistersMessage()) == (
-        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)"
+        "2:_/ReadRegistersMessage(device_address=0x32 base_register=0 register_count=0)"
     )
     assert str(ReadRegistersMessage(foo=1)) == (
-        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=0 register_count=0)"
+        "2:_/ReadRegistersMessage(device_address=0x32 base_register=0 register_count=0)"
     )
     assert str(ReadRegistersMessage(base_register=50)) == (
-        "2:_/ReadRegistersMessage(slave_address=0x32 base_register=50 register_count=0)"
+        "2:_/ReadRegistersMessage(device_address=0x32 base_register=50 register_count=0)"
     )
 
     assert str(ReadRegistersRequest(base_register=3, register_count=6)) == (
-        "2:_/ReadRegistersRequest(slave_address=0x32 base_register=3 register_count=6)"
+        "2:_/ReadRegistersRequest(device_address=0x32 base_register=3 register_count=6)"
     )
-    assert str(NullResponse(foo=1)) == "2:0/NullResponse(slave_address=0x32 nulls=[0]*62)"
+    assert str(NullResponse(foo=1)) == "2:0/NullResponse(device_address=0x32 nulls=[0]*62)"
 
     assert str(ReadHoldingRegistersRequest(foo=1)) == (
-        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=0 register_count=0)"
+        "2:3/ReadHoldingRegistersRequest(device_address=0x32 base_register=0 register_count=0)"
     )
 
     with pytest.raises(TypeError, match="missing 2 required positional arguments: 'register' and 'value'"):
@@ -122,6 +125,17 @@ def test_class_equivalence():
     assert isinstance(ReadInputRegistersRequest(), ReadRegistersRequest)
     assert not isinstance(ReadInputRegistersRequest(), ReadHoldingRegistersRequest)
     assert ReadInputRegistersRequest is ReadInputRegistersRequest
+
+
+def test_meter_pdu_classes():
+    """ReadMeterProductRegisters* are separate from the battery/input register hierarchy."""
+    assert issubclass(ReadMeterProductRegistersRequest, ReadRegistersRequest)
+    assert issubclass(ReadMeterProductRegistersResponse, ReadRegistersMessage)
+    assert not issubclass(ReadMeterProductRegistersRequest, ReadInputRegistersRequest)
+    assert isinstance(ReadMeterProductRegistersRequest(), ReadRegistersRequest)
+    assert ReadMeterProductRegisters.transparent_function_code == 0x16
+    assert ReadMeterProductRegistersRequest().transparent_function_code == 0x16
+    assert ReadMeterProductRegistersResponse().transparent_function_code == 0x16
 
 
 def test_cannot_change_function_code():
@@ -280,7 +294,7 @@ def test_has_same_shape():
     assert r1.has_same_shape(ReadInputRegistersRequest()) is False
     with pytest.raises(NotImplementedError):
         r1.has_same_shape(object())
-    r2 = ReadInputRegistersResponse(slave_address=3)
+    r2 = ReadInputRegistersResponse(device_address=3)
     assert r1.has_same_shape(r2) is False
     r2 = ReadInputRegistersResponse(base_register=1)
     assert r1.has_same_shape(r2) is False
@@ -307,7 +321,7 @@ def test_has_same_shape():
     assert r.has_same_shape(WriteHoldingRegisterRequest(register=2, value=0)) is False
     assert r.has_same_shape(ReadInputRegistersResponse(register=2)) is False
     assert r.has_same_shape(ReadInputRegistersRequest(register=2)) is False
-    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0, slave_address=3)) is False
+    assert r.has_same_shape(WriteHoldingRegisterResponse(register=2, value=0, device_address=3)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=1, value=0)) is False
     assert r.has_same_shape(WriteHoldingRegisterResponse(register=3, value=10)) is False
 
@@ -349,7 +363,7 @@ def test_expected_response():
     assert isinstance(res, ReadInputRegistersResponse)
     assert res.base_register == req.base_register
     assert res.register_count == req.register_count
-    assert res.slave_address == req.slave_address
+    assert res.device_address == req.device_address
 
     assert res != req
     assert req.has_same_shape(res) is False

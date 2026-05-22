@@ -1,4 +1,5 @@
 import datetime
+import warnings
 
 import pytest
 
@@ -7,19 +8,20 @@ from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
-    Inverter,
     MeterType,
     Model,
     PowerFactorFunctionModel,
+    SinglePhaseInverter,
     Status,
     UsbDevice,
+    resolve_model,
 )
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
 def test_inverter():
-    i1 = Inverter()
-    i2 = Inverter.from_register_cache(RegisterCache())
+    i1 = SinglePhaseInverter()
+    i2 = SinglePhaseInverter.from_register_cache(RegisterCache())
 
     assert (
         i1.model_dump()
@@ -27,6 +29,7 @@ def test_inverter():
         == {
             "active_power_rate": None,
             "arm_firmware_version": None,
+            "battery_max_power": None,
             "battery_calibration_stage": None,
             "battery_capacity_ah": None,
             "battery_capacity_kwh": None,
@@ -58,6 +61,7 @@ def test_inverter():
             "modbus_address": None,
             "modbus_version": None,
             "model": None,
+            "inverter_max_power": None,
             "module": None,
             "num_mppt": None,
             "num_phases": None,
@@ -163,15 +167,16 @@ def test_inverter():
             "cmd_bms_flash_update": None,
             "enable_standard_self_consumption_logic": None,
             "e_battery_charge_today": None,
-            "e_battery_charge_total2": None,
+            "e_battery_charge_total_alt": None,
             "e_battery_discharge_today": None,
-            "e_battery_discharge_total2": None,
+            "e_battery_discharge_total_alt": None,
             "pv_power_setting": None,
             "e_inverter_export_total": None,
             "battery_voltage_adjust": None,
             "inverter_reboot": None,
             "enable_rtc": None,
             "inverter_errors": None,
+            "inverter_fault_messages": None,
             "charge_target_soc_1": None,
             "charge_slot_2_x": None,
             "charge_target_soc_2": None,
@@ -213,10 +218,10 @@ def test_inverter():
             "battery_discharge_limit_ac": None,
             "battery_pause_mode": None,
             "battery_pause_slot_1": None,
-            "e_battery_discharge_2": None,
-            "e_battery_charge_2": None,
-            "e_battery_discharge_day_2": None,
-            "e_battery_charge_day_2": None,
+            "e_battery_discharge_alt": None,
+            "e_battery_charge_alt": None,
+            "e_battery_discharge_day_alt": None,
+            "e_battery_charge_day_alt": None,
             "p_combined_generation": None,
         }
     )
@@ -224,11 +229,11 @@ def test_inverter():
 
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of inverter data."""
-    i = Inverter.from_register_cache(register_cache)
+    i = SinglePhaseInverter.from_register_cache(register_cache)
     assert i.serial_number == "SA1234G567"
     assert i.model == Model.HYBRID
     assert getattr(i, "serial_number") == "SA1234G567"
-    with pytest.raises(TypeError, match="'Inverter' object is not subscriptable"):
+    with pytest.raises(TypeError, match="'SinglePhaseInverter' object is not subscriptable"):
         i["serial_number"]
 
     assert i.model_dump() == {
@@ -257,15 +262,15 @@ def test_from_registers(register_cache):
         "discharge_soc_stop_1": None,
         "discharge_soc_stop_2": 0,
         # 'e_battery_charge_day': 9.0,
-        # 'e_battery_charge_day_2': 9.0,
+        # 'e_battery_charge_day_alt': 9.0,
         "e_battery_charge_today": None,
         # 'e_battery_charge_total': 174.4,
-        "e_battery_charge_total2": None,
+        "e_battery_charge_total_alt": None,
         # 'e_battery_discharge_day': 8.9,
-        # 'e_battery_discharge_day_2': 8.9,
+        # 'e_battery_discharge_day_alt': 8.9,
         "e_battery_discharge_today": None,
         # 'e_battery_discharge_total': 169.6,
-        "e_battery_discharge_total2": None,
+        "e_battery_discharge_total_alt": None,
         # 'e_battery_throughput_total': 183.2,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 20.9,
@@ -402,6 +407,7 @@ def test_from_registers(register_cache):
         # 'work_time_total': 213,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
+        "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
         "battery_capacity_kwh": 8.192,
@@ -434,6 +440,7 @@ def test_from_registers(register_cache):
         "modbus_address": 0x11,
         "modbus_version": "1.40",
         "model": Model.HYBRID,
+        "inverter_max_power": 5000,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -501,6 +508,7 @@ def test_from_registers(register_cache):
         "inverter_reboot": None,
         "enable_rtc": None,
         "inverter_errors": None,
+        "inverter_fault_messages": None,
         "charge_target_soc_1": None,
         "charge_slot_2_x": None,
         "charge_target_soc_2": None,
@@ -542,17 +550,17 @@ def test_from_registers(register_cache):
         "battery_discharge_limit_ac": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
-        "e_battery_discharge_2": 169.6,
-        "e_battery_charge_2": 174.4,
-        "e_battery_discharge_day_2": 8.9,
-        "e_battery_charge_day_2": 9.0,
+        "e_battery_discharge_alt": 169.6,
+        "e_battery_charge_alt": 174.4,
+        "e_battery_discharge_day_alt": 8.9,
+        "e_battery_charge_day_alt": 9.0,
         "p_combined_generation": None,
     }
 
 
 def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_with_solar_generation):
-    """Ensure we can instantiate an Inverter from actual register data."""
-    i = Inverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
+    """Ensure we can instantiate an SinglePhaseInverter from actual register data."""
+    i = SinglePhaseInverter.from_register_cache(register_cache_inverter_daytime_discharging_with_solar_generation)
     assert i.serial_number == "SA1234G567"
     assert i.model == Model.HYBRID
     assert i.model_dump() == {
@@ -581,15 +589,15 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "discharge_soc_stop_1": 0,
         "discharge_soc_stop_2": 0,
         # 'e_battery_charge_day': 9.1,
-        # 'e_battery_charge_day_2': 9.1,
+        # 'e_battery_charge_day_alt': 9.1,
         "e_battery_charge_today": None,
         # 'e_battery_charge_total': 183.5,
-        "e_battery_charge_total2": None,
+        "e_battery_charge_total_alt": None,
         # 'e_battery_discharge_day': 3.4,
-        # 'e_battery_discharge_day_2': 3.4,
+        # 'e_battery_discharge_day_alt': 3.4,
         "e_battery_discharge_today": None,
         # 'e_battery_discharge_total': 173.0,
-        "e_battery_discharge_total2": None,
+        "e_battery_discharge_total_alt": None,
         # 'e_battery_throughput_total': 356.5,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 19.8,
@@ -727,6 +735,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'work_time_total': 385,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
+        "battery_max_power": 2600,
         "battery_calibration_stage": BatteryCalibrationStage.OFF,
         "battery_capacity_ah": 160,
         "battery_capacity_kwh": 8.192,
@@ -759,6 +768,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "modbus_address": 0x11,
         "modbus_version": "1.40",
         "model": Model.HYBRID,
+        "inverter_max_power": 5000,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -826,6 +836,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "inverter_reboot": 0,
         "enable_rtc": False,
         "inverter_errors": None,
+        "inverter_fault_messages": None,
         "charge_target_soc_1": None,
         "charge_slot_2_x": None,
         "charge_target_soc_2": None,
@@ -867,9 +878,159 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "battery_discharge_limit_ac": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
-        "e_battery_discharge_2": 173.0,
-        "e_battery_charge_2": 183.5,
-        "e_battery_discharge_day_2": 3.4,
-        "e_battery_charge_day_2": 9.1,
+        "e_battery_discharge_alt": 173.0,
+        "e_battery_charge_alt": 183.5,
+        "e_battery_discharge_day_alt": 3.4,
+        "e_battery_charge_day_alt": 9.1,
         "p_combined_generation": None,
     }
+
+
+def test_model_missing_guard():
+    """Unknown single-char or non-string values raise ValueError rather than recursing."""
+    import pytest
+
+    with pytest.raises(ValueError):
+        Model("9")  # single char, not a member
+    with pytest.raises(ValueError):
+        Model("9999")  # multi-char, first char also not a member
+
+
+def test_model_coarse_lookup():
+    """Model(dtc) returns the coarse family regardless of specific variant."""
+    assert Model("2") is Model.HYBRID
+    assert Model("2001") is Model.HYBRID
+    assert Model("2101") is Model.HYBRID
+    assert Model("4001") is Model.HYBRID_3PH
+    assert Model("4101") is Model.HYBRID_3PH  # AIO_COMMERCIAL falls back to HYBRID_3PH family
+    assert Model("5101") is Model.EMS  # EMS_COMMERCIAL falls back to EMS family
+    assert Model("8101") is Model.ALL_IN_ONE  # HYBRID_HV_GEN3 falls back to ALL_IN_ONE family
+    assert Model("8201") is Model.ALL_IN_ONE
+    assert Model("8301") is Model.ALL_IN_ONE
+
+
+def test_model_specific_variants():
+    """Specific variants are reachable by direct construction."""
+    assert Model("20g1") is Model.HYBRID_GEN1
+    assert Model("20g2") is Model.HYBRID_GEN2
+    assert Model("20g3") is Model.HYBRID_GEN3
+    assert Model("21") is Model.POLAR
+    assert Model("41") is Model.AIO_COMMERCIAL
+    assert Model("51") is Model.EMS_COMMERCIAL
+    assert Model("81") is Model.HYBRID_HV_GEN3
+    assert Model("82") is Model.ALL_IN_ONE_HYBRID
+    assert Model("83") is Model.HYBRID_GEN4
+
+
+@pytest.mark.parametrize(
+    "raw_dtc, arm_fw, expected",
+    [
+        # DTC "20xx" — generation depends on ARM firmware century
+        (0x2001, 250, Model.HYBRID_GEN1),  # century 2 → GEN1
+        (0x2001, 199, Model.HYBRID_GEN1),  # century 1 → GEN1
+        (0x2001, 350, Model.HYBRID_GEN3),  # century 3 → GEN3
+        (0x2001, 399, Model.HYBRID_GEN3),  # century 3 → GEN3
+        (0x2001, 850, Model.HYBRID_GEN2),  # century 8 → GEN2
+        (0x2001, 950, Model.HYBRID_GEN2),  # century 9 → GEN2
+        (0x2003, 310, Model.HYBRID_GEN3),  # different power rating, same gen
+        # Specific two-digit prefixes
+        (0x2101, 100, Model.POLAR),
+        (0x4001, 100, Model.HYBRID_3PH),
+        (0x4101, 100, Model.AIO_COMMERCIAL),
+        (0x5001, 100, Model.EMS),
+        (0x5101, 100, Model.EMS_COMMERCIAL),
+        (0x6001, 100, Model.AC_3PH),
+        (0x7001, 100, Model.GATEWAY),
+        (0x8001, 100, Model.ALL_IN_ONE),
+        (0x8101, 100, Model.HYBRID_HV_GEN3),
+        (0x8201, 100, Model.ALL_IN_ONE_HYBRID),
+        (0x8301, 100, Model.HYBRID_GEN4),
+    ],
+)
+def test_resolve_model(raw_dtc, arm_fw, expected):
+    assert resolve_model(raw_dtc, arm_fw) is expected
+
+
+@pytest.mark.parametrize(
+    "model,expected",
+    [
+        (Model.ALL_IN_ONE, 307.0),
+        (Model.HYBRID_3PH, 76.8),
+        (Model.AC_3PH, 76.8),
+        (Model.HYBRID, 51.2),
+    ],
+)
+def test_model_system_battery_voltage(model, expected):
+    assert model.system_battery_voltage == expected
+
+
+def test_single_phase_inverter_slot_map():
+    from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS
+    from givenergy_modbus.model.register import HR
+
+    # Default (no DTC set) → legacy 2-slot map
+    assert SinglePhaseInverter.from_register_cache(RegisterCache()).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN1 / GEN2 → legacy
+    for dtc_hex in (0x2001, 0x2002):
+        cache = RegisterCache({HR(0): dtc_hex, HR(21): 100})
+        assert SinglePhaseInverter.from_register_cache(cache).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN3 with fw ≤ 302 → legacy
+    cache = RegisterCache({HR(0): 0x2003, HR(21): 302})
+    assert SinglePhaseInverter.from_register_cache(cache).slot_map is SINGLE_PHASE_SLOTS
+
+    # HYBRID_GEN3 with fw > 302 → extended
+    cache = RegisterCache({HR(0): 0x2003, HR(21): 303})
+    assert SinglePhaseInverter.from_register_cache(cache).slot_map is EXTENDED_SLOTS
+
+    # ALL_IN_ONE (80xx), HYBRID_GEN4 (83xx), HYBRID_HV_GEN3 (81xx) → extended
+    for dtc_hex in (0x8001, 0x8301, 0x8101):
+        cache = RegisterCache({HR(0): dtc_hex, HR(21): 100})
+        assert SinglePhaseInverter.from_register_cache(cache).slot_map is EXTENDED_SLOTS
+
+
+def test_single_phase_inverter_p_pv_and_e_pv_day():
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache({IR(18): 1000, IR(20): 500, IR(17): 12, IR(19): 8})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.p_pv() == 1500  # type: ignore[attr-defined]
+    assert inv.e_pv_day() == 2.0  # type: ignore[attr-defined]
+
+
+def test_inverter_max_power():
+    from givenergy_modbus.model.inverter import _DTC_RATED_POWER
+    from givenergy_modbus.model.register import HR
+
+    # Known DTC → correct wattage via computed field
+    cache = RegisterCache({HR(0): 0x2001})
+    assert SinglePhaseInverter.from_register_cache(cache).inverter_max_power == 5000  # type: ignore[attr-defined]
+    # DTC not in rated-power LUT → None
+    cache = RegisterCache({HR(0): 0x2009})
+    assert SinglePhaseInverter.from_register_cache(cache).inverter_max_power is None  # type: ignore[attr-defined]
+    # No DTC at all → None
+    cache = RegisterCache()
+    assert SinglePhaseInverter.from_register_cache(cache).inverter_max_power is None  # type: ignore[attr-defined]
+    # LUT covers 3-phase and AIO variants
+    assert _DTC_RATED_POWER.get("4003") == 10000
+    assert _DTC_RATED_POWER.get("8204") == 12000
+
+
+def test_inverter_deprecation_alias():
+    import givenergy_modbus.model.inverter as inv_module
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        cls = inv_module.Inverter  # type: ignore[attr-defined]
+    assert cls is SinglePhaseInverter
+    assert len(w) == 1
+    assert issubclass(w[0].category, DeprecationWarning)
+    assert "SinglePhaseInverter" in str(w[0].message)
+
+
+def test_inverter_getattr_unknown():
+    import givenergy_modbus.model.inverter as inv_module
+
+    with pytest.raises(AttributeError, match="has no attribute"):
+        _ = inv_module.NonExistentAttribute  # type: ignore[attr-defined]

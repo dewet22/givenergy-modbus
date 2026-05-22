@@ -15,6 +15,7 @@ from givenergy_modbus.pdu import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersRequest,
     ReadInputRegistersResponse,
+    ReadMeterProductRegistersRequest,
     WriteHoldingRegisterRequest,
     WriteHoldingRegisterResponse,
 )
@@ -183,7 +184,7 @@ def all_leaf_classes(cls):
 # Messages a server should be expected to process (or, typical messages a client would send)
 _server_messages: PduTestCases = [
     (
-        "2:4/ReadInputRegistersRequest(slave_address=0x32 base_register=16 register_count=6)",
+        "2:4/ReadInputRegistersRequest(device_address=0x32 base_register=16 register_count=6)",
         ReadInputRegistersRequest,
         {
             "base_register": 0x10,
@@ -192,14 +193,14 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",  # 8 bytes
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x04\x00\x10\x00\x06\x07\x54",  # 26 bytes
         None,
     ),
     (
-        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=20)",
+        "2:3/ReadHoldingRegistersRequest(device_address=0x32 base_register=20817 register_count=20)",
         ReadHoldingRegistersRequest,
         {
             "base_register": 0x5151,
@@ -208,14 +209,14 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x14\x22\x21",
         None,
     ),
     (
-        "2:3/ReadHoldingRegistersRequest(slave_address=0x32 base_register=20817 register_count=30)",
+        "2:3/ReadHoldingRegistersRequest(device_address=0x32 base_register=20817 register_count=30)",
         ReadHoldingRegistersRequest,
         {
             "base_register": 0x5151,
@@ -224,7 +225,7 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x1e\x25\xa1",
@@ -240,7 +241,7 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xb3\x07\xd0\x81\xee",
@@ -256,7 +257,7 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xc7\x07\xd0\x81\xee",
@@ -272,10 +273,28 @@ _server_messages: PduTestCases = [
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
-            "slave_address": 0x32,
+            "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
         b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\x14\x00\x01\xc4\x2d",
+        None,
+    ),
+    (
+        # FC 0x16 uses the address-prefixed, byte-swapped CRC layout — see issue #58.
+        # Bytes (and CRC) taken from a real wire capture; see tests/test_framer.py.
+        "2:22/ReadMeterProductRegistersRequest(device_address=0x01 base_register=60)",
+        ReadMeterProductRegistersRequest,
+        {
+            "base_register": 0x3C,
+            "register_count": 0x3C,
+            "check": 0x8814,
+            "data_adapter_serial_number": "AB1234G567",
+            "error": False,
+            "padding": 8,
+            "device_address": 0x01,
+        },
+        b"YY\x00\x01\x00\x1c\x01\x02",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x01\x16\x00\x3c\x00\x3c\x88\x14",
         None,
     ),
     (
@@ -294,7 +313,7 @@ _server_messages: PduTestCases = [
 # Messages a client should be expected to process (or, typical messages a server would send)
 _client_messages: PduTestCases = [
     (
-        "2:4/ReadInputRegistersResponse(slave_address=0x32 base_register=0)",
+        "2:4/ReadInputRegistersResponse(device_address=0x32 base_register=0)",
         ReadInputRegistersResponse,
         {
             "check": 0x8E4B,
@@ -367,7 +386,7 @@ _client_messages: PduTestCases = [
             # fmt: on
             "data_adapter_serial_number": "WF1234G567",
             "padding": 0x8A,
-            "slave_address": 0x32,
+            "device_address": 0x32,
             "error": False,
         },
         b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
@@ -387,7 +406,7 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        "2:3/ReadHoldingRegistersResponse(slave_address=0x32 base_register=0)",
+        "2:3/ReadHoldingRegistersResponse(device_address=0x32 base_register=0)",
         ReadHoldingRegistersResponse,
         {
             "check": 0x153D,
@@ -460,7 +479,7 @@ _client_messages: PduTestCases = [
             # fmt: on
             "data_adapter_serial_number": "WF1234G567",
             "padding": 0x8A,
-            "slave_address": 0x32,
+            "device_address": 0x32,
             "error": False,
         },
         b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
@@ -494,7 +513,7 @@ _client_messages: PduTestCases = [
             "value": 0x223C,
             "data_adapter_serial_number": "WF1234G567",
             "padding": 0x8A,
-            "slave_address": 0x32,
+            "device_address": 0x32,
             "error": False,
         },
         b"YY\x00\x01\x00\x26\x01\x02",  # 8b MBAP header
@@ -516,14 +535,14 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        "2:0/NullResponse(slave_address=0x22 nulls=[0]*62)",
+        "2:0/NullResponse(device_address=0x22 nulls=[0]*62)",
         NullResponse,
         {
             "check": 0x0,
             "inverter_serial_number": "\x00" * 10,
             "data_adapter_serial_number": "KK4321H987",
             "padding": 0x8A,
-            "slave_address": 0x22,
+            "device_address": 0x22,
             "error": False,
             "nulls": [0] * 62,
         },

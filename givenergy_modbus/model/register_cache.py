@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from givenergy_modbus.model.register import HR, IR, Register
+from givenergy_modbus.model.register import HR, IR, MR, Register
 
 if TYPE_CHECKING:
     from givenergy_modbus.model import TimeSlot
@@ -30,7 +30,7 @@ class RegisterCache(defaultdict[Register, int]):
 
         def register_object_hook(object_dict: dict[str, int]) -> dict[Register, int]:
             """Rewrite the parsed object to have Register instances as keys instead of their (string) repr."""
-            lookup = {"HR": HR, "IR": IR}
+            lookup = {"HR": HR, "IR": IR, "MR": MR}
             ret = {}
             for k, v in object_dict.items():
                 if k.find("(") > 0:
@@ -43,8 +43,10 @@ class RegisterCache(defaultdict[Register, int]):
                     continue
                 try:
                     ret[lookup[reg](int(idx))] = v
-                except ValueError:
-                    # unknown register, discard silently
+                except KeyError, ValueError:
+                    # KeyError: unknown register prefix (e.g. a future namespace
+                    # we don't know about yet). ValueError: idx wasn't an int.
+                    # Either way, skip the entry rather than aborting the load.
                     continue
             return ret
 

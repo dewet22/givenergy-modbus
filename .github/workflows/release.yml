@@ -4,13 +4,29 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump type
+        description: Version bump type (ignored when republish_tag is set)
         required: true
         type: choice
         options:
           - patch
           - minor
           - major
+          - prerelease
+          - finalize
+      prerelease_stage:
+        description: With major/minor/patch — start a prerelease line (e.g. major + alpha → 2.0.0a1). With prerelease — advance the stage forward-only (e.g. prerelease + rc on 2.0.0a6 → 2.0.0rc1).
+        required: false
+        default: none
+        type: choice
+        options:
+          - none
+          - alpha
+          - beta
+          - rc
+      republish_tag:
+        description: Existing tag to re-publish (e.g. v2.0.0a1). Skips bump/commit/tag and the GitHub Release creation; only builds, publishes to PyPI, and notifies downstream consumers.
+        required: false
+        type: string
 
 jobs:
   release:
@@ -20,28 +36,53 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # Required for PyPI trusted publishing via OIDC (no API token).
+      id-token: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # For republish: check out the tagged commit so the build picks up
+          # the exact pyproject.toml/uv.lock state that was originally released.
+          ref: ${{ inputs.republish_tag || github.ref }}
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
-      - name: Bump version
+      - name: Determine version
         id: version
         env:
           BUMP: ${{ inputs.bump }}
+          PRERELEASE_STAGE: ${{ inputs.prerelease_stage }}
+          REPUBLISH_TAG: ${{ inputs.republish_tag }}
         run: |
-          CURRENT=$(uv version --short)
-          NEW=$(python3 scripts/release.py bump "$CURRENT" "$BUMP")
-          uv version "$NEW"
-          uv lock
+          if [ -n "$REPUBLISH_TAG" ]; then
+            # Republish path: derive version from the tag, skip the bump.
+            NEW="${REPUBLISH_TAG#v}"
+          else
+            CURRENT=$(uv version --short)
+            # `prerelease_stage=none` (or unset) means no prerelease flag passed.
+            if [ -n "$PRERELEASE_STAGE" ] && [ "$PRERELEASE_STAGE" != "none" ]; then
+              NEW=$(python3 scripts/release.py bump "$CURRENT" "$BUMP" --prerelease "$PRERELEASE_STAGE")
+            else
+              NEW=$(python3 scripts/release.py bump "$CURRENT" "$BUMP")
+            fi
+            uv version "$NEW"
+            uv lock
+          fi
           echo "version=$NEW" >> $GITHUB_OUTPUT
+          # Expose whether this is a prerelease so downstream steps can mark it.
+          if [[ "$NEW" =~ (a|b|rc)[0-9]+$ ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate CHANGELOG section
+        if: inputs.republish_tag == ''
         id: changelog
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -54,6 +95,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Commit and tag
+        if: inputs.republish_tag == ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -67,6 +109,7 @@ jobs:
         run: uv build
 
       - name: Create GitHub Release
+        if: inputs.republish_tag == ''
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -74,13 +117,11 @@ jobs:
           body: ${{ steps.changelog.outputs.body }}
           files: dist/*.whl
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
       - name: Wait for PyPI to index the new version
@@ -123,13 +164,19 @@ jobs:
               | gh api -X POST "repos/${repo}/dispatches" --input -
           done
 
+      # Skip docs publishing for prereleases (site stays pinned to latest stable)
+      # and for republish runs (re-publishing an old tag must not roll the live
+      # docs back to that tag's snapshot).
       - name: Install docs dependencies
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         run: uv sync --group docs
 
       - name: Build documentation
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         run: uv run mkdocs build
 
       - name: Publish documentation
+        if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
         uses: peaceiris/actions-gh-pages@v4
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}

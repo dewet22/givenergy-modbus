@@ -42,15 +42,18 @@ async def main():
     client = Client(host="192.168.99.99", port=8899)
     await client.connect()
 
-    # change configuration on the device:
-    await client.one_shot_command(commands.set_charge_target(80))
-    # set a charging slot from 00:30 to 04:30
-    await client.one_shot_command(commands.set_charge_slot_1(TimeSlot.from_components(0, 30, 4, 30)))
-    # set the inverter to charge from excess solar and discharge to meet demand
-    await client.one_shot_command(commands.set_mode_dynamic())
-
+    # Read current state first (needed for slot_map)
     await client.refresh_plant(full_refresh=True)
     plant = client.plant
+
+    # Write configuration to the device
+    await client.one_shot_command(commands.set_charge_target(80))
+    # set a charging slot from 00:30 to 04:30; slot_map selects correct registers for this model
+    await client.one_shot_command(
+        commands.set_charge_slot(1, TimeSlot.from_components(0, 30, 4, 30), plant.inverter.slot_map)
+    )
+    # set the inverter to charge from excess solar and discharge to meet demand
+    await client.one_shot_command(commands.set_mode_dynamic())
 
     assert plant.inverter_serial_number == 'SA1234G567'
     assert plant.inverter.model == Model.HYBRID

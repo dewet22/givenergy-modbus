@@ -4,6 +4,7 @@
 import argparse
 import os
 import re
+
 # Release tooling: invokes git with controlled arg lists only. PATH is controlled in CI.
 import subprocess  # nosec B404
 import sys
@@ -12,25 +13,62 @@ from pathlib import Path
 
 CHANGELOG = Path(__file__).parent.parent / "CHANGELOG.md"
 
+_SECTION_ORDER: list[str] = [
+    "✨ Added",
+    "🔄 Changed",
+    "⚠️ Deprecated",
+    "🗑️ Removed",
+    "🐛 Fixed",
+    "🔒 Security",
+    "🔧 Maintenance",
+]
+
 _COMMIT_TYPE_TO_SECTION: dict[str, str] = {
-    "feat": "Added",
-    "fix": "Fixed",
-    "perf": "Changed",
-    "refactor": "Changed",
-    "revert": "Fixed",
-    "security": "Security",
-    "docs": "Changed",
-    "ci": "Maintenance",
-    "chore": "Maintenance",
-    "test": "Maintenance",
-    "style": "Maintenance",
-    "build": "Maintenance",
-    "wip": "Maintenance",
+    "feat": "✨ Added",
+    "fix": "🐛 Fixed",
+    "perf": "🔄 Changed",
+    "refactor": "🔧 Maintenance",
+    "revert": "🐛 Fixed",
+    "security": "🔒 Security",
+    "docs": "🔧 Maintenance",
+    "ci": "🔧 Maintenance",
+    "chore": "🔧 Maintenance",
+    "test": "🔧 Maintenance",
+    "style": "🔧 Maintenance",
+    "build": "🔧 Maintenance",
+    "wip": "🔧 Maintenance",
 }
 
-_SECTION_ORDER = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Maintenance"]
+# Trailer key that overrides automatic section bucketing on a per-commit basis.
+# Values are either `skip` (suppress the entry) or any section name in _SECTION_ORDER
+# (case-insensitive, emoji optional — `Changed` and `🔄 Changed` both resolve).
+_CHANGELOG_TRAILER_RE = re.compile(r"^changelog\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
 
-_SECTION_ALIASES = {s.lower(): s for s in _SECTION_ORDER}
+
+def _resolve_section_alias(name: str) -> str | None:
+    """Match a section name (e.g. 'Changed' or '✨ Added') to its emoji-prefixed form."""
+    name = name.strip().lower()
+    for section in _SECTION_ORDER:
+        if section.lower() == name:
+            return section
+        textual = section.split(" ", 1)[-1].lower()
+        if textual == name:
+            return section
+    return None
+
+
+def _find_changelog_trailer(message: str) -> str | None:
+    """Return the value of the last `Changelog:` trailer in the message, or None.
+
+    Trailer must live in the final paragraph of the body to match git's own
+    trailer semantics. Last `Changelog:` wins.
+    """
+    paragraphs = re.split(r"\n\s*\n", message.strip())
+    if len(paragraphs) < 2:
+        return None
+    last = paragraphs[-1]
+    matches = _CHANGELOG_TRAILER_RE.findall(last)
+    return matches[-1].strip() if matches else None
 
 
 class Changelog:
@@ -39,21 +77,22 @@ class Changelog:
     def __init__(self, path: Path | None = None) -> None:
         # Resolve at call time so monkeypatching `release.CHANGELOG` in tests is honoured.
         self.path = path if path is not None else CHANGELOG
-        self.lines = self.path.read_text().splitlines(keepends=True)
+        # Section headers contain emoji; force UTF-8 to dodge Windows' cp1252 default.
+        self.lines = self.path.read_text(encoding="utf-8").splitlines(keepends=True)
 
     def save(self) -> None:
         """Write the current line buffer back to disk."""
-        self.path.write_text("".join(self.lines))
+        self.path.write_text("".join(self.lines), encoding="utf-8")
 
     def prepend_version_section(self, version: str, today: str, body: str) -> None:
         r"""Insert a new versioned section above the most recent existing one.
 
-        `body` is the rendered section body (the lines under the `## [version] - date`
-        header, e.g. `### Fixed\n\n- ...`). The header is added by this method.
+        `body` is the rendered section body (the lines under the version header,
+        e.g. `### 🐛 Fixed\n\n- ...`). The `## [version] - date` header is added here.
         """
         new_header = f"## [{version}] - {today}\n"
         block = [new_header, "\n", *body.splitlines(keepends=True)]
-        if not block[-1].endswith("\n"):
+        if block and not block[-1].endswith("\n"):
             block[-1] += "\n"
         block.append("\n")
 
@@ -75,37 +114,22 @@ def _parse_commit(message: str) -> tuple[str, str]:
     subject = message.splitlines()[0].strip()
     m = re.match(r"^(\w+)(?:\([^)]*\))?(!)?\s*:\s*(.+)", subject)
     if not m:
-        section, description = "Changed", subject
+        section, description = "🔄 Changed", subject
     else:
         commit_type, breaking, description = m.group(1).lower(), m.group(2), m.group(3).strip()
+        section = "🔄 Changed" if breaking else _COMMIT_TYPE_TO_SECTION.get(commit_type, "🔄 Changed")
         if breaking:
-            section, description = "Changed", f"⚠️ Breaking: {description}"
-        else:
-            section = _COMMIT_TYPE_TO_SECTION.get(commit_type, "Changed")
+            description = f"⚠️ Breaking: {description}"
 
     trailer = _find_changelog_trailer(message)
     if trailer is not None:
         if trailer.lower() == "skip":
             return "skip", description
-        override = _SECTION_ALIASES.get(trailer.lower())
+        override = _resolve_section_alias(trailer)
         if override:
             section = override
 
     return section, description
-
-
-def _find_changelog_trailer(message: str) -> str | None:
-    """Return the value of the last `Changelog:` git trailer in the message, or None.
-
-    Standard git-trailer semantics: trailers live in the final paragraph of the body
-    as `Key: value` pairs. Last `Changelog:` wins to match git's own behaviour.
-    """
-    paragraphs = re.split(r"\n\s*\n", message.strip())
-    if len(paragraphs) < 2:
-        return None
-    last = paragraphs[-1]
-    matches = re.findall(r"^Changelog:\s*(.+?)\s*$", last, flags=re.MULTILINE | re.IGNORECASE)
-    return matches[-1] if matches else None
 
 
 def _is_skippable_commit(message: str) -> bool:
@@ -113,10 +137,12 @@ def _is_skippable_commit(message: str) -> bool:
 
     Skips:
     - Merge commits (the underlying feature commits are present separately).
-    - The release commit itself (`chore: release <version>`) — describes the act of
-      releasing, not a user-visible change.
+    - The release commit itself (`chore: release <version>`).
     - Bot-generated `chore: update [Unreleased] changelog` commits (historical: the
-      bot is retired, but these commits remain in the history of every active branch).
+      bot is retired, but these commits remain in the history of branches predating
+      the changelog rework).
+    - Any chore: commit whose subject mentions "changelog" — housekeeping edits to
+      CHANGELOG.md itself, not user-visible changes.
     """
     subject = message.splitlines()[0].strip()
     if subject.startswith(("Merge pull request", "Merge branch")):
@@ -124,6 +150,8 @@ def _is_skippable_commit(message: str) -> bool:
     if re.match(r"^chore: release \d", subject):
         return True
     if subject == "chore: update [Unreleased] changelog":
+        return True
+    if subject.startswith("chore:") and "changelog" in subject.lower():
         return True
     return False
 
@@ -197,19 +225,89 @@ def _classify_commits(commits: list[tuple[str, str]]) -> dict[str, list[str]]:
     return sections
 
 
+_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)(?:(a|b|rc)(\d+))?$")
+_PRERELEASE_STAGES = {"alpha": "a", "beta": "b", "rc": "rc"}
+
+# PEP 440 prerelease ordering — `a` < `b` < `rc` < (release).
+# Used by the prerelease-stage-switch path in cmd_bump to reject backwards moves.
+_STAGE_ORDER: dict[str, int] = {"a": 0, "b": 1, "rc": 2}
+
+
 def cmd_bump(args) -> None:
-    """Print the next version given a current version and bump type."""
-    major, minor, patch = map(int, args.current.split("."))
+    """Print the next version given a current version and bump type.
+
+    Bump types:
+      major / minor / patch  — operate on the release tuple; any prerelease
+                               suffix on `current` is dropped. Combine with
+                               `--prerelease alpha|beta|rc` to start a new
+                               prerelease line (e.g. 1.3.0 -> 2.0.0a1).
+      prerelease             — increment the prerelease counter only
+                               (2.0.0a1 -> 2.0.0a2). Requires current to
+                               already have a prerelease suffix. Combine with
+                               `--prerelease beta|rc` to advance the stage
+                               (2.0.0a6 -> 2.0.0rc1); stage moves are
+                               forward-only per PEP 440 ordering.
+      finalize               — drop the prerelease suffix without changing
+                               the release tuple (2.0.0a3 -> 2.0.0).
+    """
+    m = _VERSION_RE.match(args.current)
+    if not m:
+        print(f"ERROR: cannot parse version {args.current!r}", file=sys.stderr)
+        sys.exit(1)
+    major, minor, patch = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    pre_stage, pre_n = m.group(4), m.group(5)
+
+    if args.bump == "prerelease":
+        if pre_stage is None:
+            print(
+                f"ERROR: prerelease bump requires current to have a prerelease suffix (got {args.current!r})",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.prerelease:
+            # Stage switch: a6 -> rc1, b2 -> rc1, etc. Counter resets to 1.
+            new_stage = _PRERELEASE_STAGES[args.prerelease]
+            if _STAGE_ORDER[new_stage] < _STAGE_ORDER[pre_stage]:
+                print(
+                    f"ERROR: cannot move backwards from {pre_stage!r} to {new_stage!r} (PEP 440 ordering: a < b < rc)",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            if _STAGE_ORDER[new_stage] == _STAGE_ORDER[pre_stage]:
+                print(
+                    f"ERROR: already in stage {pre_stage!r}; omit --prerelease to increment the counter",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            print(f"{major}.{minor}.{patch}{new_stage}1")
+            return
+        print(f"{major}.{minor}.{patch}{pre_stage}{int(pre_n) + 1}")
+        return
+
+    if args.bump == "finalize":
+        if pre_stage is None:
+            print(
+                f"ERROR: finalize requires current to have a prerelease suffix (got {args.current!r})",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        if args.prerelease:
+            print("ERROR: --prerelease cannot be combined with bump=finalize", file=sys.stderr)
+            sys.exit(1)
+        print(f"{major}.{minor}.{patch}")
+        return
+
     if args.bump == "major":
-        major += 1
-        minor = 0
-        patch = 0
+        major, minor, patch = major + 1, 0, 0
     elif args.bump == "minor":
-        minor += 1
-        patch = 0
-    else:
+        minor, patch = minor + 1, 0
+    else:  # patch
         patch += 1
-    print(f"{major}.{minor}.{patch}")
+
+    if args.prerelease:
+        print(f"{major}.{minor}.{patch}{_PRERELEASE_STAGES[args.prerelease]}1")
+    else:
+        print(f"{major}.{minor}.{patch}")
 
 
 def cmd_generate(args) -> None:
@@ -247,14 +345,19 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     bump_p = sub.add_parser("bump", help="Print next version number")
-    bump_p.add_argument("current", help="Current version (e.g. 1.2.3)")
-    bump_p.add_argument("bump", choices=["major", "minor", "patch"])
+    bump_p.add_argument("current", help="Current version (e.g. 1.2.3 or 2.0.0a1)")
+    bump_p.add_argument("bump", choices=["major", "minor", "patch", "prerelease", "finalize"])
+    bump_p.add_argument(
+        "--prerelease",
+        choices=["alpha", "beta", "rc"],
+        help="With major/minor/patch: start a prerelease line (e.g. 1.3.0 + major + alpha -> 2.0.0a1).",
+    )
 
     gen_p = sub.add_parser(
         "generate",
         help="Write a new versioned CHANGELOG section from commits since the last v* tag",
     )
-    gen_p.add_argument("version", help="New version (e.g. 1.2.3)")
+    gen_p.add_argument("version", help="New version (e.g. 1.2.3 or 2.0.0a2)")
     gen_p.add_argument(
         "--preview",
         action="store_true",
