@@ -6,7 +6,6 @@ import pytest
 
 from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame, InvalidPduState
-from givenergy_modbus.model.register import HR
 from givenergy_modbus.pdu import (
     BasePDU,
     ClientIncomingMessage,
@@ -241,27 +240,26 @@ def test_decoding_wrong_streams(
         decoder(frame[::-1])
 
 
-@pytest.mark.skip("Needs more thinking")
 def test_writable_registers_equality():
-    req = WriteHoldingRegisterRequest(register=4, value=22)
-    assert req.register == HR(4)
-    assert str(req) == "2:6/WriteHoldingRegisterRequest(HoldingRegister(4)/HOLDING_REG004 -> 22/0x0016)"
-    assert req == WriteHoldingRegisterRequest(register=4, value=22)
-    assert req != WriteHoldingRegisterRequest(register=4, value=32)
-    assert req != WriteHoldingRegisterRequest(register=5, value=22)
-    assert req != WriteHoldingRegisterResponse(register=4, value=22)
+    req = WriteHoldingRegisterRequest(register=35, value=22)
+    assert req.register == 35
+    assert str(req) == "2:6/WriteHoldingRegisterRequest(35 -> 22/0x0016)"
+    assert req == WriteHoldingRegisterRequest(register=35, value=22)
+    assert req != WriteHoldingRegisterRequest(register=35, value=32)
+    assert req != WriteHoldingRegisterRequest(register=36, value=22)
+    assert req != WriteHoldingRegisterResponse(register=35, value=22)
 
-    req = WriteHoldingRegisterResponse(register=5, value=33)
-    assert req.register == HR(5)
-    assert str(req) == "2:6/WriteHoldingRegisterResponse(HoldingRegister(5)/HOLDING_REG005 -> 33/0x0021)"
-    assert req != WriteHoldingRegisterRequest(register=5, value=22)
+    req = WriteHoldingRegisterResponse(register=35, value=33)
+    assert req.register == 35
+    assert str(req) == "2:6/WriteHoldingRegisterResponse(35 -> 33/0x0021)"
+    assert req != WriteHoldingRegisterRequest(register=35, value=22)
 
-    req = WriteHoldingRegisterResponse(register=6, value=55, error=True)
-    assert req.register == HR(6)
-    assert str(req) == "2:6/WriteHoldingRegisterResponse(ERROR HoldingRegister(6)/HOLDING_REG006 -> 55/0x0037)"
-    assert req != WriteHoldingRegisterRequest(register=6, value=55)
-    assert req == WriteHoldingRegisterResponse(register=6, value=55)
-    assert req == WriteHoldingRegisterResponse(register=6, value=55, error=True)
+    req = WriteHoldingRegisterResponse(register=36, value=55, error=True)
+    assert req.register == 36
+    assert str(req) == "2:6/WriteHoldingRegisterResponse(ERROR 36 -> 55/0x0037)"
+    assert req != WriteHoldingRegisterRequest(register=36, value=55)
+    assert req != WriteHoldingRegisterResponse(register=36, value=55)
+    assert req == WriteHoldingRegisterResponse(register=36, value=55, error=True)
 
 
 def test_read_registers_response_as_dict():
@@ -331,30 +329,16 @@ def test_has_same_shape():
     assert r1 != r2
 
 
-@pytest.mark.skip("Needs more thinking")
-def test_hashing():
+def test_pdus_are_unhashable():
+    # WriteHoldingRegister overrides __eq__, so Python auto-removes __hash__ from this class hierarchy.
     r1 = WriteHoldingRegisterResponse(register=2, value=10)
     r2 = WriteHoldingRegisterResponse(register=2, value=10)
     assert r1 == r2
 
-    test_set = {
-        WriteHoldingRegisterResponse(register=2, value=42),
-        WriteHoldingRegisterResponse(register=2, value=10),
-        WriteHoldingRegisterResponse(register=2, value=10),
-    }
-    assert len(test_set) == 2
-    assert WriteHoldingRegisterResponse(register=2, value=42) in test_set
-    assert WriteHoldingRegisterResponse(register=2, value=10) in test_set
-
-    assert (
-        len(
-            {
-                WriteHoldingRegisterRequest(register=2, value=42),
-                WriteHoldingRegisterResponse(register=2, value=42),
-            }
-        )
-        == 2
-    )
+    with pytest.raises(TypeError, match="unhashable"):
+        hash(r1)
+    with pytest.raises(TypeError, match="unhashable"):
+        {WriteHoldingRegisterResponse(register=2, value=10)}
 
 
 def test_expected_response():
