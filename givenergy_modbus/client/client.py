@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Literal
 
 from givenergy_modbus.client import commands
-from givenergy_modbus.exceptions import CommunicationError, ExceptionBase
+from givenergy_modbus.exceptions import CommunicationError, ExceptionBase, PlantTopologyMismatch
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import resolve_model
@@ -213,12 +213,60 @@ class Client:
         except TimeoutError:
             return False
 
+    async def _detect_bcu_stacks(
+        self,
+        caps: PlantCapabilities,
+        prior: PlantCapabilities | None,
+        probe_timeout: float,
+        probe_retries: int,
+    ) -> None:
+        """Populate caps.bcu_stacks. Hinted mode trusts prior layout; cold mode reads BMS at 0xA0."""
+        if prior is not None:
+            # Hinted: probe each previously-seen BCU and record what the BCU actually
+            # reports for its module count (rather than trusting `prior`). The probe
+            # populates IR(60–64) into the register cache; IR(64) is the BCU's own
+            # module count. Letting actual values flow into `caps` here means a
+            # change in stack composition is surfaced by the subsequent comparison
+            # against `prior` rather than silently accepted. BMS read at 0xA0 is
+            # skipped entirely — prior already tells us which BCUs to look at.
+            for offset, _stored_modules in prior.bcu_stacks:
+                if await self._probe(
+                    ReadInputRegistersRequest(base_register=60, register_count=5, device_address=0x70 + offset),
+                    timeout=probe_timeout,
+                    retries=probe_retries,
+                ):
+                    bcu_cache = self.plant.register_caches.get(0x70 + offset, RegisterCache())
+                    actual_modules = bcu_cache.get(IR(64)) or 0
+                    caps.bcu_stacks.append((offset, actual_modules))
+            return
+
+        # Cold path: ask the BMS how many BCUs exist, then probe each.
+        # 0xA0 is the BMS device address; IR(61) holds the number of BCUs present.
+        if not await self._probe(
+            ReadInputRegistersRequest(base_register=60, register_count=5, device_address=0xA0),
+            timeout=probe_timeout,
+            retries=probe_retries,
+        ):
+            return
+        bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
+        num_bcus = bms_cache.get(IR(61)) or 0
+        for i in range(num_bcus):
+            if await self._probe(
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + i),
+                timeout=probe_timeout,
+                retries=probe_retries,
+            ):
+                bcu_cache = self.plant.register_caches.get(0x70 + i, RegisterCache())
+                num_modules = bcu_cache.get(IR(64)) or 0
+                caps.bcu_stacks.append((i, num_modules))
+
     async def detect(
         self,
         timeout: float = 2.0,
         retries: int = 3,
         probe_timeout: float = 0.5,
         probe_retries: int = 1,
+        prior: PlantCapabilities | None = None,
     ) -> PlantCapabilities:
         """Discover device type and peripheral topology.
 
@@ -230,10 +278,29 @@ class Client:
         the plant are the same. Subsequent calls to Client.refresh() and
         Client.load_config() will use it automatically.
 
+        When `prior` is supplied, the probe sweep restricts itself to the
+        addresses listed in it — empty addresses from a cold sweep are skipped.
+        If reality doesn't match prior (device_type changed, or any hinted
+        address fails to confirm), raises PlantTopologyMismatch and leaves
+        `self.plant.capabilities` as None. The exception carries `prior` and
+        `actual` so callers can decide whether to retry, fall back to a cold
+        detect(), or surface the change to the user.
+
         Uses a two-tier timeout: `timeout`/`retries` for the known inverter device
         (where a response is expected), and `probe_timeout`/`probe_retries` for
         speculative probes where absence is the common case.
         """
+        if prior is not None:
+            _logger.info(
+                "detect: hinted mode — assuming device_type=Model.%s, inverter=0x%02x, "
+                "meters=[%s], lv_batteries=[%s], bcus=[%s]",
+                prior.device_type.name,
+                prior.inverter_address,
+                ", ".join(f"0x{a:02x}" for a in prior.meter_addresses),
+                ", ".join(f"0x{a:02x}" for a in prior.lv_battery_addresses),
+                ", ".join(f"0x{0x70 + offset:02x} (x{n})" for offset, n in prior.bcu_stacks),
+            )
+
         # Step 1 — read the inverter's configuration block to get DTC and ARM firmware.
         # 0x11 is the address used during initial discovery; plant.update() rewrites it to 0x32.
         await self.send_request_and_await_response(
@@ -249,38 +316,38 @@ class Client:
             )
         arm_fw = cache.get(HR(21)) or 0
         caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw))
-        _logger.info("detect: device_type=%s", caps.device_type)
+        _logger.info("detect: device_type=Model.%s", caps.device_type.name)
+
+        if prior is not None and prior.device_type != caps.device_type:
+            self.plant.capabilities = None
+            raise PlantTopologyMismatch(
+                f"detect: device_type changed since prior capture "
+                f"(prior={prior.device_type}, actual={caps.device_type}) — discarding hint",
+                prior=prior,
+                actual=caps,
+            )
 
         # Step 2 — BCU probing for HV systems.
         if caps.is_hv:
-            # 0xA0 is the BMS device address; IR(61) holds the number of BCUs present.
-            if await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=5, device_address=0xA0),
-                timeout=probe_timeout,
-                retries=probe_retries,
-            ):
-                bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
-                num_bcus = bms_cache.get(IR(61)) or 0
-                for i in range(num_bcus):
-                    if await self._probe(
-                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + i),
-                        timeout=probe_timeout,
-                        retries=probe_retries,
-                    ):
-                        bcu_cache: RegisterCache = self.plant.register_caches.get(0x70 + i, RegisterCache())
-                        num_modules = bcu_cache.get(IR(64)) or 0
-                        caps.bcu_stacks.append((i, num_modules))
-            _logger.info("detect: bcu_stacks=%s", caps.bcu_stacks)
+            await self._detect_bcu_stacks(caps, prior, probe_timeout, probe_retries)
+            _logger.info(
+                "detect: bcu_stacks=[%s]",
+                ", ".join(f"0x{0x70 + o:02x} (x{n})" for o, n in caps.bcu_stacks),
+            )
 
-        # Step 3 — meter probing (devices 0x01–0x08).
-        for meter_addr in range(0x01, 0x09):
+        # Step 3 — meter probing. Hinted: only previously-seen addresses. Cold: full 0x01–0x08 sweep.
+        meter_candidates = prior.meter_addresses if prior is not None else range(0x01, 0x09)
+        for meter_addr in meter_candidates:
             if await self._probe(
                 ReadInputRegistersRequest(base_register=60, register_count=30, device_address=meter_addr),
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
                 caps.meter_addresses.append(meter_addr)
-        _logger.info("detect: meter_addresses=%s", caps.meter_addresses)
+        _logger.info(
+            "detect: meter_addresses=[%s]",
+            ", ".join(f"0x{a:02x}" for a in caps.meter_addresses),
+        )
 
         # Step 4 — LV battery detection. Battery #1 shares the inverter's IR bank at 0x32;
         # additional batteries are at 0x33–0x37. All slots are validated via Battery.is_valid().
@@ -290,7 +357,8 @@ class Client:
                 timeout=timeout,
                 retries=retries,
             )
-            for batt_addr in range(0x32, 0x38):
+            batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
+            for batt_addr in batt_candidates:
                 if batt_addr > 0x32:
                     if not await self._probe(
                         ReadInputRegistersRequest(base_register=60, register_count=60, device_address=batt_addr),
@@ -306,7 +374,18 @@ class Client:
                 except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
                     break
                 caps.lv_battery_addresses.append(batt_addr)
-            _logger.info("detect: lv_battery_addresses=%s", caps.lv_battery_addresses)
+            _logger.info(
+                "detect: lv_battery_addresses=[%s]",
+                ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
+            )
+
+        if prior is not None and prior != caps:
+            self.plant.capabilities = None
+            raise PlantTopologyMismatch(
+                f"detect: plant topology does not match prior — prior={prior!r}, actual={caps!r}",
+                prior=prior,
+                actual=caps,
+            )
 
         self.plant.capabilities = caps
         return caps

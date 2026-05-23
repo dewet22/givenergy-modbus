@@ -251,3 +251,59 @@ with open("capture.txt", "w") as f:
 ```
 
 Only one capture may run on a Client at a time — starting a second raises `RuntimeError`.
+
+## Persisting detection state across restarts
+
+`Client.detect()` is the slow part of a cold start — it probes for BCUs, meters and
+battery devices across address ranges where most slots are empty, each probe waiting
+for its own timeout. The returned `PlantCapabilities` describes the topology that
+was actually found, and can be persisted by the calling application to skip the
+empty-slot scan on next start.
+
+```python
+import json
+from pathlib import Path
+
+caps = await client.detect()
+Path("~/.givenergy-caps.json").expanduser().write_text(json.dumps(caps.to_dict()))
+```
+
+On next start, hand the previously-captured caps back via `prior=`:
+
+```python
+import json
+from pathlib import Path
+
+from givenergy_modbus.exceptions import PlantTopologyMismatch
+from givenergy_modbus.model.plant import PlantCapabilities
+
+stored = json.loads(Path("~/.givenergy-caps.json").expanduser().read_text())
+prior = PlantCapabilities.from_dict(stored)
+
+try:
+    caps = await client.detect(prior=prior)
+except PlantTopologyMismatch as exc:
+    # Hardware changed since `prior` was captured. Either fall back to a cold
+    # detect, prompt the user, or accept the new layout explicitly.
+    caps = await client.detect()  # cold rescan
+```
+
+Hinted mode is **strict**: each address listed in `prior` is still probed, but the
+empty-slot sweep is skipped. If anything in `prior` fails to confirm — or the
+inverter's device_type has changed — `detect()` raises `PlantTopologyMismatch`
+(carrying both `prior` and `actual`) and leaves `client.plant.capabilities` as
+`None`. The application chooses the recovery policy. Library does no file I/O
+itself; storage location and lifecycle are entirely the caller's responsibility.
+
+The serialised form is stable and includes a `schema_version` field:
+
+```json
+{
+  "schema_version": 1,
+  "device_type": "HYBRID",
+  "inverter_address": "0x32",
+  "meter_addresses": ["0x01"],
+  "lv_battery_addresses": ["0x32", "0x33"],
+  "bcu_stacks": []
+}
+```

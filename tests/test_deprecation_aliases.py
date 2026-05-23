@@ -132,23 +132,8 @@ def test_capabilities_legacy_setters_warn_and_assign():
     assert caps.bcu_stacks == [(0, 4)]
 
 
-def test_capabilities_from_dict_accepts_legacy_keys():
-    """Persisted state from older versions uses *_slave(s) keys; from_dict must still load it."""
-    legacy = {
-        "device_type": Model.HYBRID.value,
-        "inverter_slave": 0x32,
-        "meter_slaves": [0x01],
-        "lv_battery_slaves": [0x33],
-        "bcu_slaves": [[0, 2]],
-    }
-    caps = PlantCapabilities.from_dict(legacy)
-    assert caps.inverter_address == 0x32
-    assert caps.meter_addresses == [0x01]
-    assert caps.lv_battery_addresses == [0x33]
-    assert caps.bcu_stacks == [(0, 2)]
-
-
-def test_capabilities_to_dict_uses_new_keys():
+def test_capabilities_to_dict_format():
+    """Serialised form uses hex address strings, Model.name, and includes schema_version."""
     caps = PlantCapabilities(
         device_type=Model.HYBRID,
         inverter_address=0x32,
@@ -156,13 +141,35 @@ def test_capabilities_to_dict_uses_new_keys():
         lv_battery_addresses=[0x33],
         bcu_stacks=[(0, 2)],
     )
-    assert set(caps.to_dict().keys()) == {
-        "device_type",
-        "inverter_address",
-        "meter_addresses",
-        "lv_battery_addresses",
-        "bcu_stacks",
+    assert caps.to_dict() == {
+        "schema_version": 1,
+        "device_type": "HYBRID",
+        "inverter_address": "0x32",
+        "meter_addresses": ["0x01"],
+        "lv_battery_addresses": ["0x33"],
+        "bcu_stacks": [[0, 2]],
     }
+
+
+def test_capabilities_from_dict_rejects_unknown_schema_version():
+    with pytest.raises(ValueError, match="unsupported PlantCapabilities schema_version"):
+        PlantCapabilities.from_dict({"schema_version": 999, "device_type": "HYBRID"})
+
+
+def test_capabilities_from_dict_ignores_unknown_keys():
+    """Forward-compat: unknown keys are silently ignored."""
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": "HYBRID",
+            "inverter_address": "0x32",
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [],
+            "future_field": "ignored",
+        }
+    )
+    assert caps.device_type == Model.HYBRID
 
 
 def test_hv_stack_slave_address_kwarg_warns():

@@ -28,3 +28,26 @@ class InvalidFrame(ExceptionBase):
 
 class CommunicationError(ExceptionBase):
     """Exception to indicate a communication error."""
+
+
+class PlantTopologyMismatch(CommunicationError):
+    """Raised when detect(prior=...) finds the plant doesn't match the supplied prior.
+
+    Carries both `prior` (what the caller asserted) and `actual` (a PlantCapabilities
+    reflecting what confirmed on this run). On raise, the Client's plant.capabilities
+    is left as None — callers that wish to accept the new topology must explicitly
+    assign `client.plant.capabilities = exc.actual`.
+
+    Caller policy decides whether to retry (e.g. with longer timeouts), fall back to
+    detect() without prior, or surface the change to the user.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        prior,
+        actual,
+    ) -> None:
+        super().__init__(message=message)
+        self.prior = prior
+        self.actual = actual
