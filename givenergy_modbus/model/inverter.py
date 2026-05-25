@@ -573,7 +573,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
         "e_inverter_out_day": Def(C.deci, None, IR(44)),
         "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
-        "work_time_total": Def(C.uint32, None, IR(47), IR(48)),
+        # Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per
+        # wall-clock hour and persists across reboots; cap at ~100 years to
+        # reject obviously-garbage uint32 values. See #84.
+        "work_time_total": Def(C.uint32, None, IR(47), IR(48), max=876_000),
         "system_mode": Def(C.uint16, None, IR(49)),
         "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
