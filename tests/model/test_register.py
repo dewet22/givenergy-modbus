@@ -213,7 +213,7 @@ def test_bounds_at_limits():
     assert _getter(defn, 100).get("field") == 100
 
 
-def test_bounds_below_min_logs_and_passes_through(caplog):
+def test_bounds_below_min_returns_none(caplog):
     defn = RegisterDefinition(Converter.uint16, None, IR(1), min=10, max=100)
     cache = RegisterCache({IR(1): 5})
 
@@ -222,15 +222,15 @@ def test_bounds_below_min_logs_and_passes_through(caplog):
 
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _G(cache).get("field")
-    assert val == 5
+    assert val is None
     assert any("out of bounds" in r.message for r in caplog.records)
 
 
-def test_bounds_above_max_logs_and_passes_through(caplog):
+def test_bounds_above_max_returns_none(caplog):
     defn = RegisterDefinition(Converter.uint16, None, IR(0), max=100)
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 101).get("field")
-    assert val == 101
+    assert val is None
     assert any("out of bounds" in r.message for r in caplog.records)
 
 
@@ -238,19 +238,19 @@ def test_bounds_checked_post_conversion(caplog):
     # Raw value 550 → deci → 55.0; bounds 0.0–100.0 should pass
     defn = RegisterDefinition(Converter.uint16, Converter.deci, IR(0), min=0.0, max=100.0)
     assert _getter(defn, 550).get("field") == pytest.approx(55.0)
-    # Raw value 1010 → deci → 101.0; exceeds max=100.0 — logs at debug, value passes through
+    # Raw value 1010 → deci → 101.0; exceeds max=100.0 — logs and returns None.
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 1010).get("field")
-    assert val == pytest.approx(101.0)
+    assert val is None
     assert any("out of bounds" in r.message for r in caplog.records)
 
 
 def test_bounds_checked_post_signed_conversion(caplog):
-    # int16 of raw 65535 → -1; below min=0 — logs at debug, value passes through
+    # int16 of raw 65535 → -1; below min=0 — logs and returns None.
     defn = RegisterDefinition(Converter.int16, None, IR(0), min=0)
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _getter(defn, 65535).get("field")
-    assert val == -1
+    assert val is None
     assert any("out of bounds" in r.message for r in caplog.records)
     assert _getter(defn, 10).get("field") == 10
 
@@ -279,11 +279,11 @@ def test_multi_register_all_zero_exempt_from_bounds(caplog):
     assert val == 0
     assert not any("out of bounds" in r.message for r in caplog.records)
 
-    # One register non-zero → still bounds-checked (and flagged).
+    # One register non-zero → still bounds-checked (and suppressed).
     caplog.clear()
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
         val = _G(RegisterCache({IR(0): 0, IR(1): 5})).get("field")
-    assert val == 5
+    assert val is None
     assert any("out of bounds" in r.message for r in caplog.records)
 
 
@@ -296,6 +296,54 @@ def test_missing_register_skips_bounds():
     defn = RegisterDefinition(Converter.uint16, None, IR(0), min=0, max=100)
     getter = type("_G", (RegisterGetter,), {"REGISTER_LUT": {"field": defn}})(RegisterCache())
     assert getter.get("field") is None
+
+
+# ---------------------------------------------------------------------------
+# Regression: #82 library-side corruption (suppress, don't pass through)
+# ---------------------------------------------------------------------------
+
+
+def test_issue_82_ir100_corruption_values_suppressed():
+    """Manifestation 1: Battery.soc at IR(100), declared min=0 max=100, suppress garbage.
+
+    Sample values from a user's HA recorder DB over 4 days — none should leak to
+    downstream consumers.
+    """
+    defn = RegisterDefinition(Converter.uint16, None, IR(100), min=0, max=100)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"soc": defn}
+
+    for corrupt in (57946, 63055, 37978, 5710):
+        cache = RegisterCache({IR(100): corrupt})
+        assert _G(cache).get("soc") is None, f"corrupt value {corrupt} should be suppressed"
+
+
+def test_issue_82_ir59_corruption_values_suppressed():
+    """Manifestation 2: SinglePhaseInverter.battery_soc at IR(59), declared min=0 max=100.
+
+    Sample values from the counter-shaped corruption observed in HA over the same window.
+    """
+    defn = RegisterDefinition(Converter.uint16, None, IR(59), min=0, max=100)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"battery_soc": defn}
+
+    for corrupt in (44820, 45123, 46789, 47168):
+        cache = RegisterCache({IR(59): corrupt})
+        assert _G(cache).get("battery_soc") is None, f"corrupt value {corrupt} should be suppressed"
+
+
+def test_issue_82_healthy_soc_values_pass_through():
+    """Counter-example: healthy SOC values in range still decode normally."""
+    defn = RegisterDefinition(Converter.uint16, None, IR(100), min=0, max=100)
+
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"soc": defn}
+
+    for healthy in (0, 1, 50, 83, 100):
+        cache = RegisterCache({IR(100): healthy})
+        assert _G(cache).get("soc") == healthy
 
 
 # ---------------------------------------------------------------------------
