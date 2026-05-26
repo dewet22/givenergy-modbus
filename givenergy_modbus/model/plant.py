@@ -256,22 +256,27 @@ class PlantCapabilities:
             # persisted the enum value (Model("2")). Try the name lookup first
             # — it's what every payload emitted by 2.0.1's to_dict() uses — and
             # fall back to the value lookup so v2.0.0 payloads keep working.
+            # `str(v)` on the fallback handles unquoted ints from sloppy JSON
+            # tooling (`device_type: 2` instead of `"2"`).
             if isinstance(v, Model):
                 return v
             try:
                 return Model[v]
-            except KeyError:
-                return Model(v)
+            except KeyError, TypeError:
+                return Model(str(v))
 
+        # `.get(k) or []` (not `.get(k, [])`) so an explicit `null` in JSON for
+        # any of the optional list fields safely degrades to empty rather than
+        # raising TypeError on iteration.
         return cls(
             device_type=_device_type(normalised["device_type"]),
             inverter_address=_addr(normalised["inverter_address"]),
-            meter_addresses=[_addr(a) for a in normalised.get("meter_addresses", [])],
-            lv_battery_addresses=[_addr(a) for a in normalised.get("lv_battery_addresses", [])],
+            meter_addresses=[_addr(a) for a in (normalised.get("meter_addresses") or [])],
+            lv_battery_addresses=[_addr(a) for a in (normalised.get("lv_battery_addresses") or [])],
             # Coerce bcu_stacks entries — hand-edited JSON / differently-serialised
             # payloads can put strings here, which would TypeError downstream
             # (`0x70 + offset` in detect()). Fail loud at parse time instead.
-            bcu_stacks=[(int(offset), int(modules)) for offset, modules in normalised.get("bcu_stacks", [])],
+            bcu_stacks=[(int(offset), int(modules)) for offset, modules in (normalised.get("bcu_stacks") or [])],
         )
 
     def __repr__(self) -> str:
