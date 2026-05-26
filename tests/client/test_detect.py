@@ -100,6 +100,29 @@ def test_plant_capabilities_from_dict_rejects_mismatched_schema_version():
         PlantCapabilities.from_dict({"schema_version": 99, "device_type": Model.HYBRID.name})
 
 
+def test_plant_capabilities_from_dict_coerces_bcu_stacks_ints():
+    """A hand-edited payload with stringified bcu_stacks entries still loads cleanly.
+
+    The address fields already tolerate hex-string-or-int via the `_addr()` helper, but
+    `bcu_stacks` was passing entries through verbatim — strings here would only blow up
+    later in `detect()` at `0x70 + offset` with `TypeError`, far from the parse site.
+    Coercing to int at from_dict() time fails loud and immediately if the payload is
+    malformed, and silently accepts the legitimate hand-edit case.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": "ALL_IN_ONE",
+            "inverter_address": "0x32",
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [["0", "3"], ["1", "2"]],
+        }
+    )
+    assert caps.bcu_stacks == [(0, 3), (1, 2)]
+    assert all(isinstance(o, int) and isinstance(n, int) for o, n in caps.bcu_stacks)
+
+
 def test_plant_capabilities_from_dict_tolerates_legacy_key_aliases():
     """Pre-rename `*_slave(s)` keys are normalised so persisted state still loads cleanly."""
     legacy = {
