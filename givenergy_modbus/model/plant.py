@@ -341,6 +341,10 @@ class Plant(GivEnergyBaseModel):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             self._commit_bank(device_address, incoming)
         elif isinstance(pdu, ReadInputRegistersResponse):
+            if pdu.is_suspicious():
+                # Pattern A dongle-side substitution from #78 — known fingerprint of 16 fixed
+                # constants. is_suspicious() logs at debug when it fires.
+                return
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             self._commit_bank(device_address, incoming)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
