@@ -224,30 +224,51 @@ class PlantCapabilities:
     def from_dict(cls, data: dict[str, Any]) -> "PlantCapabilities":
         """Reconstruct from a to_dict() payload.
 
-        Schema version mismatch raises ValueError — callers can catch and re-run
-        detect() without prior. Pre-rename `*_slave(s)` key aliases are
-        normalised silently so state persisted under the older conventions
-        still loads cleanly.
+        Accepts two on-disk shapes:
+
+        - **v2.0.0 (legacy, no `schema_version`)**: `device_type` as the enum
+          value (e.g. `"2"`), addresses as raw integers, no `schema_version`
+          key. Persisted by the v2.0.0 `to_dict()`.
+        - **v2.0.1+ (versioned)**: `schema_version` present and equal to
+          `SCHEMA_VERSION`, `device_type` as enum name (e.g. `"HYBRID_GEN1"`),
+          addresses as `"0x..."` hex strings.
+
+        A `schema_version` that's present but doesn't match `SCHEMA_VERSION`
+        raises `ValueError` — callers can catch and re-run detect() without
+        prior. Pre-rename `*_slave(s)` key aliases are normalised silently so
+        state persisted under the older conventions still loads cleanly.
         """
         normalised: dict[str, Any] = dict(data)
         for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
             if old in normalised and new not in normalised:
                 normalised[new] = normalised.pop(old)
         version = normalised.get("schema_version")
-        if version != cls.SCHEMA_VERSION:
+        if version is not None and version != cls.SCHEMA_VERSION:
             raise ValueError(f"unsupported PlantCapabilities schema_version {version!r}; expected {cls.SCHEMA_VERSION}")
 
         def _addr(v: Any) -> int:
-            # Accept either hex strings (the canonical to_dict() form) or raw ints
-            # for resilience against hand-edited or differently-serialised payloads.
+            # Accept either hex strings (the v2.0.1+ canonical form) or raw ints
+            # (the v2.0.0 legacy form, or hand-edited payloads).
             return int(v, 0) if isinstance(v, str) else int(v)
 
+        def _device_type(v: Any) -> Model:
+            # v2.0.1+ persists the enum name (Model["HYBRID_GEN1"]); v2.0.0
+            # persisted the enum value (Model("2")). Try the name lookup first
+            # — it's what every payload emitted by 2.0.1's to_dict() uses — and
+            # fall back to the value lookup so v2.0.0 payloads keep working.
+            if isinstance(v, Model):
+                return v
+            try:
+                return Model[v]
+            except KeyError:
+                return Model(v)
+
         return cls(
-            device_type=Model[normalised["device_type"]],
+            device_type=_device_type(normalised["device_type"]),
             inverter_address=_addr(normalised["inverter_address"]),
-            meter_addresses=[_addr(a) for a in normalised["meter_addresses"]],
-            lv_battery_addresses=[_addr(a) for a in normalised["lv_battery_addresses"]],
-            bcu_stacks=[(offset, modules) for offset, modules in normalised["bcu_stacks"]],
+            meter_addresses=[_addr(a) for a in normalised.get("meter_addresses", [])],
+            lv_battery_addresses=[_addr(a) for a in normalised.get("lv_battery_addresses", [])],
+            bcu_stacks=[(offset, modules) for offset, modules in normalised.get("bcu_stacks", [])],
         )
 
     def __repr__(self) -> str:
