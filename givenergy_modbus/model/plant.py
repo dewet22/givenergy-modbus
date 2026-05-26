@@ -268,7 +268,10 @@ class PlantCapabilities:
             inverter_address=_addr(normalised["inverter_address"]),
             meter_addresses=[_addr(a) for a in normalised.get("meter_addresses", [])],
             lv_battery_addresses=[_addr(a) for a in normalised.get("lv_battery_addresses", [])],
-            bcu_stacks=[(offset, modules) for offset, modules in normalised.get("bcu_stacks", [])],
+            # Coerce bcu_stacks entries — hand-edited JSON / differently-serialised
+            # payloads can put strings here, which would TypeError downstream
+            # (`0x70 + offset` in detect()). Fail loud at parse time instead.
+            bcu_stacks=[(int(offset), int(modules)) for offset, modules in normalised.get("bcu_stacks", [])],
         )
 
     def __repr__(self) -> str:
