@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-05-26
+
+### 🔧 Maintenance
+
+- add offline wire-capture replay harness (#82) ([6100679](https://github.com/dewet22/givenergy-modbus/commit/61006798298fa9688e2684a8447de57756470bea))
+
 ## [2.0.0] - 2026-05-22
 
 ### 🔧 Maintenance
