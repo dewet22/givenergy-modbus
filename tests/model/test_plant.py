@@ -1362,6 +1362,7 @@ def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadI
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
     pdu.to_dict.return_value = registers
+    pdu.is_suspicious.return_value = False
     return pdu
 
 
@@ -1467,6 +1468,65 @@ def test_update_error_pdu_is_ignored(plant: Plant):
     pdu.error = True
     plant.update(pdu)
     assert IR(5) not in plant.register_caches[0x32]
+
+
+def test_update_discards_suspicious_ir_pdu(plant: Plant):
+    """Pattern A (issue #78) substituted IR banks must be rejected before they corrupt the cache.
+
+    `ReadInputRegistersResponse.is_suspicious()` carries the 16-field fingerprint of the
+    historic dongle-side response substitution. When it fires, the bank is discarded —
+    `_commit_bank` is never called, no register from the suspicious frame reaches the cache.
+    """
+    pdu = _make_ir_pdu({5: 1234, 59: 0x661E})
+    pdu.is_suspicious.return_value = True  # type: ignore[attr-defined]
+    plant.update(pdu)
+    assert IR(5) not in plant.register_caches[0x32]
+    assert IR(59) not in plant.register_caches[0x32]
+
+
+def test_update_pattern_a_signature_is_recognised_and_discarded(plant: Plant):
+    """End-to-end: a real Pattern A fingerprint (per #78) must be rejected via is_suspicious().
+
+    Exercises the actual `is_suspicious()` logic rather than a mocked return value — the
+    integration between Plant.update() and the PDU-level fingerprint check.
+    """
+    # The 17 hardcoded indices/values from is_suspicious(). >5 matches => suspicious.
+    pattern_a = {
+        28: 0x4C32,
+        30: 0xA119,
+        31: 0x34EA,
+        32: 0xE77F,
+        33: 0xD475,
+        35: 0x4500,
+        40: 0xE4F9,
+        41: 0xC0A8,
+        43: 0xC0A8,
+        46: 0xC5E9,
+        50: 0x60EF,
+        51: 0x8018,
+        52: 0x43E0,
+        53: 0xF6CE,
+        56: 0x080A,
+        58: 0xFCC1,
+        59: 0x661E,
+    }
+    # Build a real ReadInputRegistersResponse rather than a mock so is_suspicious() runs for real.
+    real_pdu = ReadInputRegistersResponse(
+        base_register=0,
+        register_count=60,
+        register_values=[pattern_a.get(i, 0) for i in range(60)],
+        device_address=0x32,
+        inverter_serial_number="",
+        data_adapter_serial_number="",
+        error=False,
+        padding=0x8A,
+    )
+    plant.update(real_pdu)
+    # None of the Pattern A register positions should have been committed.
+    for reg in pattern_a:
+        assert IR(reg) not in plant.register_caches[0x32], (
+            f"IR({reg}) leaked into the cache despite Pattern A fingerprint"
+        )
 
 
 def test_getter_for_device_meter_address(plant: Plant):
