@@ -100,6 +100,46 @@ def test_plant_capabilities_from_dict_rejects_mismatched_schema_version():
         PlantCapabilities.from_dict({"schema_version": 99, "device_type": Model.HYBRID.name})
 
 
+def test_plant_capabilities_from_dict_accepts_int_device_type():
+    """A device_type that comes through as an unquoted int (sloppy JSON tooling) is coerced.
+
+    `Model[v]` requires a string key, so an int input falls through to the
+    value-lookup `Model(str(v))` rather than crashing with `ValueError: 2 is not
+    a valid Model`. Same fallback that lets v2.0.0 string-value payloads parse.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "device_type": 2,  # int, not str — what unquoted JSON / sloppy YAML yields
+            "inverter_address": 0x32,
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [],
+        }
+    )
+    assert caps.device_type == Model.HYBRID
+
+
+def test_plant_capabilities_from_dict_treats_null_list_fields_as_empty():
+    """An explicit `null` for any of the optional list fields safely degrades to empty.
+
+    Without the `or []` guard, `null` in JSON would surface as a `NoneType is not
+    iterable` TypeError far from the parse site.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": "HYBRID",
+            "inverter_address": "0x32",
+            "meter_addresses": None,
+            "lv_battery_addresses": None,
+            "bcu_stacks": None,
+        }
+    )
+    assert caps.meter_addresses == []
+    assert caps.lv_battery_addresses == []
+    assert caps.bcu_stacks == []
+
+
 def test_plant_capabilities_from_dict_coerces_bcu_stacks_ints():
     """A hand-edited payload with stringified bcu_stacks entries still loads cleanly.
 
