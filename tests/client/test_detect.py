@@ -100,6 +100,21 @@ def test_plant_capabilities_from_dict_rejects_mismatched_schema_version():
         PlantCapabilities.from_dict({"schema_version": 99, "device_type": Model.HYBRID.name})
 
 
+def test_plant_capabilities_from_dict_accepts_model_instance_device_type():
+    """A `Model` instance passed directly is returned as-is, no string round-trip required."""
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": Model.HYBRID_GEN1,  # Model instance, not a string
+            "inverter_address": "0x32",
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [],
+        }
+    )
+    assert caps.device_type is Model.HYBRID_GEN1
+
+
 def test_plant_capabilities_from_dict_accepts_int_device_type():
     """A device_type that comes through as an unquoted int (sloppy JSON tooling) is coerced.
 
