@@ -63,14 +63,39 @@ def test_plant_capabilities_round_trip_with_bcus():
     assert restored.bcu_stacks == [(0, 3), (1, 2)]
 
 
-def test_plant_capabilities_from_dict_rejects_missing_schema_version():
-    """from_dict() requires a matching schema_version — callers fall back to a cold detect on mismatch."""
-    with pytest.raises(ValueError, match="schema_version None"):
-        PlantCapabilities.from_dict({"device_type": Model.HYBRID.name})
+def test_plant_capabilities_from_dict_accepts_v2_0_0_legacy_shape():
+    """Regression: a v2.0.0-shaped payload must still parse after the v2.0.1 schema change.
+
+    v2.0.0's to_dict() emitted no schema_version, used Model.value, and stored
+    addresses as raw ints. v2.0.1 added schema_version=1, switched device_type
+    to Model.name, and switched addresses to hex strings. Without a legacy
+    parse path, a v2.0.0 → v2.0.1+ upgrade would crash with `ValueError:
+    unsupported PlantCapabilities schema_version None`.
+
+    The fixture below matches exactly what v2.0.0's `PlantCapabilities.to_dict()`
+    would have produced for this configuration — captured by reading the v2.0.0
+    tag's plant.py.
+    """
+    v2_0_0_payload = {
+        "device_type": "2",  # Model.HYBRID.value, not .name
+        "inverter_address": 0x32,  # integer, not hex string
+        "meter_addresses": [0x01, 0x02],
+        "lv_battery_addresses": [0x33, 0x34],
+        "bcu_stacks": [],
+    }
+    caps = PlantCapabilities.from_dict(v2_0_0_payload)
+    assert caps.device_type == Model.HYBRID
+    assert caps.inverter_address == 0x32
+    assert caps.meter_addresses == [0x01, 0x02]
+    assert caps.lv_battery_addresses == [0x33, 0x34]
+    assert caps.bcu_stacks == []
 
 
 def test_plant_capabilities_from_dict_rejects_mismatched_schema_version():
-    """An unknown schema_version triggers ValueError, not a silent best-effort parse."""
+    """A versioned payload with an unknown schema_version triggers ValueError.
+
+    Distinct from missing-schema_version, which is now treated as v2.0.0 legacy.
+    """
     with pytest.raises(ValueError, match="schema_version 99"):
         PlantCapabilities.from_dict({"schema_version": 99, "device_type": Model.HYBRID.name})
 
