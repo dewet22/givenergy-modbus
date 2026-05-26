@@ -63,16 +63,119 @@ def test_plant_capabilities_round_trip_with_bcus():
     assert restored.bcu_stacks == [(0, 3), (1, 2)]
 
 
-def test_plant_capabilities_from_dict_rejects_missing_schema_version():
-    """from_dict() requires a matching schema_version — callers fall back to a cold detect on mismatch."""
-    with pytest.raises(ValueError, match="schema_version None"):
-        PlantCapabilities.from_dict({"device_type": Model.HYBRID.name})
+def test_plant_capabilities_from_dict_accepts_v2_0_0_legacy_shape():
+    """Regression: a v2.0.0-shaped payload must still parse after the v2.0.1 schema change.
+
+    v2.0.0's to_dict() emitted no schema_version, used Model.value, and stored
+    addresses as raw ints. v2.0.1 added schema_version=1, switched device_type
+    to Model.name, and switched addresses to hex strings. Without a legacy
+    parse path, a v2.0.0 → v2.0.1+ upgrade would crash with `ValueError:
+    unsupported PlantCapabilities schema_version None`.
+
+    The fixture below matches exactly what v2.0.0's `PlantCapabilities.to_dict()`
+    would have produced for this configuration — captured by reading the v2.0.0
+    tag's plant.py.
+    """
+    v2_0_0_payload = {
+        "device_type": "2",  # Model.HYBRID.value, not .name
+        "inverter_address": 0x32,  # integer, not hex string
+        "meter_addresses": [0x01, 0x02],
+        "lv_battery_addresses": [0x33, 0x34],
+        "bcu_stacks": [],
+    }
+    caps = PlantCapabilities.from_dict(v2_0_0_payload)
+    assert caps.device_type == Model.HYBRID
+    assert caps.inverter_address == 0x32
+    assert caps.meter_addresses == [0x01, 0x02]
+    assert caps.lv_battery_addresses == [0x33, 0x34]
+    assert caps.bcu_stacks == []
 
 
 def test_plant_capabilities_from_dict_rejects_mismatched_schema_version():
-    """An unknown schema_version triggers ValueError, not a silent best-effort parse."""
+    """A versioned payload with an unknown schema_version triggers ValueError.
+
+    Distinct from missing-schema_version, which is now treated as v2.0.0 legacy.
+    """
     with pytest.raises(ValueError, match="schema_version 99"):
         PlantCapabilities.from_dict({"schema_version": 99, "device_type": Model.HYBRID.name})
+
+
+def test_plant_capabilities_from_dict_accepts_model_instance_device_type():
+    """A `Model` instance passed directly is returned as-is, no string round-trip required."""
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": Model.HYBRID_GEN1,  # Model instance, not a string
+            "inverter_address": "0x32",
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [],
+        }
+    )
+    assert caps.device_type is Model.HYBRID_GEN1
+
+
+def test_plant_capabilities_from_dict_accepts_int_device_type():
+    """A device_type that comes through as an unquoted int (sloppy JSON tooling) is coerced.
+
+    `Model[v]` requires a string key, so an int input falls through to the
+    value-lookup `Model(str(v))` rather than crashing with `ValueError: 2 is not
+    a valid Model`. Same fallback that lets v2.0.0 string-value payloads parse.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "device_type": 2,  # int, not str — what unquoted JSON / sloppy YAML yields
+            "inverter_address": 0x32,
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [],
+        }
+    )
+    assert caps.device_type == Model.HYBRID
+
+
+def test_plant_capabilities_from_dict_treats_null_list_fields_as_empty():
+    """An explicit `null` for any of the optional list fields safely degrades to empty.
+
+    Without the `or []` guard, `null` in JSON would surface as a `NoneType is not
+    iterable` TypeError far from the parse site.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": "HYBRID",
+            "inverter_address": "0x32",
+            "meter_addresses": None,
+            "lv_battery_addresses": None,
+            "bcu_stacks": None,
+        }
+    )
+    assert caps.meter_addresses == []
+    assert caps.lv_battery_addresses == []
+    assert caps.bcu_stacks == []
+
+
+def test_plant_capabilities_from_dict_coerces_bcu_stacks_ints():
+    """A hand-edited payload with stringified bcu_stacks entries still loads cleanly.
+
+    The address fields already tolerate hex-string-or-int via the `_addr()` helper, but
+    `bcu_stacks` was passing entries through verbatim — strings here would only blow up
+    later in `detect()` at `0x70 + offset` with `TypeError`, far from the parse site.
+    Coercing to int at from_dict() time fails loud and immediately if the payload is
+    malformed, and silently accepts the legitimate hand-edit case.
+    """
+    caps = PlantCapabilities.from_dict(
+        {
+            "schema_version": 1,
+            "device_type": "ALL_IN_ONE",
+            "inverter_address": "0x32",
+            "meter_addresses": [],
+            "lv_battery_addresses": [],
+            "bcu_stacks": [["0", "3"], ["1", "2"]],
+        }
+    )
+    assert caps.bcu_stacks == [(0, 3), (1, 2)]
+    assert all(isinstance(o, int) and isinstance(n, int) for o, n in caps.bcu_stacks)
 
 
 def test_plant_capabilities_from_dict_tolerates_legacy_key_aliases():
