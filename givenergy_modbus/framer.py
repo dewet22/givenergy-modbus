@@ -101,7 +101,36 @@ class Framer(ABC):
             # ensure the head of the buffer starts with a valid MBAP header
             frame_start_offset = self._buffer.find(HEADER_START_MARKER)
             if frame_start_offset < 0:
-                _logger.info("No frame header found, await more data")
+                # No marker found anywhere in the accumulated buffer. Trim to
+                # the tail bytes that could still be the start of a marker
+                # split across reads (the first len(marker)-1 bytes), so a
+                # faulty/malicious peer streaming non-marker data can't grow
+                # this buffer without bound. See #88.
+                #
+                # The while-loop's `>= 18` guard means the buffer is always
+                # larger than `keep` (= 3) at this point, so there's always
+                # something to discard. The log level is tiered so a peer
+                # drip-feeding a few bytes at a time doesn't flood operator
+                # logs with warnings — a sustained substantial discard still
+                # surfaces as a warning so operators have visibility.
+                keep = len(HEADER_START_MARKER) - 1
+                discarded = len(self._buffer) - keep
+                if discarded > 100:
+                    _logger.warning(
+                        "No frame header in %db accumulated buffer, "
+                        "discarding %db of leading garbage and retaining trailing %db",
+                        len(self._buffer),
+                        discarded,
+                        keep,
+                    )
+                else:
+                    _logger.debug(
+                        "No frame header in %db buffer, discarding %db, retaining trailing %db",
+                        len(self._buffer),
+                        discarded,
+                        keep,
+                    )
+                self._buffer = self._buffer[-keep:]
                 break
             elif frame_start_offset > 0:
                 # The next candidate frame header is not at the start of the buffer: skip forward to that position
@@ -150,6 +179,15 @@ class Framer(ABC):
                 yield self.pdu_class.decode_bytes(frame)
             except (InvalidPduState, InvalidFrame) as e:
                 yield e
+            except Exception as e:
+                # Defence-in-depth against malformed-frame DoS: any unexpected
+                # exception from low-level decoding (e.g. `struct.error` from a
+                # too-short payload, `ValueError` / `IndexError` from misaligned
+                # offsets) is wrapped as `InvalidFrame` so the consumer task
+                # keeps running rather than terminating on a single bad frame
+                # from the network. Broad catch is deliberate here — this is
+                # the trust boundary for untrusted network input. See #88.
+                yield InvalidFrame(f"frame failed low-level decode: {type(e).__name__}: {e}", frame)
 
 
 class ClientFramer(Framer):
