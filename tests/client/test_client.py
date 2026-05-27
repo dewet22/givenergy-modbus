@@ -310,9 +310,16 @@ async def test_send_request_raises_timeout_when_tx_queue_is_full():
     from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
     req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    async def timeout_wait_for(awaitable, timeout):
+        # Simulate the 5s timeout without leaking the Queue.put coroutine that
+        # send_request_and_await_response passes into asyncio.wait_for().
+        awaitable.close()
+        raise asyncio.TimeoutError
+
     # Patch wait_for to immediately raise TimeoutError, simulating the 5s timeout
     # elapsing without the producer draining the queue.
-    with patch("givenergy_modbus.client.client.asyncio.wait_for", AsyncMock(side_effect=asyncio.TimeoutError)):
+    with patch("givenergy_modbus.client.client.asyncio.wait_for", new=timeout_wait_for):
         with pytest.raises(TimeoutError, match="TX queue full"):
             await client.send_request_and_await_response(req, timeout=1.0, retries=0)
 
