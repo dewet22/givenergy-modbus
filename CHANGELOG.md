@@ -7,6 +7,49 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.1.0a2] - 2026-05-27
 
+First 2.1 alpha. Spans all work on the `v2.1` branch since it diverged
+from `main` at the v2.0.0 release, so includes equivalents of every
+patch shipped in the v2.0.1–v2.0.4 maintenance line as well as the v2.1
+feature work.
+
+### ✨ Added
+
+- Client.detect(prior=) for fast restarts; serialisable PlantCapabilities ([811a143](https://github.com/dewet22/givenergy-modbus/commit/811a1438b5db59a806327bf6e265707021689827))
+- add tx_jitter knob to disperse producer bursts (#71) ([d5f4337](https://github.com/dewet22/givenergy-modbus/commit/d5f433771f2d52071f8c8197bfa239f1512813ad))
+
+### 🔄 Changed
+
+- ⚠️ Breaking: rename work_time_total to work_time_total_hours ([9b737d9](https://github.com/dewet22/givenergy-modbus/commit/9b737d9af40953e5dea39203ceffaac1c5553dc8))
+- ⚠️ Breaking: migrate PlantCapabilities to Pydantic v2 (#72) ([52caaf0](https://github.com/dewet22/givenergy-modbus/commit/52caaf058ddbebd58e0ae6ebc9ced80f9f7828bf))
+- ⚠️ Breaking: migrate RegisterDefinition to Pydantic v2 (#73) ([f83928e](https://github.com/dewet22/givenergy-modbus/commit/f83928ed6d0c84815e714a0300e37206c0f2eabc))
+
+### 🐛 Fixed
+
+- address #81 review feedback (BCU drift, address coercion, docs) ([46ddfae](https://github.com/dewet22/givenergy-modbus/commit/46ddfaec6c6d4154cae2b0865b9fe6c2974ef9a4))
+- document and bound work_time_total unit (#84) ([757c2c9](https://github.com/dewet22/givenergy-modbus/commit/757c2c9ed33cb7b9595fae3f73cc78ece87c0430))
+- suppress out-of-bounds register values instead of passing through (#82) ([151d7ff](https://github.com/dewet22/givenergy-modbus/commit/151d7ff8dc5af648313e1102f31abea4100653ee))
+- discard Pattern A IR(0,60) responses before they reach the cache (#78) ([9b3c490](https://github.com/dewet22/givenergy-modbus/commit/9b3c4908940b4cb84fd69dcf56c6838a2a74733f))
+- accept v2.0.0 PlantCapabilities payloads in from_dict() ([2c8327d](https://github.com/dewet22/givenergy-modbus/commit/2c8327deb6ca30931b8bfb0b221ada99145bffbe))
+- coerce bcu_stacks tuple entries to int in from_dict() ([00152b6](https://github.com/dewet22/givenergy-modbus/commit/00152b66b69fee40e2d054c7ee4ba8bfaa467cf7))
+- harden from_dict against int device_type and null list fields ([3cb7cf9](https://github.com/dewet22/givenergy-modbus/commit/3cb7cf91f8f59451b6cefef86981f777eb29ea02))
+- include error flag in WriteHoldingRegister equality (with unskipped tests) ([e8f289c](https://github.com/dewet22/givenergy-modbus/commit/e8f289cd7e8967dd0eab7a7c78c34f5d3a3e219c))
+- harden against malformed-frame DoS cases (#88) ([6555bea](https://github.com/dewet22/givenergy-modbus/commit/6555bea11f98cc0666a24c390ebb479d5f177d57))
+- refine review feedback on #88 hardening ([a82f432](https://github.com/dewet22/givenergy-modbus/commit/a82f432386998cd149c0f304f9f40296d9edba49))
+- guard p_pv()/e_pv_day() against None inputs (#85) (#92) ([962951a](https://github.com/dewet22/givenergy-modbus/commit/962951a60da0c0a009d8738cf6c4ea8fa222a81f))
+- address gemini-code-assist feedback on PR #94 ([aee7990](https://github.com/dewet22/givenergy-modbus/commit/aee79900405e48c9abc196864fc2503a8b882dab))
+
+### 🔧 Maintenance
+
+- add post-v2.0 improvement plan + correct stale #66 reference ([39c14d4](https://github.com/dewet22/givenergy-modbus/commit/39c14d464f274ca07cf5d4596723aca925fe2919))
+- reframe section 1 of plan as model-aware vs PDU-level ([198a86f](https://github.com/dewet22/givenergy-modbus/commit/198a86f7b7678bb0c6fb674ad3324ea5087f7dcf))
+- add offline wire-capture replay harness (#82) ([7f72c97](https://github.com/dewet22/givenergy-modbus/commit/7f72c97b5ae492ea0cb85287c1361b3c5f2b6396))
+- cover Model-instance passthrough in from_dict() _device_type ([1719521](https://github.com/dewet22/givenergy-modbus/commit/17195210e8dd94a5832b9a41e3387371c6b6a017))
+- clarify write PDU hashability scope ([6c0f808](https://github.com/dewet22/givenergy-modbus/commit/6c0f808d45951cc61b3868b6278cbae0bc7ac398))
+- bump the uv group across 1 directory with 2 updates (#77) ([79c46ad](https://github.com/dewet22/givenergy-modbus/commit/79c46adf45859102a55404de3de38bf47fc8a206))
+- cross-reference open-giv/bms-analysis and document TCP-cache layering ([08b0195](https://github.com/dewet22/givenergy-modbus/commit/08b0195d942f086a91449e9bf1de8f5a6af51822))
+- close leaked Queue.put coroutine in tx-queue-full timeout test ([cba5f7a](https://github.com/dewet22/givenergy-modbus/commit/cba5f7afaf1304e28bccac0f90a3e9e5a68fc9dd))
+- pin actions-gh-pages to v4.1.0 for Node 24 runtime ([b3c0fd5](https://github.com/dewet22/givenergy-modbus/commit/b3c0fd5006fe64ea1698ecb43eea35923b8caacc))
+- hoist ValidationError import to module top per coderabbit nit ([58f1504](https://github.com/dewet22/givenergy-modbus/commit/58f1504e52bb4b0fa290571a47503cfb1013d87d))
 
 ## [2.0.0] - 2026-05-22
 
