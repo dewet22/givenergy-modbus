@@ -70,15 +70,36 @@ _CAPABILITIES_LEGACY_ALIASES = {
 }
 
 
+def _map_legacy_aliases(kwargs: dict[str, Any], *, stacklevel: int) -> None:
+    """Rename legacy ``*_slave(s)`` keys to canonical names, warn, and enforce mutual exclusivity.
+
+    Mutates ``kwargs`` in place. Shared between PlantCapabilities.__init__
+    (stacklevel=3, the caller's frame) and the model_validate validator
+    (stacklevel=2, best-effort — Pydantic internals limit what's reachable).
+    """
+    for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
+        if old not in kwargs:
+            continue
+        if new in kwargs:
+            raise TypeError(f"pass either {old}= or {new}=, not both")
+        warnings.warn(
+            f"PlantCapabilities.{old} is deprecated; use {new}",
+            DeprecationWarning,
+            stacklevel=stacklevel,
+        )
+        kwargs[new] = kwargs.pop(old)
+
+
 class PlantCapabilities(BaseModel):
     """Describes the hardware topology discovered by Client.detect().
 
     Returned by Client.detect(); callers assign it to plant.capabilities or
     persist it for faster restarts (see fork-merge-plan deferred items).
 
-    Legacy ``*_slave(s)`` keyword aliases are handled in the
-    ``_accept_legacy_aliases`` model_validator below — they emit a
-    DeprecationWarning and map to the canonical fields.
+    Legacy ``*_slave(s)`` keyword aliases are mapped to the canonical names
+    in ``__init__`` (for ``PlantCapabilities(...)`` callers) and again in the
+    ``_accept_legacy_aliases`` model_validator (for ``model_validate({...})``
+    callers). Both paths emit a DeprecationWarning.
     """
 
     # `extra="forbid"` preserves the historic contract that unknown kwargs
@@ -92,31 +113,51 @@ class PlantCapabilities(BaseModel):
     # Each entry is (bcu_offset, num_modules) where the BCU device address is 0x70 + bcu_offset.
     bcu_stacks: list[tuple[int, int]] = Field(default_factory=list)
 
+    def __init__(
+        self,
+        device_type: Model | None = None,
+        inverter_address: int | None = None,
+        meter_addresses: list[int] | None = None,
+        lv_battery_addresses: list[int] | None = None,
+        bcu_stacks: list[tuple[int, int]] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        # Custom __init__ for two reasons:
+        # 1. Preserves the historic positional-argument shape that the
+        #    @dataclass form supported (PlantCapabilities(Model.HYBRID, 0x32, ...)).
+        # 2. Lets us emit the legacy-alias DeprecationWarning at stacklevel=2
+        #    pointing at the user's call site — a `model_validator(mode='before')`
+        #    sits behind Pydantic internals and can't reach the caller cleanly.
+        # Only pass through positional-derived values that were actually supplied
+        # so we don't override kwargs the caller may have provided as keywords.
+        if device_type is not None:
+            kwargs["device_type"] = device_type
+        if inverter_address is not None:
+            kwargs["inverter_address"] = inverter_address
+        if meter_addresses is not None:
+            kwargs["meter_addresses"] = meter_addresses
+        if lv_battery_addresses is not None:
+            kwargs["lv_battery_addresses"] = lv_battery_addresses
+        if bcu_stacks is not None:
+            kwargs["bcu_stacks"] = bcu_stacks
+        _map_legacy_aliases(kwargs, stacklevel=3)
+        super().__init__(**kwargs)
+
     @model_validator(mode="before")
     @classmethod
     def _accept_legacy_aliases(cls, data: Any) -> Any:
-        """Map ``*_slave(s)`` legacy kwargs to canonical names, warn, and enforce mutual exclusivity.
+        """Mirror the __init__ alias handling for the ``model_validate`` path.
 
-        Runs before field validation, so canonical fields see only the
-        modern names. NB: stacklevel doesn't reliably point at user code from
-        inside a Pydantic validator (the call chain runs through Pydantic
-        internals), but the warning still fires under ``pytest.warns`` and
-        ``warnings.catch_warnings``-based filtering, which is what matters.
+        ``PlantCapabilities.model_validate({'inverter_slave': 0x33})`` bypasses
+        ``__init__``, so we need a validator to catch legacy keys arriving via
+        that route. Stacklevel from inside a validator can't reliably reach the
+        user (Pydantic internals sit between), but the warning still fires under
+        ``pytest.warns`` and ``warnings.catch_warnings`` filtering by category.
         """
         if not isinstance(data, dict):
             return data
         normalised = dict(data)
-        for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
-            if old not in normalised:
-                continue
-            if new in normalised:
-                raise TypeError(f"pass either {old}= or {new}=, not both")
-            warnings.warn(
-                f"PlantCapabilities.{old} is deprecated; use {new}",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            normalised[new] = normalised.pop(old)
+        _map_legacy_aliases(normalised, stacklevel=2)
         return normalised
 
     @property
