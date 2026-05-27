@@ -108,7 +108,12 @@ def test_capabilities_both_kwarg_forms_raises():
 
 
 def test_capabilities_unexpected_kwarg_raises():
-    with pytest.raises(TypeError, match="unexpected keyword arguments"):
+    # Pydantic raises ValidationError (a ValueError subclass) rather than TypeError
+    # for extra inputs — the rejection contract is preserved, the error type changed
+    # as part of the v2.1 Pydantic migration (#72).
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         PlantCapabilities(device_type=Model.HYBRID, nonexistent=42)
 
 
