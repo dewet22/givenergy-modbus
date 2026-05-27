@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4] - 2026-05-27
+
+### 🔧 Maintenance
+
+- close leaked Queue.put coroutine in tx-queue-full timeout test ([a9d1a61](https://github.com/dewet22/givenergy-modbus/commit/a9d1a61108a84dc844eaabde7c4287ac790400bc))
+
 ## [2.0.3] - 2026-05-27
 
 
