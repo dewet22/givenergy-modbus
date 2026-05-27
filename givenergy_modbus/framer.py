@@ -1,5 +1,4 @@
 import logging
-import struct
 from abc import ABC
 from collections.abc import AsyncIterator, Callable
 
@@ -107,18 +106,31 @@ class Framer(ABC):
                 # split across reads (the first len(marker)-1 bytes), so a
                 # faulty/malicious peer streaming non-marker data can't grow
                 # this buffer without bound. See #88.
+                #
+                # The while-loop's `>= 18` guard means the buffer is always
+                # larger than `keep` (= 3) at this point, so there's always
+                # something to discard. The log level is tiered so a peer
+                # drip-feeding a few bytes at a time doesn't flood operator
+                # logs with warnings — a sustained substantial discard still
+                # surfaces as a warning so operators have visibility.
                 keep = len(HEADER_START_MARKER) - 1
-                if len(self._buffer) > keep:
+                discarded = len(self._buffer) - keep
+                if discarded > 100:
                     _logger.warning(
                         "No frame header in %db accumulated buffer, "
                         "discarding %db of leading garbage and retaining trailing %db",
                         len(self._buffer),
-                        len(self._buffer) - keep,
+                        discarded,
                         keep,
                     )
-                    self._buffer = self._buffer[-keep:]
                 else:
-                    _logger.info("No frame header found, await more data")
+                    _logger.debug(
+                        "No frame header in %db buffer, discarding %db, retaining trailing %db",
+                        len(self._buffer),
+                        discarded,
+                        keep,
+                    )
+                self._buffer = self._buffer[-keep:]
                 break
             elif frame_start_offset > 0:
                 # The next candidate frame header is not at the start of the buffer: skip forward to that position
@@ -167,13 +179,15 @@ class Framer(ABC):
                 yield self.pdu_class.decode_bytes(frame)
             except (InvalidPduState, InvalidFrame) as e:
                 yield e
-            except struct.error as e:
-                # A frame whose MBAP header looks plausible but whose transparent
-                # payload is too short / misaligned bubbles `struct.error` up from
-                # the codec. Wrap as InvalidFrame so the consumer task keeps
-                # running rather than terminating on a single malformed frame
-                # from the network. See #88.
-                yield InvalidFrame(f"frame failed low-level decode: {e}", frame)
+            except Exception as e:
+                # Defence-in-depth against malformed-frame DoS: any unexpected
+                # exception from low-level decoding (e.g. `struct.error` from a
+                # too-short payload, `ValueError` / `IndexError` from misaligned
+                # offsets) is wrapped as `InvalidFrame` so the consumer task
+                # keeps running rather than terminating on a single bad frame
+                # from the network. Broad catch is deliberate here — this is
+                # the trust boundary for untrusted network input. See #88.
+                yield InvalidFrame(f"frame failed low-level decode: {type(e).__name__}: {e}", frame)
 
 
 class ClientFramer(Framer):
