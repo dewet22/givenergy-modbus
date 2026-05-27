@@ -177,7 +177,10 @@ jobs:
 
       - name: Publish documentation
         if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
-        uses: peaceiris/actions-gh-pages@v4
+        # Pinned to v4.1.0 rather than @v4 because the floating major tag still
+        # resolves to a Node 20 build of the action; v4.1.0 (2026-05-12) is the
+        # first release using Node 24. Revisit once peaceiris re-points @v4.
+        uses: peaceiris/actions-gh-pages@v4.1.0
         with:
           personal_token: ${{ secrets.PERSONAL_TOKEN }}
           publish_dir: ./site
