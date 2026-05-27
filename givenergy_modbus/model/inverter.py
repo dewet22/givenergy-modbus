@@ -626,12 +626,16 @@ class SinglePhaseInverter(_SinglePhaseInverterBase, _InverterCommands):  # type:
         """Construct a SinglePhaseInverter from a RegisterCache."""
         return cls.model_validate(SinglePhaseInverterRegisterGetter(register_cache).build())
 
-    def p_pv(self) -> int:
-        """Computes the total PV power."""
+    def p_pv(self) -> int | None:
+        """Computes the total PV power, or None if either input is unavailable."""
+        if self.p_pv1 is None or self.p_pv2 is None:  # type: ignore[attr-defined]
+            return None
         return self.p_pv1 + self.p_pv2  # type: ignore[attr-defined]
 
-    def e_pv_day(self) -> float:
-        """Computes the total PV energy for the day."""
+    def e_pv_day(self) -> float | None:
+        """Computes the total PV energy for the day, or None if either input is unavailable."""
+        if self.e_pv1_day is None or self.e_pv2_day is None:  # type: ignore[attr-defined]
+            return None
         return self.e_pv1_day + self.e_pv2_day  # type: ignore[attr-defined]
 
     @property
