@@ -1,10 +1,10 @@
 import logging
 import re
-from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import datetime
 from json import JSONEncoder
 from typing import Any, get_type_hints
+
+from pydantic import BaseModel, ConfigDict
 
 from givenergy_modbus.model import TimeSlot
 
@@ -150,24 +150,50 @@ class Converter:
         return prefix + digits
 
 
-@dataclass(init=False)
-class RegisterDefinition:
-    """Specifies how to convert raw register values into their actual representation."""
+class RegisterDefinition(BaseModel):
+    """Specifies how to convert raw register values into their actual representation.
 
-    pre_conv: Callable | tuple | None
-    post_conv: Callable | tuple[Callable, Any] | None
-    registers: tuple["Register"]
-    min: int | float | None
-    max: int | float | None
+    ``min_value`` / ``max_value`` are the bounds for the post-conv value;
+    they're named with the ``_value`` suffix rather than ``min`` / ``max``
+    to avoid shadowing the builtins of the same name (ruff A002, CodeRabbit
+    nag — see #73). The legacy ``min=`` / ``max=`` kwargs on ``__init__`` are
+    preserved so the 150+ ``Def(...)`` call sites don't churn.
+    """
 
-    def __init__(self, *args, min: int | float | None = None, max: int | float | None = None):
-        self.pre_conv = args[0]
-        self.post_conv = args[1]
-        self.registers = args[2:]  # type: ignore[assignment]
-        self.min = min
-        self.max = max
+    # `arbitrary_types_allowed` for `Register` instances; `frozen` because
+    # these are class-level LUT constants that must not mutate after build.
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    def __hash__(self):
+    pre_conv: Any = None
+    post_conv: Any = None
+    registers: tuple = ()
+    min_value: int | float | None = None
+    max_value: int | float | None = None
+
+    def __init__(
+        self,
+        *args: Any,
+        min: int | float | None = None,  # noqa: A002 — legacy kwarg, mapped to min_value
+        max: int | float | None = None,  # noqa: A002 — legacy kwarg, mapped to max_value
+        **kwargs: Any,
+    ) -> None:
+        # Map legacy positional `(pre_conv, post_conv, *registers)` + min/max
+        # kwargs onto the new field names. All 150+ Def(...) call sites use
+        # this form; the keyword form remains available for direct callers.
+        if args:
+            kwargs["pre_conv"] = args[0]
+            kwargs["post_conv"] = args[1] if len(args) > 1 else None
+            kwargs["registers"] = args[2:]
+        if min is not None:
+            kwargs["min_value"] = min
+        if max is not None:
+            kwargs["max_value"] = max
+        super().__init__(**kwargs)
+
+    def __hash__(self) -> int:
+        # Preserve the historic identity: a definition is identified by its
+        # register set, not its conversions or bounds. Used as a dict key in
+        # places that look up by register tuple.
         return hash(self.registers)
 
 
@@ -222,17 +248,20 @@ class RegisterGetter:
             else:
                 val = defn.post_conv(val)
 
-        if val is not None and (defn.min is not None or defn.max is not None) and not all(r == 0 for r in regs):
+        has_bounds = defn.min_value is not None or defn.max_value is not None
+        if val is not None and has_bounds and not all(r == 0 for r in regs):
             # An all-zero raw bank means the hardware didn't populate these registers (e.g. an
             # absent external meter slot); skip bounds checks for that case rather than spamming
             # the log every poll. Doing this at the raw level rather than post-conv keeps the
             # "0x0000 means unset" intent unambiguous.
-            if (defn.min is not None and val < defn.min) or (defn.max is not None and val > defn.max):
+            if (defn.min_value is not None and val < defn.min_value) or (
+                defn.max_value is not None and val > defn.max_value
+            ):
                 # Suppress out-of-bounds values: returning None is more honest than letting an
                 # obviously-wrong value reach downstream consumers. See #82 for the corruption
                 # pattern this protects against — values produced library-side that never appear
                 # on the wire and decode well outside the declared min/max.
-                _logger.debug("register value out of bounds: %r not in [%s, %s]", val, defn.min, defn.max)
+                _logger.debug("register value out of bounds: %r not in [%s, %s]", val, defn.min_value, defn.max_value)
                 return None
 
         return val
@@ -260,7 +289,7 @@ class RegisterGetter:
         violations = []
 
         for name, defn in cls.REGISTER_LUT.items():
-            if defn.min is None and defn.max is None:
+            if defn.min_value is None and defn.max_value is None:
                 continue
             if not any(r in incoming for r in defn.registers):
                 continue

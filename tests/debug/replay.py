@@ -90,9 +90,9 @@ def is_oob(val: Any, defn: RegisterDefinition) -> bool:
     """True iff val is outside the field's declared bounds."""
     if val is None:
         return False
-    if defn.min is not None and val < defn.min:
+    if defn.min_value is not None and val < defn.min_value:
         return True
-    if defn.max is not None and val > defn.max:
+    if defn.max_value is not None and val > defn.max_value:
         return True
     return False
 
@@ -108,7 +108,7 @@ def affected_field_names(
     avoids re-reporting stale OOB values left in the cache from earlier commits.
     """
     for name, defn in getter_cls.REGISTER_LUT.items():
-        if defn.min is None and defn.max is None:
+        if defn.min_value is None and defn.max_value is None:
             continue
         if field_filter and name not in field_filter:
             continue
@@ -166,8 +166,8 @@ def detect_oob_events(
                 "registers": [str(r) for r in defn.registers],
                 "raw_register_values": raw_regs,
                 "post_conv_value": val,
-                "min": defn.min,
-                "max": defn.max,
+                "min": defn.min_value,
+                "max": defn.max_value,
             }
         )
     return events
