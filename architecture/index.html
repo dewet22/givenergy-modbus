@@ -474,6 +474,45 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protocol-layering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol layering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -756,6 +795,45 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="References">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protocol-layering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol layering
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -966,6 +1044,19 @@ client.load_config()   re-read after any write to confirm the change landed
 <li><strong>Bounds</strong> — optional <code>min</code>/<code>max</code> in real-world units (post-conversion), used to detect physically impossible values and log violations before committing a bank.</li>
 </ul>
 <p><code>RegisterCache</code> is a plain <code>dict[HR|IR|MR, int]</code> with coherence checking (serial-number validity) and bounds validation on each incoming bank. Violations are currently logged at ERROR and the bank committed; a future enforcement step will discard the whole bank on any violation.</p>
+<h3 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h3>
+<h4 id="protocol-layering">Protocol layering<a class="headerlink" href="#protocol-layering" title="Permanent link">&para;</a></h4>
+<p>The TCP surface this library talks to is two layers above the actual battery: <code>library → TCP → dongle → internal serial → inverter → RS485 → BMS</code>. The inverter caches BMS state and re-exposes it via the dongle's TCP server. This matters when interpreting failure modes — a "stuck" battery on TCP usually means a stale inverter-side cache, not necessarily a wedged BMS. See <code>givenergy_modbus/framer.py</code>'s module docstring for the wire-format details and the cache-freeze / exception-origin caveats.</p>
+<h4 id="external">External<a class="headerlink" href="#external" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong><a href="https://github.com/open-giv/bms-analysis">open-giv/bms-analysis</a></strong> — authoritative reference for the RS485 BMS↔inverter dialect, including:<ul>
+<li>The "absent device" response pattern that this library's <code>Client.detect()</code> relies on for LV battery probing (zero-filled responses for unpopulated <code>0x32..0x37</code> slots, plus the <code>0xF556 = -273.0 °C</code> temperature sentinel that our <code>Battery</code> bounds incidentally reject).</li>
+<li>Static analysis of the BMS firmware confirming that the BMS Modbus dispatcher only implements FC=03/04/06; max register count per request is 128; CRC failures are silently dropped without an exception response.</li>
+<li>Capture tooling (<code>tools/serial_hexdump_logger.c</code>, <code>tools/parse_log.py</code>) useful for paired RS485+TCP investigations of the sort discussed in <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a>.</li>
+</ul>
+</li>
+<li><strong><a href="https://modbus.org/specs.php">Modbus.org spec</a></strong> — the underlying wire protocol; GivEnergy's framing extends it with the <code>0x59590001</code> magic header and the Transparent (<code>0x02</code>) function-code envelope.</li>
+</ul>
 
 
 
