@@ -575,8 +575,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
         # Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per
         # wall-clock hour and persists across reboots; cap at ~100 years to
-        # reject obviously-garbage uint32 values. See #84.
-        "work_time_total": Def(C.uint32, None, IR(47), IR(48), max=876_000),
+        # reject obviously-garbage uint32 values. The `_hours` suffix carries
+        # the unit at the call site (see #84); `work_time_total` is preserved
+        # as a deprecated alias on the inverter classes for a release.
+        "work_time_total_hours": Def(C.uint32, None, IR(47), IR(48), max=876_000),
         "system_mode": Def(C.uint16, None, IR(49)),
         "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
@@ -671,6 +673,19 @@ class SinglePhaseInverter(_SinglePhaseInverterBase, _InverterCommands):  # type:
     def inverter_max_power(self) -> int | None:
         """Returns the rated inverter power in watts, derived from the device type code."""
         return _DTC_RATED_POWER.get(self.device_type_code)  # type: ignore[attr-defined]
+
+    # Plain @property (not @computed_field) so the deprecated alias doesn't
+    # appear in model_dump() output. See #84 — renamed to work_time_total_hours
+    # to put the unit at the call site.
+    @property
+    def work_time_total(self) -> int | None:
+        """Deprecated alias for `work_time_total_hours`."""
+        warnings.warn(
+            "SinglePhaseInverter.work_time_total is deprecated; use work_time_total_hours",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):

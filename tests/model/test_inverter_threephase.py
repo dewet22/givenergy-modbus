@@ -158,3 +158,27 @@ def test_select_inverter_three_phase():
 def test_select_inverter_single_phase():
     result = select_inverter(Model.HYBRID, RegisterCache())
     assert isinstance(result, SinglePhaseInverter)
+
+
+def test_work_time_total_hours_rename_and_deprecated_alias():
+    """ThreePhaseInverter inherits the rename via the merged LUT and exposes the same alias shim."""
+    import warnings
+
+    cache = _cache({IR(47): 0, IR(48): 385})
+    tph = ThreePhaseInverter.from_register_cache(cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tph.work_time_total_hours == 385  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tph.work_time_total == 385  # type: ignore[attr-defined]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "work_time_total_hours" in str(deprecations[0].message)
+
+    dumped = tph.model_dump()
+    assert "work_time_total_hours" in dumped
+    assert "work_time_total" not in dumped

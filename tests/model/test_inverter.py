@@ -109,7 +109,7 @@ def test_inverter():
             "p_grid_apparent": None,
             "e_inverter_out_day": None,
             "e_inverter_out_total": None,
-            "work_time_total": None,
+            "work_time_total_hours": None,
             "system_mode": None,
             "v_battery": None,
             "i_battery": None,
@@ -404,7 +404,7 @@ def test_from_registers(register_cache):
         # 'v_pv1': 1.4,
         # 'v_pv2': 1.0,
         # 'v_pv_fault_value': 0.0,
-        # 'work_time_total': 213,
+        # 'work_time_total_hours': 213,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
         "battery_max_power": 2600,
@@ -487,7 +487,7 @@ def test_from_registers(register_cache):
         "p_grid_apparent": 680,
         "e_inverter_out_day": 8.1,
         "e_inverter_out_total": 93.0,
-        "work_time_total": 213,
+        "work_time_total_hours": 213,
         "system_mode": 1,
         "v_battery": 49.91,
         "i_battery": 0.0,
@@ -732,7 +732,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # 'v_pv1': 357.0,
         # 'v_pv2': 369.70,
         # 'v_pv_fault_value': 0.0,
-        # 'work_time_total': 385,
+        # 'work_time_total_hours': 385,
         "active_power_rate": 100,
         "arm_firmware_version": 449,
         "battery_max_power": 2600,
@@ -815,7 +815,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_grid_apparent": 554,
         "e_inverter_out_day": 3.8,
         "e_inverter_out_total": 172.5,
-        "work_time_total": 385,
+        "work_time_total_hours": 385,
         "system_mode": 1,
         "v_battery": 51.73,
         "i_battery": 6.47,
@@ -1077,3 +1077,30 @@ def test_inverter_getattr_unknown():
 
     with pytest.raises(AttributeError, match="has no attribute"):
         _ = inv_module.NonExistentAttribute  # type: ignore[attr-defined]
+
+
+def test_work_time_total_hours_rename_and_deprecated_alias():
+    """The field is exposed as work_time_total_hours; work_time_total is a deprecated alias."""
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache({IR(47): 0, IR(48): 213})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+
+    # New name returns the value cleanly with no warning.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert inv.work_time_total_hours == 213  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    # Deprecated alias still works, warns, and returns the same value.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert inv.work_time_total == 213  # type: ignore[attr-defined]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "work_time_total_hours" in str(deprecations[0].message)
+
+    # Dump output uses the new name only — the alias must not duplicate the field.
+    dumped = inv.model_dump()
+    assert "work_time_total_hours" in dumped
+    assert "work_time_total" not in dumped

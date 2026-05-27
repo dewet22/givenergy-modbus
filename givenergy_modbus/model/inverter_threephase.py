@@ -1,5 +1,7 @@
 """GivEnergy three-phase inverter data model."""
 
+import warnings
+
 from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.client.commands import _InverterCommands
@@ -504,6 +506,19 @@ class ThreePhaseInverter(_ThreePhaseInverterBase, _InverterCommands):  # type: i
     def slot_map(self) -> SlotMap:
         """Register address pairs for the charge/discharge time slots on this model."""
         return THREE_PHASE_SLOTS
+
+    # Plain @property (not @computed_field) so the deprecated alias doesn't
+    # appear in model_dump() output. See #84 — renamed to work_time_total_hours
+    # to put the unit at the call site.
+    @property
+    def work_time_total(self) -> int | None:
+        """Deprecated alias for `work_time_total_hours`."""
+        warnings.warn(
+            "ThreePhaseInverter.work_time_total is deprecated; use work_time_total_hours",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
 
 
 THREE_PHASE_MODELS: frozenset[Model] = frozenset(
