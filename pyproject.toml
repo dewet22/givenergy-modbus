@@ -109,6 +109,19 @@ exclude_lines = [
 [tool.pytest.ini_options]
 timeout = 1
 asyncio_mode = "auto"
+# Escalate two warning classes that previously slipped through CI silently:
+#   - PytestUnraisableExceptionWarning: pytest's catch-all for unraisable
+#     exceptions during teardown, including the "task was destroyed but it is
+#     pending" cases that surface async lifecycle bugs.
+#   - RuntimeWarning for unawaited coroutines: the most common shape of an
+#     async test leak. Scoped to the canonical message so we don't promote
+#     unrelated RuntimeWarnings (deprecation-style notices from dependencies)
+#     to errors.
+# See post-v2 §4.
+filterwarnings = [
+    "error::pytest.PytestUnraisableExceptionWarning",
+    "error:coroutine .* was never awaited:RuntimeWarning",
+]
 
 [tool.tox]
 legacy_tox_ini = """
