@@ -13,6 +13,7 @@ removed, these tests can be deleted alongside the alias code.
 import warnings
 
 import pytest
+from pydantic import ValidationError
 
 from givenergy_modbus.model.hv_bcu import Bcu, HvStack
 from givenergy_modbus.model.inverter import Model
@@ -111,8 +112,6 @@ def test_capabilities_unexpected_kwarg_raises():
     # Pydantic raises ValidationError (a ValueError subclass) rather than TypeError
     # for extra inputs — the rejection contract is preserved, the error type changed
     # as part of the v2.1 Pydantic migration (#72).
-    from pydantic import ValidationError
-
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         PlantCapabilities(device_type=Model.HYBRID, nonexistent=42)
 
