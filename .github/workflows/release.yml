@@ -46,6 +46,14 @@ jobs:
           # For republish: check out the tagged commit so the build picks up
           # the exact pyproject.toml/uv.lock state that was originally released.
           ref: ${{ inputs.republish_tag || github.ref }}
+          # Full history + all tags so scripts/release.py's `git describe` can
+          # find the previous version tag and walk every commit in the range.
+          # With the default shallow depth-1 clone, git describe fails, the
+          # generator falls back to logging only HEAD, and CHANGELOG sections
+          # come out empty whenever HEAD is a merge commit (silently lost
+          # historical entries; see the fetch-depth bug behind v2.0.2 / 2.0.3
+          # / 2.1.0a2 empty sections that this commit also backfills).
+          fetch-depth: 0
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
