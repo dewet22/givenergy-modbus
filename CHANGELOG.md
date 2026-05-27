@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a3] - 2026-05-27
+
+### 🔄 Changed
+
+- enable mypy check_untyped_defs for production code ([ace9701](https://github.com/dewet22/givenergy-modbus/commit/ace970188008a5617b0a7bad9dc48536ebdff81d))
+
+### 🔧 Maintenance
+
+- fetch full git history in release workflow so CHANGELOG generator works ([2f446b7](https://github.com/dewet22/givenergy-modbus/commit/2f446b7c1554b2bb9028c1ca2e5e6d965d8f10b7))
+- sketch v2.1 release roadmap as a chain of small alphas ([43ec1c4](https://github.com/dewet22/givenergy-modbus/commit/43ec1c479bdcb72cb89f3e3b03eb5523da8e253d))
+- use absolute LICENSE URL so include-markdown resolves it under docs/ ([e11b298](https://github.com/dewet22/givenergy-modbus/commit/e11b29843898063ea81523a7442dcdada071e496))
+- build into envtmpdir so twine checks only the current run's artifacts ([f6ae7a7](https://github.com/dewet22/givenergy-modbus/commit/f6ae7a72aeef0c35fc8c6bcfe855076e4ad3d17a))
+- escalate unawaited-coroutine and unraisable warnings to errors ([c169c02](https://github.com/dewet22/givenergy-modbus/commit/c169c023ccef49cb2c934f15921bd64b8927c371))
+- update roadmap to reflect what shipped in 2.1.0a3 ([afc8526](https://github.com/dewet22/givenergy-modbus/commit/afc852626bcf09bb4dae3ad8f46997d2e3a8854f))
+
 ## [2.1.0a2] - 2026-05-27
 
 First 2.1 alpha. Spans all work on the `v2.1` branch since it diverged
