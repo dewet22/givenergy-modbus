@@ -10223,36 +10223,7 @@ when it is most valuable to export energy.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">316</span>
 <span class="normal">317</span>
 <span class="normal">318</span>
 <span class="normal">319</span>
@@ -10392,7 +10363,36 @@ when it is most valuable to export energy.</p>
 <span class="normal">453</span>
 <span class="normal">454</span>
 <span class="normal">455</span>
-<span class="normal">456</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -10748,10 +10748,10 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure a default register cache is always present.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span> <span class="o">=</span> <span class="p">{</span><span class="mh">0x32</span><span class="p">:</span> <span class="n">RegisterCache</span><span class="p">()}</span>
@@ -10777,36 +10777,7 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
-<span class="normal">323</span>
-<span class="normal">324</span>
-<span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
-<span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">343</span>
 <span class="normal">344</span>
 <span class="normal">345</span>
 <span class="normal">346</span>
@@ -10817,7 +10788,36 @@ when it is most valuable to export energy.</p>
 <span class="normal">351</span>
 <span class="normal">352</span>
 <span class="normal">353</span>
-<span class="normal">354</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">):</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="n">TransparentResponse</span><span class="p">):</span>
         <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ignoring non-Transparent response </span><span class="si">{</span><span class="n">pdu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -11114,7 +11114,36 @@ persist it for faster restarts (see fork-merge-plan deferred items).</p>
 <span class="normal">281</span>
 <span class="normal">282</span>
 <span class="normal">283</span>
-<span class="normal">284</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describes the hardware topology discovered by Client.detect().</span>
 
@@ -11267,30 +11296,59 @@ persist it for faster restarts (see fork-merge-plan deferred items).</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlantCapabilities&quot;</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconstruct from a to_dict() payload.</span>
 
-<span class="sd">        Schema version mismatch raises ValueError — callers can catch and re-run</span>
-<span class="sd">        detect() without prior. Pre-rename `*_slave(s)` key aliases are</span>
-<span class="sd">        normalised silently so state persisted under the older conventions</span>
-<span class="sd">        still loads cleanly.</span>
+<span class="sd">        Accepts two on-disk shapes:</span>
+
+<span class="sd">        - **v2.0.0 (legacy, no `schema_version`)**: `device_type` as the enum</span>
+<span class="sd">          value (e.g. `&quot;2&quot;`), addresses as raw integers, no `schema_version`</span>
+<span class="sd">          key. Persisted by the v2.0.0 `to_dict()`.</span>
+<span class="sd">        - **v2.0.1+ (versioned)**: `schema_version` present and equal to</span>
+<span class="sd">          `SCHEMA_VERSION`, `device_type` as enum name (e.g. `&quot;HYBRID_GEN1&quot;`),</span>
+<span class="sd">          addresses as `&quot;0x...&quot;` hex strings.</span>
+
+<span class="sd">        A `schema_version` that&#39;s present but doesn&#39;t match `SCHEMA_VERSION`</span>
+<span class="sd">        raises `ValueError` — callers can catch and re-run detect() without</span>
+<span class="sd">        prior. Pre-rename `*_slave(s)` key aliases are normalised silently so</span>
+<span class="sd">        state persisted under the older conventions still loads cleanly.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">normalised</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">_CAPABILITIES_LEGACY_ALIASES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">old</span> <span class="ow">in</span> <span class="n">normalised</span> <span class="ow">and</span> <span class="n">new</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">:</span>
                 <span class="n">normalised</span><span class="p">[</span><span class="n">new</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalised</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
         <span class="n">version</span> <span class="o">=</span> <span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_version&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">version</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">version</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported PlantCapabilities schema_version </span><span class="si">{</span><span class="n">version</span><span class="si">!r}</span><span class="s2">; expected </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">def</span><span class="w"> </span><span class="nf">_addr</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-            <span class="c1"># Accept either hex strings (the canonical to_dict() form) or raw ints</span>
-            <span class="c1"># for resilience against hand-edited or differently-serialised payloads.</span>
+            <span class="c1"># Accept either hex strings (the v2.0.1+ canonical form) or raw ints</span>
+            <span class="c1"># (the v2.0.0 legacy form, or hand-edited payloads).</span>
             <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
+        <span class="k">def</span><span class="w"> </span><span class="nf">_device_type</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+            <span class="c1"># v2.0.1+ persists the enum name (Model[&quot;HYBRID_GEN1&quot;]); v2.0.0</span>
+            <span class="c1"># persisted the enum value (Model(&quot;2&quot;)). Try the name lookup first</span>
+            <span class="c1"># — it&#39;s what every payload emitted by 2.0.1&#39;s to_dict() uses — and</span>
+            <span class="c1"># fall back to the value lookup so v2.0.0 payloads keep working.</span>
+            <span class="c1"># `str(v)` on the fallback handles unquoted ints from sloppy JSON</span>
+            <span class="c1"># tooling (`device_type: 2` instead of `&quot;2&quot;`).</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">v</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">Model</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">Model</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+
+        <span class="c1"># `.get(k) or []` (not `.get(k, [])`) so an explicit `null` in JSON for</span>
+        <span class="c1"># any of the optional list fields safely degrades to empty rather than</span>
+        <span class="c1"># raising TypeError on iteration.</span>
         <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
-            <span class="n">device_type</span><span class="o">=</span><span class="n">Model</span><span class="p">[</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;device_type&quot;</span><span class="p">]],</span>
+            <span class="n">device_type</span><span class="o">=</span><span class="n">_device_type</span><span class="p">(</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;device_type&quot;</span><span class="p">]),</span>
             <span class="n">inverter_address</span><span class="o">=</span><span class="n">_addr</span><span class="p">(</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;inverter_address&quot;</span><span class="p">]),</span>
-            <span class="n">meter_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;meter_addresses&quot;</span><span class="p">]],</span>
-            <span class="n">lv_battery_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;lv_battery_addresses&quot;</span><span class="p">]],</span>
-            <span class="n">bcu_stacks</span><span class="o">=</span><span class="p">[(</span><span class="n">offset</span><span class="p">,</span> <span class="n">modules</span><span class="p">)</span> <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">modules</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;bcu_stacks&quot;</span><span class="p">]],</span>
+            <span class="n">meter_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;meter_addresses&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
+            <span class="n">lv_battery_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lv_battery_addresses&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
+            <span class="c1"># Coerce bcu_stacks entries — hand-edited JSON / differently-serialised</span>
+            <span class="c1"># payloads can put strings here, which would TypeError downstream</span>
+            <span class="c1"># (`0x70 + offset` in detect()). Fail loud at parse time instead.</span>
+            <span class="n">bcu_stacks</span><span class="o">=</span><span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">modules</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">modules</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bcu_stacks&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
@@ -11559,10 +11617,19 @@ persist it for faster restarts (see fork-merge-plan deferred items).</p>
     <div class="doc doc-contents ">
 
         <p>Reconstruct from a to_dict() payload.</p>
-<p>Schema version mismatch raises ValueError — callers can catch and re-run
-detect() without prior. Pre-rename <code>*_slave(s)</code> key aliases are
-normalised silently so state persisted under the older conventions
-still loads cleanly.</p>
+<p>Accepts two on-disk shapes:</p>
+<ul>
+<li><strong>v2.0.0 (legacy, no <code>schema_version</code>)</strong>: <code>device_type</code> as the enum
+  value (e.g. <code>"2"</code>), addresses as raw integers, no <code>schema_version</code>
+  key. Persisted by the v2.0.0 <code>to_dict()</code>.</li>
+<li><strong>v2.0.1+ (versioned)</strong>: <code>schema_version</code> present and equal to
+  <code>SCHEMA_VERSION</code>, <code>device_type</code> as enum name (e.g. <code>"HYBRID_GEN1"</code>),
+  addresses as <code>"0x..."</code> hex strings.</li>
+</ul>
+<p>A <code>schema_version</code> that's present but doesn't match <code>SCHEMA_VERSION</code>
+raises <code>ValueError</code> — callers can catch and re-run detect() without
+prior. Pre-rename <code>*_slave(s)</code> key aliases are normalised silently so
+state persisted under the older conventions still loads cleanly.</p>
 
 
             <details class="mkdocstrings-source">
@@ -11595,34 +11662,92 @@ still loads cleanly.</p>
 <span class="normal">248</span>
 <span class="normal">249</span>
 <span class="normal">250</span>
-<span class="normal">251</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlantCapabilities&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct from a to_dict() payload.</span>
 
-<span class="sd">    Schema version mismatch raises ValueError — callers can catch and re-run</span>
-<span class="sd">    detect() without prior. Pre-rename `*_slave(s)` key aliases are</span>
-<span class="sd">    normalised silently so state persisted under the older conventions</span>
-<span class="sd">    still loads cleanly.</span>
+<span class="sd">    Accepts two on-disk shapes:</span>
+
+<span class="sd">    - **v2.0.0 (legacy, no `schema_version`)**: `device_type` as the enum</span>
+<span class="sd">      value (e.g. `&quot;2&quot;`), addresses as raw integers, no `schema_version`</span>
+<span class="sd">      key. Persisted by the v2.0.0 `to_dict()`.</span>
+<span class="sd">    - **v2.0.1+ (versioned)**: `schema_version` present and equal to</span>
+<span class="sd">      `SCHEMA_VERSION`, `device_type` as enum name (e.g. `&quot;HYBRID_GEN1&quot;`),</span>
+<span class="sd">      addresses as `&quot;0x...&quot;` hex strings.</span>
+
+<span class="sd">    A `schema_version` that&#39;s present but doesn&#39;t match `SCHEMA_VERSION`</span>
+<span class="sd">    raises `ValueError` — callers can catch and re-run detect() without</span>
+<span class="sd">    prior. Pre-rename `*_slave(s)` key aliases are normalised silently so</span>
+<span class="sd">    state persisted under the older conventions still loads cleanly.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">normalised</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">old</span><span class="p">,</span> <span class="n">new</span> <span class="ow">in</span> <span class="n">_CAPABILITIES_LEGACY_ALIASES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">if</span> <span class="n">old</span> <span class="ow">in</span> <span class="n">normalised</span> <span class="ow">and</span> <span class="n">new</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">:</span>
             <span class="n">normalised</span><span class="p">[</span><span class="n">new</span><span class="p">]</span> <span class="o">=</span> <span class="n">normalised</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">old</span><span class="p">)</span>
     <span class="n">version</span> <span class="o">=</span> <span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_version&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">version</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">version</span> <span class="o">!=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;unsupported PlantCapabilities schema_version </span><span class="si">{</span><span class="n">version</span><span class="si">!r}</span><span class="s2">; expected </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">SCHEMA_VERSION</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_addr</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-        <span class="c1"># Accept either hex strings (the canonical to_dict() form) or raw ints</span>
-        <span class="c1"># for resilience against hand-edited or differently-serialised payloads.</span>
+        <span class="c1"># Accept either hex strings (the v2.0.1+ canonical form) or raw ints</span>
+        <span class="c1"># (the v2.0.0 legacy form, or hand-edited payloads).</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">_device_type</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+        <span class="c1"># v2.0.1+ persists the enum name (Model[&quot;HYBRID_GEN1&quot;]); v2.0.0</span>
+        <span class="c1"># persisted the enum value (Model(&quot;2&quot;)). Try the name lookup first</span>
+        <span class="c1"># — it&#39;s what every payload emitted by 2.0.1&#39;s to_dict() uses — and</span>
+        <span class="c1"># fall back to the value lookup so v2.0.0 payloads keep working.</span>
+        <span class="c1"># `str(v)` on the fallback handles unquoted ints from sloppy JSON</span>
+        <span class="c1"># tooling (`device_type: 2` instead of `&quot;2&quot;`).</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">Model</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">v</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Model</span><span class="p">[</span><span class="n">v</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Model</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">v</span><span class="p">))</span>
+
+    <span class="c1"># `.get(k) or []` (not `.get(k, [])`) so an explicit `null` in JSON for</span>
+    <span class="c1"># any of the optional list fields safely degrades to empty rather than</span>
+    <span class="c1"># raising TypeError on iteration.</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
-        <span class="n">device_type</span><span class="o">=</span><span class="n">Model</span><span class="p">[</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;device_type&quot;</span><span class="p">]],</span>
+        <span class="n">device_type</span><span class="o">=</span><span class="n">_device_type</span><span class="p">(</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;device_type&quot;</span><span class="p">]),</span>
         <span class="n">inverter_address</span><span class="o">=</span><span class="n">_addr</span><span class="p">(</span><span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;inverter_address&quot;</span><span class="p">]),</span>
-        <span class="n">meter_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;meter_addresses&quot;</span><span class="p">]],</span>
-        <span class="n">lv_battery_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;lv_battery_addresses&quot;</span><span class="p">]],</span>
-        <span class="n">bcu_stacks</span><span class="o">=</span><span class="p">[(</span><span class="n">offset</span><span class="p">,</span> <span class="n">modules</span><span class="p">)</span> <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">modules</span> <span class="ow">in</span> <span class="n">normalised</span><span class="p">[</span><span class="s2">&quot;bcu_stacks&quot;</span><span class="p">]],</span>
+        <span class="n">meter_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;meter_addresses&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
+        <span class="n">lv_battery_addresses</span><span class="o">=</span><span class="p">[</span><span class="n">_addr</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lv_battery_addresses&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
+        <span class="c1"># Coerce bcu_stacks entries — hand-edited JSON / differently-serialised</span>
+        <span class="c1"># payloads can put strings here, which would TypeError downstream</span>
+        <span class="c1"># (`0x70 + offset` in detect()). Fail loud at parse time instead.</span>
+        <span class="n">bcu_stacks</span><span class="o">=</span><span class="p">[(</span><span class="nb">int</span><span class="p">(</span><span class="n">offset</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">modules</span><span class="p">))</span> <span class="k">for</span> <span class="n">offset</span><span class="p">,</span> <span class="n">modules</span> <span class="ow">in</span> <span class="p">(</span><span class="n">normalised</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bcu_stacks&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])],</span>
     <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
