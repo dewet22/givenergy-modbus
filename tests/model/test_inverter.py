@@ -999,6 +999,49 @@ def test_single_phase_inverter_p_pv_and_e_pv_day():
     assert inv.e_pv_day() == 2.0  # type: ignore[attr-defined]
 
 
+def _cache(**entries):
+    from givenergy_modbus.model.register import IR
+
+    addr_lut = {"e_pv1_day": IR(17), "p_pv1": IR(18), "e_pv2_day": IR(19), "p_pv2": IR(20)}
+    return RegisterCache({addr_lut[k]: v for k, v in entries.items()})
+
+
+@pytest.mark.parametrize(
+    "cache",
+    [
+        # p_pv2 missing
+        _cache(p_pv1=1000, e_pv1_day=12, e_pv2_day=8),
+        # p_pv1 missing
+        _cache(p_pv2=500, e_pv1_day=12, e_pv2_day=8),
+        # both missing
+        _cache(e_pv1_day=12, e_pv2_day=8),
+        # p_pv1 out of bounds → None after #82 bounds enforcement
+        _cache(p_pv1=60000, p_pv2=500, e_pv1_day=12, e_pv2_day=8),
+        # p_pv2 out of bounds → None
+        _cache(p_pv1=1000, p_pv2=60000, e_pv1_day=12, e_pv2_day=8),
+    ],
+)
+def test_p_pv_returns_none_when_either_input_unavailable(cache):
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.p_pv() is None  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "cache",
+    [
+        # e_pv2_day missing
+        _cache(e_pv1_day=12, p_pv1=1000, p_pv2=500),
+        # e_pv1_day missing
+        _cache(e_pv2_day=8, p_pv1=1000, p_pv2=500),
+        # both missing
+        _cache(p_pv1=1000, p_pv2=500),
+    ],
+)
+def test_e_pv_day_returns_none_when_either_input_unavailable(cache):
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.e_pv_day() is None  # type: ignore[attr-defined]
+
+
 def test_inverter_max_power():
     from givenergy_modbus.model.inverter import _DTC_RATED_POWER
     from givenergy_modbus.model.register import HR
