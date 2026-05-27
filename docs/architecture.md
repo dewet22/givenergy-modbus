@@ -164,3 +164,17 @@ Each device model is backed by a `RegisterGetter` subclass that holds a `REGISTE
 - **Bounds** — optional `min`/`max` in real-world units (post-conversion), used to detect physically impossible values and log violations before committing a bank.
 
 `RegisterCache` is a plain `dict[HR|IR|MR, int]` with coherence checking (serial-number validity) and bounds validation on each incoming bank. Violations are currently logged at ERROR and the bank committed; a future enforcement step will discard the whole bank on any violation.
+
+## References
+
+### Protocol layering
+
+The TCP surface this library talks to is two layers above the actual battery: `library → TCP → dongle → internal serial → inverter → RS485 → BMS`. The inverter caches BMS state and re-exposes it via the dongle's TCP server. This matters when interpreting failure modes — a "stuck" battery on TCP usually means a stale inverter-side cache, not necessarily a wedged BMS. See `givenergy_modbus/framer.py`'s module docstring for the wire-format details and the cache-freeze / exception-origin caveats.
+
+### External
+
+- **[open-giv/bms-analysis](https://github.com/open-giv/bms-analysis)** — authoritative reference for the RS485 BMS↔inverter dialect, including:
+    - The "absent device" response pattern that this library's `Client.detect()` relies on for LV battery probing (zero-filled responses for unpopulated `0x32..0x37` slots, plus the `0xF556 = -273.0 °C` temperature sentinel that our `Battery` bounds incidentally reject).
+    - Static analysis of the BMS firmware confirming that the BMS Modbus dispatcher only implements FC=03/04/06; max register count per request is 128; CRC failures are silently dropped without an exception response.
+    - Capture tooling (`tools/serial_hexdump_logger.c`, `tools/parse_log.py`) useful for paired RS485+TCP investigations of the sort discussed in [#78](https://github.com/dewet22/givenergy-modbus/issues/78).
+- **[Modbus.org spec](https://modbus.org/specs.php)** — the underlying wire protocol; GivEnergy's framing extends it with the `0x59590001` magic header and the Transparent (`0x02`) function-code envelope.

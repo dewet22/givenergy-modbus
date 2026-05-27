@@ -73,6 +73,32 @@ class Framer(ABC):
     * ``data`` (*n* bytes) depends on the function invoked
     * ``crc`` (2 bytes) CRC for a request is calculated using the function id, base register and
       step count, but it is unclear how a response CRC is calculated or should be verified.
+
+    **Layering note — what the TCP surface actually exposes.** The Modbus dialect this framer
+    parses is the dongle's *TCP server*, not a direct view of the inverter or any BMS. The
+    physical chain is roughly::
+
+        library client ↔ TCP ↔ wifi/GPRS dongle ↔ internal serial ↔ inverter ↔ RS485 ↔ BMS(s)
+
+    The inverter polls its connected BMSes over RS485 and caches the results; the dongle
+    polls the inverter over an internal serial link and re-exposes that cache via TCP. So a
+    read of ``addr=0x32`` IR(60..119) does not round-trip to the battery — it returns the
+    inverter's most recent cached page for BMS pack 1. Two consequences worth knowing:
+
+    * **Cache freeze** — if a BMS stops responding on RS485 (e.g. while in bootloader mode
+      during a firmware update), the inverter's cache keeps serving the last-known-good
+      values rather than blanking. From the TCP side this looks like a battery emitting
+      byte-for-byte identical responses indefinitely while neighbouring batteries update
+      normally. Distinguishing "frozen cache" from "live but unchanged" requires comparing
+      multiple consecutive reads.
+    * **Exception responses are inverter-originated**, not BMS-originated. The BMS firmware
+      itself silently drops malformed frames (CRC failures, illegal function codes return
+      exception code ``1``); anything richer comes from the inverter rejecting a TCP-side
+      request against its own cached register banks.
+
+    The authoritative reference for the *BMS-side* RS485 dialect (what the inverter sees,
+    one layer below this framer) is the open-giv/bms-analysis repository — see
+    ``docs/architecture.md`` § References.
     """
 
     _buffer: bytes = b""
