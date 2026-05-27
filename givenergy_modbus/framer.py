@@ -1,4 +1,5 @@
 import logging
+import struct
 from abc import ABC
 from collections.abc import AsyncIterator, Callable
 
@@ -101,7 +102,23 @@ class Framer(ABC):
             # ensure the head of the buffer starts with a valid MBAP header
             frame_start_offset = self._buffer.find(HEADER_START_MARKER)
             if frame_start_offset < 0:
-                _logger.info("No frame header found, await more data")
+                # No marker found anywhere in the accumulated buffer. Trim to
+                # the tail bytes that could still be the start of a marker
+                # split across reads (the first len(marker)-1 bytes), so a
+                # faulty/malicious peer streaming non-marker data can't grow
+                # this buffer without bound. See #88.
+                keep = len(HEADER_START_MARKER) - 1
+                if len(self._buffer) > keep:
+                    _logger.warning(
+                        "No frame header in %db accumulated buffer, "
+                        "discarding %db of leading garbage and retaining trailing %db",
+                        len(self._buffer),
+                        len(self._buffer) - keep,
+                        keep,
+                    )
+                    self._buffer = self._buffer[-keep:]
+                else:
+                    _logger.info("No frame header found, await more data")
                 break
             elif frame_start_offset > 0:
                 # The next candidate frame header is not at the start of the buffer: skip forward to that position
@@ -150,6 +167,13 @@ class Framer(ABC):
                 yield self.pdu_class.decode_bytes(frame)
             except (InvalidPduState, InvalidFrame) as e:
                 yield e
+            except struct.error as e:
+                # A frame whose MBAP header looks plausible but whose transparent
+                # payload is too short / misaligned bubbles `struct.error` up from
+                # the codec. Wrap as InvalidFrame so the consumer task keeps
+                # running rather than terminating on a single malformed frame
+                # from the network. See #88.
+                yield InvalidFrame(f"frame failed low-level decode: {e}", frame)
 
 
 class ClientFramer(Framer):

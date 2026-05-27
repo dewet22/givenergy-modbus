@@ -5,8 +5,8 @@ from typing import Any
 
 import pytest
 
-from givenergy_modbus.exceptions import ExceptionBase
-from givenergy_modbus.framer import ClientFramer, Framer, ServerFramer
+from givenergy_modbus.exceptions import ExceptionBase, InvalidFrame
+from givenergy_modbus.framer import HEADER_START_MARKER, ClientFramer, Framer, ServerFramer
 from givenergy_modbus.pdu import (
     BasePDU,
     HeartbeatRequest,
@@ -164,7 +164,10 @@ async def test_process_short_buffer():
     assert response.error is False
     assert response.transparent_function_code == 3
     assert response.raw_frame.hex() == (buffer + buffer[:19]).hex()
-    assert framer._buffer == buffer[19:]
+    # After #88: the residual contains no marker, so the framer bounds the
+    # retained buffer to the trailing (len(marker) - 1) bytes — the most that
+    # could be the head of a marker split across reads.
+    assert framer._buffer == buffer[-(len(HEADER_START_MARKER) - 1) :]
 
 
 @pytest.mark.parametrize("buffer", [VALID_RESPONSE_FRAME], ids=["VALID_RESPONSE_FRAME"])
@@ -372,3 +375,78 @@ async def test_inverter_boot(caplog):
         "1/HeartbeatResponse(data_adapter_serial_number=WF2125G316 data_adapter_type=1)",
         "2:22/ReadMeterProductRegistersRequest(device_address=0x04 base_register=60)",
     ]
+
+
+# ---------------------------------------------------------------------------
+# #88 — framer hardening against malformed-frame DoS
+# ---------------------------------------------------------------------------
+
+
+async def test_malformed_short_frame_yields_invalidframe_not_struct_error():
+    """A plausibly-headered but too-short transparent payload must not kill the consumer.
+
+    The reproducer is taken from #88: an MBAP header that claims a transparent
+    payload of two bytes (so `frame_len` = 6 + 2 = 8), followed by enough
+    trailing garbage to push the buffer past the 18-byte minimum frame size.
+    Before the fix, the codec raised `struct.error` straight out of
+    `Framer.decode()`; now it's wrapped as `InvalidFrame` and yielded.
+    """
+    frame_bytes = bytes.fromhex("5959000100020102") + b"x" * 10
+    framer = ClientFramer()
+    yielded: list[Any] = []
+    async for msg in framer.decode(frame_bytes):
+        yielded.append(msg)
+
+    assert len(yielded) == 1
+    assert isinstance(yielded[0], InvalidFrame)
+    assert "low-level decode" in str(yielded[0])
+
+
+async def test_headerless_garbage_bounds_buffer_growth(caplog):
+    """Sustained no-marker traffic must not grow the framer buffer without bound.
+
+    Before the fix, every chunk without a marker accumulated in `_buffer`
+    indefinitely. The reproducer from #88 streamed 100 × 300 bytes and ended
+    up retaining 30,000 bytes. After the fix, the buffer is trimmed to the
+    last `len(HEADER_START_MARKER) - 1` bytes (which could still be the head
+    of a marker split across reads).
+    """
+    framer = ClientFramer()
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.framer"):
+        for _ in range(100):
+            async for _ in framer.decode(b"x" * 300):
+                pass
+
+    assert len(framer._buffer) <= len(HEADER_START_MARKER) - 1
+    assert any("discarding" in r.message for r in caplog.records)
+
+
+async def test_marker_split_across_reads_is_preserved(caplog):
+    """Counter-example: a marker that straddles two reads must still be detected.
+
+    The bounding behaviour from `test_headerless_garbage_bounds_buffer_growth`
+    must not silently lose a marker arriving in pieces — the framer keeps the
+    last `len(marker) - 1` bytes precisely so a partially-received marker
+    completes on the next chunk.
+    """
+    framer = ClientFramer()
+    # First chunk: 20 bytes of garbage + first 3 bytes of the marker. After
+    # processing, no full marker is in the buffer, so the framer discards the
+    # 20 garbage bytes and keeps only the trailing partial marker.
+    first_chunk = b"x" * 20 + HEADER_START_MARKER[:3]
+    async for _ in framer.decode(first_chunk):
+        pass
+    assert framer._buffer == HEADER_START_MARKER[:3]
+
+    # Second chunk: the missing last byte of the marker + 20 more bytes of
+    # garbage. Once concatenated, the marker straddles the read boundary but
+    # is now intact in the buffer. The framer DOES find it (and proceeds to
+    # parse the MBAP header, which is junk, triggering the "Unexpected header
+    # values" path — that warning is what proves the marker was detected).
+    second_chunk = HEADER_START_MARKER[3:] + b"x" * 20
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.framer"):
+        async for _ in framer.decode(second_chunk):
+            pass
+    assert any("Unexpected header values" in r.message for r in caplog.records)
+    # After processing, the marker has been consumed (the framer skipped past it).
+    assert HEADER_START_MARKER not in framer._buffer
