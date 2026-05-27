@@ -6,7 +6,7 @@
 [![python](https://img.shields.io/pypi/pyversions/givenergy-modbus)](https://pypi.org/project/givenergy-modbus/)
 [![CI](https://img.shields.io/github/checks-status/dewet22/givenergy-modbus/main)](https://github.com/dewet22/givenergy-modbus/actions?query=branch%3Amain)
 [![codecov](https://img.shields.io/codecov/c/github/dewet22/givenergy-modbus)](https://codecov.io/github/dewet22/givenergy-modbus)
-[![license](https://img.shields.io/github/license/dewet22/givenergy-modbus)](LICENSE)
+[![license](https://img.shields.io/github/license/dewet22/givenergy-modbus)](https://github.com/dewet22/givenergy-modbus/blob/main/LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 A Python library for communicating with GivEnergy inverters via Modbus TCP on a local network, with no dependency on the GivEnergy Cloud. Inspired by and originally built on [pymodbus](https://pymodbus.readthedocs.io/), it now provides its own asyncio-based framer, decoder and PDUs specific to the GivEnergy implementation.
