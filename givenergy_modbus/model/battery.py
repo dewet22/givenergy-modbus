@@ -28,6 +28,12 @@ class BatteryRegisterGetter(RegisterGetter):
         "v_cell_14": Def(DT.milli, None, IR(73), min=1.0, max=5.0),
         "v_cell_15": Def(DT.milli, None, IR(74), min=1.0, max=5.0),
         "v_cell_16": Def(DT.milli, None, IR(75), min=1.0, max=5.0),
+        # Temperature `min=-60.0` also (incidentally) rejects the absent-battery-slot sentinel.
+        # The BMS firmware stores temperatures internally with a `+2730` bias and subtracts
+        # 2730 on TX, so an empty slot (internal `0`) emits `0xF556 = -2730 = -273.0 °C`.
+        # See open-giv/bms-analysis docs/03 ("Absent device pattern") for the firmware path.
+        # If you tighten these bounds, keep the lower bound below `-273.0` or add explicit
+        # sentinel rejection — otherwise empty-slot frames will start reaching consumers.
         "t_cells_01_04": Def(DT.deci, None, IR(76), min=-60.0, max=150.0),
         "t_cells_05_08": Def(DT.deci, None, IR(77), min=-60.0, max=150.0),
         "t_cells_09_12": Def(DT.deci, None, IR(78), min=-60.0, max=150.0),
