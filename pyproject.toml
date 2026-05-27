@@ -155,10 +155,16 @@ dependency_groups =
 allowlist_externals =
     uv
     twine
+# Build into the testenv's per-run tempdir rather than the project's
+# persistent dist/ so twine check only sees the artifacts produced by
+# *this* run. Otherwise dist/ accumulates old wheels and the check noises
+# through every historical version. CI builds run on a fresh runner with
+# an empty dist/, so this only changes the local-developer experience.
+# See post-v2 §8.
 commands =
-    uv build
+    uv build --out-dir {envtmpdir}/dist
     mkdocs build
-    twine check dist/*
+    twine check {envtmpdir}/dist/*
 """
 
 [tool.codespell]
