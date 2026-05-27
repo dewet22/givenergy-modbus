@@ -463,7 +463,9 @@ async def test_producer_skips_wire_send_when_response_already_resolved():
     frame_sent = loop.create_future()
     await client.tx_queue.put((b"the-frame", frame_sent, resolved_response))
 
-    producer = asyncio.create_task(client._task_network_producer(tx_message_wait=0))
+    client.tx_message_wait = 0
+    client.tx_jitter = 0
+    producer = asyncio.create_task(client._task_network_producer())
     try:
         await asyncio.wait_for(frame_sent, timeout=0.5)
     finally:
@@ -490,7 +492,9 @@ async def test_producer_sends_normally_when_response_future_pending():
     frame_sent = loop.create_future()
     await client.tx_queue.put((b"the-frame", frame_sent, pending_response))
 
-    producer = asyncio.create_task(client._task_network_producer(tx_message_wait=0))
+    client.tx_message_wait = 0
+    client.tx_jitter = 0
+    producer = asyncio.create_task(client._task_network_producer())
     try:
         await asyncio.wait_for(frame_sent, timeout=0.5)
     finally:
@@ -502,6 +506,93 @@ async def test_producer_sends_normally_when_response_future_pending():
 
     writer.write.assert_called_once_with(b"the-frame")
     assert frame_sent.result() is True
+
+
+def test_client_tx_pacing_defaults_and_overrides():
+    """tx_message_wait and tx_jitter expose the producer's pacing knobs (issue #71)."""
+    default = Client(host="foo", port=4321)
+    assert default.tx_message_wait == 0.25
+    assert default.tx_jitter == 0.1
+
+    custom = Client(host="foo", port=4321, tx_message_wait=0.5, tx_jitter=0.0)
+    assert custom.tx_message_wait == 0.5
+    assert custom.tx_jitter == 0.0
+
+
+async def test_producer_inter_frame_sleep_includes_jitter_within_bounds():
+    """Producer must sleep in [tx_message_wait, tx_message_wait + tx_jitter) between frames.
+
+    Asymmetric-only jitter: the minimum gap stays at tx_message_wait so the
+    historic 250ms floor isn't violated; the upper bound is tx_message_wait +
+    tx_jitter so concurrent bursts disperse without unbounded growth.
+    """
+    client = Client(host="foo", port=4321, tx_message_wait=0.25, tx_jitter=0.1)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock()
+    client.writer = writer
+
+    loop = asyncio.get_running_loop()
+    pending = loop.create_future()
+    frame_sent = loop.create_future()
+    await client.tx_queue.put((b"frame", frame_sent, pending))
+
+    sleep_durations: list[float] = []
+
+    async def capture_sleep(delay):
+        # NB: must not call asyncio.sleep here — the patch is global to the
+        # asyncio module, which would recurse. Returning without yielding is
+        # fine because the producer's next loop iteration awaits tx_queue.get()
+        # on an empty queue, which yields control naturally for cancellation.
+        sleep_durations.append(delay)
+
+    with patch("givenergy_modbus.client.client.asyncio.sleep", new=capture_sleep):
+        producer = asyncio.create_task(client._task_network_producer())
+        try:
+            await asyncio.wait_for(frame_sent, timeout=0.5)
+        finally:
+            producer.cancel()
+            try:
+                await producer
+            except asyncio.CancelledError:
+                pass
+
+    assert sleep_durations, "producer never called asyncio.sleep"
+    pacing_sleep = sleep_durations[0]
+    assert 0.25 <= pacing_sleep < 0.25 + 0.1
+
+
+async def test_producer_inter_frame_sleep_is_deterministic_when_jitter_zero():
+    """tx_jitter=0 must produce a fixed inter-frame sleep equal to tx_message_wait."""
+    client = Client(host="foo", port=4321, tx_message_wait=0.25, tx_jitter=0.0)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock()
+    client.writer = writer
+
+    loop = asyncio.get_running_loop()
+    pending = loop.create_future()
+    frame_sent = loop.create_future()
+    await client.tx_queue.put((b"frame", frame_sent, pending))
+
+    sleep_durations: list[float] = []
+
+    async def capture_sleep(delay):
+        # See sibling test above re: not recursing into asyncio.sleep.
+        sleep_durations.append(delay)
+
+    with patch("givenergy_modbus.client.client.asyncio.sleep", new=capture_sleep):
+        producer = asyncio.create_task(client._task_network_producer())
+        try:
+            await asyncio.wait_for(frame_sent, timeout=0.5)
+        finally:
+            producer.cancel()
+            try:
+                await producer
+            except asyncio.CancelledError:
+                pass
+
+    assert sleep_durations[0] == 0.25
 
 
 async def test_send_request_no_sleep_after_final_retry_exhausted():

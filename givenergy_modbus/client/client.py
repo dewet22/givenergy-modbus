@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import re
 import socket
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
@@ -116,10 +117,26 @@ class Client:
     # arrival to a previous attempt) is skipped rather than duplicated on the wire.
     tx_queue: Queue[tuple[bytes, Future | None, Future | None]]
 
-    def __init__(self, host: str, port: int, connect_timeout: float = 2.0) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        connect_timeout: float = 2.0,
+        tx_message_wait: float = 0.25,
+        tx_jitter: float = 0.1,
+    ) -> None:
         self.host = host
         self.port = port
         self.connect_timeout = connect_timeout
+        # Minimum gap between consecutive frames hitting the wire. Empirically
+        # load-bearing across hardware generations — see issue #71 for context.
+        self.tx_message_wait = tx_message_wait
+        # Upper bound on the additive random jitter applied on top of
+        # tx_message_wait. Disperses concurrent bursts (polling ticks, retry
+        # storms) so they don't clump at fixed 250 ms boundaries. Asymmetric
+        # by design — preserves the historic tx_message_wait floor and only
+        # ever lengthens the gap; set to 0 to disable.
+        self.tx_jitter = tx_jitter
         self.framer = ClientFramer()
         self.plant = Plant()
         self.tx_queue = Queue(maxsize=20)
@@ -576,7 +593,7 @@ class Client:
             self.connected = False
             _logger.critical("network_consumer reader at EOF, cannot continue")
 
-    async def _task_network_producer(self, tx_message_wait: float = 0.25):
+    async def _task_network_producer(self):
         """Producer loop to transmit queued frames with an appropriate delay.
 
         Frames whose response_future is already done (i.e. resolved by a late
@@ -584,6 +601,11 @@ class Client:
         window) are skipped — there's no point writing a request whose answer
         we already have. The frame_sent future is still signalled so the
         caller-side awaiter unblocks normally.
+
+        Inter-frame sleep is ``tx_message_wait + uniform(0, tx_jitter)``. The
+        jitter is asymmetric — it never reduces the gap below ``tx_message_wait``
+        — so existing hardware-derived minimum spacing is preserved while
+        coordinated bursts (polling ticks, retry storms) disperse naturally.
         """
         while hasattr(self, "writer") and self.writer and not self.writer.is_closing():
             message, frame_sent, response_future = await self.tx_queue.get()
@@ -600,7 +622,8 @@ class Client:
             self.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
-            await asyncio.sleep(tx_message_wait)
+            # B311: plain random is appropriate for non-cryptographic burst-dispersal jitter.
+            await asyncio.sleep(self.tx_message_wait + random.uniform(0, self.tx_jitter))  # nosec B311
         if self._shutting_down:
             _logger.debug("network_producer exiting on intentional shutdown")
         else:

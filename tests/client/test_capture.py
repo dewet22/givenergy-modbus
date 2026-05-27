@@ -65,7 +65,9 @@ async def test_capture_frames_tees_tx_to_sink_redacted():
     frame_sent = loop.create_future()
     await client.tx_queue.put((b"hello SA1234B567 frame", frame_sent, None))
 
-    producer = asyncio.create_task(client._task_network_producer(tx_message_wait=0))
+    client.tx_message_wait = 0
+    client.tx_jitter = 0
+    producer = asyncio.create_task(client._task_network_producer())
     try:
         await asyncio.wait_for(frame_sent, timeout=0.5)
         await capture
