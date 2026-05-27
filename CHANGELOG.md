@@ -7,15 +7,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.4] - 2026-05-27
 
+### 🐛 Fixed
+
+- guard p_pv()/e_pv_day() against None inputs (#85) (#92) ([735959e](https://github.com/dewet22/givenergy-modbus/commit/735959ee8f5b66ac56c5d3006a5d450577b20739))
+
 ### 🔧 Maintenance
 
+- cross-reference open-giv/bms-analysis and document TCP-cache layering ([8125c17](https://github.com/dewet22/givenergy-modbus/commit/8125c17fe541e6e50f9401ea902f175317d674dc))
 - close leaked Queue.put coroutine in tx-queue-full timeout test ([a9d1a61](https://github.com/dewet22/givenergy-modbus/commit/a9d1a61108a84dc844eaabde7c4287ac790400bc))
 
 ## [2.0.3] - 2026-05-27
 
+### 🐛 Fixed
+
+- harden against malformed-frame DoS cases (#88) ([3d6f851](https://github.com/dewet22/givenergy-modbus/commit/3d6f851ce2bd82d76071a18a59a7e2d84eabb908))
+- refine review feedback on #88 hardening ([38991c6](https://github.com/dewet22/givenergy-modbus/commit/38991c68dee761bbf5d874c6d590f999fc569fe3))
 
 ## [2.0.2] - 2026-05-27
 
+### 🐛 Fixed
+
+- accept v2.0.0 PlantCapabilities payloads in from_dict() ([6852f07](https://github.com/dewet22/givenergy-modbus/commit/6852f0762cb0d86b1e08c66da596a2735c6e802c))
+- coerce bcu_stacks tuple entries to int in from_dict() ([52a8699](https://github.com/dewet22/givenergy-modbus/commit/52a869924d4889f8276dd548a5e0808962160d28))
+- harden from_dict against int device_type and null list fields ([37651b7](https://github.com/dewet22/givenergy-modbus/commit/37651b7f41497eb0aeba58ee13b7aa09062af741))
+
+### 🔧 Maintenance
+
+- cover Model-instance passthrough in from_dict() _device_type ([5195467](https://github.com/dewet22/givenergy-modbus/commit/51954675fe26e7048901eded9bd1a0a5eb30201d))
 
 ## [2.0.1] - 2026-05-26
 
