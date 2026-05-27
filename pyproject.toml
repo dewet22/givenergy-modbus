@@ -89,6 +89,21 @@ pretty = true
 show_error_codes = true
 show_error_context = true
 plugins = ["pydantic.mypy"]
+# Type-check the bodies of unannotated functions too — catches mistakes in
+# protocol and test-helper code that previously slipped through. Production
+# code (givenergy_modbus/*) passes cleanly under this; existing test files
+# carry 58 historical findings that are out of scope for the §7 first wave
+# and are deferred via the per-module override below. See post-v2 §7.
+check_untyped_defs = true
+
+# Deferred: tests/* needs a cleanup pass to satisfy check_untyped_defs.
+# The findings are mostly sloppy sentinel typing (e.g. `dict[int, Future]`
+# assigned a string) and uninspected attribute access on union types.
+# Re-enable once those are addressed; until then, the production-code
+# tightening is the win we're banking from §7.
+[[tool.mypy.overrides]]
+module = "tests.*"
+check_untyped_defs = false
 
 [tool.coverage.run]
 branch = true
