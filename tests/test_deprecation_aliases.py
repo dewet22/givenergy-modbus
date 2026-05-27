@@ -13,6 +13,7 @@ removed, these tests can be deleted alongside the alias code.
 import warnings
 
 import pytest
+from pydantic import ValidationError
 
 from givenergy_modbus.model.hv_bcu import Bcu, HvStack
 from givenergy_modbus.model.inverter import Model
@@ -108,8 +109,37 @@ def test_capabilities_both_kwarg_forms_raises():
 
 
 def test_capabilities_unexpected_kwarg_raises():
-    with pytest.raises(TypeError, match="unexpected keyword arguments"):
+    # Pydantic raises ValidationError (a ValueError subclass) rather than TypeError
+    # for extra inputs — the rejection contract is preserved, the error type changed
+    # as part of the v2.1 Pydantic migration (#72).
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         PlantCapabilities(device_type=Model.HYBRID, nonexistent=42)
+
+
+def test_capabilities_positional_args_work():
+    """Positional-arg construction is preserved across the Pydantic migration.
+
+    The historic dataclass form supported positional args; the Pydantic
+    migration's custom __init__ preserves that for external callers who may
+    have written PlantCapabilities(Model.HYBRID, 0x32, [0x01], ...) directly.
+    """
+    caps = PlantCapabilities(Model.HYBRID, 0x33, [0x01], [0x35], [(0, 2)])
+    assert caps.device_type == Model.HYBRID
+    assert caps.inverter_address == 0x33
+    assert caps.meter_addresses == [0x01]
+    assert caps.lv_battery_addresses == [0x35]
+    assert caps.bcu_stacks == [(0, 2)]
+
+
+def test_capabilities_model_validate_still_handles_legacy_keys():
+    """model_validate() must still apply legacy alias mapping.
+
+    model_validate() bypasses __init__, so the model_validator must catch
+    legacy *_slave(s) keys arriving via that path too.
+    """
+    with pytest.warns(DeprecationWarning, match="inverter_slave is deprecated"):
+        caps = PlantCapabilities.model_validate({"device_type": Model.HYBRID, "inverter_slave": 0x33})
+    assert caps.inverter_address == 0x33
 
 
 def test_capabilities_legacy_setters_warn_and_assign():

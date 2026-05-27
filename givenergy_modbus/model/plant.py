@@ -1,9 +1,8 @@
 import logging
 import warnings
-from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
-from pydantic import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
@@ -71,55 +70,95 @@ _CAPABILITIES_LEGACY_ALIASES = {
 }
 
 
-@dataclass(init=False)
-class PlantCapabilities:
+def _map_legacy_aliases(kwargs: dict[str, Any], *, stacklevel: int) -> None:
+    """Rename legacy ``*_slave(s)`` keys to canonical names, warn, and enforce mutual exclusivity.
+
+    Mutates ``kwargs`` in place. Shared between PlantCapabilities.__init__
+    (stacklevel=3, the caller's frame) and the model_validate validator
+    (stacklevel=2, best-effort — Pydantic internals limit what's reachable).
+    """
+    for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
+        if old not in kwargs:
+            continue
+        if new in kwargs:
+            raise TypeError(f"pass either {old}= or {new}=, not both")
+        warnings.warn(
+            f"PlantCapabilities.{old} is deprecated; use {new}",
+            DeprecationWarning,
+            stacklevel=stacklevel,
+        )
+        kwargs[new] = kwargs.pop(old)
+
+
+class PlantCapabilities(BaseModel):
     """Describes the hardware topology discovered by Client.detect().
 
     Returned by Client.detect(); callers assign it to plant.capabilities or
     persist it for faster restarts (see fork-merge-plan deferred items).
+
+    Legacy ``*_slave(s)`` keyword aliases are mapped to the canonical names
+    in ``__init__`` (for ``PlantCapabilities(...)`` callers) and again in the
+    ``_accept_legacy_aliases`` model_validator (for ``model_validate({...})``
+    callers). Both paths emit a DeprecationWarning.
     """
+
+    # `extra="forbid"` preserves the historic contract that unknown kwargs
+    # raise TypeError. The pre-Pydantic __init__ enforced this manually.
+    model_config = ConfigDict(extra="forbid")
 
     device_type: Model
     inverter_address: int = 0x32
-    meter_addresses: list[int] = field(default_factory=list)
-    lv_battery_addresses: list[int] = field(default_factory=list)
+    meter_addresses: list[int] = Field(default_factory=list)
+    lv_battery_addresses: list[int] = Field(default_factory=list)
     # Each entry is (bcu_offset, num_modules) where the BCU device address is 0x70 + bcu_offset.
-    bcu_stacks: list[tuple[int, int]] = field(default_factory=list)
+    bcu_stacks: list[tuple[int, int]] = Field(default_factory=list)
 
     def __init__(
         self,
-        device_type: Model,
+        device_type: Model | None = None,
         inverter_address: int | None = None,
         meter_addresses: list[int] | None = None,
         lv_battery_addresses: list[int] | None = None,
         bcu_stacks: list[tuple[int, int]] | None = None,
-        **legacy_kwargs: Any,
+        **kwargs: Any,
     ) -> None:
-        new_values: dict[str, Any] = {
-            "inverter_address": inverter_address,
-            "meter_addresses": meter_addresses,
-            "lv_battery_addresses": lv_battery_addresses,
-            "bcu_stacks": bcu_stacks,
-        }
-        for old, new in _CAPABILITIES_LEGACY_ALIASES.items():
-            if old in legacy_kwargs:
-                if new_values[new] is not None:
-                    raise TypeError(f"pass either {old}= or {new}=, not both")
-                warnings.warn(
-                    f"PlantCapabilities.{old} is deprecated; use {new}",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                new_values[new] = legacy_kwargs.pop(old)
-        if legacy_kwargs:
-            raise TypeError(f"unexpected keyword arguments: {sorted(legacy_kwargs)}")
-        self.device_type = device_type
-        self.inverter_address = new_values["inverter_address"] if new_values["inverter_address"] is not None else 0x32
-        self.meter_addresses = new_values["meter_addresses"] if new_values["meter_addresses"] is not None else []
-        self.lv_battery_addresses = (
-            new_values["lv_battery_addresses"] if new_values["lv_battery_addresses"] is not None else []
-        )
-        self.bcu_stacks = new_values["bcu_stacks"] if new_values["bcu_stacks"] is not None else []
+        # Custom __init__ for two reasons:
+        # 1. Preserves the historic positional-argument shape that the
+        #    @dataclass form supported (PlantCapabilities(Model.HYBRID, 0x32, ...)).
+        # 2. Lets us emit the legacy-alias DeprecationWarning at stacklevel=2
+        #    pointing at the user's call site — a `model_validator(mode='before')`
+        #    sits behind Pydantic internals and can't reach the caller cleanly.
+        # Only pass through positional-derived values that were actually supplied
+        # so we don't override kwargs the caller may have provided as keywords.
+        if device_type is not None:
+            kwargs["device_type"] = device_type
+        if inverter_address is not None:
+            kwargs["inverter_address"] = inverter_address
+        if meter_addresses is not None:
+            kwargs["meter_addresses"] = meter_addresses
+        if lv_battery_addresses is not None:
+            kwargs["lv_battery_addresses"] = lv_battery_addresses
+        if bcu_stacks is not None:
+            kwargs["bcu_stacks"] = bcu_stacks
+        _map_legacy_aliases(kwargs, stacklevel=3)
+        super().__init__(**kwargs)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _accept_legacy_aliases(cls, data: Any) -> Any:
+        """Mirror the __init__ alias handling for the ``model_validate`` path.
+
+        ``PlantCapabilities.model_validate({'inverter_slave': 0x33})`` bypasses
+        ``__init__``, so we need a validator to catch legacy keys arriving via
+        that route. Stacklevel from inside a validator can't reliably reach the
+        user (Pydantic internals sit between), but the warning still fires under
+        ``pytest.warns`` and ``warnings.catch_warnings`` filtering by category.
+        """
+        if not isinstance(data, dict):
+            return data
+        normalised = dict(data)
+        _map_legacy_aliases(normalised, stacklevel=2)
+        return normalised
 
     @property
     def inverter_slave(self) -> int:
@@ -202,7 +241,7 @@ class PlantCapabilities:
         """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
         return self.device_type in _HV_MODELS
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION: ClassVar[int] = 1
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to a JSON-safe dict for caller-managed persistence.
