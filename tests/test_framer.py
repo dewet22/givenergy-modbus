@@ -409,7 +409,8 @@ async def test_headerless_garbage_bounds_buffer_growth(caplog):
     indefinitely. The reproducer from #88 streamed 100 × 300 bytes and ended
     up retaining 30,000 bytes. After the fix, the buffer is trimmed to the
     last `len(HEADER_START_MARKER) - 1` bytes (which could still be the head
-    of a marker split across reads).
+    of a marker split across reads). A 300-byte chunk crosses the 100-byte
+    log-tiering threshold, so the discard is reported at WARNING.
     """
     framer = ClientFramer()
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.framer"):
@@ -419,6 +420,27 @@ async def test_headerless_garbage_bounds_buffer_growth(caplog):
 
     assert len(framer._buffer) <= len(HEADER_START_MARKER) - 1
     assert any("discarding" in r.message for r in caplog.records)
+
+
+async def test_small_no_marker_discard_logs_at_debug(caplog):
+    """A small discard (≤ 100 bytes) below the threshold logs at DEBUG, not WARNING.
+
+    Distinguishes drip-feed garbage (where each iteration only discards a few
+    bytes) from a peer streaming substantial non-marker payloads. The former
+    would flood operator logs at warning level for no actionable reason.
+    """
+    framer = ClientFramer()
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.framer"):
+        async for _ in framer.decode(b"x" * 50):  # 50 bytes, no marker
+            pass
+
+    # The buffer was bigger than 18 (so the loop ran) but the discarded count
+    # (50 - 3 = 47) is below the 100-byte warning threshold.
+    assert len(framer._buffer) <= len(HEADER_START_MARKER) - 1
+    debug_msgs = [r for r in caplog.records if r.levelno == logging.DEBUG and "discarding" in r.message]
+    warning_msgs = [r for r in caplog.records if r.levelno == logging.WARNING and "discarding" in r.message]
+    assert debug_msgs, "expected at least one DEBUG-level discard log"
+    assert not warning_msgs, "small discards should not surface as WARNING"
 
 
 async def test_marker_split_across_reads_is_preserved(caplog):
