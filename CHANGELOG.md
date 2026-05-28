@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a4] - 2026-05-28
+
+### ✨ Added
+
+- unified Inverter facade for EMS-managed plant topology (#98) ([4cb40b0](https://github.com/dewet22/givenergy-modbus/commit/4cb40b02948ef6d466b48c7ff84ca661f575c514))
+- seed tests/fixtures/captures with real EMS-plant wire data (#103) ([5376582](https://github.com/dewet22/givenergy-modbus/commit/53765823fb7d4bc3a04987a91193465ed9e51ab4))
+
+### 🐛 Fixed
+
+- skip inverter-style HR/IR reads on EMS plant controllers (#93) ([cecd06d](https://github.com/dewet22/givenergy-modbus/commit/cecd06dbf54e47753f6929d177b169763f83711c))
+- drop empty meter slots in detect() via Meter.is_valid() (#96) ([1c21bfa](https://github.com/dewet22/givenergy-modbus/commit/1c21bfa806a5130b7cdb25924cecce896ac7175a))
+- exercise strip path with partial-padding serial in EMS rollup test (#102) ([57a6dcc](https://github.com/dewet22/givenergy-modbus/commit/57a6dccf784536a45c308e7d8256dd2183c11c86))
+- extend redact() for EMS serials and IPv4 addresses (#99) ([ae4f84d](https://github.com/dewet22/givenergy-modbus/commit/ae4f84dc7b8831be62d7d08f2dcac377ce72b079))
+
+### 🔧 Maintenance
+
+- add §2 back-reference on a5 to mirror the a4 stretch note ([721d904](https://github.com/dewet22/givenergy-modbus/commit/721d9042cecd66364bb9a252592e25f4eeffe1aa))
+
 ## [2.1.0a3] - 2026-05-27
 
 ### 🔄 Changed
