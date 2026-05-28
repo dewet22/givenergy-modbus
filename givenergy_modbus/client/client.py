@@ -26,28 +26,58 @@ from givenergy_modbus.pdu import (
 
 _logger = logging.getLogger(__name__)
 
-# GivEnergy serial numbers are 10 ASCII bytes: AA0000A000 (two letters, four
-# digits, one letter, three digits). Only the digits identify the unit; the
-# prefix is documented to indicate hardware family (Gen 2 vs Gen 3 vs AIO,
-# dongle vs inverter). The middle letter's semantics aren't documented — we
-# preserve it on the same principle in case it later turns out to carry
-# signal worth keeping. Zero only the digits so the family info survives for
-# diagnostics.
+# GivEnergy serial numbers are 10 ASCII bytes. Two shapes have been
+# observed in real captures:
+#
+# - Standard form `AA0000A000` (two letters, four digits, one letter,
+#   three digits) — covers inverters, dongles, batteries, meters.
+# - EMS plant controller form `AAA0000000` (three letters, seven digits)
+#   — distinct enough to warrant its own pattern.
+#
+# In both shapes only the digits identify the unit; the letter prefix
+# is documented to indicate hardware family. For the standard form the
+# middle letter is preserved on the same principle in case it later
+# turns out to carry signal worth keeping. Zero only the digits so the
+# family info survives for diagnostics.
 _SERIAL_PATTERN = re.compile(rb"([A-Z]{2})\d{4}([A-Z])\d{3}")
+_EMS_SERIAL_PATTERN = re.compile(rb"([A-Z]{3})\d{7}")
+
+# Some inverter dongles emit their network configuration as an ASCII
+# CSV inside protocol responses — observed as the WO-prefix heartbeat
+# carrying `ip,netmask,gateway` every three minutes (see #100). Per-
+# octet digit-zeroing preserves the dot-separated structure and total
+# length, consistent with the same-offset guarantee the serial
+# patterns above already make.
+_IPV4_PATTERN = re.compile(rb"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
 
 Direction = Literal["rx", "tx"]
 
 
-def redact(frame: bytes) -> bytes:
-    """Replace serial-number byte runs with the unit's digits zeroed.
+def _zero_digits(match: re.Match[bytes]) -> bytes:
+    """Replace every digit in the matched span with `0`. Length-preserving."""
+    return re.sub(rb"\d", b"0", match.group(0))
 
-    Preserves the surrounding letters (the prefix carries documented family
-    info; the middle letter is preserved on the same principle, in case it
-    later turns out to be diagnostically useful). Same length, same byte
-    offsets — frame-level CRC/length fields remain consistent so offline
-    parsing tools still work on the redacted output.
+
+def redact(frame: bytes) -> bytes:
+    """Replace identifying byte runs with the unit's digits zeroed.
+
+    Currently covers:
+
+    - Standard 10-char GE serials (`AA####A###`) — letters preserved,
+      digits zeroed.
+    - EMS plant-controller serials (`AAA#######`) — letters preserved,
+      digits zeroed.
+    - IPv4 dotted-quads — dots preserved, every digit zeroed. Catches
+      LAN topology leaks like the WO-prefix dongle heartbeat (see #100).
+
+    Same length, same byte offsets across all substitutions — frame-level
+    CRC/length fields remain consistent so offline parsing tools still
+    work on the redacted output.
     """
-    return _SERIAL_PATTERN.sub(rb"\g<1>0000\g<2>000", frame)
+    frame = _SERIAL_PATTERN.sub(rb"\g<1>0000\g<2>000", frame)
+    frame = _EMS_SERIAL_PATTERN.sub(rb"\g<1>0000000", frame)
+    frame = _IPV4_PATTERN.sub(_zero_digits, frame)
+    return frame
 
 
 class Client:
