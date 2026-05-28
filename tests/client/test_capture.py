@@ -42,6 +42,72 @@ def test_redact_preserves_length_with_mixed_content():
     assert redacted == b"\x01\x02 SA0000X000 \x03\x04 SA0000Z000 \x05"
 
 
+def test_redact_ems_serial():
+    """EMS plant controller serials are redacted via a dedicated 3+7 pattern.
+
+    EMS units use a 3-letter + 7-digit format that the standard pattern
+    doesn't match (e.g. ``EMS2522018``). The dedicated pattern zeroes the
+    seven trailing digits while preserving the prefix letters.
+    """
+    frame = b"prefix EMS2522018 suffix"
+    redacted = redact(frame)
+    assert redacted == b"prefix EMS0000000 suffix"
+    assert len(redacted) == len(frame)
+
+
+def test_redact_mixed_standard_and_ems_serials():
+    """Standard and EMS serials in the same frame are each rewritten.
+
+    Either pattern leaves the other's structure alone, so a single redact()
+    call covers a frame that mentions both shapes.
+    """
+    frame = b"adapter FO2522G018 ems EMS2522018 inverter CE2231G454"
+    redacted = redact(frame)
+    assert redacted == b"adapter FO0000G000 ems EMS0000000 inverter CE0000G000"
+    assert len(redacted) == len(frame)
+
+
+def test_redact_ipv4_dotted_quad():
+    """IPv4 dotted-quad gets its digits zeroed per-octet; dots preserved.
+
+    Some inverter dongles emit network config as ASCII in protocol responses;
+    see issue #100. Same-length substitution keeps frame offsets / lengths
+    intact.
+    """
+    frame = b"prefix 192.168.4.47 suffix"
+    redacted = redact(frame)
+    assert redacted == b"prefix 000.000.0.00 suffix"
+    assert len(redacted) == len(frame)
+
+
+def test_redact_ipv4_csv_triplet():
+    """The observed WO-heartbeat shape: ip,netmask,gateway as a CSV blob."""
+    frame = b",192.168.4.47,255.255.252.0,192.168.4.1\r\n\r\n"
+    redacted = redact(frame)
+    assert redacted == b",000.000.0.00,000.000.000.0,000.000.0.0\r\n\r\n"
+    assert len(redacted) == len(frame)
+
+
+def test_redact_ipv4_mixed_with_serials():
+    """A frame containing both serial-shaped runs and IPv4 gets both redacted in one pass."""
+    frame = b"from FO2522G018 to 10.0.0.1 by EMS2522018"
+    redacted = redact(frame)
+    assert redacted == b"from FO0000G000 to 00.0.0.0 by EMS0000000"
+    assert len(redacted) == len(frame)
+
+
+def test_redact_is_idempotent():
+    """Running redact() twice yields the same output as running it once.
+
+    Important: future tooling that pipes capture data through redact() on
+    re-export shouldn't accidentally double-substitute or lose information.
+    """
+    frame = b"FO2522G018 EMS2522018 192.168.4.47"
+    once = redact(frame)
+    twice = redact(once)
+    assert once == twice
+
+
 # ---------------------------------------------------------------------------
 # Client.capture_frames integration
 # ---------------------------------------------------------------------------
