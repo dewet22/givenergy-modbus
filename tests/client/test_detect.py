@@ -329,6 +329,28 @@ async def test_detect_hv_skips_lv_battery_probing():
 
 
 @pytest.mark.asyncio
+async def test_detect_ems_skips_lv_battery_probing():
+    """EMS plant controllers skip the LV battery probe.
+
+    They don't expose IR at the inverter address — the unconditional read at
+    IR(60,60) on 0x32 would time out every detect(). See #86.
+    """
+    client = _make_client()
+    # DTC 0x5001 → Model.EMS (first-digit prefix "5")
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_send:
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert caps.is_ems is True
+    assert caps.lv_battery_addresses == []
+    # Only the initial HR(0,60) read on 0x11 should have been issued — no IR(60,60) on 0x32.
+    sent = [call.args[0] for call in mock_send.call_args_list]
+    assert all(req.device_address != 0x32 for req in sent), f"detect() should not read from 0x32 for EMS; got {sent}"
+
+
+@pytest.mark.asyncio
 async def test_detect_raises_when_hr0_missing():
     """If HR(0) is absent after reading device 0x11, detect raises CommunicationError."""
     client = _make_client()

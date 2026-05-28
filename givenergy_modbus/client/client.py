@@ -351,7 +351,9 @@ class Client:
 
         # Step 4 — LV battery detection. Battery #1 shares the inverter's IR bank at 0x32;
         # additional batteries are at 0x33–0x37. All slots are validated via Battery.is_valid().
-        if not caps.is_hv:
+        # Skipped for HV systems (handled at step 2) and EMS plant controllers (don't expose
+        # IR at the inverter address — wire capture confirms; see #86).
+        if not caps.is_hv and not caps.is_ems:
             await self.send_request_and_await_response(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
                 timeout=timeout,
@@ -394,12 +396,22 @@ class Client:
         """Read HR configuration blocks for the inverter."""
         caps = self.plant.capabilities
         inverter = caps.inverter_address if caps else 0x32
+        is_ems = bool(caps and caps.is_ems)
+        # HR(0,60) is the identity/firmware/serial bank that every device type — including EMS —
+        # answers; it's the same bank detect() reads to identify the device. The HR(60,60),
+        # HR(120,60) and IR(120,60) banks are inverter-specific; EMS plant controllers don't
+        # expose them and the reads time out every poll. The EMS's own window at HR(2040,36)
+        # is covered by the EMS-conditional append below. See #86 (wire capture confirmed via
+        # dewet22/givenergy-hass#52).
         reqs: list[TransparentRequest] = [
             ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=inverter),
-            ReadHoldingRegistersRequest(base_register=60, register_count=60, device_address=inverter),
-            ReadHoldingRegistersRequest(base_register=120, register_count=60, device_address=inverter),
-            ReadInputRegistersRequest(base_register=120, register_count=60, device_address=inverter),
         ]
+        if not is_ems:
+            reqs += [
+                ReadHoldingRegistersRequest(base_register=60, register_count=60, device_address=inverter),
+                ReadHoldingRegistersRequest(base_register=120, register_count=60, device_address=inverter),
+                ReadInputRegistersRequest(base_register=120, register_count=60, device_address=inverter),
+            ]
         if caps:
             if caps.is_three_phase:
                 reqs += [
@@ -420,10 +432,13 @@ class Client:
         if caps is None:
             return await self.refresh_plant(full_refresh=False)
         inverter = caps.inverter_address
-        reqs: list[TransparentRequest] = [
-            ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter),
-            ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter),
-        ]
+        reqs: list[TransparentRequest] = []
+        # EMS plant controllers don't expose IR(0,60) or IR(180,60) — see load_config() and #86.
+        if not caps.is_ems:
+            reqs += [
+                ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter),
+                ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter),
+            ]
         if caps.is_three_phase:
             for base in range(1000, 1414, 60):
                 reqs.append(
