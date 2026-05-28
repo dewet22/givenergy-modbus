@@ -76,11 +76,15 @@ async def test_load_config_extended_slots():
 
 
 async def test_load_config_ems():
-    """EMS models add HR 2040–2075."""
+    """EMS plant controllers expose HR(0,60) (identity/firmware/serial) and HR(2040,36) only.
+
+    The inverter-style HR(60,60), HR(120,60) and IR(120,60) banks time out on EMS devices.
+    Regression: #86. Wire capture confirmed via dewet22/givenergy-hass#52.
+    """
     client = _client_with_caps(Model.EMS)
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(2040, 36)]
+    assert _reqs(mock_exec) == [_hr(0, 60), _hr(2040, 36)]
 
 
 # ---------------------------------------------------------------------------
@@ -122,11 +126,17 @@ async def test_refresh_three_phase():
 
 
 async def test_refresh_ems():
-    """EMS adds IR 2040–2094 as one read of 55 registers."""
+    """EMS skips the inverter-style IR(0,60)/IR(180,60) reads — only IR 2040–2094 is requested.
+
+    Regression: #86. The IR(2040,55) append matches what the library models for EMS today;
+    the wire capture in dewet22/givenergy-hass#52 ran without populated capabilities so it
+    can't independently confirm whether the EMS responds to that bank — revisit if a
+    caps-populated capture shows otherwise.
+    """
     client = _client_with_caps(Model.EMS)
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
-    assert _reqs(mock_exec) == [_ir(0, 60), _ir(180, 60), _ir(2040, 55)]
+    assert _reqs(mock_exec) == [_ir(2040, 55)]
 
 
 async def test_refresh_gateway():
