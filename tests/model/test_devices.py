@@ -237,25 +237,27 @@ def test_ems_managed_inverters_strips_serial_padding():
     that padding — comparison would silently fail if we stored the
     raw padded form.
     """
-    # Build a slot 1 with serial "XX1234A567" plus an extra trailing null and space
-    # encoded into the register block. Manually crafted to exercise the strip path:
-    # raw bytes XX1234A56 in the first 4.5 registers, then 7\x20 (space) padding,
-    # which leaves a visible padded suffix the strip() call must trim.
+    # Build slot 1 with a 9-char serial "XX1234A56" plus a trailing space byte in the
+    # last register. The raw decoded form is "XX1234A56 " (10 chars, trailing space),
+    # which is what ``Converter.string`` returns; the strip path must trim it back to
+    # "XX1234A56". Earlier revisions of this test used a 10-char serial that exactly
+    # filled the register block, leaving no padding to trim — the test passed even
+    # without the strip call. Use a partial-padding case so the strip codepath is
+    # genuinely exercised.
     values = {
         IR(2044): 1,
         IR(2066): (ord("X") << 8) | ord("X"),
         IR(2067): (ord("1") << 8) | ord("2"),
         IR(2068): (ord("3") << 8) | ord("4"),
         IR(2069): (ord("A") << 8) | ord("5"),
-        IR(2070): (ord("6") << 8) | ord("7"),
+        IR(2070): (ord("6") << 8) | ord(" "),
     }
     ems = Ems.from_register_cache(RegisterCache(values))
 
     managed = ems.managed_inverters
     assert len(managed) == 1
-    # No trailing nulls or spaces should remain.
-    assert managed[0].serial_number == "XX1234A567"
-    assert managed[0].serial_number == managed[0].serial_number.strip("\x00 ")
+    # Trailing space stripped — stored serial is the 9-char unpadded form.
+    assert managed[0].serial_number == "XX1234A56"
 
 
 def test_ems_managed_inverters_skips_whitespace_only_serials():
