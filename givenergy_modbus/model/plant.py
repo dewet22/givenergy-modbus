@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
@@ -514,6 +515,33 @@ class Plant(GivEnergyBaseModel):
             return None
         cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
         return Ems.from_register_cache(cache)
+
+    @property
+    def inverters(self) -> list[UnifiedInverter]:
+        """Return one :class:`Inverter` facade per inverter in this plant.
+
+        Phase 1 of the Plant refactor — the unified surface that makes
+        EMS-managed (blinded) inverters visible without breaking the
+        existing :attr:`inverter` / :attr:`ems` accessors.
+
+        For an EMS plant: yields one :class:`Inverter` per non-empty
+        managed-inverter slot in the EMS's IR(2040+) rollup
+        (``data_source="ems_rollup"``). Direct register-cache inverters
+        on the same plant are not yet exposed here — that happens in
+        phase 2 once Multi-Client orchestration lands and free-standing
+        inverters can be reconciled with the EMS rollup by serial.
+
+        For a non-EMS plant: yields a single :class:`Inverter` wrapping
+        the existing :attr:`inverter` (``data_source="direct"``). The
+        legacy :attr:`inverter` (singular) accessor remains for
+        back-compat and continues to return the directly-decoded
+        :class:`SinglePhaseInverter` / :class:`ThreePhaseInverter`.
+
+        See ``docs/v2.1-roadmap.md`` for the wider refactor sketch.
+        """
+        if self.ems is not None:
+            return [UnifiedInverter.from_summary(s) for s in self.ems.managed_inverters]
+        return [UnifiedInverter.from_direct(self.inverter)]
 
     @property
     def gateway(self) -> GatewayV1 | GatewayV2 | None:
