@@ -236,6 +236,15 @@ def _prime_battery_serial(client: Client, device_address: int) -> None:
     )
 
 
+def _prime_meter_voltage(client: Client, device_address: int, raw_v_phase_1: int = 2386) -> None:
+    """Prime a device cache so Meter.is_valid() returns True.
+
+    is_valid() checks v_phase_1 = IR(60), expecting a non-zero deci-volt reading.
+    Default 2386 = 238.6 V (typical UK domestic mains, taken from the wire capture in #86).
+    """
+    _prime_cache(client, device_address, {IR(60): raw_v_phase_1})
+
+
 @pytest.mark.asyncio
 async def test_detect_no_peripherals_returns_empty_lists():
     client = _make_client()
@@ -276,6 +285,9 @@ async def test_detect_finds_lv_batteries():
 async def test_detect_finds_meters():
     client = _make_client()
     _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    # Prime IR(60) on the responding meters so Meter.is_valid() passes.
+    _prime_meter_voltage(client, 0x01)
+    _prime_meter_voltage(client, 0x03)
 
     meter_addresses = {0x01, 0x03}
 
@@ -287,6 +299,138 @@ async def test_detect_finds_meters():
             caps = await client.detect()
 
     assert caps.meter_addresses == [0x01, 0x03]
+
+
+@pytest.mark.asyncio
+async def test_detect_cold_filters_empty_meter_slots():
+    """EMS firmwares can ACK every slot in 0x01..0x08 even when no meter is wired.
+
+    Real meters report a non-zero v_phase_1; empty slots ACK but report zeros. The
+    filter should drop the empty slots so they don't end up as ghost Meter objects
+    in plant.meters. Regression: #95 item 1 (wire evidence in #86).
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    # Real meters at 0x01 and 0x03 (mirrors Nick's grid + load CTs).
+    _prime_meter_voltage(client, 0x01)
+    _prime_meter_voltage(client, 0x03)
+    # Empty-but-ACK'd slots at 0x07 and 0x08 — primed with zeros explicitly.
+    _prime_cache(client, 0x07, {IR(60): 0})
+    _prime_cache(client, 0x08, {IR(60): 0})
+
+    # All four addresses respond to the probe; only the valid pair survives the filter.
+    responding = {0x01, 0x03, 0x07, 0x08}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responding
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.meter_addresses == [0x01, 0x03]
+
+
+@pytest.mark.asyncio
+async def test_detect_cold_handles_non_contiguous_meters():
+    """The meter filter is per-slot, not break-on-fail.
+
+    Meters can be non-contiguous (Nick's installation has 0x01 and 0x03 populated
+    with 0x02 absent). A real meter following an empty slot must still be discovered.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    # Real meters at 0x01 and 0x05 — non-contiguous.
+    _prime_meter_voltage(client, 0x01)
+    _prime_meter_voltage(client, 0x05)
+    # Empty-but-ACK'd at 0x06–0x08.
+    for addr in (0x06, 0x07, 0x08):
+        _prime_cache(client, addr, {IR(60): 0})
+
+    # 0x02–0x04 don't respond at all; 0x01, 0x05, 0x06, 0x07, 0x08 all ACK.
+    responding = {0x01, 0x05, 0x06, 0x07, 0x08}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responding
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.meter_addresses == [0x01, 0x05]
+
+
+@pytest.mark.asyncio
+async def test_detect_hinted_drops_ghost_meter_with_mismatch():
+    """Prior caps carrying a ghost address get cleaned up on next hinted detect.
+
+    Migration path for any user whose persisted prior was captured before #95
+    landed — the empty slot drops out of caps and PlantTopologyMismatch is raised,
+    which the consumer (givenergy-hass#62) auto-accepts and re-persists.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    _prime_meter_voltage(client, 0x01)
+    _prime_meter_voltage(client, 0x03)
+    # 0x07 is the ghost: cached, probes ACK, but v_phase_1 = 0.
+    _prime_cache(client, 0x07, {IR(60): 0})
+
+    prior = PlantCapabilities(
+        device_type=Model.HYBRID_GEN1,
+        meter_addresses=[0x01, 0x03, 0x07],
+        lv_battery_addresses=[0x32],
+    )
+
+    # All hinted meter addresses respond to the probe.
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in {0x01, 0x03, 0x07}
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            with pytest.raises(PlantTopologyMismatch) as exc_info:
+                await client.detect(prior=prior)
+
+    assert exc_info.value.prior is prior
+    assert exc_info.value.actual.meter_addresses == [0x01, 0x03]
+    assert client.plant.capabilities is None
+
+
+@pytest.mark.asyncio
+async def test_detect_hinted_drops_meter_with_transient_zero_voltage():
+    """A previously-valid meter reading v_phase_1=0 at the instant of hinted detect is dropped.
+
+    This is the trade-off documented in the design discussion for #95: a real meter
+    that has lost AC reference (e.g. warm restart during a grid outage) will fail
+    is_valid() at detect time. We deliberately surface this as PlantTopologyMismatch
+    rather than carrying the meter through with a transient zero — symmetry with the
+    Battery path, and the consumer (givenergy-hass#62) handles the auto-accept and
+    advisory Repairs note. Documented as a test so the choice is visible to future
+    readers rather than buried in commit history.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # 0x01 probes ACK but v_phase_1 == 0 — the transient-zero case.
+    _prime_cache(client, 0x01, {IR(60): 0})
+
+    prior = PlantCapabilities(
+        device_type=Model.HYBRID_GEN1,
+        meter_addresses=[0x01],
+        lv_battery_addresses=[0x32],
+    )
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x01
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            with pytest.raises(PlantTopologyMismatch) as exc_info:
+                await client.detect(prior=prior)
+
+    assert exc_info.value.prior is prior
+    assert exc_info.value.actual.meter_addresses == []
+    assert client.plant.capabilities is None
 
 
 @pytest.mark.asyncio
@@ -352,6 +496,7 @@ async def test_detect_hinted_confirms_known_layout():
     _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
     _prime_battery_serial(client, 0x33)
+    _prime_meter_voltage(client, 0x01)
 
     prior = PlantCapabilities(
         device_type=Model.HYBRID_GEN1,
@@ -399,6 +544,7 @@ async def test_detect_hinted_raises_when_hinted_address_missing():
     client = _make_client()
     _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
+    _prime_meter_voltage(client, 0x01)
 
     prior = PlantCapabilities(
         device_type=Model.HYBRID_GEN1,
