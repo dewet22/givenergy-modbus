@@ -136,10 +136,11 @@ class Ems(_EmsBase):  # type: ignore[misc,valid-type]
         and Battery elsewhere.
 
         Slots are returned in order (1..N), filtered to the populated
-        ones. ``inverter_count`` is consulted as a sanity check but the
-        per-slot serial test is the authoritative signal — a slot with
-        a real serial is treated as populated even if ``inverter_count``
-        underreports.
+        ones. Per-slot serial presence is the authoritative signal of
+        whether a slot is wired; ``inverter_count`` is not consulted,
+        since the serial test catches the same case more directly and
+        gracefully handles the (rare) firmware where ``inverter_count``
+        disagrees with the per-slot data.
         """
         summaries: list[InverterSummary] = []
         for slot in range(1, MAX_MANAGED_INVERTERS + 1):

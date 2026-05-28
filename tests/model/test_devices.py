@@ -1,9 +1,7 @@
 """Tests for the unified Inverter facade and InverterSummary.
 
-Phase 1 of the Plant refactor. See
-``~/.claude-personal/plans/persistence-in-hass-was-humming-clover.md`` and
-the ``project_plant_abstraction_direction`` memory entry for the design
-intent these tests verify.
+Phase 1 of the Plant refactor — see ``docs/v2.1-roadmap.md`` for the
+wider design these tests verify.
 """
 
 from givenergy_modbus.model.devices import Inverter, InverterSummary
@@ -34,13 +32,18 @@ def _encode_serial(serial: str) -> dict[int, int]:
     return out
 
 
-def _rollup_cache_for_slot(slot: int, *, serial: str, **fields) -> dict:
-    """Build EMS rollup register values for one managed-inverter slot.
+def _add_rollup_slot(values: dict, slot: int, *, serial: str, **fields) -> dict:
+    """Add one managed-inverter slot's register values into ``values`` in place.
 
     ``slot`` is 1-based. Optional kwargs populate the per-slot fields:
-    ``status``, ``power``, ``soc``, ``temp_centi_deg`` (raw deci-scaled).
+    ``status``, ``power``, ``soc``, ``temp_deci`` (raw deci-scaled).
+
+    Mutates and returns ``values`` so callers can chain. The shared
+    bitfield register IR(2045) (which packs status for all 4 slots into
+    one word) is OR-merged with whatever is already there — necessary
+    when multiple slots are added sequentially, otherwise slot 2's
+    status would overwrite slot 1's.
     """
-    values = {}
     serial_offset = 2066 + (slot - 1) * 5
     for i, v in _encode_serial(serial).items():
         values[IR(serial_offset + i)] = v
@@ -50,14 +53,15 @@ def _rollup_cache_for_slot(slot: int, *, serial: str, **fields) -> dict:
     if "soc" in fields:
         # IR(2058..2061) holds inverter_N_soc, slot 1 = 2058
         values[IR(2057 + slot)] = fields["soc"]
-    if "temp_centi_deg" in fields:
+    if "temp_deci" in fields:
         # IR(2062..2065) holds inverter_N_temp at C.deci scaling
-        values[IR(2061 + slot)] = fields["temp_centi_deg"]
+        values[IR(2061 + slot)] = fields["temp_deci"]
     if "status" in fields:
-        # IR(2045) packs 4 inverter statuses as 3-bit fields, slot 1 at bits 0..2
-        shift = (slot - 1) * 3
-        prev = values.get(IR(2045), 0)
-        values[IR(2045)] = prev | ((fields["status"] & 0x7) << shift)
+        # IR(2045) packs 4 inverter statuses as 3-bit fields. Converter.bitfield
+        # extracts MSB-first: bitfield(low=0, high=2) reads ``val >> (15 - high)``,
+        # i.e. bits 15..13 for slot 1. So shifts are 13, 10, 7, 4 for slots 1..4.
+        shift = 13 - (slot - 1) * 3
+        values[IR(2045)] = values.get(IR(2045), 0) | ((fields["status"] & 0x7) << shift)
     return values
 
 
@@ -187,36 +191,40 @@ def test_blinded_inverter_reports_empty_batteries():
 
 def test_ems_managed_inverters_constructs_summaries_per_populated_slot():
     """Ems.managed_inverters yields one InverterSummary per non-empty slot."""
-    values = {IR(2044): 2}  # inverter_count = 2
-    values.update(
-        _rollup_cache_for_slot(
-            1,
-            serial="XX1234A567",
-            power=1800,
-            soc=65,
-            temp_centi_deg=285,  # 28.5 °C (deci scaling)
-            status=Status.NORMAL.value,
-        )
+    values: dict = {IR(2044): 2}  # inverter_count = 2
+    _add_rollup_slot(
+        values,
+        1,
+        serial="XX1234A567",
+        power=1800,
+        soc=65,
+        temp_deci=285,  # 28.5 °C (deci scaling)
+        status=Status.NORMAL.value,
     )
-    values.update(
-        _rollup_cache_for_slot(
-            2,
-            serial="ZZ9876B543",
-            power=2200,
-            soc=78,
-            temp_centi_deg=312,
-            status=Status.NORMAL.value,
-        )
+    _add_rollup_slot(
+        values,
+        2,
+        serial="ZZ9876B543",
+        power=2200,
+        soc=78,
+        temp_deci=312,
+        status=Status.NORMAL.value,
     )
     ems = Ems.from_register_cache(RegisterCache(values))
 
     managed = ems.managed_inverters
     assert len(managed) == 2
     assert managed[0].serial_number == "XX1234A567"
+    # Asserting on status as well as the simpler fields guards the bitfield
+    # encode/decode contract — the bit positions for the per-slot status
+    # fields are MSB-first (see ``Converter.bitfield``), so a regression in
+    # the encoder shift direction or in the decoder slice would surface here.
+    assert managed[0].status == Status.NORMAL
     assert managed[0].p_inverter_out == 1800
     assert managed[0].battery_soc == 65
     assert managed[0].t_inverter_heatsink == 28.5
     assert managed[1].serial_number == "ZZ9876B543"
+    assert managed[1].status == Status.NORMAL
     assert managed[1].p_inverter_out == 2200
 
 
@@ -294,8 +302,8 @@ def test_ems_managed_inverters_skips_empty_slots():
     Mirrors the Meter.is_valid() pattern: signal of "nothing wired here"
     is a missing identity, not a separate flag.
     """
-    values = {IR(2044): 1}
-    values.update(_rollup_cache_for_slot(1, serial="XX1234A567"))
+    values: dict = {IR(2044): 1}
+    _add_rollup_slot(values, 1, serial="XX1234A567")
     # Slot 2 and beyond: deliberately leave serial registers unpopulated.
     ems = Ems.from_register_cache(RegisterCache(values))
 
@@ -316,9 +324,9 @@ def test_plant_inverters_ems_returns_blinded_per_managed_slot():
     with two managed inverters should surface as two ``Inverter``
     instances, each ``data_source="ems_rollup"`` and ``is_blinded=True``.
     """
-    values = {IR(2040): 1, IR(2044): 2}  # ems_status set, inverter_count = 2
-    values.update(_rollup_cache_for_slot(1, serial="XX1234A567", power=1800, soc=65))
-    values.update(_rollup_cache_for_slot(2, serial="ZZ9876B543", power=2200, soc=78))
+    values: dict = {IR(2040): 1, IR(2044): 2}  # ems_status set, inverter_count = 2
+    _add_rollup_slot(values, 1, serial="XX1234A567", power=1800, soc=65)
+    _add_rollup_slot(values, 2, serial="ZZ9876B543", power=2200, soc=78)
 
     plant = Plant()
     plant.capabilities = PlantCapabilities(device_type=Model.EMS, inverter_address=0x32)

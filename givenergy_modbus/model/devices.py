@@ -8,13 +8,11 @@ etc.) live in their own modules and populate these generic types.
 
 Phase 1 of the Plant refactor introduces :class:`Inverter` as a read-only
 facade unifying three data sources (direct register cache, EMS-rollup
-view, or both reconciled). See
-``~/.claude-personal/plans/persistence-in-hass-was-humming-clover.md`` for
-the wider design, and the ``project_plant_abstraction_direction`` memory
-entry for the discipline this module is written under: no concrete
-GivEnergy or Modbus types leak into these shapes, so an eventual extract
-to a base package is a code-org refactor rather than an architectural
-redesign.
+view, or both reconciled). The design discipline these shapes are
+written under — no concrete GivEnergy or Modbus types leak into the
+generic surface, so an eventual extract to a base package is a code-org
+refactor rather than an architectural redesign — is tracked alongside
+the wider refactor sketch in the v2.1 roadmap (see ``docs/v2.1-roadmap.md``).
 """
 
 from __future__ import annotations

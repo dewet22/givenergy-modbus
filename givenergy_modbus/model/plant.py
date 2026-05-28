@@ -498,7 +498,7 @@ class Plant(GivEnergyBaseModel):
         back-compat and continues to return the directly-decoded
         :class:`SinglePhaseInverter` / :class:`ThreePhaseInverter`.
 
-        See ``~/.claude-personal/plans/persistence-in-hass-was-humming-clover.md``.
+        See ``docs/v2.1-roadmap.md`` for the wider refactor sketch.
         """
         if self.ems is not None:
             return [UnifiedInverter.from_summary(s) for s in self.ems.managed_inverters]
