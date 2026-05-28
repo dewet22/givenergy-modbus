@@ -2,11 +2,18 @@
 
 from pydantic import ConfigDict, create_model
 
+from givenergy_modbus.model.devices import InverterSummary
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
+
+# Maximum number of managed inverters an EMS firmware reports. The EMS
+# register block at IR(2045+) packs status / power / SoC / temp / serial
+# fields for slots 1..MAX_MANAGED_INVERTERS; slots beyond ``inverter_count``
+# are unpopulated and skipped by ``Ems.managed_inverters``.
+MAX_MANAGED_INVERTERS = 4
 
 
 class EmsRegisterGetter(RegisterGetter):
@@ -117,3 +124,43 @@ class Ems(_EmsBase):  # type: ignore[misc,valid-type]
     def is_valid(self) -> bool:
         """Try to detect if an EMS is present based on its attributes."""
         return self.ems_status is not None  # type: ignore[attr-defined]
+
+    @property
+    def managed_inverters(self) -> list[InverterSummary]:
+        """Return :class:`InverterSummary` for each non-empty managed-inverter slot.
+
+        The EMS rollup at IR(2045+) carries status / power / SoC / temp
+        / serial for up to :data:`MAX_MANAGED_INVERTERS` (4) slots. An
+        empty slot is identified by a missing or whitespace-only serial
+        number — mirroring the ``is_valid()`` pattern used for Meter
+        and Battery elsewhere.
+
+        Slots are returned in order (1..N), filtered to the populated
+        ones. Per-slot serial presence is the authoritative signal of
+        whether a slot is wired; ``inverter_count`` is not consulted,
+        since the serial test catches the same case more directly and
+        gracefully handles the (rare) firmware where ``inverter_count``
+        disagrees with the per-slot data.
+        """
+        summaries: list[InverterSummary] = []
+        for slot in range(1, MAX_MANAGED_INVERTERS + 1):
+            raw_serial = getattr(self, f"inverter_{slot}_serial_number", None)
+            if not raw_serial:
+                continue
+            # Strip padding before storing — the EMS pads short / empty slots with
+            # null bytes and spaces, and the *stored* value will later be compared
+            # against directly-reported inverter serials during reconciliation.
+            # Validity check and the stored value must use the same form.
+            serial = raw_serial.strip("\x00 ")
+            if not serial:
+                continue
+            summaries.append(
+                InverterSummary(
+                    serial_number=serial,
+                    status=getattr(self, f"inverter_{slot}_status", None),
+                    p_inverter_out=getattr(self, f"inverter_{slot}_power", None),
+                    battery_soc=getattr(self, f"inverter_{slot}_soc", None),
+                    t_inverter_heatsink=getattr(self, f"inverter_{slot}_temp", None),
+                )
+            )
+        return summaries
