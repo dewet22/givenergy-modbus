@@ -12,6 +12,7 @@ from givenergy_modbus.exceptions import CommunicationError, ExceptionBase, Plant
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.inverter import resolve_model
+from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -353,14 +354,27 @@ class Client:
             )
 
         # Step 3 — meter probing. Hinted: only previously-seen addresses. Cold: full 0x01–0x08 sweep.
+        # In both modes, a probe response is necessary but not sufficient — some EMS firmwares
+        # ACK every slot in 0x01..0x08 with all-zero registers regardless of whether a meter is
+        # actually wired. Validate via Meter.is_valid() to filter those ghosts, matching the
+        # convention used for Battery and BCU validation. Per-slot (not break-on-fail) because
+        # meters can be non-contiguous (e.g. ports 1 and 3 populated, port 2 empty). See #95.
         meter_candidates = prior.meter_addresses if prior is not None else range(0x01, 0x09)
         for meter_addr in meter_candidates:
-            if await self._probe(
+            if not await self._probe(
                 ReadInputRegistersRequest(base_register=60, register_count=30, device_address=meter_addr),
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
-                caps.meter_addresses.append(meter_addr)
+                continue
+            meter_cache = self.plant.register_caches.get(meter_addr)
+            if meter_cache is None or not Meter.from_register_cache(meter_cache).is_valid():
+                _logger.debug(
+                    "detect: meter probe responded at 0x%02x but is_valid()=False — skipping",
+                    meter_addr,
+                )
+                continue
+            caps.meter_addresses.append(meter_addr)
         _logger.info(
             "detect: meter_addresses=[%s]",
             ", ".join(f"0x{a:02x}" for a in caps.meter_addresses),
