@@ -20,15 +20,14 @@ redesign.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
-if TYPE_CHECKING:
-    # Type-only imports — the runtime path of ``Inverter`` accepts the
-    # concrete decoders as ``Any`` because the generic shape doesn't depend
-    # on their identity, only on their attribute surface (serial_number,
-    # status, p_inverter_active, etc.).
-    pass
-
+# ``Inverter`` deliberately accepts the concrete decoders as ``Any`` because
+# the generic shape doesn't depend on their identity, only on their attribute
+# surface (``serial_number``, ``status``, ``p_inverter_out``, ``battery_soc``,
+# ``t_inverter_heatsink``). Keeping the concrete types out of the generic
+# module preserves the hoistability discipline documented in
+# ``project_plant_abstraction_direction``.
 
 DataSource = Literal["direct", "ems_rollup", "merged"]
 

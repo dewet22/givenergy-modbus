@@ -143,8 +143,15 @@ class Ems(_EmsBase):  # type: ignore[misc,valid-type]
         """
         summaries: list[InverterSummary] = []
         for slot in range(1, MAX_MANAGED_INVERTERS + 1):
-            serial = getattr(self, f"inverter_{slot}_serial_number", None)
-            if not serial or not serial.strip("\x00 "):
+            raw_serial = getattr(self, f"inverter_{slot}_serial_number", None)
+            if not raw_serial:
+                continue
+            # Strip padding before storing — the EMS pads short / empty slots with
+            # null bytes and spaces, and the *stored* value will later be compared
+            # against directly-reported inverter serials during reconciliation.
+            # Validity check and the stored value must use the same form.
+            serial = raw_serial.strip("\x00 ")
+            if not serial:
                 continue
             summaries.append(
                 InverterSummary(

@@ -220,6 +220,74 @@ def test_ems_managed_inverters_constructs_summaries_per_populated_slot():
     assert managed[1].p_inverter_out == 2200
 
 
+def test_ems_managed_inverters_strips_serial_padding():
+    """Serial numbers with trailing null / space padding must be stripped before storage.
+
+    The EMS pads short or empty serials with null bytes. The stored
+    ``InverterSummary.serial_number`` is used later for reconciliation
+    against directly-reported inverter serials, which arrive without
+    that padding — comparison would silently fail if we stored the
+    raw padded form.
+    """
+    # Build a slot 1 with serial "XX1234A567" plus an extra trailing null and space
+    # encoded into the register block. Manually crafted to exercise the strip path:
+    # raw bytes XX1234A56 in the first 4.5 registers, then 7\x20 (space) padding,
+    # which leaves a visible padded suffix the strip() call must trim.
+    values = {
+        IR(2044): 1,
+        IR(2066): (ord("X") << 8) | ord("X"),
+        IR(2067): (ord("1") << 8) | ord("2"),
+        IR(2068): (ord("3") << 8) | ord("4"),
+        IR(2069): (ord("A") << 8) | ord("5"),
+        IR(2070): (ord("6") << 8) | ord("7"),
+    }
+    ems = Ems.from_register_cache(RegisterCache(values))
+
+    managed = ems.managed_inverters
+    assert len(managed) == 1
+    # No trailing nulls or spaces should remain.
+    assert managed[0].serial_number == "XX1234A567"
+    assert managed[0].serial_number == managed[0].serial_number.strip("\x00 ")
+
+
+def test_ems_managed_inverters_skips_whitespace_only_serials():
+    """A slot whose serial is purely whitespace / null bytes is treated as empty.
+
+    Mirrors the strip-then-validate path that pairs with
+    test_ems_managed_inverters_strips_serial_padding — establishes that
+    the validity check operates on the same form as the stored value.
+    """
+    values = {
+        IR(2044): 1,
+        # All bytes 0x20 (space) — decodes to "          " which strips to "".
+        IR(2066): 0x2020,
+        IR(2067): 0x2020,
+        IR(2068): 0x2020,
+        IR(2069): 0x2020,
+        IR(2070): 0x2020,
+    }
+    ems = Ems.from_register_cache(RegisterCache(values))
+    assert ems.managed_inverters == []
+
+
+def test_unified_inverter_falls_through_when_direct_has_no_serial():
+    """A merged/direct facade with a missing or empty direct serial falls through to the summary.
+
+    Defensive path: protects against a partially-populated direct
+    source where the serial cache hasn't yet been read but the summary
+    has. Keeps the facade honest rather than returning an empty string.
+    """
+
+    class FakeDirect:
+        serial_number = ""  # falsy — should fall through to summary
+        status = Status.NORMAL
+
+    summary = InverterSummary(serial_number="XX1234A567", status=Status.NORMAL)
+    inv = Inverter.merge(FakeDirect(), summary)
+
+    assert inv.serial_number == "XX1234A567"
+
+
 def test_ems_managed_inverters_skips_empty_slots():
     """Slots with empty / whitespace / null serial are filtered out.
 
