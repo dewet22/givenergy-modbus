@@ -5,16 +5,44 @@ on:
     branches: ['main', 'v[0-9]+.[0-9]+']
   pull_request:
     branches: ['main', 'v[0-9]+.[0-9]+']
+  schedule:
+    # Weekly cross-OS safety net (Mondays 06:30 UTC). Per-PR CI is Linux-only;
+    # this catches macOS/Windows-specific regressions without slowing every push.
+    - cron: '30 6 * * 1'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   test:
+    # Canonical per-PR check: full tox (tests + ruff + mypy + bandit + build + docs).
+    # lint/build/docs are OS-independent, so they run here only.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: '3.14'
+      - name: Build & test with tox
+        run: uv run --group test tox
+      - uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  cross-os:
+    # macOS + Windows run the test env only — and only on the weekly schedule or a
+    # manual dispatch, never on a PR. lint/build/docs are OS-independent (skipped here).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.14']
-        os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
+        os: ['macos-latest', 'windows-latest']
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -24,11 +52,6 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
-      - name: Build & test with tox
-        run: uv run --group test tox
-      - uses: codecov/codecov-action@v6
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          files: coverage.xml
+          python-version: '3.14'
+      - name: Test with tox
+        run: uv run --group test tox -e py314
