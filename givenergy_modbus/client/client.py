@@ -11,6 +11,7 @@ from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase, PlantTopologyMismatch
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.inverter import resolve_model
 from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
@@ -26,6 +27,12 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# Standard GE 10-char serial in the textual / decoded form — `[A-Z]{2}\d{4}[A-Z]\d{3}`,
+# matches both real serials (e.g. ``CE2231G454``) and the CLI-redacted form
+# (``CE0000G000``). Used to sanity-check serial strings decoded out of the EMS rollup.
+_GE_SERIAL_STR_PATTERN = re.compile(r"^[A-Z]{2}\d{4}[A-Z]\d{3}$")
+
 
 # GivEnergy serial numbers are 10 ASCII bytes. Two shapes have been
 # observed in real captures:
@@ -308,6 +315,77 @@ class Client:
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
+    async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
+        """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
+
+        Populating the rollup during discovery means consumers don't need to
+        wait for the first refresh cycle to see per-managed-inverter and
+        per-meter data. The sanity check catches malformed rollups (or
+        parser regressions) early.
+
+        Best-effort end-to-end: a timeout on the read, or any anomaly during
+        validation, only logs a warning — discovery never fails on this soft
+        data check. See #95.
+        """
+        try:
+            await self.send_request_and_await_response(
+                ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=0x11),
+                timeout=timeout,
+                retries=retries,
+            )
+        except TimeoutError:
+            _logger.warning("detect: EMS rollup read at IR(2040,55) timed out — skipping cross-check")
+            return
+        self._validate_ems_rollup()
+
+    def _validate_ems_rollup(self) -> None:
+        """Sanity-check the EMS IR(2040,55) rollup decoded into the inverter's register cache.
+
+        Logs warnings for any anomaly (no data, decode failure, implausible
+        ``inverter_count``, malformed serial strings) but never raises —
+        ``detect()`` shouldn't fail discovery on a soft data check. The
+        intent is to surface parser regressions early without breaking the
+        rest of the discovery flow.
+        """
+        cache = self.plant.register_caches.get(0x32)
+        if cache is None:
+            _logger.warning("detect: EMS rollup read returned no data at 0x32 — skipping cross-check")
+            return
+        try:
+            ems = EmsRegisterGetter(cache).build()
+        except Exception as e:  # noqa: BLE001 — best-effort sanity check, log and move on
+            _logger.warning("detect: EMS rollup decode failed during cross-check: %s", e)
+            return
+        inverter_count = ems.get("inverter_count")
+        if inverter_count is None or not (0 < inverter_count <= 4):
+            _logger.warning(
+                "detect: EMS rollup reports implausible inverter_count=%r (expected 1..4)",
+                inverter_count,
+            )
+            return
+        serials: list[str | None] = []
+        for i in range(1, inverter_count + 1):
+            raw = ems.get(f"inverter_{i}_serial_number")
+            # Decoded serial fields can carry trailing NUL or space padding when the
+            # underlying registers were partially populated; strip before matching so
+            # a padded-but-valid serial doesn't fire a false warning.
+            cleaned = raw.strip("\x00 ") if isinstance(raw, str) else raw
+            serials.append(cleaned)
+            if not (isinstance(cleaned, str) and _GE_SERIAL_STR_PATTERN.fullmatch(cleaned)):
+                _logger.warning(
+                    "detect: EMS rollup inverter_%d_serial_number=%r doesn't match GE serial format",
+                    i,
+                    cleaned,
+                )
+        # Decoded serials carry identifying information; keep them out of INFO-level
+        # application logs to stay consistent with the wire-capture redaction posture
+        # (`redact()` / PR #99). The per-slot WARNING already surfaces anomalies.
+        _logger.debug(
+            "detect: EMS rollup cross-check — inverter_count=%d, serials=[%s]",
+            inverter_count,
+            ", ".join(repr(s) for s in serials),
+        )
+
     async def detect(
         self,
         timeout: float = 2.0,
@@ -441,6 +519,10 @@ class Client:
                 "detect: lv_battery_addresses=[%s]",
                 ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
             )
+
+        # Step 5 — EMS rollup cross-check. See `_ems_rollup_cross_check()` for the contract.
+        if caps.is_ems:
+            await self._ems_rollup_cross_check(timeout=timeout, retries=retries)
 
         if prior is not None and prior != caps:
             self.plant.capabilities = None
