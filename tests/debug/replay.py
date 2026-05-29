@@ -47,7 +47,7 @@ def load_rx_frames(paths: list[Path]) -> list[tuple[str, bytes]]:
     """Read all rx frames from the given capture files, sorted by timestamp."""
     entries: list[tuple[str, bytes]] = []
     for path in paths:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 m = CAPTURE_LINE.match(line.strip())
                 if not m or m.group(2) != "rx":
@@ -284,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.output == "-":
         output = sys.stdout
     else:
-        output = open(args.output, "w")
+        output = open(args.output, "w", encoding="utf-8")
         output_owned = True
 
     print(
