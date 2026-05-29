@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
@@ -18,11 +20,13 @@ def _sig(req) -> tuple:
     return (type(req).__name__, req.device_address, req.base_register, req.register_count)
 
 
-def _hr(base, count, device=0x32) -> tuple:
+# 0x11 is the inverter's canonical address for every model except AC/HYBRID_GEN1
+# (which use 0x31); battery/meter reads pass an explicit device= (issue #119).
+def _hr(base, count, device=0x11) -> tuple:
     return ("ReadHoldingRegistersRequest", device, base, count)
 
 
-def _ir(base, count, device=0x32) -> tuple:
+def _ir(base, count, device=0x11) -> tuple:
     return ("ReadInputRegistersRequest", device, base, count)
 
 
@@ -36,19 +40,38 @@ def _reqs(mock_execute) -> list[tuple]:
 
 
 async def test_load_config_no_caps():
-    """Without capabilities, only the four base blocks are requested."""
+    """Without capabilities, only the four base blocks are requested, at the legacy 0x32."""
     client = Client("localhost", 8899)
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
+    assert _reqs(mock_exec) == [
+        _hr(0, 60, device=0x32),
+        _hr(60, 60, device=0x32),
+        _hr(120, 60, device=0x32),
+        _ir(120, 60, device=0x32),
+    ]
 
 
 async def test_load_config_single_phase():
-    """Standard single-phase HYBRID requests the four base blocks only."""
+    """Standard single-phase HYBRID requests the four base blocks only, at 0x11."""
     client = _client_with_caps(Model.HYBRID)
     with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
+
+
+@pytest.mark.parametrize("model", [Model.AC, Model.HYBRID_GEN1])
+async def test_load_config_ac_gen1_uses_0x31(model: Model):
+    """AC and HYBRID_GEN1 both expose their registers at 0x31, not 0x11 (issue #119)."""
+    client = _client_with_caps(model)
+    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    assert _reqs(mock_exec) == [
+        _hr(0, 60, device=0x31),
+        _hr(60, 60, device=0x31),
+        _hr(120, 60, device=0x31),
+        _ir(120, 60, device=0x31),
+    ]
 
 
 async def test_load_config_three_phase():

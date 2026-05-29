@@ -357,14 +357,15 @@ class Client:
         intent is to surface parser regressions early without breaking the
         rest of the discovery flow.
         """
-        cache = self.plant.register_caches.get(0x32)
-        # The cache at 0x32 is already populated by Step 1's HR(0,60) read, so `cache is None`
-        # is unreachable in practice — the meaningful check is whether the rollup's IR
-        # registers actually landed. `RegisterCache` is a defaultdict returning 0 for missing
-        # keys, so without this guard a silently-failed rollup read would decode as
-        # inverter_count=0 and mis-fire the implausible-count warning.
+        cache = self.plant.register_caches.get(0x11)
+        # EMS data is served at 0x11 (the rollup read above targets it, and Step 1's
+        # HR(0,60) read populated the same cache). `cache is None` is therefore
+        # unreachable in practice — the meaningful check is whether the rollup's IR
+        # registers actually landed. `RegisterCache` is a defaultdict returning 0 for
+        # missing keys, so without this guard a silently-failed rollup read would decode
+        # as inverter_count=0 and mis-fire the implausible-count warning.
         if cache is None or IR(2040) not in cache:
-            _logger.warning("detect: EMS rollup read returned no data at 0x32 — skipping cross-check")
+            _logger.warning("detect: EMS rollup read returned no data at 0x11 — skipping cross-check")
             return
         try:
             ems = EmsRegisterGetter(cache).build()
@@ -443,13 +444,16 @@ class Client:
             )
 
         # Step 1 — read the inverter's configuration block to get DTC and ARM firmware.
-        # 0x11 is the address used during initial discovery; plant.update() rewrites it to 0x32.
+        # 0x11 is the inverter's canonical address; discovery always reads there and the
+        # response is cached under 0x11 (issue #119). resolve_model() below maps the DTC to
+        # the model, from which PlantCapabilities derives the address used for later polling
+        # (0x11, or 0x31 for AC/HYBRID_GEN1).
         await self.send_request_and_await_response(
             ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11),
             timeout=timeout,
             retries=retries,
         )
-        cache: RegisterCache = self.plant.register_caches.get(0x32, RegisterCache())
+        cache: RegisterCache = self.plant.register_caches.get(0x11, RegisterCache())
         raw_dtc = cache.get(HR(0))
         if raw_dtc is None:
             raise CommunicationError(
@@ -503,10 +507,10 @@ class Client:
             ", ".join(f"0x{a:02x}" for a in caps.meter_addresses),
         )
 
-        # Step 4 — LV battery detection. Battery #1 shares the inverter's IR bank at 0x32;
-        # additional batteries are at 0x33–0x37. All slots are validated via Battery.is_valid().
-        # Skipped for HV systems (handled at step 2) and EMS plant controllers (don't expose
-        # IR at the inverter address — wire capture confirms; see #86).
+        # Step 4 — LV battery detection. Battery pack #1 is at 0x32, additional batteries at
+        # 0x33–0x37 (the inverter itself now lives at 0x11/0x31, not 0x32 — issue #119). All
+        # slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)
+        # and EMS plant controllers (don't expose IR at the inverter address — see #86).
         if not caps.is_hv and not caps.is_ems:
             await self.send_request_and_await_response(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),

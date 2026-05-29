@@ -208,9 +208,10 @@ async def replay(
             if not isinstance(pdu, TransparentResponse) or pdu.error:
                 continue
 
+            # Store under the true wire address — Plant.update() no longer rewrites
+            # 0x11/0x00 to 0x32 (issue #119), so the harness mustn't either, or its
+            # OOB scan would read a different cache than update() wrote.
             device_address = pdu.device_address
-            if device_address in (0x11, 0x00):
-                device_address = 0x32
 
             plant.update(pdu)
             stats["committed_pdus"] += 1

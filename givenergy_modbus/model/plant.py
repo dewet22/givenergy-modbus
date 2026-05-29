@@ -10,7 +10,12 @@ from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
-from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, SinglePhaseInverterRegisterGetter
+from givenergy_modbus.model.inverter import (
+    Model,
+    SinglePhaseInverter,
+    SinglePhaseInverterRegisterGetter,
+    inverter_address_for,
+)
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, RegisterGetter
@@ -91,6 +96,41 @@ def _map_legacy_aliases(kwargs: dict[str, Any], *, stacklevel: int) -> None:
         kwargs[new] = kwargs.pop(old)
 
 
+def _coerce_model(value: Any) -> Model | None:
+    """Best-effort coerce a device_type input to a Model, or None if it can't.
+
+    Accepts a Model instance, the enum name (``"HYBRID_GEN1"``), or the enum
+    value (``"2"`` / ``2``). Returns None on failure so the caller can defer to
+    Pydantic's own field validation for the canonical error.
+    """
+    if isinstance(value, Model):
+        return value
+    try:
+        return Model[value]
+    except KeyError, TypeError:
+        pass
+    try:
+        return Model(str(value))
+    except ValueError:
+        return None
+
+
+def _derive_inverter_address(mapping: dict[str, Any]) -> None:
+    """Fill in ``inverter_address`` from ``device_type`` when not pinned explicitly.
+
+    Mutates ``mapping`` in place. 0x11 for most models, 0x31 for AC/HYBRID_GEN1
+    (issue #119). Payloads that already carry an explicit ``inverter_address``
+    (e.g. persisted state via ``from_dict``) are left untouched — so a stored
+    pre-#119 ``0x32`` surfaces as a PlantTopologyMismatch on the next detect()
+    and self-heals rather than being silently rewritten.
+    """
+    if mapping.get("inverter_address") is not None:
+        return
+    model = _coerce_model(mapping.get("device_type"))
+    if model is not None:
+        mapping["inverter_address"] = inverter_address_for(model)
+
+
 class PlantCapabilities(BaseModel):
     """Describes the hardware topology discovered by Client.detect().
 
@@ -159,6 +199,7 @@ class PlantCapabilities(BaseModel):
             return data
         normalised = dict(data)
         _map_legacy_aliases(normalised, stacklevel=2)
+        _derive_inverter_address(normalised)
         return normalised
 
     @property
@@ -369,13 +410,27 @@ class Plant(GivEnergyBaseModel):
             self.register_caches = {0x32: RegisterCache()}
 
     def _getter_for_device_address(self, device_address: int) -> type[RegisterGetter] | None:
-        """Return the RegisterGetter class appropriate for a given device address."""
-        if device_address == 0x32:
-            return SinglePhaseInverterRegisterGetter
+        """Return the RegisterGetter class appropriate for a given device address.
+
+        With capabilities the inverter lives at its model-specific address
+        (0x11, or 0x31 for AC/HYBRID_GEN1 — issue #119) and 0x32 is LV battery
+        pack #1. Without capabilities we fall back to the legacy mapping where
+        the inverter was cached at 0x32, and also treat 0x11/0x31 as inverter so
+        replay/debug tooling (which feeds PDUs to a bare Plant) keeps validating
+        inverter banks that now arrive at their true wire address.
+        """
+        if self.capabilities is not None:
+            if device_address == self.capabilities.inverter_address:
+                return SinglePhaseInverterRegisterGetter
+            if 0x32 <= device_address <= 0x37:
+                return BatteryRegisterGetter
+        else:
+            if device_address in (0x11, 0x31, 0x32):
+                return SinglePhaseInverterRegisterGetter
+            if 0x33 <= device_address <= 0x37:
+                return BatteryRegisterGetter
         if 0x01 <= device_address <= 0x08:
             return MeterRegisterGetter
-        if 0x33 <= device_address <= 0x37:
-            return BatteryRegisterGetter
         if 0x70 <= device_address <= 0x8F:
             return BcuRegisterGetter
         return None
@@ -393,11 +448,15 @@ class Plant(GivEnergyBaseModel):
             return
         _logger.debug(f"Handling {pdu}")
 
-        if pdu.device_address in (0x11, 0x00):
-            # rewrite cloud and mobile app responses to "normal" inverter address
-            device_address = 0x32
-        else:
-            device_address = pdu.device_address
+        # Store responses under their true wire device address. The old 0x11/0x00 → 0x32
+        # fold was a courtesy to GivEnergy's cloud, not an inverter requirement: querying
+        # 0x11 was relayed upstream by the dongle, and sub-5-minute polling there disturbed
+        # their 5-minute dashboards — 0x32 was the side-door that left the cloud product
+        # alone (0x00 was app traffic folded in on an assumption). Both rationales are now
+        # moot (cloud is premium-only). The fold masked that 0x11 is the inverter's
+        # canonical address and 0x32 is LV battery pack #1 (issue #119); detect() now
+        # resolves the inverter address per model and reads/caches consistently at it.
+        device_address = pdu.device_address
 
         if device_address not in self.register_caches:
             _logger.debug(f"First time encountering device address 0x{device_address:02x}")
@@ -446,11 +505,16 @@ class Plant(GivEnergyBaseModel):
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
-        """Return the inverter model, dispatching on device type when capabilities are available."""
+        """Return the inverter model, dispatching on device type when capabilities are available.
+
+        Tolerates the inverter-address cache not yet existing — for AC/HYBRID_GEN1 the
+        address is 0x31, which detect() doesn't populate (it only reads identity at 0x11),
+        so this would otherwise KeyError between detect() and the first poll. Returns an
+        empty-cache model in that window, matching the .ems / .gateway accessors. (#119)
+        """
         if self.capabilities:
-            return select_inverter(
-                self.capabilities.device_type, self.register_caches[self.capabilities.inverter_address]
-            )
+            cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
+            return select_inverter(self.capabilities.device_type, cache)
         return SinglePhaseInverter.from_register_cache(self.register_caches[0x32])
 
     @property

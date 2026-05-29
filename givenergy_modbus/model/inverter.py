@@ -214,6 +214,31 @@ def resolve_model(raw_dtc: int, arm_fw: int) -> Model:
     return _DTC_PREFIX_TO_MODEL.get(prefix, Model(dtc))
 
 
+# Models whose inverter registers are served at device address 0x31 rather than
+# the 0x11 default. Mirrors GivTCP's detect() map: it forces 0x11 during
+# detection, then switches only AC and HYBRID_GEN1 to 0x31. 0x32 is battery
+# pack #1 and is never the inverter address.
+_INVERTER_ADDRESS_0X31_MODELS: frozenset[Model] = frozenset({Model.AC, Model.HYBRID_GEN1})
+
+
+def inverter_address_for(model: Model) -> int:
+    """Return the modbus device address the inverter's registers are served at.
+
+    `0x11` is the inverter's canonical address for every model except AC and
+    HYBRID_GEN1, which expose their registers at `0x31` (GivTCP's map). EMS and
+    All-in-One controllers serve all their data — including the IR/HR(2040)
+    rollup — at `0x11`.
+
+    The `0x31` special-case is load-bearing, not a hedge: the
+    ``hybrid_2_bat_a`` fixture (HYBRID_GEN1, ARM 449) answers identity-only at
+    `0x11` and serves its full register banks at `0x31`, so the generic `0x11`
+    default would silently lose most banks for these models. If a future model
+    turns out to be firmware-dependent, this would grow an ``arm_fw`` argument
+    and key on it like ``resolve_model()`` does (issue #119).
+    """
+    return 0x31 if model in _INVERTER_ADDRESS_0X31_MODELS else 0x11
+
+
 class UsbDevice(int, Enum):
     """USB devices that can be inserted into inverters."""
 

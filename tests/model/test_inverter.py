@@ -14,6 +14,7 @@ from givenergy_modbus.model.inverter import (
     SinglePhaseInverter,
     Status,
     UsbDevice,
+    inverter_address_for,
     resolve_model,
 )
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -949,6 +950,31 @@ def test_model_specific_variants():
 )
 def test_resolve_model(raw_dtc, arm_fw, expected):
     assert resolve_model(raw_dtc, arm_fw) is expected
+
+
+@pytest.mark.parametrize(
+    "model,expected",
+    [
+        # 0x31 only for AC and HYBRID_GEN1 (GivTCP's map; issue #119)
+        (Model.AC, 0x31),
+        (Model.HYBRID_GEN1, 0x31),
+        # everything else at the 0x11 default
+        (Model.HYBRID, 0x11),
+        (Model.HYBRID_GEN2, 0x11),
+        (Model.HYBRID_GEN3, 0x11),
+        (Model.HYBRID_GEN4, 0x11),
+        (Model.HYBRID_3PH, 0x11),
+        (Model.AC_3PH, 0x11),
+        (Model.EMS, 0x11),
+        (Model.EMS_COMMERCIAL, 0x11),
+        (Model.GATEWAY, 0x11),
+        (Model.ALL_IN_ONE, 0x11),
+        (Model.ALL_IN_ONE_HYBRID, 0x11),
+        (Model.HYBRID_HV_GEN3, 0x11),
+    ],
+)
+def test_inverter_address_for(model, expected):
+    assert inverter_address_for(model) == expected
 
 
 @pytest.mark.parametrize(
