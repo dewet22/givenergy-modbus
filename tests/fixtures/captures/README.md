@@ -15,25 +15,38 @@ Three identifier categories are handled by the library redactor
 (`givenergy_modbus.client.redact` — see PR #99) and applied
 automatically during `givenergy-cli capture`:
 
-- Standard 10-char GE serials (`XX####X###`) — covers inverter,
+- Standard 10-char GE serials (`XXYYWWXNNN`) — covers inverter,
   dongle, battery, meter serials.
-- EMS-style serials (`EMS#######`) — the EMS plant controller's
+- EMS-style serials (`EMSYYWWNNN`) — the EMS plant controller's
   serial format, which doesn't match the standard pattern.
 - IPv4 dotted-quads — caught at source so the WO-prefix dongle
   heartbeat (see [#100](https://github.com/dewet22/givenergy-modbus/issues/100))
   doesn't leak LAN topology even into raw captures.
 
+Serial redaction preserves the family prefix, the `YYWW` manufacture
+date, and the middle letter, zeroing only the trailing three-digit unit
+identifier (see [#113](https://github.com/dewet22/givenergy-modbus/issues/113)
+for why the date is kept — it's a coarse, diagnostically useful cohort
+marker, not a per-unit identifier). So a redacted serial reads like
+`CE2242G000` (week 42 of 2022, unit zeroed) rather than `CE0000G000`.
+
 One residual case still needs a fixture-side pass — `_redact_extra.py`
 next to this README applies it, idempotently:
 
-- **Truncated GE serials at frame boundaries** — wire frames sometimes
-  end mid-serial inside the EMS rollup block at `IR(2066..2085)`,
-  leaving a 2-letter prefix plus partial digits like `XX00`. The
-  broader regex needed to catch these reliably (`[A-Z]{2}\d{2,}`) has
-  too much false-positive risk to codify in the library-wide redactor.
+- **Serials split across frame boundaries** — consecutive inverter
+  serials in the EMS rollup at `IR(2066..2085)` can straddle a capture
+  frame boundary, so the leading fragment (`…CE22`) lands in one frame
+  and the unit-bearing continuation (`42G612…`) in the next. Per-frame
+  redaction sees neither as a complete serial, so the unit digits leak
+  when the rollup is reassembled. `_redact_extra.py` is **reassembly-
+  aware**: it concatenates the frame payloads, redacts the whole stream
+  (date-preserving, matching the library policy), then re-slices back to
+  the original frame lengths. The broader `[A-Z]{2}\d{2,}` matching it
+  uses has too much false-positive risk to codify in the library-wide
+  redactor, hence it lives here.
 
-Run before committing new captures (no-op on captures from a
-post-#99 CLI that don't hit the frame-boundary edge case):
+Run before committing new captures (no-op on captures with no
+cross-frame serial splits):
 
 ```bash
 uv run python tests/fixtures/captures/_redact_extra.py path/to/*.log
