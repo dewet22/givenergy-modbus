@@ -571,6 +571,32 @@ async def test_detect_ems_warns_on_implausible_inverter_count(caplog):
 
 
 @pytest.mark.asyncio
+async def test_detect_ems_tolerates_rollup_read_timeout(caplog):
+    """A timeout on the IR(2040,55) read is logged and detect() still returns caps.
+
+    The cross-check is documented as best-effort end-to-end — the read itself
+    needs to be wrapped, otherwise `send_request_and_await_response` would
+    raise `TimeoutError` before the validation helper ever ran. See #109 review.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+
+    async def _send_or_timeout(request, *, timeout, retries):
+        if request.base_register == 2040 and request.register_count == 55:
+            raise TimeoutError
+
+    with patch.object(client, "send_request_and_await_response", side_effect=_send_or_timeout):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with caplog.at_level("WARNING", logger="givenergy_modbus.client.client"):
+                caps = await client.detect()
+
+    assert caps.is_ems is True  # detection still succeeded despite the rollup timing out
+    assert any("EMS rollup read at IR(2040,55) timed out" in rec.message for rec in caplog.records), (
+        f"expected timeout warning; got {[r.message for r in caplog.records]}"
+    )
+
+
+@pytest.mark.asyncio
 async def test_detect_ems_warns_on_missing_rollup_cache(caplog):
     """If the cache at 0x32 is somehow missing after the rollup read, log and continue."""
     client = _make_client()

@@ -298,6 +298,29 @@ class Client:
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
+    async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
+        """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
+
+        Populating the rollup during discovery means consumers don't need to
+        wait for the first refresh cycle to see per-managed-inverter and
+        per-meter data. The sanity check catches malformed rollups (or
+        parser regressions) early.
+
+        Best-effort end-to-end: a timeout on the read, or any anomaly during
+        validation, only logs a warning — discovery never fails on this soft
+        data check. See #95.
+        """
+        try:
+            await self.send_request_and_await_response(
+                ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=0x11),
+                timeout=timeout,
+                retries=retries,
+            )
+        except TimeoutError:
+            _logger.warning("detect: EMS rollup read at IR(2040,55) timed out — skipping cross-check")
+            return
+        self._validate_ems_rollup()
+
     def _validate_ems_rollup(self) -> None:
         """Sanity-check the EMS IR(2040,55) rollup decoded into the inverter's register cache.
 
@@ -477,18 +500,9 @@ class Client:
                 ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
             )
 
-        # Step 5 — EMS rollup cross-check. Read IR(2040,55) at detect time so the per-managed-
-        # inverter and per-meter rollup is populated, and sanity-check the parsed values to
-        # catch a malformed rollup (or a parser regression) early rather than letting consumers
-        # read garbage. Best-effort: log warnings on anomaly, never raise — discovery shouldn't
-        # fail on a soft data check. See #95.
+        # Step 5 — EMS rollup cross-check. See `_ems_rollup_cross_check()` for the contract.
         if caps.is_ems:
-            await self.send_request_and_await_response(
-                ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=0x11),
-                timeout=timeout,
-                retries=retries,
-            )
-            self._validate_ems_rollup()
+            await self._ems_rollup_cross_check(timeout=timeout, retries=retries)
 
         if prior is not None and prior != caps:
             self.plant.capabilities = None
