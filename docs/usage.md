@@ -301,9 +301,15 @@ The serialised form is stable and includes a `schema_version` field:
 {
   "schema_version": 1,
   "device_type": "HYBRID",
-  "inverter_address": "0x32",
+  "inverter_address": "0x11",
   "meter_addresses": ["0x01"],
   "lv_battery_addresses": ["0x32", "0x33"],
   "bcu_stacks": []
 }
 ```
+
+`inverter_address` is derived from the model: `0x11` for most inverters, `0x31`
+for `AC` and `HYBRID_GEN1`. LV battery pack #1 lives at `0x32`, additional packs
+at `0x33`–`0x37`. State persisted before this mapping (which used `0x32` as the
+inverter address) reloads unchanged and self-heals on the next `detect()` via a
+one-off `PlantTopologyMismatch`.

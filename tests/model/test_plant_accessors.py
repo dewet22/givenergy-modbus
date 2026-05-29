@@ -39,6 +39,21 @@ def test_inverter_returns_threephase_for_threephase_model():
     assert isinstance(plant.inverter, ThreePhaseInverter)
 
 
+def test_inverter_tolerates_unpopulated_inverter_address_cache():
+    """.inverter must not KeyError when its address cache isn't populated yet.
+
+    AC/HYBRID_GEN1 resolve to inverter_address 0x31, which detect() doesn't populate
+    (it only reads identity at 0x11), so .inverter would otherwise KeyError between
+    detect() and the first poll (#119).
+    """
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+
+    plant = _plant_with_caps(device_type=Model.HYBRID_GEN1)  # derives inverter_address=0x31
+    assert plant.capabilities.inverter_address == 0x31
+    assert 0x31 not in plant.register_caches  # nothing cached there yet
+    assert isinstance(plant.inverter, SinglePhaseInverter)  # no KeyError
+
+
 # ---------------------------------------------------------------------------
 # plant.batteries — uses lv_battery_addresses when capabilities set
 # ---------------------------------------------------------------------------

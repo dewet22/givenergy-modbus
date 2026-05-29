@@ -206,6 +206,34 @@ def test_plant_capabilities_is_hv():
     assert PlantCapabilities(device_type=Model.EMS).is_hv is False
 
 
+def test_plant_capabilities_derives_inverter_address_from_model():
+    """Without an explicit address, inverter_address derives from the model (issue #119)."""
+    assert PlantCapabilities(device_type=Model.HYBRID).inverter_address == 0x11
+    assert PlantCapabilities(device_type=Model.EMS).inverter_address == 0x11
+    assert PlantCapabilities(device_type=Model.ALL_IN_ONE).inverter_address == 0x11
+    assert PlantCapabilities(device_type=Model.AC).inverter_address == 0x31
+    assert PlantCapabilities(device_type=Model.HYBRID_GEN1).inverter_address == 0x31
+
+
+def test_plant_capabilities_explicit_address_overrides_derivation():
+    """An explicitly supplied address always wins over the model-derived default.
+
+    This is what lets a persisted pre-#119 capability (inverter_address=0x32) round-trip
+    through from_dict() unchanged, surfacing as a PlantTopologyMismatch on the next detect()
+    rather than being silently rewritten.
+    """
+    assert PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x32).inverter_address == 0x32
+    persisted = {
+        "schema_version": 1,
+        "device_type": "ALL_IN_ONE",
+        "inverter_address": "0x32",
+        "meter_addresses": [],
+        "lv_battery_addresses": [],
+        "bcu_stacks": [],
+    }
+    assert PlantCapabilities.from_dict(persisted).inverter_address == 0x32
+
+
 # ---------------------------------------------------------------------------
 # Client.detect()
 # ---------------------------------------------------------------------------
@@ -215,7 +243,7 @@ def test_plant_capabilities_is_hv():
 async def test_detect_resolves_model_from_hr0_hr21():
     client = _make_client()
     # DTC 0x2001 → "2001" prefix "20", arm_fw=300 → century 3 → HYBRID_GEN3
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 300})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 300})
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_req:
         mock_req.return_value = object()
@@ -275,13 +303,14 @@ def _prime_ems_rollup(
     }
     for slot, serial in enumerate(serials):
         rollup.update(_pack_serial_into_registers(serial, 2066 + slot * 5))
-    _prime_cache(client, 0x32, rollup)
+    # EMS serves all its data, including the IR(2040+) rollup, at 0x11 (issue #119).
+    _prime_cache(client, 0x11, rollup)
 
 
 @pytest.mark.asyncio
 async def test_detect_no_peripherals_returns_empty_lists():
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     # No battery serial primed at 0x32 → Battery.is_valid() returns False → no battery devices.
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
@@ -296,8 +325,8 @@ async def test_detect_no_peripherals_returns_empty_lists():
 @pytest.mark.asyncio
 async def test_detect_finds_lv_batteries():
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
-    # Battery #1 shares the inverter cache at 0x32; #2 is at 0x33.
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    # Battery pack #1 is at 0x32, #2 at 0x33 (the inverter is at 0x11 — issue #119).
     _prime_battery_serial(client, 0x32)
     _prime_battery_serial(client, 0x33)
 
@@ -317,7 +346,7 @@ async def test_detect_finds_lv_batteries():
 @pytest.mark.asyncio
 async def test_detect_finds_meters():
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     # Prime IR(60) on the responding meters so Meter.is_valid() passes.
     _prime_meter_voltage(client, 0x01)
     _prime_meter_voltage(client, 0x03)
@@ -343,7 +372,7 @@ async def test_detect_cold_filters_empty_meter_slots():
     in plant.meters. Regression: #95 item 1 (wire evidence in #86).
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     # Real meters at 0x01 and 0x03 (mirrors Nick's grid + load CTs).
     _prime_meter_voltage(client, 0x01)
     _prime_meter_voltage(client, 0x03)
@@ -372,7 +401,7 @@ async def test_detect_cold_handles_non_contiguous_meters():
     with 0x02 absent). A real meter following an empty slot must still be discovered.
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     # Real meters at 0x01 and 0x05 — non-contiguous.
     _prime_meter_voltage(client, 0x01)
     _prime_meter_voltage(client, 0x05)
@@ -402,7 +431,7 @@ async def test_detect_hinted_drops_ghost_meter_with_mismatch():
     which the consumer (givenergy-hass#62) auto-accepts and re-persists.
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
     _prime_meter_voltage(client, 0x01)
     _prime_meter_voltage(client, 0x03)
@@ -442,7 +471,7 @@ async def test_detect_hinted_drops_meter_with_transient_zero_voltage():
     readers rather than buried in commit history.
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
     # 0x01 probes ACK but v_phase_1 == 0 — the transient-zero case.
     _prime_cache(client, 0x01, {IR(60): 0})
@@ -470,7 +499,7 @@ async def test_detect_hinted_drops_meter_with_transient_zero_voltage():
 async def test_detect_hv_probes_bcus():
     client = _make_client()
     # ALL_IN_ONE → is_hv=True
-    _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x8000, HR(21): 0})
     # BMS at 0xA0 reports 2 BCUs via IR(61)
     _prime_cache(client, 0xA0, {IR(61): 2})
     # BCU 0 has 3 modules (IR(64)=3), BCU 1 has 2 modules
@@ -494,7 +523,7 @@ async def test_detect_hv_probes_bcus():
 @pytest.mark.asyncio
 async def test_detect_hv_skips_lv_battery_probing():
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x8000, HR(21): 0})
     _prime_cache(client, 0xA0, {IR(61): 0})
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
@@ -514,7 +543,7 @@ async def test_detect_ems_skips_lv_battery_probing():
     """
     client = _make_client()
     # DTC 0x5001 → Model.EMS (first-digit prefix "5")
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
     # Prime a plausible EMS rollup so the cross-check at the end of detect() is happy.
     _prime_ems_rollup(client)
 
@@ -539,7 +568,7 @@ async def test_detect_ems_reads_rollup_at_detect_time():
     inverter and per-meter rollup data.
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
     _prime_ems_rollup(client)
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_send:
@@ -557,10 +586,10 @@ async def test_detect_ems_reads_rollup_at_detect_time():
 async def test_detect_ems_warns_on_implausible_inverter_count(caplog):
     """If the rollup decodes with inverter_count outside [1, 4], log a warning rather than raise."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
     # IR(2040) signals the rollup actually populated; without it the validator
     # short-circuits on the "no rollup data" path before reaching inverter_count.
-    _prime_cache(client, 0x32, {IR(2040): 1, IR(2044): 7})  # ems_status NORMAL, inverter_count = 7 — implausible
+    _prime_cache(client, 0x11, {IR(2040): 1, IR(2044): 7})  # ems_status NORMAL, inverter_count = 7 — implausible
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
@@ -581,7 +610,7 @@ async def test_detect_ems_tolerates_rollup_read_timeout(caplog):
     raise `TimeoutError` before the validation helper ever ran. See #109 review.
     """
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
 
     async def _send_or_timeout(request, *, timeout, retries):
         if request.base_register == 2040 and request.register_count == 55:
@@ -600,9 +629,9 @@ async def test_detect_ems_tolerates_rollup_read_timeout(caplog):
 
 @pytest.mark.asyncio
 async def test_detect_ems_warns_on_missing_rollup_registers(caplog):
-    """If the cache at 0x32 has HR data but no IR rollup registers, log and continue.
+    """If the cache at 0x11 has HR data but no IR rollup registers, log and continue.
 
-    Realistic shape — Step 1's HR(0,60) always populates the cache for 0x32, so the
+    Realistic shape — Step 1's HR(0,60) always populates the cache for 0x11, so the
     "cache is None" branch is unreachable at runtime. The actual failure mode is the
     rollup read silently returning no IR data: the cache exists but IR(2040+) is
     absent, in which case the defaultdict-shaped `RegisterCache` would otherwise
@@ -612,14 +641,14 @@ async def test_detect_ems_warns_on_missing_rollup_registers(caplog):
     client = _make_client()
     # HR(0)/(21) prime the EMS resolution; we deliberately don't prime IR(2040+) to
     # simulate the rollup read happening but yielding no data into the cache.
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
             with caplog.at_level("WARNING", logger="givenergy_modbus.client.client"):
                 await client.detect()
 
-    assert any("returned no data at 0x32" in rec.message for rec in caplog.records), (
+    assert any("returned no data at 0x11" in rec.message for rec in caplog.records), (
         f"expected no-data warning; got {[r.message for r in caplog.records]}"
     )
     # Specifically should NOT log the implausible-count message — the early-out
@@ -635,7 +664,7 @@ async def test_detect_ems_warns_on_rollup_decode_failure(caplog):
     client = _make_client()
     # IR(2040) signals the rollup populated; without it the validator short-circuits
     # before reaching EmsRegisterGetter.build() and the patched failure never fires.
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0, IR(2040): 1})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0, IR(2040): 1})
 
     # Force EmsRegisterGetter(...).build() to raise — simulates a parser regression.
     with patch("givenergy_modbus.client.client.EmsRegisterGetter") as MockGetter:
@@ -654,7 +683,7 @@ async def test_detect_ems_warns_on_rollup_decode_failure(caplog):
 async def test_detect_ems_warns_on_malformed_serial(caplog):
     """If a per-slot serial string doesn't match the GE 10-char format, log a warning."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x5001, HR(21): 0})
     # Inverter slot 1 has a malformed serial (junk bytes), slot 2 is a normal redacted form.
     _prime_ems_rollup(client, inverter_count=2, serials=("!!!garbage", "CE0000G000"))
 
@@ -695,7 +724,7 @@ async def test_detect_raises_when_hr0_missing():
 async def test_detect_hinted_confirms_known_layout():
     """When prior matches reality, hinted detect returns equivalent caps and skips empty-slot probes."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
     _prime_battery_serial(client, 0x33)
     _prime_meter_voltage(client, 0x01)
@@ -726,7 +755,7 @@ async def test_detect_hinted_raises_on_device_type_change():
     """If the inverter reports a different device_type than prior, raise and clear plant.capabilities."""
     client = _make_client()
     # Hardware now reports HYBRID_GEN1 (DTC 0x2001, arm_fw=0)
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     # Caller's prior says ALL_IN_ONE_HYBRID — a different family entirely.
     prior = PlantCapabilities(device_type=Model.ALL_IN_ONE_HYBRID)
 
@@ -744,7 +773,7 @@ async def test_detect_hinted_raises_on_device_type_change():
 async def test_detect_hinted_raises_when_hinted_address_missing():
     """If a hinted meter doesn't confirm, raise PlantTopologyMismatch carrying both views."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x2001, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
     _prime_battery_serial(client, 0x32)
     _prime_meter_voltage(client, 0x01)
 
@@ -772,7 +801,7 @@ async def test_detect_hinted_raises_when_hinted_address_missing():
 async def test_detect_hinted_hv_skips_bms_read():
     """Hinted HV mode probes the BCUs (skipping BMS at 0xA0) and reads actual module counts."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x8000, HR(21): 0})
     # Crucially: no cache primed at 0xA0 — if hinted mode tries to read it, it'll fail downstream.
     # Prime each BCU's IR(64) so the actual-module read returns the expected count.
     _prime_cache(client, 0x70, {IR(64): 3})
@@ -801,7 +830,7 @@ async def test_detect_hinted_hv_skips_bms_read():
 async def test_detect_hinted_raises_on_bcu_module_count_drift():
     """If a BCU now reports a different module count than prior, the final topology check raises."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x8000, HR(21): 0})
+    _prime_cache(client, 0x11, {HR(0): 0x8000, HR(21): 0})
     # Stack 0 originally had 3 modules; it now reports 2 (a module was removed).
     _prime_cache(client, 0x70, {IR(64): 2})
     _prime_cache(client, 0x71, {IR(64): 2})

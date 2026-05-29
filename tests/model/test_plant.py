@@ -19,7 +19,12 @@ from givenergy_modbus.model.inverter import (
     Status,
 )
 from givenergy_modbus.model.inverter import UsbDevice as SinglePhaseInverterUsbDevice
-from givenergy_modbus.model.plant import Plant
+from givenergy_modbus.model.plant import (
+    Plant,
+    PlantCapabilities,
+    _coerce_model,
+    _derive_inverter_address,
+)
 from givenergy_modbus.model.register import HR, IR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -1414,6 +1419,51 @@ def test_commit_bank_unknown_device_skips_validation(plant: Plant):
     pdu = _make_ir_pdu({5: 65535}, device_address=0x99)
     plant.update(pdu)
     assert plant.register_caches[0x99].get(IR(5)) == 65535
+
+
+def test_update_stores_0x11_under_its_true_address(plant: Plant):
+    """A response at 0x11 must land in register_caches[0x11], not be rewritten to 0x32.
+
+    Regression for issue #119: the old rewrite folded 0x11/0x00 into 0x32, masking
+    that 0x11 is the inverter's canonical address and 0x32 is LV battery pack #1.
+    """
+    pdu = _make_ir_pdu({5: 2367}, device_address=0x11)
+    plant.update(pdu)
+    assert plant.register_caches[0x11].get(IR(5)) == 2367
+    assert IR(5) not in plant.register_caches.get(0x32, {})
+
+
+def test_coerce_model_accepts_instance_name_value_and_rejects_garbage():
+    """_coerce_model handles a Model instance, an enum name, an enum value, and rejects garbage."""
+    assert _coerce_model(Model.EMS) is Model.EMS
+    assert _coerce_model("HYBRID") is Model.HYBRID  # enum name
+    assert _coerce_model("2") is Model.HYBRID  # enum value (name lookup misses, value lookup hits)
+    assert _coerce_model("nonsense") is None
+    assert _coerce_model(None) is None
+
+
+def test_derive_inverter_address_fills_only_when_unpinned_and_coercible():
+    """_derive_inverter_address sets the model-derived address, never overrides an explicit one."""
+    derived = {"device_type": Model.AC}
+    _derive_inverter_address(derived)
+    assert derived["inverter_address"] == 0x31
+
+    explicit = {"device_type": Model.EMS, "inverter_address": 0x99}
+    _derive_inverter_address(explicit)
+    assert explicit["inverter_address"] == 0x99  # explicit wins
+
+    uncoercible = {"device_type": "nonsense"}
+    _derive_inverter_address(uncoercible)
+    assert "inverter_address" not in uncoercible  # left for Pydantic to reject
+
+
+def test_getter_for_device_address_with_capabilities():
+    """With capabilities, the inverter getter keys at the model's address; 0x32-0x37 are batteries (#119)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID))  # inverter at 0x11
+    assert plant._getter_for_device_address(0x11).__name__ == "SinglePhaseInverterRegisterGetter"
+    assert plant._getter_for_device_address(0x32).__name__ == "BatteryRegisterGetter"
+    assert plant._getter_for_device_address(0x05).__name__ == "MeterRegisterGetter"
+    assert plant._getter_for_device_address(0x99) is None
 
 
 def test_commit_bank_incoherent_serial_discards_bank(plant: Plant, caplog):
