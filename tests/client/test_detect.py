@@ -245,6 +245,39 @@ def _prime_meter_voltage(client: Client, device_address: int, raw_v_phase_1: int
     _prime_cache(client, device_address, {IR(60): raw_v_phase_1})
 
 
+def _pack_serial_into_registers(serial: str, base: int) -> dict:
+    """Pack a 10-char serial string into 5 consecutive 16-bit IR registers at `base`.
+
+    Mirrors how the EMS rollup encodes per-inverter serial strings in IR(2066..2070)
+    etc. Used to prime register caches for the EMS rollup cross-check tests.
+    """
+    assert len(serial) == 10, f"GE serials are 10 chars, got {len(serial)}: {serial!r}"
+    return {IR(base + i): (ord(serial[i * 2]) << 8) | ord(serial[i * 2 + 1]) for i in range(5)}
+
+
+def _prime_ems_rollup(
+    client: Client,
+    inverter_count: int = 2,
+    serials: tuple[str, ...] = ("CE0000G000", "CE0000G000"),
+    meter_count: int = 2,
+) -> None:
+    """Prime IR(2040+) on the EMS cache with a plausible rollup payload.
+
+    Mirrors a real EMS plant: status NORMAL, the given inverter and meter counts,
+    serials packed into their canonical register slots. `serials` is a tuple of up
+    to four 10-char strings; each is packed into 5 consecutive IR registers
+    starting at IR(2066) for inverter_1, IR(2071) for inverter_2, etc.
+    """
+    rollup = {
+        IR(2040): 1,  # ems_status = NORMAL
+        IR(2041): meter_count,
+        IR(2044): inverter_count,
+    }
+    for slot, serial in enumerate(serials):
+        rollup.update(_pack_serial_into_registers(serial, 2066 + slot * 5))
+    _prime_cache(client, 0x32, rollup)
+
+
 @pytest.mark.asyncio
 async def test_detect_no_peripherals_returns_empty_lists():
     client = _make_client()
@@ -482,6 +515,8 @@ async def test_detect_ems_skips_lv_battery_probing():
     client = _make_client()
     # DTC 0x5001 → Model.EMS (first-digit prefix "5")
     _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    # Prime a plausible EMS rollup so the cross-check at the end of detect() is happy.
+    _prime_ems_rollup(client)
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_send:
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
@@ -489,9 +524,74 @@ async def test_detect_ems_skips_lv_battery_probing():
 
     assert caps.is_ems is True
     assert caps.lv_battery_addresses == []
-    # Only the initial HR(0,60) read on 0x11 should have been issued — no IR(60,60) on 0x32.
+    # No IR(60,60) at 0x32 — the LV battery probe is skipped for EMS.
     sent = [call.args[0] for call in mock_send.call_args_list]
-    assert all(req.device_address != 0x32 for req in sent), f"detect() should not read from 0x32 for EMS; got {sent}"
+    assert not any(req.device_address == 0x32 for req in sent), (
+        f"detect() should not read from 0x32 for EMS; got {sent}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_detect_ems_reads_rollup_at_detect_time():
+    """EMS detect issues an IR(2040,55) read to populate the rollup early.
+
+    Consumers don't need to wait for the first refresh cycle to see the per-managed-
+    inverter and per-meter rollup data.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_ems_rollup(client)
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_send:
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            await client.detect()
+
+    sent = [call.args[0] for call in mock_send.call_args_list]
+    rollup_reads = [
+        req for req in sent if req.base_register == 2040 and req.register_count == 55 and req.device_address == 0x11
+    ]
+    assert len(rollup_reads) == 1, f"expected exactly one IR(2040,55) at 0x11; got {sent}"
+
+
+@pytest.mark.asyncio
+async def test_detect_ems_warns_on_implausible_inverter_count(caplog):
+    """If the rollup decodes with inverter_count outside [1, 4], log a warning rather than raise."""
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    _prime_cache(client, 0x32, {IR(2044): 7})  # inverter_count = 7 — implausible
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with caplog.at_level("WARNING", logger="givenergy_modbus.client.client"):
+                await client.detect()
+
+    assert any(
+        "implausible inverter_count" in rec.message and "inverter_count=7" in rec.message for rec in caplog.records
+    ), f"expected implausible-inverter_count warning; got {[r.message for r in caplog.records]}"
+
+
+@pytest.mark.asyncio
+async def test_detect_ems_warns_on_malformed_serial(caplog):
+    """If a per-slot serial string doesn't match the GE 10-char format, log a warning."""
+    client = _make_client()
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    # Inverter slot 1 has a malformed serial (junk bytes), slot 2 is a normal redacted form.
+    _prime_ems_rollup(client, inverter_count=2, serials=("!!!garbage", "CE0000G000"))
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with caplog.at_level("WARNING", logger="givenergy_modbus.client.client"):
+                await client.detect()
+
+    assert any(
+        "inverter_1_serial_number" in rec.message and "doesn't match GE serial format" in rec.message
+        for rec in caplog.records
+    ), f"expected malformed-serial warning for slot 1; got {[r.message for r in caplog.records]}"
+    # Slot 2 is well-formed — no warning for it.
+    assert not any(
+        "inverter_2_serial_number" in rec.message and "doesn't match GE serial format" in rec.message
+        for rec in caplog.records
+    )
 
 
 @pytest.mark.asyncio

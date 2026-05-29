@@ -10,6 +10,7 @@ from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import CommunicationError, ExceptionBase, PlantTopologyMismatch
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.inverter import resolve_model
 from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
@@ -25,6 +26,12 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# Standard GE 10-char serial in the textual / decoded form — `[A-Z]{2}\d{4}[A-Z]\d{3}`,
+# matches both real serials (e.g. ``CE2231G454``) and the CLI-redacted form
+# (``CE0000G000``). Used to sanity-check serial strings decoded out of the EMS rollup.
+_GE_SERIAL_STR_PATTERN = re.compile(r"^[A-Z]{2}\d{4}[A-Z]\d{3}$")
+
 
 # GivEnergy serial numbers are 10 ASCII bytes. Two shapes have been
 # observed in real captures:
@@ -291,6 +298,45 @@ class Client:
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
+    def _validate_ems_rollup(self) -> None:
+        """Sanity-check the EMS IR(2040,55) rollup decoded into the inverter's register cache.
+
+        Logs warnings for any anomaly (no data, decode failure, implausible
+        ``inverter_count``, malformed serial strings) but never raises —
+        ``detect()`` shouldn't fail discovery on a soft data check. The
+        intent is to surface parser regressions early without breaking the
+        rest of the discovery flow.
+        """
+        cache = self.plant.register_caches.get(0x32)
+        if cache is None:
+            _logger.warning("detect: EMS rollup read returned no data at 0x32 — skipping cross-check")
+            return
+        try:
+            ems = EmsRegisterGetter(cache).build()
+        except Exception as e:  # noqa: BLE001 — best-effort sanity check, log and move on
+            _logger.warning("detect: EMS rollup decode failed during cross-check: %s", e)
+            return
+        inverter_count = ems.get("inverter_count")
+        if inverter_count is None or not (0 < inverter_count <= 4):
+            _logger.warning(
+                "detect: EMS rollup reports implausible inverter_count=%r (expected 1..4)",
+                inverter_count,
+            )
+            return
+        serials = [ems.get(f"inverter_{i}_serial_number") for i in range(1, inverter_count + 1)]
+        for i, serial in enumerate(serials, start=1):
+            if not (isinstance(serial, str) and _GE_SERIAL_STR_PATTERN.fullmatch(serial)):
+                _logger.warning(
+                    "detect: EMS rollup inverter_%d_serial_number=%r doesn't match GE serial format",
+                    i,
+                    serial,
+                )
+        _logger.info(
+            "detect: EMS rollup cross-check — inverter_count=%d, serials=[%s]",
+            inverter_count,
+            ", ".join(repr(s) for s in serials),
+        )
+
     async def detect(
         self,
         timeout: float = 2.0,
@@ -424,6 +470,19 @@ class Client:
                 "detect: lv_battery_addresses=[%s]",
                 ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
             )
+
+        # Step 5 — EMS rollup cross-check. Read IR(2040,55) at detect time so the per-managed-
+        # inverter and per-meter rollup is populated, and sanity-check the parsed values to
+        # catch a malformed rollup (or a parser regression) early rather than letting consumers
+        # read garbage. Best-effort: log warnings on anomaly, never raise — discovery shouldn't
+        # fail on a soft data check. See #95.
+        if caps.is_ems:
+            await self.send_request_and_await_response(
+                ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=0x11),
+                timeout=timeout,
+                retries=retries,
+            )
+            self._validate_ems_rollup()
 
         if prior is not None and prior != caps:
             self.plant.capabilities = None
