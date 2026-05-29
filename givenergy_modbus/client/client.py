@@ -3,12 +3,20 @@ import logging
 import random
 import re
 import socket
+import warnings
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from typing import Literal
 
 from givenergy_modbus.client import commands
-from givenergy_modbus.exceptions import CommunicationError, ExceptionBase, PlantTopologyMismatch
+from givenergy_modbus.exceptions import (
+    CommunicationError,
+    ExceptionBase,
+    PlantTopologyMismatch,
+    ReadFailure,
+    RefreshFailed,
+    RefreshPartiallySucceeded,
+)
 from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.ems import EmsRegisterGetter
@@ -554,8 +562,84 @@ class Client:
         self.plant.capabilities = caps
         return caps
 
+    async def _execute_reads(
+        self,
+        requests: list[TransparentRequest],
+        *,
+        timeout: float,
+        retries: int,
+        retry_delay: float,
+    ) -> None:
+        """Run a batch of register reads, tolerating partial failure.
+
+        Successful reads have already been written to the register caches by the
+        network consumer task, so this only decides how to *signal* the failures:
+
+        - no failures → return (the caller returns the populated plant);
+        - some failed → raise ``RefreshPartiallySucceeded`` carrying the partial
+          plant plus the structured failures — the caller's one chance to use
+          the data that did come back;
+        - all failed → raise ``RefreshFailed`` (link effectively dead).
+        """
+        if not requests:
+            return
+        results = await self.execute(
+            requests, timeout=timeout, retries=retries, retry_delay=retry_delay, return_exceptions=True
+        )
+        failures: list[ReadFailure] = []
+        causes: list[Exception] = []
+        for req, res in zip(requests, results, strict=True):
+            if isinstance(res, Exception):
+                # base_register/register_count live on read requests, which is all
+                # _execute_reads is ever handed; getattr keeps mypy happy without a
+                # never-taken else branch.
+                failures.append(
+                    ReadFailure(
+                        req.device_address,
+                        type(req).__name__,
+                        getattr(req, "base_register", 0),
+                        getattr(req, "register_count", 0),
+                    )
+                )
+                causes.append(res)
+            elif isinstance(res, BaseException):
+                # Control-flow exceptions (e.g. CancelledError) must never be swallowed.
+                raise res
+        if not failures:
+            return
+        group = ExceptionGroup(f"{len(failures)}/{len(requests)} register reads failed", causes)
+        summary = ", ".join(f"{f.request_type}(0x{f.device_address:02x},{f.base_register})" for f in failures)
+        if len(failures) == len(requests):
+            _logger.warning("All %d register reads failed; treating plant as unreachable", len(requests))
+            raise RefreshFailed(f"all {len(requests)} register reads failed", failures=failures, cause=group)
+        _logger.warning("%d of %d register reads failed: %s", len(failures), len(requests), summary)
+        raise RefreshPartiallySucceeded(
+            f"{len(failures)} of {len(requests)} register reads failed",
+            plant=self.plant,
+            failures=failures,
+            cause=group,
+        )
+
+    async def _refresh_no_caps(
+        self,
+        *,
+        full_refresh: bool,
+        max_batteries: int,
+        timeout: float,
+        retries: int,
+        retry_delay: float,
+    ) -> Plant:
+        """Legacy capability-free refresh — the pre-detect fallback shape."""
+        reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
+        await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
+        return self.plant
+
     async def load_config(self, timeout: float = 2.0, retries: int = 3, retry_delay: float = 0.5) -> Plant:
-        """Read HR configuration blocks for the inverter."""
+        """Read HR configuration blocks for the inverter.
+
+        Returns the populated plant on full success. On partial/total read
+        failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
+        """
         caps = self.plant.capabilities
         inverter = caps.inverter_address if caps else 0x32
         is_ems = bool(caps and caps.is_ems)
@@ -585,14 +669,20 @@ class Client:
                 reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
             if caps.is_ems:
                 reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
-        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
+        await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
     async def refresh(self, timeout: float = 1.0, retries: int = 0, retry_delay: float = 0.5) -> Plant:
-        """Read IR measurement blocks for all known devices."""
+        """Read IR measurement blocks for all known devices.
+
+        Returns the populated plant on full success. On partial/total read
+        failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
+        """
         caps = self.plant.capabilities
         if caps is None:
-            return await self.refresh_plant(full_refresh=False)
+            return await self._refresh_no_caps(
+                full_refresh=False, max_batteries=5, timeout=timeout, retries=retries, retry_delay=retry_delay
+            )
         inverter = caps.inverter_address
         reqs: list[TransparentRequest] = []
         # EMS plant controllers don't expose IR(0,60) or IR(180,60) — see load_config() and #86.
@@ -627,7 +717,7 @@ class Client:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
         for offset, _ in caps.bcu_stacks:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
-        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
+        await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
     async def refresh_plant(
@@ -638,15 +728,35 @@ class Client:
         retries: int = 0,
         retry_delay: float = 0.5,
     ) -> Plant:
-        """Refresh data about the Plant."""
+        """Deprecated orchestrator — run ``detect()`` once, then drive your own loop.
+
+        .. deprecated::
+            Will be removed in 3.0. This composes ``load_config()`` + ``refresh()``,
+            which is trivial to do in the consumer where the partial-failure policy
+            belongs. It now also propagates ``RefreshPartiallySucceeded`` /
+            ``RefreshFailed`` like the primitives — note that on a full refresh a
+            partial failure in ``load_config()`` short-circuits before ``refresh()``
+            runs; call the primitives directly for full control.
+        """
+        warnings.warn(
+            "Client.refresh_plant() is deprecated and will be removed in 3.0. Run detect() once, then "
+            "drive your own poll loop over load_config()/refresh(). It now propagates "
+            "RefreshPartiallySucceeded/RefreshFailed on partial/total read failure.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self.plant.capabilities:
             if full_refresh:
                 await self.load_config(timeout=timeout, retries=retries, retry_delay=retry_delay)
             await self.refresh(timeout=timeout, retries=retries, retry_delay=retry_delay)
             return self.plant
-        reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
-        await self.execute(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
-        return self.plant
+        return await self._refresh_no_caps(
+            full_refresh=full_refresh,
+            max_batteries=max_batteries,
+            timeout=timeout,
+            retries=retries,
+            retry_delay=retry_delay,
+        )
 
     async def watch_plant(
         self,
@@ -658,7 +768,20 @@ class Client:
         retry_delay: float = 0.5,
         passive: bool = False,
     ):
-        """Refresh data about the Plant."""
+        """Deprecated poll loop — own the loop in the consumer instead.
+
+        .. deprecated::
+            Will be removed in 3.0. Connect, ``detect()``, then loop over
+            ``load_config()`` / ``refresh()`` yourself, handling
+            ``RefreshPartiallySucceeded`` / ``RefreshFailed`` as suits the consumer.
+        """
+        warnings.warn(
+            "Client.watch_plant() is deprecated and will be removed in 3.0. Own your poll loop: "
+            "connect(), detect(), then loop over load_config()/refresh() handling "
+            "RefreshPartiallySucceeded/RefreshFailed as you see fit.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         await self.connect()
         await self.refresh_plant(
             True,

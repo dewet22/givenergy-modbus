@@ -111,6 +111,7 @@ branch = true
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
+    "if TYPE_CHECKING:",
     "def __repr__",
     "if self.debug:",
     "if settings.DEBUG",

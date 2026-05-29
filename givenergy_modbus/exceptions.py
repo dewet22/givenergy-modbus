@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NamedTuple
+
+if TYPE_CHECKING:
+    from givenergy_modbus.model.plant import Plant
+
+
 class ExceptionBase(Exception):
     """Base exception."""
 
@@ -51,3 +59,60 @@ class PlantTopologyMismatch(CommunicationError):
         super().__init__(message=message)
         self.prior = prior
         self.actual = actual
+
+
+class ReadFailure(NamedTuple):
+    """Identifies a single register read that failed (after retries) during a poll.
+
+    Structured so a consumer can reason about *which* device and bank dropped
+    (e.g. "battery 0x34 is offline") without parsing log lines.
+    """
+
+    device_address: int
+    request_type: str
+    base_register: int
+    register_count: int
+
+
+class RefreshError(CommunicationError):
+    """Base for a refresh()/load_config() that did not fully succeed.
+
+    Carries the structured set of reads that failed (``failures``) plus the raw
+    underlying exceptions grouped as an ``ExceptionGroup`` (``cause``) for
+    tracebacks / drill-down.
+    """
+
+    failures: list[ReadFailure]
+    cause: ExceptionGroup
+
+    def __init__(self, message: str, failures: list[ReadFailure], cause: ExceptionGroup) -> None:
+        super().__init__(message=message)
+        self.failures = failures
+        self.cause = cause
+
+
+class RefreshPartiallySucceeded(RefreshError):
+    """Some — but not all — register reads in a poll failed.
+
+    The data that *was* collected is attached as ``plant``. This exception is
+    the consumer's one opportunity to do something useful with that partial
+    data — cache it, surface it, count the gap — before deciding how to treat
+    the missing reads. Catching it and carrying on (even ignoring it) is a
+    legitimate choice; the point is that it's the *consumer's* choice, made
+    here, rather than something the library silently decided for them.
+    """
+
+    plant: Plant
+
+    def __init__(self, message: str, plant: Plant, failures: list[ReadFailure], cause: ExceptionGroup) -> None:
+        super().__init__(message=message, failures=failures, cause=cause)
+        self.plant = plant
+
+
+class RefreshFailed(RefreshError):
+    """Every register read in the poll failed — the link is effectively dead.
+
+    No usable data came back, so (unlike ``RefreshPartiallySucceeded``) there is
+    no partial plant to hand over; callers should treat the device as
+    unavailable.
+    """
