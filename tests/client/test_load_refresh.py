@@ -42,7 +42,7 @@ def _reqs(mock_execute) -> list[tuple]:
 async def test_load_config_no_caps():
     """Without capabilities, only the four base blocks are requested, at the legacy 0x32."""
     client = Client("localhost", 8899)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
         _hr(0, 60, device=0x32),
@@ -55,7 +55,7 @@ async def test_load_config_no_caps():
 async def test_load_config_single_phase():
     """Standard single-phase HYBRID requests the four base blocks only, at 0x11."""
     client = _client_with_caps(Model.HYBRID)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
 
@@ -64,7 +64,7 @@ async def test_load_config_single_phase():
 async def test_load_config_ac_gen1_uses_0x31(model: Model):
     """AC and HYBRID_GEN1 both expose their registers at 0x31, not 0x11 (issue #119)."""
     client = _client_with_caps(model)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
         _hr(0, 60, device=0x31),
@@ -77,7 +77,7 @@ async def test_load_config_ac_gen1_uses_0x31(model: Model):
 async def test_load_config_three_phase():
     """Three-phase models add HR 1000–1124 as three reads (60 + 60 + 5)."""
     client = _client_with_caps(Model.HYBRID_3PH)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
         _hr(0, 60),
@@ -93,7 +93,7 @@ async def test_load_config_three_phase():
 async def test_load_config_extended_slots():
     """Extended-slot models add HR 240–299."""
     client = _client_with_caps(Model.HYBRID_GEN3)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(240, 60)]
 
@@ -105,7 +105,7 @@ async def test_load_config_ems():
     Regression: #86. Wire capture confirmed via dewet22/givenergy-hass#52.
     """
     client = _client_with_caps(Model.EMS)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [_hr(0, 60), _hr(2040, 36)]
 
@@ -115,18 +115,23 @@ async def test_load_config_ems():
 # ---------------------------------------------------------------------------
 
 
-async def test_refresh_no_caps_falls_back_to_refresh_plant():
-    """Without capabilities, refresh() delegates to refresh_plant(full_refresh=False)."""
+async def test_refresh_no_caps_runs_legacy_path():
+    """Without capabilities, refresh() runs the legacy capability-free fallback.
+
+    It must NOT route through the deprecated refresh_plant() (that would warn);
+    _refresh_no_caps() builds the legacy request list and dispatches it.
+    """
     client = Client("localhost", 8899)
-    with patch.object(client, "refresh_plant", new_callable=AsyncMock) as mock_rp:
-        await client.refresh()
-    mock_rp.assert_awaited_once_with(full_refresh=False)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        plant = await client.refresh()
+    assert plant is client.plant
+    mock_exec.assert_awaited_once()
 
 
 async def test_refresh_single_phase_no_peripherals():
     """Standard single-phase with no peripherals: two base IR blocks only."""
     client = _client_with_caps(Model.HYBRID)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     assert _reqs(mock_exec) == [_ir(0, 60), _ir(180, 60)]
 
@@ -134,7 +139,7 @@ async def test_refresh_single_phase_no_peripherals():
 async def test_refresh_three_phase():
     """Three-phase adds IR 1000–1413 as seven reads."""
     client = _client_with_caps(Model.HYBRID_3PH)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     expected_3ph = [
         _ir(1000, 60),
@@ -157,7 +162,7 @@ async def test_refresh_ems():
     caps-populated capture shows otherwise.
     """
     client = _client_with_caps(Model.EMS)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     assert _reqs(mock_exec) == [_ir(2040, 55)]
 
@@ -165,7 +170,7 @@ async def test_refresh_ems():
 async def test_refresh_gateway():
     """Gateway adds IR 1600–1859 as five reads."""
     client = _client_with_caps(Model.GATEWAY)
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     expected_gw = [_ir(1600, 60), _ir(1660, 60), _ir(1720, 60), _ir(1780, 60), _ir(1840, 20)]
     assert _reqs(mock_exec) == [_ir(0, 60), _ir(180, 60)] + expected_gw
@@ -174,7 +179,7 @@ async def test_refresh_gateway():
 async def test_refresh_lv_batteries():
     """LV battery devices each add an IR 60+60 read at their device address."""
     client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33, 0x34])
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
     assert _ir(60, 60, device=0x33) in reqs
@@ -184,7 +189,7 @@ async def test_refresh_lv_batteries():
 async def test_refresh_meter_addresses():
     """Meter devices each add an IR 60+30 read."""
     client = _client_with_caps(Model.HYBRID, meter_addresses=[0x01, 0x02])
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
     assert _ir(60, 30, device=0x01) in reqs
@@ -195,7 +200,7 @@ async def test_refresh_bcu_stacks():
     """BCU stacks each add an IR 60+60 read at 0x70 + offset."""
     # Use HYBRID_HV_GEN3 which is three-phase + HV; check BCU reads are present
     client = _client_with_caps(Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 3), (1, 2)])
-    with patch.object(client, "execute", new_callable=AsyncMock) as mock_exec:
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
     reqs = _reqs(mock_exec)
     assert _ir(60, 60, device=0x70) in reqs
@@ -212,6 +217,7 @@ async def test_refresh_plant_forwards_timeout_retries_and_retry_delay_post_detec
     with (
         patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
         patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
+        pytest.warns(DeprecationWarning),
     ):
         await client.refresh_plant(full_refresh=True, timeout=3.5, retries=4, retry_delay=1.2)
 
@@ -228,6 +234,7 @@ async def test_refresh_plant_skips_load_config_when_not_full_refresh():
     with (
         patch.object(client, "load_config", new_callable=AsyncMock) as mock_lc,
         patch.object(client, "refresh", new_callable=AsyncMock) as mock_rf,
+        pytest.warns(DeprecationWarning),
     ):
         await client.refresh_plant(full_refresh=False, timeout=2.0, retries=1, retry_delay=0.3)
 

@@ -17,8 +17,11 @@ async def main():
     client = Client(host="192.168.99.99", port=8899)
     await client.connect()
 
-    # Read current state first (needed for slot_map)
-    await client.refresh_plant(full_refresh=True)
+    # Detect the topology once, then read the config banks (needed for slot_map).
+    # load_config()/refresh() raise RefreshPartiallySucceeded / RefreshFailed on
+    # read failures — see "Polling the plant" below for handling.
+    await client.detect()
+    await client.load_config()
     plant = client.plant
 
     # Write configuration to the device
@@ -43,24 +46,54 @@ async def main():
 asyncio.run(main())
 ```
 
-## Watching for updates
+## Polling the plant
 
-Use `watch_plant` to keep the plant state refreshed in the background:
+Run `detect()` once after connecting, then drive your own poll loop over the
+primitives: `load_config()` reads the HR configuration banks, `refresh()` reads
+the IR measurement banks. Both return the populated `Plant` on full success, and
+raise on read failures:
+
+- `RefreshPartiallySucceeded` — some reads failed, some succeeded. The data that
+  *did* arrive is on `exc.plant`; `exc.failures` lists the dropped reads (device
+  address, request type, base register) and `exc.cause` is an `ExceptionGroup` of
+  the raw errors. This is the one chance to use the partial data — cache it,
+  surface it, count it — before deciding how to treat the gaps. How to treat them
+  is the consumer's policy, not the library's.
+- `RefreshFailed` — every read failed; the link is effectively dead and there is
+  no partial data. Treat the device as unavailable.
+
+Both share the base `RefreshError`, so a consumer that doesn't care to
+distinguish can catch that.
 
 ```python
+from givenergy_modbus.exceptions import RefreshFailed, RefreshPartiallySucceeded
+
 async def main():
     client = Client(host="192.168.99.99", port=8899)
+    await client.connect()
+    await client.detect()
 
-    def on_update():
-        print(f"SOC: {client.plant.batteries[0].soc}%")
+    while True:
+        try:
+            plant = await client.refresh()
+        except RefreshPartiallySucceeded as exc:
+            plant = exc.plant                  # use what we did collect
+            # ...consumer policy: log exc.failures, bump a counter, etc.
+        except RefreshFailed:
+            plant = None                       # mark unavailable; maybe reconnect
 
-    await client.watch_plant(handler=on_update, refresh_period=15.0)
+        if plant is not None:                  # full or partial success
+            print(f"SOC: {plant.batteries[0].soc}%")
+        await asyncio.sleep(15)
 ```
+
+> `Client.watch_plant()` and `Client.refresh_plant()` are deprecated and will be
+> removed in 3.0 — own the loop as above. They now also propagate
+> `RefreshPartiallySucceeded` / `RefreshFailed`.
 
 ## Tuning timeouts and retries
 
-`refresh_plant`, `refresh`, `load_config`, `one_shot_command` and `watch_plant` all accept
-the same three knobs:
+`refresh`, `load_config` and `one_shot_command` all accept the same three knobs:
 
 - `timeout` (default 1.0s for refresh, 1.5s for `one_shot_command`) — how long to wait for
   each response.
@@ -237,15 +270,26 @@ The library does the redaction; persistence and format are the caller's choice. 
 ```python
 from datetime import UTC, datetime
 
+from givenergy_modbus.exceptions import RefreshError
+
 with open("capture.txt", "w") as f:
     def write_line(direction, frame):
         ts = datetime.now(UTC).isoformat(timespec="microseconds")
         f.write(f"{ts} {direction} {frame.hex()}\n")
         f.flush()
     async with Client("inverter.local", 8899) as client:
-        await client.refresh_plant(full_refresh=True)
+        await client.detect()
+
+        async def poll():
+            while True:
+                try:
+                    await client.refresh()
+                except RefreshError:  # ignore partial/total failures for this capture demo
+                    pass
+                await asyncio.sleep(5)
+
         await asyncio.gather(
-            client.watch_plant(refresh_period=5),
+            poll(),
             client.capture_frames(write_line, duration=60),
         )
 ```
