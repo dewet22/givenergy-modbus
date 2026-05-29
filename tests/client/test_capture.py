@@ -13,18 +13,18 @@ from givenergy_modbus.client.client import Client, redact
 
 
 def test_redact_single_serial():
-    """A standalone serial gets its digits zeroed; surrounding letters preserved."""
+    """A serial keeps its family prefix, YYWW date and middle letter; unit digits zeroed."""
     frame = b"prefix EA1234B567 suffix"
     redacted = redact(frame)
-    assert redacted == b"prefix EA0000B000 suffix"
+    assert redacted == b"prefix EA1234B000 suffix"
     assert len(redacted) == len(frame)
 
 
 def test_redact_dual_serial():
-    """Both dongle and inverter serials in the same frame are rewritten."""
+    """Both dongle and inverter serials are rewritten, each keeping its YYWW date."""
     frame = b"dongle SA1111R222 inverter SA3333A444"
     redacted = redact(frame)
-    assert redacted == b"dongle SA0000R000 inverter SA0000A000"
+    assert redacted == b"dongle SA1111R000 inverter SA3333A000"
     assert len(redacted) == len(frame)
 
 
@@ -39,19 +39,36 @@ def test_redact_preserves_length_with_mixed_content():
     frame = b"\x01\x02 SA1234X567 \x03\x04 SA9999Z888 \x05"
     redacted = redact(frame)
     assert len(redacted) == len(frame)
-    assert redacted == b"\x01\x02 SA0000X000 \x03\x04 SA0000Z000 \x05"
+    assert redacted == b"\x01\x02 SA1234X000 \x03\x04 SA9999Z000 \x05"
+
+
+def test_redact_preserves_manufacture_date():
+    """The YYWW manufacture-date digits survive redaction; only unit digits zero.
+
+    The date is a coarse, diagnostically useful cohort marker (hardware
+    revision / firmware-compatibility windows); the trailing three digits
+    are the install-unique identifier. See #113.
+    """
+    # SA = family, 2114 = week 14 of 2021, G = middle letter, 047 = unit.
+    frame = b"unit SA2114G047 here"
+    redacted = redact(frame)
+    assert redacted == b"unit SA2114G000 here"
+    # Date digits unchanged; only the trailing three zeroed.
+    assert b"2114" in redacted
+    assert b"047" not in redacted
 
 
 def test_redact_ems_serial():
-    """EMS plant controller serials are redacted via a dedicated 3+7 pattern.
+    """EMS serials keep prefix + YYWW date; trailing unit digits zeroed.
 
     EMS units use a 3-letter + 7-digit format that the standard pattern
-    doesn't match (e.g. ``EMS2522018``). The dedicated pattern zeroes the
-    seven trailing digits while preserving the prefix letters.
+    doesn't match (e.g. ``EMS2522018``). The dedicated pattern preserves
+    the prefix and the YYWW date (2522 → week 22 of 2025) while zeroing the
+    trailing three unit digits.
     """
     frame = b"prefix EMS2522018 suffix"
     redacted = redact(frame)
-    assert redacted == b"prefix EMS0000000 suffix"
+    assert redacted == b"prefix EMS2522000 suffix"
     assert len(redacted) == len(frame)
 
 
@@ -59,11 +76,11 @@ def test_redact_mixed_standard_and_ems_serials():
     """Standard and EMS serials in the same frame are each rewritten.
 
     Either pattern leaves the other's structure alone, so a single redact()
-    call covers a frame that mentions both shapes.
+    call covers a frame that mentions both shapes — each keeping its date.
     """
     frame = b"adapter FO2522G018 ems EMS2522018 inverter CE2231G454"
     redacted = redact(frame)
-    assert redacted == b"adapter FO0000G000 ems EMS0000000 inverter CE0000G000"
+    assert redacted == b"adapter FO2522G000 ems EMS2522000 inverter CE2231G000"
     assert len(redacted) == len(frame)
 
 
@@ -89,10 +106,13 @@ def test_redact_ipv4_csv_triplet():
 
 
 def test_redact_ipv4_mixed_with_serials():
-    """A frame containing both serial-shaped runs and IPv4 gets both redacted in one pass."""
+    """A frame containing both serial-shaped runs and IPv4 gets both redacted in one pass.
+
+    Serials keep their YYWW dates; the IPv4 is fully digit-zeroed (no date to keep).
+    """
     frame = b"from FO2522G018 to 10.0.0.1 by EMS2522018"
     redacted = redact(frame)
-    assert redacted == b"from FO0000G000 to 00.0.0.0 by EMS0000000"
+    assert redacted == b"from FO2522G000 to 00.0.0.0 by EMS2522000"
     assert len(redacted) == len(frame)
 
 
@@ -142,7 +162,7 @@ async def test_capture_frames_tees_tx_to_sink_redacted():
         except asyncio.CancelledError:
             pass
 
-    assert captured == [("tx", b"hello SA0000B000 frame")]
+    assert captured == [("tx", b"hello SA1234B000 frame")]
     # Sink is detached after the capture completes.
     assert client._capture_sink is None
 

@@ -36,18 +36,25 @@ _GE_SERIAL_STR_PATTERN = re.compile(r"^[A-Z]{2}\d{4}[A-Z]\d{3}$")
 # GivEnergy serial numbers are 10 ASCII bytes. Two shapes have been
 # observed in real captures:
 #
-# - Standard form `AA0000A000` (two letters, four digits, one letter,
-#   three digits) — covers inverters, dongles, batteries, meters.
-# - EMS plant controller form `AAA0000000` (three letters, seven digits)
-#   — distinct enough to warrant its own pattern.
+# - Standard form `AAYYWWANNN` (two letters, four-digit YYWW manufacture
+#   date, one letter, three-digit unit identifier) — covers inverters,
+#   dongles, batteries, meters.
+# - EMS plant controller form `AAAYYWWNNN` (three letters, four-digit
+#   YYWW date, three-digit unit identifier) — distinct enough to warrant
+#   its own pattern.
 #
-# In both shapes only the digits identify the unit; the letter prefix
-# is documented to indicate hardware family. For the standard form the
-# middle letter is preserved on the same principle in case it later
-# turns out to carry signal worth keeping. Zero only the digits so the
-# family info survives for diagnostics.
-_SERIAL_PATTERN = re.compile(rb"([A-Z]{2})\d{4}([A-Z])\d{3}")
-_EMS_SERIAL_PATTERN = re.compile(rb"([A-Z]{3})\d{7}")
+# Redaction preserves the family-prefix letters, the YYWW manufacture
+# date, and (for the standard form) the middle letter, while zeroing only
+# the trailing three-digit unit identifier — that's the install-unique
+# part. The manufacture date is a coarse cohort marker that's useful for
+# diagnostics (hardware-revision / firmware-compatibility windows) and a
+# far weaker signal than the unit digits. The four-digit cluster is read
+# as YYWW: every serial observed parses to a valid week (01–53) and the
+# year digits track known install recency. See #113. The middle letter
+# is preserved on the principle that it may carry signal (constant "G" in
+# every sample so far). Capture group 2 (the date) is kept verbatim.
+_SERIAL_PATTERN = re.compile(rb"([A-Z]{2})(\d{4})([A-Z])\d{3}")
+_EMS_SERIAL_PATTERN = re.compile(rb"([A-Z]{3})(\d{4})\d{3}")
 
 # Some inverter dongles emit their network configuration as an ASCII
 # CSV inside protocol responses — observed as the WO-prefix heartbeat
@@ -66,23 +73,26 @@ def _zero_digits(match: re.Match[bytes]) -> bytes:
 
 
 def redact(frame: bytes) -> bytes:
-    """Replace identifying byte runs with the unit's digits zeroed.
+    """Replace identifying byte runs with their install-unique digits zeroed.
 
     Currently covers:
 
-    - Standard 10-char GE serials (`AA####A###`) — letters preserved,
-      digits zeroed.
-    - EMS plant-controller serials (`AAA#######`) — letters preserved,
-      digits zeroed.
+    - Standard 10-char GE serials (`AAYYWWANNN`) — family prefix, YYWW
+      manufacture date and middle letter preserved; trailing unit digits
+      zeroed.
+    - EMS plant-controller serials (`AAAYYWWNNN`) — family prefix and
+      YYWW date preserved; trailing unit digits zeroed.
     - IPv4 dotted-quads — dots preserved, every digit zeroed. Catches
       LAN topology leaks like the WO-prefix dongle heartbeat (see #100).
 
-    Same length, same byte offsets across all substitutions — frame-level
-    CRC/length fields remain consistent so offline parsing tools still
-    work on the redacted output.
+    Serial redaction retains the manufacture date (a coarse, diagnostically
+    useful cohort marker) while zeroing the install-unique unit identifier;
+    see #113 for the rationale. Same length, same byte offsets across all
+    substitutions — frame-level CRC/length fields remain consistent so
+    offline parsing tools still work on the redacted output.
     """
-    frame = _SERIAL_PATTERN.sub(rb"\g<1>0000\g<2>000", frame)
-    frame = _EMS_SERIAL_PATTERN.sub(rb"\g<1>0000000", frame)
+    frame = _SERIAL_PATTERN.sub(rb"\g<1>\g<2>\g<3>000", frame)
+    frame = _EMS_SERIAL_PATTERN.sub(rb"\g<1>\g<2>000", frame)
     frame = _IPV4_PATTERN.sub(_zero_digits, frame)
     return frame
 
