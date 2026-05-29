@@ -323,13 +323,19 @@ class Client:
                 inverter_count,
             )
             return
-        serials = [ems.get(f"inverter_{i}_serial_number") for i in range(1, inverter_count + 1)]
-        for i, serial in enumerate(serials, start=1):
-            if not (isinstance(serial, str) and _GE_SERIAL_STR_PATTERN.fullmatch(serial)):
+        serials: list[str | None] = []
+        for i in range(1, inverter_count + 1):
+            raw = ems.get(f"inverter_{i}_serial_number")
+            # Decoded serial fields can carry trailing NUL or space padding when the
+            # underlying registers were partially populated; strip before matching so
+            # a padded-but-valid serial doesn't fire a false warning.
+            cleaned = raw.strip("\x00 ") if isinstance(raw, str) else raw
+            serials.append(cleaned)
+            if not (isinstance(cleaned, str) and _GE_SERIAL_STR_PATTERN.fullmatch(cleaned)):
                 _logger.warning(
                     "detect: EMS rollup inverter_%d_serial_number=%r doesn't match GE serial format",
                     i,
-                    serial,
+                    cleaned,
                 )
         _logger.info(
             "detect: EMS rollup cross-check — inverter_count=%d, serials=[%s]",
