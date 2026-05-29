@@ -431,3 +431,73 @@ def test_is_coherent_uses_committed_plus_incoming():
     committed = RegisterCache({IR(10): 0x5341, IR(11): 0x3132, IR(12): 0x3334, IR(13): 0x4735})
     incoming = {IR(14): 0x3637}  # final register arriving now
     assert G.is_coherent(incoming, committed) is True
+
+
+# ---------------------------------------------------------------------------
+# Display precision (derived from register scaling)
+# ---------------------------------------------------------------------------
+
+
+def test_precision_from_pre_conv_scalers():
+    """milli/centi/deci scaling on the pre-converter implies 3/2/1 decimals."""
+    assert RegisterDefinition(Converter.milli, None, IR(0)).precision == 3
+    assert RegisterDefinition(Converter.centi, None, IR(0)).precision == 2
+    assert RegisterDefinition(Converter.deci, None, IR(0)).precision == 1
+
+
+def test_precision_integer_converters_are_zero():
+    assert RegisterDefinition(Converter.uint16, None, IR(0)).precision == 0
+    assert RegisterDefinition(Converter.int16, None, IR(0)).precision == 0
+    assert RegisterDefinition(Converter.uint32, None, IR(0), IR(1)).precision == 0
+
+
+def test_precision_post_conv_wins_over_pre_conv():
+    """When the scaling lives on the post-converter (e.g. uint32 -> deci) it decides."""
+    assert RegisterDefinition(Converter.uint32, Converter.deci, IR(0), IR(1)).precision == 1
+    assert RegisterDefinition(Converter.int16, Converter.centi, IR(0)).precision == 2
+
+
+def test_precision_non_numeric_is_none():
+    """Enums, bools, strings and timeslots have no numeric precision."""
+    assert RegisterDefinition(Converter.bool, None, IR(0)).precision is None
+    assert RegisterDefinition(Converter.string, None, IR(0)).precision is None
+    assert RegisterDefinition(Converter.hex, None, IR(0)).precision is None
+
+
+def test_precision_tuple_converter_unwrapped():
+    """A (converter, *args) tuple resolves to the converter's precision."""
+    assert RegisterDefinition((Converter.duint8, 0), None, IR(0)).precision == 0
+
+
+def test_getter_precision_of_known_and_unknown():
+    class _G(RegisterGetter):
+        REGISTER_LUT = {"volts": RegisterDefinition(Converter.centi, None, IR(0))}
+
+    assert _G.precision_of("volts") == 2
+    assert _G.precision_of("missing") is None  # not in LUT -> caller's default
+
+
+def test_model_precision_of_is_model_specific():
+    """The same attribute can scale differently per model — query the concrete model.
+
+    i_battery is centivolts (2 dp) on single-phase but decivolts (1 dp) on
+    three-phase; this is the whole reason precision is exposed per model.
+    """
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+
+    assert SinglePhaseInverter.precision_of("i_battery") == 2
+    assert ThreePhaseInverter.precision_of("i_battery") == 1
+    # A computed attribute (not register-backed) falls through to None.
+    assert SinglePhaseInverter.precision_of("p_pv") is None
+
+
+def test_model_precision_of_across_models():
+    from givenergy_modbus.model.battery import Battery
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+
+    assert SinglePhaseInverter.precision_of("v_battery") == 2  # centi
+    assert SinglePhaseInverter.precision_of("e_pv_total") == 1  # uint32 -> deci
+    assert Battery.precision_of("soc") == 0  # uint16
+    assert Battery.precision_of("v_out") == 3  # uint32 -> milli
+    assert Battery.precision_of("serial_number") is None  # string

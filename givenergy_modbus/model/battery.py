@@ -1,8 +1,14 @@
 from enum import IntEnum
+from typing import ClassVar
 
 from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model.register import IR, RegisterGetter, is_valid_serial
+from givenergy_modbus.model.register import (
+    IR,
+    RegisterGetter,
+    RegisterMetadataMixin,
+    is_valid_serial,
+)
 from givenergy_modbus.model.register import Converter as DT
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -79,8 +85,10 @@ _BatteryBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Battery(_BatteryBase):  # type: ignore[misc,valid-type]
+class Battery(_BatteryBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy battery data model."""
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = BatteryRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Battery":

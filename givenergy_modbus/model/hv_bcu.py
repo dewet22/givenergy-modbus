@@ -13,11 +13,11 @@ which resolves all addresses before model creation.
 
 import warnings
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model.register import IR, RegisterGetter
+from givenergy_modbus.model.register import IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -66,8 +66,10 @@ _BcuBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Bcu(_BcuBase):  # type: ignore[misc,valid-type]
+class Bcu(_BcuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy HV Battery Control Unit (BCU) cluster-level data."""
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = BcuRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Bcu":

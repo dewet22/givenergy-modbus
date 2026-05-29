@@ -1,11 +1,12 @@
 import math
 import warnings
 from enum import Enum, IntEnum, StrEnum
+from typing import ClassVar
 
 from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.client.commands import _InverterCommands
-from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -637,7 +638,9 @@ _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class SinglePhaseInverter(_SinglePhaseInverterBase, _InverterCommands):  # type: ignore[valid-type,misc]
+class SinglePhaseInverter(  # type: ignore[valid-type,misc]
+    _SinglePhaseInverterBase, _InverterCommands, RegisterMetadataMixin
+):
     """GivEnergy single-phase inverter data model.
 
     Composes the `_InverterCommands` mixin so consumers can call
@@ -647,6 +650,8 @@ class SinglePhaseInverter(_SinglePhaseInverterBase, _InverterCommands):  # type:
     command mixins (three-phase, EMS, pause-mode) will compose in additively
     in later 2.x minors — see #75.
     """
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = SinglePhaseInverterRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "SinglePhaseInverter":

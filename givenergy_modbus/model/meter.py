@@ -1,10 +1,11 @@
 """GivEnergy meter data model."""
 
 from enum import IntEnum
+from typing import ClassVar
 
 from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model.register import IR, MR, RegisterGetter
+from givenergy_modbus.model.register import IR, MR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -65,8 +66,10 @@ _MeterBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Meter(_MeterBase):  # type: ignore[misc,valid-type]
+class Meter(_MeterBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy external meter measurement data (FC 0x04, device addresses 0x01–0x08)."""
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = MeterRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Meter":
@@ -100,8 +103,10 @@ _MeterProductBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class MeterProduct(_MeterProductBase):  # type: ignore[misc,valid-type]
+class MeterProduct(_MeterProductBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy external meter identification data (FC 0x16, device addresses 0x01–0x08)."""
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = MeterProductRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "MeterProduct":
