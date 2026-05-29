@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.6] - 2026-05-29
+
+### ✨ Added
+
+- read EMS rollup at detect time + sanity-check it (#109) ([e0735b3](https://github.com/dewet22/givenergy-modbus/commit/e0735b3d24cd46e5ec33ca42990afc402f390fc6))
+- preserve manufacture-date digits in serial redaction (#116) ([df40686](https://github.com/dewet22/givenergy-modbus/commit/df40686fe94a4edbda5f3a3faaf8c2736dc77616))
+
+### 🐛 Fixed
+
+- detect missing EMS rollup registers, not just missing cache (#111) ([add654b](https://github.com/dewet22/givenergy-modbus/commit/add654b711be51218f3443bb00de363f04c05168))
+
+### 🔧 Maintenance
+
+- run per-PR checks on Linux only, cross-OS on a weekly schedule ([47d6d69](https://github.com/dewet22/givenergy-modbus/commit/47d6d6927ce76e8708781fa0e0b5fc52413fce9f))
+
 ## [2.0.5] - 2026-05-28
 
 ### ✨ Added
