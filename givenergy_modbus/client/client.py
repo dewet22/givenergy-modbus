@@ -360,7 +360,10 @@ class Client:
                     i,
                     cleaned,
                 )
-        _logger.info(
+        # Decoded serials carry identifying information; keep them out of INFO-level
+        # application logs to stay consistent with the wire-capture redaction posture
+        # (`redact()` / PR #99). The per-slot WARNING already surfaces anomalies.
+        _logger.debug(
             "detect: EMS rollup cross-check — inverter_count=%d, serials=[%s]",
             inverter_count,
             ", ".join(repr(s) for s in serials),
