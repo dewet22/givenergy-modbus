@@ -558,7 +558,9 @@ async def test_detect_ems_warns_on_implausible_inverter_count(caplog):
     """If the rollup decodes with inverter_count outside [1, 4], log a warning rather than raise."""
     client = _make_client()
     _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
-    _prime_cache(client, 0x32, {IR(2044): 7})  # inverter_count = 7 — implausible
+    # IR(2040) signals the rollup actually populated; without it the validator
+    # short-circuits on the "no rollup data" path before reaching inverter_count.
+    _prime_cache(client, 0x32, {IR(2040): 1, IR(2044): 7})  # ems_status NORMAL, inverter_count = 7 — implausible
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
@@ -597,19 +599,22 @@ async def test_detect_ems_tolerates_rollup_read_timeout(caplog):
 
 
 @pytest.mark.asyncio
-async def test_detect_ems_warns_on_missing_rollup_cache(caplog):
-    """If the cache at 0x32 is somehow missing after the rollup read, log and continue."""
+async def test_detect_ems_warns_on_missing_rollup_registers(caplog):
+    """If the cache at 0x32 has HR data but no IR rollup registers, log and continue.
+
+    Realistic shape — Step 1's HR(0,60) always populates the cache for 0x32, so the
+    "cache is None" branch is unreachable at runtime. The actual failure mode is the
+    rollup read silently returning no IR data: the cache exists but IR(2040+) is
+    absent, in which case the defaultdict-shaped `RegisterCache` would otherwise
+    decode missing keys as 0 and produce a misleading "implausible inverter_count=0"
+    warning.
+    """
     client = _make_client()
-    # Prime HR(0)/(21) so we resolve to EMS, but clear the cache afterwards to simulate
-    # the response never landing at 0x32.
+    # HR(0)/(21) prime the EMS resolution; we deliberately don't prime IR(2040+) to
+    # simulate the rollup read happening but yielding no data into the cache.
     _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
 
-    async def _send_and_drop(request, *, timeout, retries):
-        # Simulate the rollup read silently going nowhere: drop the 0x32 cache.
-        if request.base_register == 2040 and request.register_count == 55:
-            client.plant.register_caches.pop(0x32, None)
-
-    with patch.object(client, "send_request_and_await_response", side_effect=_send_and_drop):
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
             with caplog.at_level("WARNING", logger="givenergy_modbus.client.client"):
                 await client.detect()
@@ -617,13 +622,20 @@ async def test_detect_ems_warns_on_missing_rollup_cache(caplog):
     assert any("returned no data at 0x32" in rec.message for rec in caplog.records), (
         f"expected no-data warning; got {[r.message for r in caplog.records]}"
     )
+    # Specifically should NOT log the implausible-count message — the early-out
+    # catches the missing-rollup case before reaching that branch.
+    assert not any("implausible inverter_count" in rec.message for rec in caplog.records), (
+        f"unexpected implausible-count warning: {[r.message for r in caplog.records]}"
+    )
 
 
 @pytest.mark.asyncio
 async def test_detect_ems_warns_on_rollup_decode_failure(caplog):
     """A decode exception during the rollup parse is caught and logged, not raised."""
     client = _make_client()
-    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0})
+    # IR(2040) signals the rollup populated; without it the validator short-circuits
+    # before reaching EmsRegisterGetter.build() and the patched failure never fires.
+    _prime_cache(client, 0x32, {HR(0): 0x5001, HR(21): 0, IR(2040): 1})
 
     # Force EmsRegisterGetter(...).build() to raise — simulates a parser regression.
     with patch("givenergy_modbus.client.client.EmsRegisterGetter") as MockGetter:

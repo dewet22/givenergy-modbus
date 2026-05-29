@@ -331,7 +331,12 @@ class Client:
         rest of the discovery flow.
         """
         cache = self.plant.register_caches.get(0x32)
-        if cache is None:
+        # The cache at 0x32 is already populated by Step 1's HR(0,60) read, so `cache is None`
+        # is unreachable in practice — the meaningful check is whether the rollup's IR
+        # registers actually landed. `RegisterCache` is a defaultdict returning 0 for missing
+        # keys, so without this guard a silently-failed rollup read would decode as
+        # inverter_count=0 and mis-fire the implausible-count warning.
+        if cache is None or IR(2040) not in cache:
             _logger.warning("detect: EMS rollup read returned no data at 0x32 — skipping cross-check")
             return
         try:
