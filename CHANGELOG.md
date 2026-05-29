@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a5] - 2026-05-29
+
+### ✨ Added
+
+- read EMS rollup at detect time + sanity-check it (#109) ([918a33a](https://github.com/dewet22/givenergy-modbus/commit/918a33a00fc8356fb5e771526eeb76463f41ae58))
+- preserve manufacture-date digits in serial redaction (#116) ([4661483](https://github.com/dewet22/givenergy-modbus/commit/4661483a6251583ef6b0205d7119ce2a9d95eb37))
+
+### 🔄 Changed
+
+- ⚠️ Breaking: raise RefreshPartiallySucceeded/RefreshFailed on partial/total poll failure (#125) ([3493dd1](https://github.com/dewet22/givenergy-modbus/commit/3493dd1656e98be4c39e264b1608ddf337fb58b9))
+
+### 🐛 Fixed
+
+- detect missing EMS rollup registers, not just missing cache (#111) ([9fb8786](https://github.com/dewet22/givenergy-modbus/commit/9fb8786a15cb59592d1ad11dbc394f1e91f11615))
+- address inverter at its model-specific device address, not 0x32 (#119) ([0200292](https://github.com/dewet22/givenergy-modbus/commit/0200292d238cf2a6dbf86e0612631d389ea31848))
+
+### 🔧 Maintenance
+
+- add EMS/hybrid/AIO topology captures + per-plant READMEs (#120) ([1476beb](https://github.com/dewet22/givenergy-modbus/commit/1476beb82b49a08eafc3fb84093c692f3f8c46fe))
+- run per-PR checks on Linux only, cross-OS on a weekly schedule ([c2bd2e1](https://github.com/dewet22/givenergy-modbus/commit/c2bd2e193858a01fbb6f564b9d23485bc1ce7553))
+- add live device-address probe diagnostics (#119/#124) ([fb001cb](https://github.com/dewet22/givenergy-modbus/commit/fb001cb6027d1d6e5b49a435fee3eac9f90fd26b))
+
 ## [2.1.0a4] - 2026-05-28
 
 ### ✨ Added

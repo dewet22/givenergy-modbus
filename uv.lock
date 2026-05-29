@@ -352,7 +352,7 @@ wheels = [
 
 [[package]]
 name = "givenergy-modbus"
-version = "2.1.0a4"
+version = "2.1.0a5"
 source = { editable = "." }
 dependencies = [
     { name = "crccheck" },
