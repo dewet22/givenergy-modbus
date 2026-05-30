@@ -37,6 +37,18 @@ def test_plant_configuration():
     assert ems.export_power_limit == 5000  # type: ignore[attr-defined]
 
 
+def test_plant_enabled_readback():
+    """plant_enabled is a boolean read-back of HR(2040) — the register set_ems_plant writes."""
+    # enabled (HR2040 != 0)
+    assert Ems.from_register_cache(_cache({HR(2040): 1})).plant_enabled is True
+    # disabled (HR2040 == 0)
+    assert Ems.from_register_cache(_cache({HR(2040): 0})).plant_enabled is False
+    # unread → None, and must not break the "all None when empty" contract
+    empty = Ems.from_register_cache(RegisterCache())
+    assert empty.plant_enabled is None
+    assert "plant_enabled" in empty.model_dump()
+
+
 def test_charge_and_discharge_slots():
     cache = _cache(
         {
