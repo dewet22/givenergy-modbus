@@ -1,11 +1,13 @@
 """GivEnergy EMS (Energy Management System) data model."""
 
+from typing import ClassVar
+
 from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.devices import InverterSummary
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
-from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -113,8 +115,10 @@ _EmsBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Ems(_EmsBase):  # type: ignore[misc,valid-type]
+class Ems(_EmsBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy EMS plant-level data (device address 0x11)."""
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = EmsRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "Ems":

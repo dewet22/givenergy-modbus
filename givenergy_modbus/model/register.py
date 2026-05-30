@@ -164,6 +164,7 @@ _PRECISION_BY_CONVERTER: dict[Any, int] = {
     Converter.uint32: 0,
     Converter.int32: 0,
     Converter.duint8: 0,
+    Converter.bitfield: 0,
 }
 
 

@@ -467,6 +467,19 @@ def test_precision_non_numeric_is_none():
 def test_precision_tuple_converter_unwrapped():
     """A (converter, *args) tuple resolves to the converter's precision."""
     assert RegisterDefinition((Converter.duint8, 0), None, IR(0)).precision == 0
+    # A raw bitfield extracts an integer bit range -> 0 decimals.
+    assert RegisterDefinition((Converter.bitfield, 0, 1), None, IR(0)).precision == 0
+
+
+def test_precision_enum_over_bitfield_is_none():
+    """An enum post-conv over a bitfield pre-conv is non-numeric (precision None).
+
+    EMS status registers extract a bitfield then decode it to a Status enum;
+    the enum wins, so they have no numeric precision despite the integer bitfield.
+    """
+    from givenergy_modbus.model.ems import Ems
+
+    assert Ems.precision_of("meter_1_status") is None
 
 
 def test_getter_precision_of_known_and_unknown():
