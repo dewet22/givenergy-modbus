@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a10] - 2026-05-30
+
+### ✨ Added
+
+- add EMS-named export slot setters for API parity ([341a595](https://github.com/dewet22/givenergy-modbus/commit/341a59590fc8927d0cd2ff647c5e1514b0c7a16e))
+
 ## [2.1.0a9] - 2026-05-30
 
 ### 🐛 Fixed
