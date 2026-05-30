@@ -474,6 +474,43 @@ def test_set_ems_slot_none_clears():
     ]
 
 
+def test_set_ems_slot_endpoints_write_single_registers():
+    """Per-endpoint EMS setters write one register each.
+
+    For consumers (HA) that model slot start/end as independent entities — parity
+    with the inverter slot API.
+    """
+    # charge slot 1 = (2053, 2054)
+    assert commands.set_ems_charge_slot_start(1, dt_time(2, 0)) == [WriteHoldingRegisterRequest(2053, 200)]
+    assert commands.set_ems_charge_slot_end(1, dt_time(5, 30)) == [WriteHoldingRegisterRequest(2054, 530)]
+    # discharge slot 3 = (2050, 2051)
+    assert commands.set_ems_discharge_slot_start(3, dt_time(16, 0)) == [WriteHoldingRegisterRequest(2050, 1600)]
+    assert commands.set_ems_discharge_slot_end(3, dt_time(19, 0)) == [WriteHoldingRegisterRequest(2051, 1900)]
+    # None clears the single endpoint
+    assert commands.set_ems_charge_slot_start(1, None) == [WriteHoldingRegisterRequest(2053, 0)]
+
+
+def test_set_ems_slot_endpoints_compose_to_whole_slot():
+    """Start + end endpoints together produce the same frames as the whole-slot setter."""
+    ts = TimeSlot.from_components(1, 15, 6, 45)
+    composed = commands.set_ems_charge_slot_start(2, ts.start) + commands.set_ems_charge_slot_end(2, ts.end)
+    assert composed == commands.set_ems_charge_slot(2, ts)
+
+
+def test_set_ems_slot_endpoint_index_validation():
+    """EMS endpoint setters reject slot indices outside [1-3] (EMS_SLOTS has 3 slots)."""
+    for fn in (
+        commands.set_ems_charge_slot_start,
+        commands.set_ems_charge_slot_end,
+        commands.set_ems_discharge_slot_start,
+        commands.set_ems_discharge_slot_end,
+    ):
+        with pytest.raises(ValueError, match="slot index"):
+            fn(0, dt_time(1, 0))
+        with pytest.raises(ValueError, match="slot index"):
+            fn(4, dt_time(1, 0))
+
+
 def test_set_ems_target_soc():
     assert commands.set_ems_charge_target_soc(1, 80) == [WriteHoldingRegisterRequest(2055, 80)]
     assert commands.set_ems_discharge_target_soc(3, 20) == [WriteHoldingRegisterRequest(2052, 20)]
