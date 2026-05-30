@@ -559,6 +559,20 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Input Registers, block 0-59
         #
+        # Power-register physical nodes (single-phase Hybrid, empirically established
+        # against SA2114G047 — see docs/usage.md "Power register measurement points"):
+        # the instantaneous "grid" registers do NOT all measure the same point.
+        #
+        #   PV ─DC─┐                       ┌─► house load            IR(42) p_load_demand
+        #          ├─[INVERTER]─AC─busbar──┤
+        #   Bat ─DC┘   terminal            └─► grid CT ─► meter      IR(30) p_grid_out
+        #          IR(24)/IR(43)/IR(58)         boundary
+        #
+        # IR(24) p_grid_out_ph1, IR(43) p_grid_apparent, IR(58) i_grid_port → INVERTER
+        #   AC terminal (real W / apparent VA / current at the busbar).
+        # IR(30) p_grid_out → EXTERNAL grid CT net flow (the meter boundary).
+        # IR(42) p_load_demand → house load, independently sensed (not IR24−IR30).
+        # The shared "grid" prefix hides that IR(24)≠IR(30) are different nodes.
         "status": Def(C.uint16, Status, IR(0)),
         "v_pv1": Def(C.deci, None, IR(1), min=0.0, max=2000.0),
         "v_pv2": Def(C.deci, None, IR(2), min=0.0, max=2000.0),
@@ -580,11 +594,16 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "p_pv2": Def(C.uint16, None, IR(20), max=50000),
         "e_grid_out_total": Def(C.uint32, C.deci, IR(21), IR(22)),
         "e_solar_diverter": Def(C.deci, None, IR(23)),
+        # Inverter AC grid-terminal real power (flow onto the busbar), +ve = delivering.
+        # NOT the external grid CT despite the "grid_out" name — see the node note above.
         "p_grid_out_ph1": Def(C.int16, None, IR(24)),
         "e_grid_out_day": Def(C.deci, None, IR(25)),
         "e_grid_in_day": Def(C.deci, None, IR(26)),
         "e_inverter_in_total": Def(C.uint32, C.deci, IR(27), IR(28)),
         "e_discharge_year": Def(C.deci, None, IR(29)),
+        # External grid-CT net flow at the meter boundary, +ve = export / −ve = import.
+        # A DIFFERENT physical node from IR(24): IR(30) is the grid clamp, IR(24) is the
+        # inverter terminal. (GivTCP's `grid_power` reads this same register.)
         "p_grid_out": Def(C.int16, None, IR(30)),
         "p_backup": Def(C.uint16, None, IR(31), max=50000),  # EPS
         "e_grid_in_total": Def(C.uint32, C.deci, IR(32), IR(33)),
@@ -595,7 +614,11 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "countdown": Def(C.uint16, None, IR(38)),
         "fault_code": Def(C.uint32, (C.hex, 8), IR(39), IR(40)),
         "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
+        # House load / consumption at the busbar, independently sensed — empirically NOT
+        # a derived IR(24)−IR(30) identity (residual non-zero in 68% of samples).
         "p_load_demand": Def(C.uint16, None, IR(42), max=50000),
+        # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
+        # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
         "e_inverter_out_day": Def(C.deci, None, IR(44)),
         "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
@@ -614,6 +637,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
         "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
+        # Inverter AC grid-terminal current; pairs with IR(24)/IR(43) (I×V ≈ IR43 VA),
+        # the inverter terminal — not the external CT. Same node as IR(24).
         "i_grid_port": Def(C.centi, None, IR(58)),
         "battery_soc": Def(C.uint16, None, IR(59), min=0, max=100),
         #

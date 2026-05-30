@@ -91,6 +91,38 @@ async def main():
 > removed in 3.0 — own the loop as above. They now also propagate
 > `RefreshPartiallySucceeded` / `RefreshFailed`.
 
+## Power register measurement points
+
+The instantaneous "grid" power registers on a single-phase Hybrid do **not** all
+measure the same physical point — the shared `grid` prefix is misleading. There are
+two distinct nodes: the inverter's own AC terminal (where it connects to the consumer
+unit's busbar) and the external grid CT (the clamp at the meter boundary).
+
+```
+   PV ─DC─┐                       ┌─► house load            p_load_demand  (IR42)
+          ├─[INVERTER]─AC─busbar──┤
+   Bat ─DC┘   terminal            └─► grid CT ─► meter      p_grid_out     (IR30)
+        p_grid_out_ph1 (IR24)          boundary
+        p_grid_apparent (IR43)
+        i_grid_port (IR58)
+```
+
+| Attribute | Node | Notes |
+|---|---|---|
+| `p_grid_out_ph1` (IR24) | **Inverter AC terminal** real power | onto the busbar; +ve = delivering. *Not* the grid CT despite the name |
+| `p_grid_apparent` (IR43) | **Inverter AC terminal** apparent power (VA) | pairs with IR24 → sensible power factor |
+| `i_grid_port` (IR58) | **Inverter AC terminal** current | pairs with IR24/IR43 |
+| `p_grid_out` (IR30) | **External grid CT** net flow | +ve = export, −ve = import; the meter boundary |
+| `p_load_demand` (IR42) | House load at the busbar | independently sensed, not derived from IR24−IR30 |
+| `p_battery` (IR52) | Battery DC port | +ve = discharge, −ve = charge |
+
+On a single-phase unit `p_grid_out_ph1` and `p_grid_out` are related but distinct
+(per-phase inverter throughput vs net grid flow), so `inverter_terminal = load +
+grid_export` (IR24 = IR42 + IR30) holds at the busbar. These node assignments were
+established empirically against a single-phase Hybrid Gen 1; the three-phase layout
+(whether `p_grid_out` aggregates the inverter phases or stays a separate CT register)
+is not yet confirmed.
+
 ## Tuning timeouts and retries
 
 `refresh`, `load_config` and `one_shot_command` all accept the same three knobs:
