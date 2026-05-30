@@ -2,7 +2,7 @@ import logging
 import re
 from datetime import datetime
 from json import JSONEncoder
-from typing import Any, get_type_hints
+from typing import Any, ClassVar, get_type_hints
 
 from pydantic import BaseModel, ConfigDict
 
@@ -150,6 +150,24 @@ class Converter:
         return prefix + digits
 
 
+# Decimal places implied by each numeric converter's scaling. Used to derive a
+# register's display precision (see RegisterDefinition.precision): deci/centi/
+# milli divide by 10/100/1000, the integer converters yield whole numbers.
+# Converters absent from this map (enums, bools, strings, timeslots, datetimes,
+# and any bespoke converter) are treated as non-numeric — precision None.
+_PRECISION_BY_CONVERTER: dict[Any, int] = {
+    Converter.milli: 3,
+    Converter.centi: 2,
+    Converter.deci: 1,
+    Converter.uint16: 0,
+    Converter.int16: 0,
+    Converter.uint32: 0,
+    Converter.int32: 0,
+    Converter.duint8: 0,
+    Converter.bitfield: 0,
+}
+
+
 class RegisterDefinition(BaseModel):
     """Specifies how to convert raw register values into their actual representation.
 
@@ -196,6 +214,24 @@ class RegisterDefinition(BaseModel):
         # places that look up by register tuple.
         return hash(self.registers)
 
+    @property
+    def precision(self) -> int | None:
+        """Decimal places implied by this register's numeric scaling.
+
+        Returns 0 for integer quantities, 1/2/3 for deci-/centi-/milli-scaled
+        floats, and None for non-numeric registers (enums, bools, strings,
+        timeslots) or any converter without a defined scaling. The post-
+        converter wins when present — it produces the final value — mirroring
+        the resolution order used for return-type inference.
+        """
+        # Converters are stored as plain functions (Converter.<name> resolves
+        # through the staticmethod descriptor at Def-construction time), and a
+        # post-conv may carry a (converter, *args) tuple — unwrap to the callable.
+        conv = self.post_conv or self.pre_conv
+        if isinstance(conv, tuple):
+            conv = conv[0]
+        return _PRECISION_BY_CONVERTER.get(conv)
+
 
 _SERIAL_PATTERN = re.compile(r"[A-Z]{2}\d{4}[A-Z]\d{3}")
 
@@ -220,6 +256,16 @@ class RegisterGetter:
 
     def __init__(self, obj: Any) -> None:
         self._obj = obj
+
+    @classmethod
+    def precision_of(cls, name: str) -> int | None:
+        """Decimal places for a register-backed attribute (None if non-numeric/unknown).
+
+        Returns None for attributes not in the LUT (e.g. computed/aggregate
+        values), so callers can fall back to their own default.
+        """
+        defn = cls.REGISTER_LUT.get(name)
+        return defn.precision if defn is not None else None
 
     def get(self, key: str, default: Any = None) -> Any:
         """Return a named register's value, after pre- and post-conversion."""
@@ -358,6 +404,30 @@ class RegisterGetter:
             return Any
 
         return {k: (return_type(v) | None, None) for k, v in cls.REGISTER_LUT.items()}
+
+
+class RegisterMetadataMixin:
+    """Exposes register metadata on a device model built from a RegisterGetter.
+
+    A model instance is decoupled from the getter that built it (the LUT lives
+    on the getter class), so callers holding e.g. an ``Inverter`` can't reach
+    the register definitions directly. Concrete models set ``REGISTER_GETTER``
+    to their getter and gain queries like :meth:`precision_of` that resolve
+    against that getter's LUT. Composed as a plain mixin — same pattern as the
+    command mixins — so it adds no pydantic fields.
+    """
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]]
+
+    @classmethod
+    def precision_of(cls, name: str) -> int | None:
+        """Decimal places for ``name`` per its register scaling (None if non-numeric/unknown).
+
+        Precision is model-specific: the same attribute may scale differently
+        across models (e.g. ``i_battery`` is centivolts on single-phase but
+        decivolts on three-phase), so always query the concrete model.
+        """
+        return cls.REGISTER_GETTER.precision_of(name)
 
 
 class RegisterEncoder(JSONEncoder):

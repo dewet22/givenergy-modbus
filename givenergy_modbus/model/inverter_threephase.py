@@ -1,6 +1,7 @@
 """GivEnergy three-phase inverter data model."""
 
 import warnings
+from typing import ClassVar
 
 from pydantic import ConfigDict, computed_field, create_model
 
@@ -17,7 +18,7 @@ from givenergy_modbus.model.inverter import (
     Status,
     _battery_max_power,
 )
-from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
 
@@ -477,13 +478,17 @@ _ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
 from givenergy_modbus.model.slot_map import THREE_PHASE_SLOTS  # noqa: E402
 
 
-class ThreePhaseInverter(_ThreePhaseInverterBase, _InverterCommands):  # type: ignore[valid-type,misc]
+class ThreePhaseInverter(  # type: ignore[valid-type,misc]
+    _ThreePhaseInverterBase, _InverterCommands, RegisterMetadataMixin
+):
     """GivEnergy three-phase inverter data model.
 
     Composes the `_InverterCommands` mixin (same base mixin used by
     `SinglePhaseInverter`). Three-phase-specific command mixins land later in
     2.x once the register ambiguities flagged on #75 are resolved.
     """
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = ThreePhaseInverterRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache) -> "ThreePhaseInverter":
