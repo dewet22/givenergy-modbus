@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a6] - 2026-05-30
+
+### ✨ Added
+
+- expose per-attribute display precision derived from register scaling (#129) ([2dda112](https://github.com/dewet22/givenergy-modbus/commit/2dda1128d9dad66c2ff6dfec1bb6814e8955c70d))
+
 ## [2.1.0a5] - 2026-05-29
 
 ### ✨ Added
