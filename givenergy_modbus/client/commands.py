@@ -404,6 +404,26 @@ def set_ems_discharge_target_soc(idx: int, target_soc: int) -> list[TransparentR
     ]
 
 
+def set_ems_export_slot(idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set an EMS plant export time slot by index (1-3), or clear it if None.
+
+    EMS export slots are the same HR(2062-2069) registers as `set_export_slot`
+    (export slots are EMS-only and already target the EMS address 0x11) — this is
+    the EMS-named alias for parity with `set_ems_charge_slot`/`set_ems_discharge_slot`.
+    """
+    return set_export_slot(idx, timeslot)
+
+
+def set_ems_export_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the start of EMS plant export slot idx (1-3), or clear it if None."""
+    return set_export_slot_start(idx, t)
+
+
+def set_ems_export_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the end of EMS plant export slot idx (1-3), or clear it if None."""
+    return set_export_slot_end(idx, t)
+
+
 def set_ems_export_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant export slot idx (1-3)."""
     if not 1 <= idx <= 3:

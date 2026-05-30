@@ -260,6 +260,9 @@ case-by-case as model-specific mixins land in later 2.x minors.
 | `set_ems_discharge_slot_end(idx, t)` | Set just the end of EMS discharge slot `idx` |
 | `set_ems_charge_target_soc(idx, soc)` | EMS charge slot `idx` target SOC (0–100%) |
 | `set_ems_discharge_target_soc(idx, soc)` | EMS discharge slot `idx` target SOC (0–100%) |
+| `set_ems_export_slot(idx, timeslot)` | Set EMS plant export slot `idx` (1–3), or clear if `None` |
+| `set_ems_export_slot_start(idx, t)` | Set just the start of EMS export slot `idx` |
+| `set_ems_export_slot_end(idx, t)` | Set just the end of EMS export slot `idx` |
 | `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) |
 | `set_ems_export_power_limit(watts)` | EMS plant export power limit (watts) |
 
