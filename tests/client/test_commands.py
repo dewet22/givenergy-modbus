@@ -521,6 +521,46 @@ def test_set_ems_export_power_limit():
     assert commands.set_ems_export_power_limit(3600) == [WriteHoldingRegisterRequest(2071, 3600)]
 
 
+def test_set_ems_export_slot_uses_ems_registers():
+    ts = TimeSlot.from_components(0, 0, 4, 30)
+    # EMS export slot 1 = (2062, 2063), slot 3 = (2068, 2069)
+    assert commands.set_ems_export_slot(1, ts) == [
+        WriteHoldingRegisterRequest(2062, 0),
+        WriteHoldingRegisterRequest(2063, 430),
+    ]
+    assert commands.set_ems_export_slot_start(3, dt_time(1, 0)) == [WriteHoldingRegisterRequest(2068, 100)]
+    assert commands.set_ems_export_slot_end(3, dt_time(2, 0)) == [WriteHoldingRegisterRequest(2069, 200)]
+
+
+def test_set_ems_export_slot_is_alias_of_export_slot():
+    """The EMS-named export setters are aliases of set_export_slot_* (same EMS registers)."""
+    ts = TimeSlot.from_components(1, 15, 6, 45)
+    assert commands.set_ems_export_slot(2, ts) == commands.set_export_slot(2, ts)
+    assert commands.set_ems_export_slot_start(2, ts.start) == commands.set_export_slot_start(2, ts.start)
+    assert commands.set_ems_export_slot_end(2, ts.end) == commands.set_export_slot_end(2, ts.end)
+
+
+def test_set_ems_export_slot_none_clears():
+    assert commands.set_ems_export_slot(1, None) == [
+        WriteHoldingRegisterRequest(2062, 0),
+        WriteHoldingRegisterRequest(2063, 0),
+    ]
+
+
+def test_set_ems_export_slot_index_validation():
+    for fn in (commands.set_ems_export_slot_start, commands.set_ems_export_slot_end):
+        with pytest.raises(ValueError, match="slot index"):
+            fn(0, dt_time(1, 0))
+        with pytest.raises(ValueError, match="slot index"):
+            fn(4, dt_time(1, 0))
+    # whole-slot setter validates the index too (via set_export_slot)
+    ts = TimeSlot.from_components(0, 0, 1, 0)
+    with pytest.raises(ValueError, match="slot index"):
+        commands.set_ems_export_slot(0, ts)
+    with pytest.raises(ValueError, match="slot index"):
+        commands.set_ems_export_slot(4, ts)
+
+
 def test_set_ems_target_soc_validation():
     for fn in (
         commands.set_ems_charge_target_soc,
