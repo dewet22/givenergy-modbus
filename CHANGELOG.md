@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a7] - 2026-05-30
+
+### ✨ Added
+
+- EMS plant-level charge/discharge/export write support ([925cdc2](https://github.com/dewet22/givenergy-modbus/commit/925cdc2478e1fca3d3b457050e8d8e2c87be694b))
+
+### 🐛 Fixed
+
+- recognise EMS serial format in is_valid_serial ([014095d](https://github.com/dewet22/givenergy-modbus/commit/014095d2ca5eeb1eaa5cf1c48e94d87801ee8bf6))
+
+### 🔧 Maintenance
+
+- golden-master classification/topology checks over captures ([8d55372](https://github.com/dewet22/givenergy-modbus/commit/8d55372b7a087dea9111aaae28e705c262e41f07))
+
 ## [2.1.0a6] - 2026-05-30
 
 ### ✨ Added
