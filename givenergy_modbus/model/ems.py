@@ -2,7 +2,7 @@
 
 from typing import ClassVar
 
-from pydantic import ConfigDict, create_model
+from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.model.devices import InverterSummary
 from givenergy_modbus.model.inverter import Status
@@ -128,6 +128,20 @@ class Ems(_EmsBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     def is_valid(self) -> bool:
         """Try to detect if an EMS is present based on its attributes."""
         return self.ems_status is not None  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def plant_enabled(self) -> bool | None:
+        """Whether plant-level EMS ("Flexi EMS") control is enabled.
+
+        Boolean read-back of HR(2040), the register ``set_ems_plant()`` writes —
+        so this reflects the master-enable toggle's on/off state, suitable for
+        backing a switch entity. ``plant_status`` decodes the *same* register as
+        a coarse :class:`Status` enum; this is the dedicated boolean view (any
+        non-zero value = enabled). ``None`` if HR(2040) hasn't been read yet.
+        """
+        raw = self.plant_status  # type: ignore[attr-defined]
+        return None if raw is None else bool(raw)
 
     @property
     def managed_inverters(self) -> list[InverterSummary]:
