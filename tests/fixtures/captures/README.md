@@ -195,3 +195,13 @@ plant is self-documenting rather than growing a section here:
    and any anomalies (decoder errors, unusual frames). Don't include
    contributor-identifying information. Extend the battery-model table
    above if a new battery family appears.
+5. **Add golden-master coverage.** A new topology scenario must also gain
+   at least one test case in `tests/model/test_fixture_golden_master.py`
+   that replays it through the decode machinery and pins the expected
+   classification + topology (model, inverter address, EMS rollup, HV
+   stack, batteries — whatever the plant exercises). This is the whole
+   point of committing real captures: they're a standing regression
+   net, so a fixture without a golden-master assertion is dead weight
+   that can't catch drift. (Register-landing assertions in
+   `test_addressing_from_captures.py` are complementary, not a
+   substitute.)
