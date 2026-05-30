@@ -234,18 +234,22 @@ class RegisterDefinition(BaseModel):
 
 
 _SERIAL_PATTERN = re.compile(r"[A-Z]{2}\d{4}[A-Z]\d{3}")
+# EMS controllers use a 3-letter prefix followed by 7 digits (e.g. EMS2522018) and carry
+# no middle letter — a legitimate format that just isn't the inverter AA0000A000 shape.
+_EMS_SERIAL_PATTERN = re.compile(r"[A-Z]{3}\d{7}")
 
 
 def is_valid_serial(s: str | None) -> bool:
     """Return True if s looks like a real GivEnergy serial number (exactly 10 [A-Z0-9] chars).
 
-    Also logs a warning when the value passes the length/charset gate but does not match the
-    expected AA0000A000 pattern — preserving compatibility with unknown real-world variants.
+    Logs a warning when the value passes the length/charset gate but matches neither the
+    inverter (AA0000A000) nor the EMS (EMSYYWWNNN) pattern — surfacing genuinely-unknown
+    real-world variants without crying wolf on every EMS poll.
     """
     if not (s and len(s) == 10 and s.isalnum() and s == s.upper()):
         return False
-    if not _SERIAL_PATTERN.fullmatch(s):
-        _logger.warning("serial number %r is valid but does not match expected pattern AA0000A000", s)
+    if not (_SERIAL_PATTERN.fullmatch(s) or _EMS_SERIAL_PATTERN.fullmatch(s)):
+        _logger.warning("serial number %r is valid but matches no known GivEnergy pattern", s)
     return True
 
 
