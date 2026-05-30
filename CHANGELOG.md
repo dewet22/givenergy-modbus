@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a8] - 2026-05-30
+
+### ✨ Added
+
+- add per-endpoint EMS slot setters for API parity ([eea1e78](https://github.com/dewet22/givenergy-modbus/commit/eea1e78bdf29e961b357a50a526530306b79842a))
+
 ## [2.1.0a7] - 2026-05-30
 
 ### ✨ Added
