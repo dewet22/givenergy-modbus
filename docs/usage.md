@@ -214,7 +214,11 @@ case-by-case as model-specific mixins land in later 2.x minors.
 | `set_pause_slot_end(t)` | Set just the end of the battery pause slot |
 | `set_ems_plant(enabled)` | Enable/disable EMS plant control |
 | `set_ems_charge_slot(idx, timeslot)` | Set EMS plant charge slot `idx` (1–3), or clear if `None` |
+| `set_ems_charge_slot_start(idx, t)` | Set just the start of EMS charge slot `idx` |
+| `set_ems_charge_slot_end(idx, t)` | Set just the end of EMS charge slot `idx` |
 | `set_ems_discharge_slot(idx, timeslot)` | Set EMS plant discharge slot `idx` (1–3), or clear if `None` |
+| `set_ems_discharge_slot_start(idx, t)` | Set just the start of EMS discharge slot `idx` |
+| `set_ems_discharge_slot_end(idx, t)` | Set just the end of EMS discharge slot `idx` |
 | `set_ems_charge_target_soc(idx, soc)` | EMS charge slot `idx` target SOC (0–100%) |
 | `set_ems_discharge_target_soc(idx, soc)` | EMS discharge slot `idx` target SOC (0–100%) |
 | `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) |

@@ -357,11 +357,31 @@ def set_ems_charge_slot(idx: int, timeslot: TimeSlot | None) -> list[Transparent
     return set_charge_slot(idx, timeslot, EMS_SLOTS)
 
 
+def set_ems_charge_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the start of EMS plant charge slot idx (1-3), or clear it if None."""
+    return set_charge_slot_start(idx, t, EMS_SLOTS)
+
+
+def set_ems_charge_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the end of EMS plant charge slot idx (1-3), or clear it if None."""
+    return set_charge_slot_end(idx, t, EMS_SLOTS)
+
+
 def set_ems_discharge_slot(idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
     """Set an EMS plant discharge time slot by index (1-3), or clear it if None."""
     if timeslot is None:
         return reset_discharge_slot(idx, EMS_SLOTS)
     return set_discharge_slot(idx, timeslot, EMS_SLOTS)
+
+
+def set_ems_discharge_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the start of EMS plant discharge slot idx (1-3), or clear it if None."""
+    return set_discharge_slot_start(idx, t, EMS_SLOTS)
+
+
+def set_ems_discharge_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set just the end of EMS plant discharge slot idx (1-3), or clear it if None."""
+    return set_discharge_slot_end(idx, t, EMS_SLOTS)
 
 
 def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
