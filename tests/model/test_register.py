@@ -356,13 +356,22 @@ def test_is_valid_serial_accepts_alphanumeric():
     assert is_valid_serial("BG1234G567")
 
 
+def test_is_valid_serial_accepts_ems_format_without_warning(caplog):
+    """EMS controller serials (3-letter prefix + 7 digits) are valid and must not warn."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.register"):
+        assert is_valid_serial("EMS2522018") is True
+    assert not any("no known GivEnergy pattern" in r.message for r in caplog.records)
+
+
 def test_is_valid_serial_warns_on_unexpected_pattern(caplog):
     import logging
 
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.register"):
-        result = is_valid_serial("AAAAAAAAAA")  # 10 alnum uppercase but not AA0000A000
+        result = is_valid_serial("AAAAAAAAAA")  # 10 alnum uppercase, matches neither known pattern
     assert result is True
-    assert "does not match expected pattern" in caplog.text
+    assert "matches no known GivEnergy pattern" in caplog.text
 
 
 def test_is_valid_serial_rejects_wrong_length():
