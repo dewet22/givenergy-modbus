@@ -672,11 +672,17 @@ class Client:
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
-    async def refresh(self, timeout: float = 1.0, retries: int = 0, retry_delay: float = 0.5) -> Plant:
+    async def refresh(self, timeout: float = 2.0, retries: int = 1, retry_delay: float = 0.5) -> Plant:
         """Read IR measurement blocks for all known devices.
 
         Returns the populated plant on full success. On partial/total read
         failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
+
+        The ``timeout=2.0, retries=1`` defaults are tuned for a contended bus: the
+        inverter serialises requests, so when other clients (GivTCP, the vendor app,
+        Predbat) poll the same unit a tighter budget produces spurious timeouts even
+        though the device is responsive (#132). Pass a tighter budget if you own the
+        bus exclusively and want genuine failures surfaced faster.
         """
         caps = self.plant.capabilities
         if caps is None:
@@ -724,8 +730,8 @@ class Client:
         self,
         full_refresh: bool = True,
         max_batteries: int = 5,
-        timeout: float = 1.0,
-        retries: int = 0,
+        timeout: float = 2.0,
+        retries: int = 1,
         retry_delay: float = 0.5,
     ) -> Plant:
         """Deprecated orchestrator — run ``detect()`` once, then drive your own loop.
@@ -763,8 +769,8 @@ class Client:
         handler: Callable | None = None,
         refresh_period: float = 15.0,
         max_batteries: int = 5,
-        timeout: float = 1.0,
-        retries: int = 0,
+        timeout: float = 2.0,
+        retries: int = 1,
         retry_delay: float = 0.5,
         passive: bool = False,
     ):

@@ -242,6 +242,20 @@ async def test_refresh_plant_skips_load_config_when_not_full_refresh():
     mock_rf.assert_awaited_once_with(timeout=2.0, retries=1, retry_delay=0.3)
 
 
+async def test_refresh_default_budget_tuned_for_contended_bus():
+    """refresh() defaults to timeout=2.0s / retries=1 — the contended-bus tuning (#132).
+
+    The hot poll path used to default to 1.0s / 0 retries, which produced spurious
+    timeouts when other clients (GivTCP, the app, Predbat) share the inverter bus.
+    """
+    client = _client_with_caps(Model.HYBRID)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_reads:
+        await client.refresh()
+    _, kwargs = mock_reads.call_args
+    assert kwargs["timeout"] == 2.0
+    assert kwargs["retries"] == 1
+
+
 async def test_probe_passes_zero_retry_delay():
     """_probe() must explicitly use retry_delay=0.
 

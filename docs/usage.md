@@ -127,10 +127,17 @@ is not yet confirmed.
 
 `refresh`, `load_config` and `one_shot_command` all accept the same three knobs:
 
-- `timeout` (default 1.0s for refresh, 1.5s for `one_shot_command`) — how long to wait for
-  each response.
-- `retries` (default 0) — number of additional attempts after a timeout.
+- `timeout` — how long to wait for each response. Defaults: `refresh` 2.0s, `load_config`
+  2.0s, `one_shot_command` 1.5s.
+- `retries` — number of additional attempts after a timeout. Defaults: `refresh` 1,
+  `load_config` 3, `one_shot_command` 0.
 - `retry_delay` (default 0.5s) — seconds to wait between a timed-out attempt and the next.
+
+`refresh` defaults to `timeout=2.0, retries=1` because the inverter serialises requests:
+when other clients (GivTCP, the vendor app, Predbat) poll the same unit, a tighter budget
+loses the race and produces spurious "register read failed" timeouts even though the
+device is responsive (#132). If you own the bus exclusively and want genuine failures
+surfaced faster, pass a tighter `timeout`/`retries`.
 
 The retry delay exists because some inverters exhibit multi-second silent windows where
 they stop responding to anything; firing the retry immediately tends to land it inside
