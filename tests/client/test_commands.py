@@ -435,3 +435,92 @@ async def test_set_calibrate_battery_soc():
         commands.set_calibrate_battery_soc(2)
     with pytest.raises(ValueError, match="Battery calibration mode"):
         commands.set_calibrate_battery_soc(4)
+
+
+# --- EMS plant-level scheduling (#130) -----------------------------------
+
+
+def test_set_ems_charge_slot_uses_ems_registers():
+    ts = TimeSlot.from_components(2, 0, 5, 30)
+    # EMS_SLOTS charge slot 1 = (2053, 2054)
+    assert commands.set_ems_charge_slot(1, ts) == [
+        WriteHoldingRegisterRequest(2053, 200),
+        WriteHoldingRegisterRequest(2054, 530),
+    ]
+    # slot 3 = (2059, 2060)
+    assert commands.set_ems_charge_slot(3, ts) == [
+        WriteHoldingRegisterRequest(2059, 200),
+        WriteHoldingRegisterRequest(2060, 530),
+    ]
+
+
+def test_set_ems_discharge_slot_uses_ems_registers():
+    ts = TimeSlot.from_components(16, 0, 19, 0)
+    # EMS_SLOTS discharge slot 1 = (2044, 2045)
+    assert commands.set_ems_discharge_slot(1, ts) == [
+        WriteHoldingRegisterRequest(2044, 1600),
+        WriteHoldingRegisterRequest(2045, 1900),
+    ]
+
+
+def test_set_ems_slot_none_clears():
+    assert commands.set_ems_charge_slot(2, None) == [
+        WriteHoldingRegisterRequest(2056, 0),
+        WriteHoldingRegisterRequest(2057, 0),
+    ]
+    assert commands.set_ems_discharge_slot(2, None) == [
+        WriteHoldingRegisterRequest(2047, 0),
+        WriteHoldingRegisterRequest(2048, 0),
+    ]
+
+
+def test_set_ems_target_soc():
+    assert commands.set_ems_charge_target_soc(1, 80) == [WriteHoldingRegisterRequest(2055, 80)]
+    assert commands.set_ems_discharge_target_soc(3, 20) == [WriteHoldingRegisterRequest(2052, 20)]
+    assert commands.set_ems_export_target_soc(2, 100) == [WriteHoldingRegisterRequest(2067, 100)]
+
+
+def test_set_ems_export_power_limit():
+    assert commands.set_ems_export_power_limit(3600) == [WriteHoldingRegisterRequest(2071, 3600)]
+
+
+def test_set_ems_target_soc_validation():
+    for fn in (
+        commands.set_ems_charge_target_soc,
+        commands.set_ems_discharge_target_soc,
+        commands.set_ems_export_target_soc,
+    ):
+        with pytest.raises(ValueError, match="must be in"):
+            fn(1, 101)
+        with pytest.raises(ValueError, match="must be in"):
+            fn(0, 50)  # bad slot index
+
+
+def test_set_ems_export_power_limit_bounds():
+    with pytest.raises(ValueError, match=r"\[0-65535\]"):
+        commands.set_ems_export_power_limit(-1)
+    with pytest.raises(ValueError, match=r"\[0-65535\]"):
+        commands.set_ems_export_power_limit(70000)  # exceeds 16-bit register
+    assert commands.set_ems_export_power_limit(65535) == [WriteHoldingRegisterRequest(2071, 65535)]
+
+
+def test_ems_commands_are_write_safe():
+    """Every EMS command's register must be in WRITE_SAFE_REGISTERS.
+
+    Otherwise WriteHoldingRequest.ensure_valid_state() would reject it at send time.
+    """
+    from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
+
+    ts = TimeSlot.from_components(1, 0, 2, 0)
+    reqs: list = []
+    for idx in (1, 2, 3):
+        reqs += commands.set_ems_charge_slot(idx, ts)
+        reqs += commands.set_ems_discharge_slot(idx, ts)
+        reqs += commands.set_ems_charge_target_soc(idx, 50)
+        reqs += commands.set_ems_discharge_target_soc(idx, 50)
+        reqs += commands.set_ems_export_target_soc(idx, 50)
+        reqs += commands.set_export_slot(idx, ts)
+    reqs += commands.set_ems_export_power_limit(2000)
+    for r in reqs:
+        assert r.register in WRITE_SAFE_REGISTERS, f"register {r.register} not write-safe"
+        assert r.device_address == 0x11, f"EMS write to {r.register} should target 0x11"

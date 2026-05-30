@@ -212,6 +212,20 @@ case-by-case as model-specific mixins land in later 2.x minors.
 | `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) |
 | `set_pause_slot_start(t)` | Set just the start of the battery pause slot |
 | `set_pause_slot_end(t)` | Set just the end of the battery pause slot |
+| `set_ems_plant(enabled)` | Enable/disable EMS plant control |
+| `set_ems_charge_slot(idx, timeslot)` | Set EMS plant charge slot `idx` (1–3), or clear if `None` |
+| `set_ems_discharge_slot(idx, timeslot)` | Set EMS plant discharge slot `idx` (1–3), or clear if `None` |
+| `set_ems_charge_target_soc(idx, soc)` | EMS charge slot `idx` target SOC (0–100%) |
+| `set_ems_discharge_target_soc(idx, soc)` | EMS discharge slot `idx` target SOC (0–100%) |
+| `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) |
+| `set_ems_export_power_limit(watts)` | EMS plant export power limit (watts) |
+
+EMS plant scheduling commands (`set_ems_*`) target the EMS controller's own
+plant-config registers (HR 2040-2071) and use a fixed three-slot layout, so —
+unlike the inverter charge/discharge setters — they take no `slot_map`. Use them
+only against an EMS device (`plant.capabilities.is_ems`); they have no effect on a
+standalone inverter. Export slots themselves (`set_export_slot`) are shared with the
+EMS export schedule.
 
 The whole-slot setters (`set_charge_slot`, `set_discharge_slot`, `set_pause_slot`,
 `set_export_slot`) write both endpoints in one call. The `_start` / `_end` variants

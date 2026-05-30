@@ -84,3 +84,21 @@ THREE_PHASE_SLOTS = SlotMap(
         (297, 298),
     ),
 )
+
+# EMS plant controllers expose three charge and three discharge time slots in
+# their HR(2040+) plant-config block (decoded in model/ems.py): discharge slots
+# at 2044-2051 and charge slots at 2053-2060, each a (start, end) HHMM pair with
+# its SoC target in the register immediately after. Lets the existing
+# set_charge_slot()/set_discharge_slot(idx, ts, slot_map) commands drive an EMS.
+EMS_SLOTS = SlotMap(
+    charge_slots=(
+        (2053, 2054),
+        (2056, 2057),
+        (2059, 2060),
+    ),
+    discharge_slots=(
+        (2044, 2045),
+        (2047, 2048),
+        (2050, 2051),
+    ),
+)

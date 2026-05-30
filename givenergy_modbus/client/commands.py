@@ -7,7 +7,7 @@ from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode
-from givenergy_modbus.model.slot_map import SINGLE_PHASE_SLOTS, SlotMap
+from givenergy_modbus.model.slot_map import EMS_SLOTS, SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
     ReadInputRegistersRequest,
@@ -87,12 +87,25 @@ class RegisterMap:
     FORCE_DISCHARGE_ENABLE = 1122
     FORCE_CHARGE_ENABLE = 1123
     EMS_PLANT_ENABLE = 2040
+    # EMS plant-level scheduling (HR 2044-2071). Slot start/end pairs live in
+    # model/slot_map.EMS_SLOTS; the per-slot SoC targets and export limit are
+    # scalar writes defined here. See model/ems.py for the read-side decode.
+    EMS_DISCHARGE_TARGET_SOC_1 = 2046
+    EMS_DISCHARGE_TARGET_SOC_2 = 2049
+    EMS_DISCHARGE_TARGET_SOC_3 = 2052
+    EMS_CHARGE_TARGET_SOC_1 = 2055
+    EMS_CHARGE_TARGET_SOC_2 = 2058
+    EMS_CHARGE_TARGET_SOC_3 = 2061
     EXPORT_SLOT_1_START = 2062
     EXPORT_SLOT_1_END = 2063
+    EMS_EXPORT_TARGET_SOC_1 = 2064
     EXPORT_SLOT_2_START = 2065
     EXPORT_SLOT_2_END = 2066
+    EMS_EXPORT_TARGET_SOC_2 = 2067
     EXPORT_SLOT_3_START = 2068
     EXPORT_SLOT_3_END = 2069
+    EMS_EXPORT_TARGET_SOC_3 = 2070
+    EMS_EXPORT_POWER_LIMIT = 2071
 
 
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
@@ -327,6 +340,69 @@ def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]
     start = slot.start if slot else None
     end = slot.end if slot else None
     return set_export_slot_start(idx, start) + set_export_slot_end(idx, end)
+
+
+def _ems_target_soc(val: int) -> int:
+    """Validate an EMS SoC target percentage (0-100)."""
+    val = int(val)
+    if not 0 <= val <= 100:
+        raise ValueError(f"EMS target SoC ({val}) must be in [0-100]")
+    return val
+
+
+def set_ems_charge_slot(idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set an EMS plant charge time slot by index (1-3), or clear it if None."""
+    if timeslot is None:
+        return reset_charge_slot(idx, EMS_SLOTS)
+    return set_charge_slot(idx, timeslot, EMS_SLOTS)
+
+
+def set_ems_discharge_slot(idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+    """Set an EMS plant discharge time slot by index (1-3), or clear it if None."""
+    if timeslot is None:
+        return reset_discharge_slot(idx, EMS_SLOTS)
+    return set_discharge_slot(idx, timeslot, EMS_SLOTS)
+
+
+def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
+    """Set the SoC target (0-100%) for EMS plant charge slot idx (1-3)."""
+    if not 1 <= idx <= 3:
+        raise ValueError(f"EMS charge slot index ({idx}) must be in [1-3]")
+    return [
+        WriteHoldingRegisterRequest(getattr(RegisterMap, f"EMS_CHARGE_TARGET_SOC_{idx}"), _ems_target_soc(target_soc))
+    ]
+
+
+def set_ems_discharge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
+    """Set the SoC target (0-100%) for EMS plant discharge slot idx (1-3)."""
+    if not 1 <= idx <= 3:
+        raise ValueError(f"EMS discharge slot index ({idx}) must be in [1-3]")
+    return [
+        WriteHoldingRegisterRequest(
+            getattr(RegisterMap, f"EMS_DISCHARGE_TARGET_SOC_{idx}"), _ems_target_soc(target_soc)
+        )
+    ]
+
+
+def set_ems_export_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
+    """Set the SoC target (0-100%) for EMS plant export slot idx (1-3)."""
+    if not 1 <= idx <= 3:
+        raise ValueError(f"EMS export slot index ({idx}) must be in [1-3]")
+    return [
+        WriteHoldingRegisterRequest(getattr(RegisterMap, f"EMS_EXPORT_TARGET_SOC_{idx}"), _ems_target_soc(target_soc))
+    ]
+
+
+def set_ems_export_power_limit(watts: int) -> list[TransparentRequest]:
+    """Set the EMS plant export power limit in watts.
+
+    Bounded to a 16-bit holding register (0-65535) so an out-of-range value fails
+    here rather than later at PDU-encode time as InvalidPduState.
+    """
+    watts = int(watts)
+    if not 0 <= watts <= 0xFFFF:
+        raise ValueError(f"EMS export power limit ({watts}) must be in [0-65535] watts")
+    return [WriteHoldingRegisterRequest(RegisterMap.EMS_EXPORT_POWER_LIMIT, watts)]
 
 
 def _set_slot_endpoint(hr: int, t: dt_time | None) -> list[TransparentRequest]:
