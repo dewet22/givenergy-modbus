@@ -526,7 +526,7 @@ class Plant(GivEnergyBaseModel):
         for i in range(6):
             try:
                 battery = Battery.from_register_cache(self.register_caches[i + 0x32])
-            except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
+            except KeyError, ValueError:
                 # KeyError: no cache for that device yet. ValueError: an enum-typed
                 # register held a value outside the known set. Either way, treat as
                 # "not a battery" and stop probing rather than aborting the caller.

@@ -212,8 +212,12 @@ def set_shallow_charge(val: int) -> list[TransparentRequest]:
 
 
 def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
-    """Set the minimum level of charge to maintain."""
-    # TODO what are valid values? 4-100?
+    """Set the minimum level of charge to maintain.
+
+    Bounds [4-100]% are unconfirmed against GE firmware docs (gone) but match
+    GivTCP's independent choice for the same register — treat as the working
+    assumption until a portal capture contradicts it.
+    """
     val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f"Minimum SOC / shallow charge ({val}) must be in [4-100]%")
@@ -237,8 +241,12 @@ def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
 
 
 def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
-    """Set the battery power reserve to maintain."""
-    # TODO what are valid values?
+    """Set the battery power reserve to maintain.
+
+    Bounds [4-100]% are unconfirmed against GE firmware docs (gone) but match
+    GivTCP's independent choice for the same register — treat as the working
+    assumption until a portal capture contradicts it.
+    """
     val = int(val)
     if not 4 <= val <= 100:
         raise ValueError(f"Battery power reserve ({val}) must be in [4-100]%")
