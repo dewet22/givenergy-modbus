@@ -106,6 +106,72 @@ def redact(frame: bytes) -> bytes:
     return frame
 
 
+# Longest token redact() matches is a 10-char serial; an IPv4 dotted-quad can be
+# up to 15. Holding back the last 14 bytes guarantees any identifier straddling a
+# chunk boundary is reassembled before the boundary is emitted.
+_REDACT_LOOKBACK = 14
+
+
+class StreamRedactor:
+    """Stateful redactor for a chunked byte stream (e.g. raw socket reads).
+
+    ``redact()`` is per-buffer, so an identifier split across two chunks — the
+    prefix in one, the unit-bearing continuation in the next — is seen by neither
+    pass and leaks on reassembly (#117; observed in the EMS rollup at IR(2066+)).
+
+    This wrapper carries the trailing ``_REDACT_LOOKBACK`` bytes of each chunk over
+    to the next, redacts across the join, and only emits bytes once they're far
+    enough from the frontier that no further identifier can overlap them. Byte
+    count and offsets are preserved exactly (same guarantee as ``redact()``), so
+    the reassembled stream is identical-length to the raw one. Call ``flush()`` at
+    end-of-stream to emit the final held tail.
+
+    Not thread-safe; use one instance per capture stream (per direction).
+    """
+
+    def __init__(self) -> None:
+        # Raw bytes seen but whose redaction isn't yet settled, plus how many of
+        # them we've already emitted. We keep the *raw* prefix (not the redacted
+        # output) so each pass re-redacts with full left-context, and a match
+        # straddling a previous cut is never double-processed.
+        self._buffer = b""
+        self._emitted = 0
+
+    def feed(self, chunk: bytes) -> bytes:
+        """Absorb a chunk; return the bytes that are now safe to emit, redacted.
+
+        Bytes within ``_REDACT_LOOKBACK`` of the buffer end are held back — an
+        identifier could still extend into the next chunk — so they aren't emitted
+        until enough following bytes arrive (or ``flush()`` is called).
+        """
+        self._buffer += chunk
+        stable_end = len(self._buffer) - _REDACT_LOOKBACK
+        if stable_end <= self._emitted:
+            return b""
+        # Redact the whole buffer for full left-context (offset-preserving), then
+        # slice out only the newly-settled span [already-emitted, stable_end).
+        redacted = redact(self._buffer)
+        out = redacted[self._emitted : stable_end]
+        self._emitted = stable_end
+        # Prune the settled prefix so a long capture doesn't grow the buffer
+        # unbounded. Keep a lookback-sized margin behind the emit frontier as
+        # left-context (a match can span at most _REDACT_LOOKBACK bytes), so
+        # dropping bytes older than that can't change any future redaction.
+        if self._emitted > _REDACT_LOOKBACK:
+            drop = self._emitted - _REDACT_LOOKBACK
+            self._buffer = self._buffer[drop:]
+            self._emitted -= drop
+        return out
+
+    def flush(self) -> bytes:
+        """Emit the remaining held bytes, redacted. Call once at end of stream."""
+        redacted = redact(self._buffer)
+        out = redacted[self._emitted :]
+        self._buffer = b""
+        self._emitted = 0
+        return out
+
+
 class Client:
     """Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.
 
@@ -162,6 +228,11 @@ class Client:
     connected = False
     _shutting_down = False
     _capture_sink: Callable[[Direction, bytes], None] | None = None
+    # Per-direction stream redactors for an active capture — carry a small tail
+    # across socket-read chunks so a serial split across a boundary is still
+    # redacted (#117). Created in capture_frames(), None when no capture runs.
+    _capture_redactor_rx: "StreamRedactor | None" = None
+    _capture_redactor_tx: "StreamRedactor | None" = None
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task | None
@@ -818,6 +889,22 @@ class Client:
         """Execute a set of requests. Caller is responsible for connecting first."""
         await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
 
+    def _emit_to_sink(self, direction: "Direction", data: bytes) -> None:
+        """Hand redacted bytes to the active capture sink, swallowing sink errors.
+
+        The sink is a user-supplied callback. It runs inside the long-lived network
+        consumer/producer tasks (and the capture-close flush), so an exception it
+        raises would otherwise crash that background task and break the client. A
+        capture is a diagnostic tee, never load-bearing — log and carry on.
+        """
+        sink = self._capture_sink
+        if sink is None or not data:
+            return
+        try:
+            sink(direction, data)
+        except Exception:  # noqa: BLE001 — a capture sink must never break the client
+            _logger.exception("capture sink raised on %s frame; dropping it and continuing", direction)
+
     async def capture_frames(
         self,
         sink: Callable[[Direction, bytes], None],
@@ -825,10 +912,18 @@ class Client:
     ) -> None:
         """Tee redacted TX/RX wire frames to *sink* for *duration* seconds.
 
-        *sink* is called once per frame with the direction ('rx' or 'tx') and
-        the *redacted* bytes. The library always redacts before invoking the
-        sink so callers can't accidentally see raw hardware identifiers;
-        persistence, formatting and forwarding are the caller's choice.
+        *sink* is called with the direction ('rx' or 'tx') and the *redacted*
+        bytes. The library always redacts before invoking the sink so callers
+        can't accidentally see raw hardware identifiers; persistence, formatting
+        and forwarding are the caller's choice.
+
+        Redaction is cross-chunk-aware: a serial split across two socket reads is
+        still caught (#117), at the cost of the sink seeing the stream re-chunked
+        (a small trailing tail of each read is deferred to the next sink call, and
+        flushed when the capture ends). The reassembled byte stream is identical
+        in length and offsets to the raw one. Sinks must not assume one call maps
+        to one decodable frame — that was never guaranteed (reads tee raw socket
+        buffers, not framer output).
 
         Runs alongside the normal refresh loop — does not suspend reads or
         writes, just tees a copy of each frame to *sink*. Only one capture
@@ -838,17 +933,25 @@ class Client:
         if self._capture_sink is not None:
             raise RuntimeError("a frame capture is already running on this client")
         self._capture_sink = sink
+        self._capture_redactor_rx = StreamRedactor()
+        self._capture_redactor_tx = StreamRedactor()
         try:
             await asyncio.sleep(duration)
         finally:
+            # Flush each direction's held tail so the final bytes aren't lost.
+            for direction, redactor in (("rx", self._capture_redactor_rx), ("tx", self._capture_redactor_tx)):
+                if redactor is not None:
+                    self._emit_to_sink(direction, redactor.flush())  # type: ignore[arg-type]
             self._capture_sink = None
+            self._capture_redactor_rx = None
+            self._capture_redactor_tx = None
 
     async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
         while hasattr(self, "reader") and self.reader and not self.reader.at_eof():
             frame = await self.reader.read(300)
-            if self._capture_sink is not None and frame:
-                self._capture_sink("rx", redact(frame))
+            if self._capture_sink is not None and frame and self._capture_redactor_rx is not None:
+                self._emit_to_sink("rx", self._capture_redactor_rx.feed(frame))
             async for message in self.framer.decode(frame):
                 _logger.debug(f"Processing {message}")
                 if isinstance(message, ExceptionBase):
@@ -905,8 +1008,8 @@ class Client:
                     frame_sent.set_result(True)
                 continue
             self.writer.write(message)
-            if self._capture_sink is not None:
-                self._capture_sink("tx", redact(message))
+            if self._capture_sink is not None and self._capture_redactor_tx is not None:
+                self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
             await self.writer.drain()
             self.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
