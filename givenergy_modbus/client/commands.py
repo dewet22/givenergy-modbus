@@ -652,8 +652,12 @@ class _InverterCommands:
         def slot_map(self) -> SlotMap: ...
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
-    # Excludes 313/314 (BATTERY_*_LIMIT_AC — ambiguous), 318-320 (pause mode),
-    # 1112/1122/1123 (three-phase), and 2040/2062-2069 (EMS).
+    # Excludes 318-320 (pause mode), 1112/1122/1123 (three-phase), and
+    # 2040/2062-2069 (EMS). Also excludes 313/314 (BATTERY_*_LIMIT_AC): these are
+    # the *single-phase* AC charge/discharge limits, but ThreePhaseInverter remaps
+    # the read-backs to HR1110/1108, so read != write on three-phase AC. A correct
+    # three-phase write needs per-model command-register selection (#75); until that
+    # lands they stay out of the universal write-safe set.
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
         {
             20,  # ENABLE_CHARGE_TARGET

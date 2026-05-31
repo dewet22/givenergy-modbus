@@ -364,6 +364,53 @@ async def test_set_battery_discharge_limit_ac():
         commands.set_battery_discharge_limit_ac(101)
 
 
+def test_battery_ac_limit_single_phase_read_write_register_consistency():
+    """Single-phase AC limit read-back reads the same register the write command targets.
+
+    Pins read==write on single-phase so the model LUT and the command can't silently
+    drift to different registers. The write target (RegisterMap) is the source of truth;
+    reading that exact register back must surface on the model field.
+    """
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    charge_reg = int(RegisterMap.BATTERY_CHARGE_LIMIT_AC)
+    discharge_reg = int(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC)
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(charge_reg): 55, HR(discharge_reg): 80}))
+    assert inv.battery_charge_limit_ac == 55
+    assert inv.battery_discharge_limit_ac == 80
+
+
+def test_battery_ac_limit_three_phase_readback_diverges_from_write():
+    """Pin the known three-phase read != write gap (#75): the divergence is intentional.
+
+    The write command targets the single-phase HR313/314, but ThreePhaseInverter remaps
+    the read-backs to HR1110/1108. Asserting both sides keeps the gap explicit and
+    flagged until per-model command-register selection lands (#75).
+    """
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    charge_reg = int(RegisterMap.BATTERY_CHARGE_LIMIT_AC)  # 313
+    discharge_reg = int(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC)  # 314
+    # Single-phase write registers and the three-phase read-backs hold different values.
+    tp = ThreePhaseInverter.from_register_cache(
+        RegisterCache({HR(charge_reg): 11, HR(1110): 99, HR(discharge_reg): 22, HR(1108): 88})
+    )
+    # Three-phase reads its remapped registers, NOT the single-phase write target.
+    assert tp.battery_charge_limit_ac == 99  # HR(1110), not HR(313)=11
+    assert tp.battery_discharge_limit_ac == 88  # HR(1108), not HR(314)=22
+    # Meanwhile the write command still targets the single-phase registers — the gap.
+    assert commands.set_battery_charge_limit_ac(50) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 50)
+    ]
+    assert commands.set_battery_discharge_limit_ac(50) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 50)
+    ]
+
+
 async def test_set_battery_pause_mode():
     assert commands.set_battery_pause_mode(BatteryPauseMode.DISABLED) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.DISABLED)
