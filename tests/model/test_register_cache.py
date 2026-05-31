@@ -124,4 +124,36 @@ def test_to_timeslot():
         }
     )
     assert TimeSlot.from_components(10, 30, 23, 59) == rc.to_timeslot(HR(14), IR(17))
-    assert TimeSlot.from_components(0, 0, 0, 0) == rc.to_timeslot(IR(22), IR(23))
+    # Missing endpoints read as unset (None), not as a midnight (0,0) slot — a missing
+    # register isn't "00:00". (Previously the defaultdict returned 0 for these.)
+    assert rc.to_timeslot(IR(22), IR(23)) is None
+    # An endpoint genuinely read as 0 (HHMM 0000 = midnight) is still a valid slot.
+    rc[HR(20)] = 0
+    rc[HR(21)] = 0
+    assert TimeSlot.from_components(0, 0, 0, 0) == rc.to_timeslot(HR(20), HR(21))
+
+
+def test_to_timeslot_returns_none_for_unset_slot_sentinel():
+    """Raw value 60 is the hardware sentinel for an unset slot — mirror Converter.timeslot."""
+    rc = RegisterCache(
+        registers={
+            HR(0): 60,
+            HR(1): 60,
+            HR(2): 1030,
+        }
+    )
+    assert rc.to_timeslot(HR(0), HR(1)) is None
+    assert rc.to_timeslot(HR(0), HR(2)) is None
+    assert rc.to_timeslot(HR(2), HR(0)) is None
+
+
+def test_to_timeslot_returns_none_for_missing_or_none_endpoint():
+    """A missing or explicitly-None endpoint is unset — mirror Converter.timeslot's guard.
+
+    Uses .get() so a missing key reads as None (and doesn't mutate the defaultdict
+    by inserting a 0), rather than raising ValueError in TimeSlot.from_repr.
+    """
+    rc = RegisterCache(registers={HR(0): 1030, HR(1): None})
+    assert rc.to_timeslot(HR(0), HR(1)) is None  # endpoint explicitly None
+    assert rc.to_timeslot(HR(0), HR(9)) is None  # endpoint missing entirely
+    assert HR(9) not in rc  # .get() must not have inserted a default 0
