@@ -53,11 +53,11 @@ async def test_load_config_no_caps():
 
 
 async def test_load_config_single_phase():
-    """Standard single-phase HYBRID requests the four base blocks only, at 0x11."""
+    """Standard single-phase HYBRID requests the four base blocks plus HR(300-359), at 0x11."""
     client = _client_with_caps(Model.HYBRID)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
+    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(300, 60)]
 
 
 @pytest.mark.parametrize("model", [Model.AC, Model.HYBRID_GEN1])
@@ -71,11 +71,12 @@ async def test_load_config_ac_gen1_uses_0x31(model: Model):
         _hr(60, 60, device=0x31),
         _hr(120, 60, device=0x31),
         _ir(120, 60, device=0x31),
+        _hr(300, 60, device=0x31),
     ]
 
 
 async def test_load_config_three_phase():
-    """Three-phase models add HR 1000–1124 as three reads (60 + 60 + 5)."""
+    """Three-phase models add HR 1000–1124 as three reads (60 + 60 + 5), plus HR(300-359)."""
     client = _client_with_caps(Model.HYBRID_3PH)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
@@ -87,15 +88,23 @@ async def test_load_config_three_phase():
         _hr(1000, 60),
         _hr(1060, 60),
         _hr(1120, 5),
+        _hr(300, 60),
     ]
 
 
 async def test_load_config_extended_slots():
-    """Extended-slot models add HR 240–299."""
+    """Extended-slot models add HR 240–299 and HR 300–359."""
     client = _client_with_caps(Model.HYBRID_GEN3)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(240, 60)]
+    assert _reqs(mock_exec) == [
+        _hr(0, 60),
+        _hr(60, 60),
+        _hr(120, 60),
+        _ir(120, 60),
+        _hr(240, 60),
+        _hr(300, 60),
+    ]
 
 
 async def test_load_config_ems():

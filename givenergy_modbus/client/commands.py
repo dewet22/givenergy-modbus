@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 from warnings import deprecated  # type: ignore[attr-defined]
 
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.battery import BatteryPauseMode
+from givenergy_modbus.model.battery import BatteryPauseMode, ExportPriority
 from givenergy_modbus.model.slot_map import EMS_SLOTS, SINGLE_PHASE_SLOTS, SlotMap
 from givenergy_modbus.pdu import (
     ReadHoldingRegistersRequest,
@@ -78,8 +78,10 @@ class RegisterMap:
     DISCHARGE_SLOT_9_END = 295
     DISCHARGE_SLOT_10_START = 297
     DISCHARGE_SLOT_10_END = 298
+    EXPORT_PRIORITY = 311
     BATTERY_CHARGE_LIMIT_AC = 313
     BATTERY_DISCHARGE_LIMIT_AC = 314
+    ENABLE_EPS = 317
     BATTERY_PAUSE_MODE = 318
     BATTERY_PAUSE_SLOT_START = 319
     BATTERY_PAUSE_SLOT_END = 320
@@ -264,6 +266,23 @@ def set_active_power_rate(target: int) -> list[TransparentRequest]:
 def set_enable_rtc(enabled: bool) -> list[TransparentRequest]:
     """Enable the Real Time Clock register to persist settings to EEPROM."""
     return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, enabled)]
+
+
+def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
+    """Set the export priority for surplus power on AC-coupled inverters.
+
+    Determines where surplus energy goes: battery first, grid first, or load first.
+    Confirmed writable on Model.AC via direct portal observations (hass#52).
+    """
+    return [WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, priority)]
+
+
+def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
+    """Enable or disable Emergency Power Supply (EPS) mode on AC-coupled inverters.
+
+    Confirmed writable on Model.AC via direct portal observations (hass#52).
+    """
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, enabled)]
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
@@ -662,6 +681,7 @@ class _InverterCommands:
         {
             20,  # ENABLE_CHARGE_TARGET
             27,  # BATTERY_POWER_MODE
+            311,  # EXPORT_PRIORITY (AC-coupled; confirmed writable via hass#52 portal observations)
             29,  # SOC_FORCE_ADJUST
             31,
             32,  # CHARGE_SLOT_2
@@ -719,6 +739,7 @@ class _InverterCommands:
             295,
             297,
             298,  # DISCHARGE_SLOT_3..10
+            317,  # ENABLE_EPS (AC-coupled; confirmed writable via hass#52 portal observations)
         }
     )
 

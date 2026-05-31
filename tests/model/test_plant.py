@@ -1294,8 +1294,10 @@ def test_from_actual():
         "discharge_target_soc_9": None,
         "discharge_slot_10": None,
         "discharge_target_soc_10": None,
+        "export_priority": None,
         "battery_charge_limit_ac": None,
         "battery_discharge_limit_ac": None,
+        "enable_eps": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
         "e_battery_discharge_total_alt1": 906.1,  # IR(180)

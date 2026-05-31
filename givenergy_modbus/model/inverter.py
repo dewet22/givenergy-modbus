@@ -262,6 +262,12 @@ class BatteryPowerMode(int, Enum):
     SELF_CONSUMPTION = 1
 
 
+# ExportPriority lives in model.battery (same module as BatteryPauseMode) so that
+# client.commands can import it without a circular dependency. Re-exported here for
+# callers who import from model.inverter.
+from givenergy_modbus.model.battery import ExportPriority  # noqa: E402
+
+
 class BatteryCalibrationStage(int, Enum):
     """Battery calibration stages."""
 
@@ -546,9 +552,16 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Holding Registers, block 300-359
         # Single Phase New registers
+        # This block is polled for non-EMS / non-gateway inverters; see client.py.
         #
+        # HR(311): export priority — confirmed writable on Model.AC via portal observations
+        # (hass#52): values 0/1/2 matched "Battery First / Grid First / Load First".
+        "export_priority": Def(C.uint16, ExportPriority, HR(311)),
         "battery_charge_limit_ac": Def(C.uint16, None, HR(313)),
         "battery_discharge_limit_ac": Def(C.uint16, None, HR(314)),
+        # HR(317): EPS enable — confirmed writable on Model.AC via portal observations
+        # (hass#52): toggled 0/1 while the portal's "EPS" switch was flipped off/on.
+        "enable_eps": Def(C.bool, None, HR(317)),
         "battery_pause_mode": Def(C.uint16, None, HR(318)),
         "battery_pause_slot_1": Def(C.timeslot, None, HR(319), HR(320)),
         #

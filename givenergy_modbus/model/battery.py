@@ -112,6 +112,19 @@ class State(IntEnum):
         return cls.STATIC
 
 
+class ExportPriority(IntEnum):
+    """Dispatch priority for surplus power on AC-coupled inverters.
+
+    Confirmed writable on Model.AC via direct portal observations (hass#52):
+    HR(311) was written with values 0/1/2 while the portal's "Export Priority"
+    control was cycled through its three options.
+    """
+
+    BATTERY_FIRST = 0
+    GRID_FIRST = 1
+    LOAD_FIRST = 2
+
+
 class BatteryPauseMode(IntEnum):
     """Battery pause mode."""
 
