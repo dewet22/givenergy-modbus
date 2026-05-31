@@ -116,6 +116,26 @@ def test_to_datetime():
     assert datetime.datetime(2000, 1, 1, 0, 0, 0) == rc.to_datetime(IR(22), IR(23), IR(24), IR(25), IR(26), IR(27))
 
 
+def test_to_datetime_zero_month_and_day():
+    """Month or day register reading 0 must clamp to 1, not crash.
+
+    Real hardware: Nick's AC captures (hass#52) show HR(41)=0 on all 3 devices.
+    Previously raised 'month must be in 1..12, not 0'.
+    """
+    rc = RegisterCache(
+        registers={
+            HR(0): 24,  # year → 2024
+            HR(1): 0,  # month register present but reads 0
+            HR(2): 0,  # day register present but reads 0
+            HR(3): 12,
+            HR(4): 0,
+            HR(5): 0,
+        }
+    )
+    result = rc.to_datetime(HR(0), HR(1), HR(2), HR(3), HR(4), HR(5))
+    assert result == datetime.datetime(2024, 1, 1, 12, 0, 0)
+
+
 def test_to_timeslot():
     rc = RegisterCache(
         registers={
