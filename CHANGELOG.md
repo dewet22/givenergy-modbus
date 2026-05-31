@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0a11] - 2026-05-31
+
+### ✨ Added
+
+- add plant_enabled boolean read-back for Flexi EMS control ([a4386d5](https://github.com/dewet22/givenergy-modbus/commit/a4386d51b1f1c787ba5cac15b9158746f060ac3b))
+
 ## [2.1.0a10] - 2026-05-30
 
 ### ✨ Added
