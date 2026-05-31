@@ -101,8 +101,8 @@ def test_inverter():
             "p_backup": None,
             "e_grid_in_total": None,
             "e_load_day": None,
-            "e_battery_charge_day": None,
-            "e_battery_discharge_day": None,
+            "e_battery_charge_today_alt1": None,
+            "e_battery_discharge_today_alt1": None,
             "countdown": None,
             "fault_code": None,
             "t_inverter_heatsink": None,
@@ -168,9 +168,13 @@ def test_inverter():
             "cmd_bms_flash_update": None,
             "enable_standard_self_consumption_logic": None,
             "e_battery_charge_today": None,
-            "e_battery_charge_total_alt": None,
+            "e_battery_charge_today_alt3": None,
+            "e_battery_charge_total": None,
+            "e_battery_charge_total_alt2": None,
             "e_battery_discharge_today": None,
-            "e_battery_discharge_total_alt": None,
+            "e_battery_discharge_today_alt3": None,
+            "e_battery_discharge_total": None,
+            "e_battery_discharge_total_alt2": None,
             "pv_power_setting": None,
             "e_inverter_export_total": None,
             "battery_voltage_adjust": None,
@@ -219,10 +223,10 @@ def test_inverter():
             "battery_discharge_limit_ac": None,
             "battery_pause_mode": None,
             "battery_pause_slot_1": None,
-            "e_battery_discharge_alt": None,
-            "e_battery_charge_alt": None,
-            "e_battery_discharge_day_alt": None,
-            "e_battery_charge_day_alt": None,
+            "e_battery_discharge_total_alt1": None,
+            "e_battery_charge_total_alt1": None,
+            "e_battery_discharge_today_alt2": None,
+            "e_battery_charge_today_alt2": None,
             "p_combined_generation": None,
         }
     )
@@ -262,16 +266,16 @@ def test_from_registers(register_cache):
         "debug_inverter": None,
         "discharge_soc_stop_1": None,
         "discharge_soc_stop_2": 0,
-        # 'e_battery_charge_day': 9.0,
-        # 'e_battery_charge_day_alt': 9.0,
-        "e_battery_charge_today": None,
-        # 'e_battery_charge_total': 174.4,
-        "e_battery_charge_total_alt": None,
-        # 'e_battery_discharge_day': 8.9,
-        # 'e_battery_discharge_day_alt': 8.9,
-        "e_battery_discharge_today": None,
-        # 'e_battery_discharge_total': 169.6,
-        "e_battery_discharge_total_alt": None,
+        # HYBRID_GEN1 (dtc 2001, arm 449): facade routes today→alt2, total→alt1 (#76).
+        # Raw IR alt1/alt2 sources are asserted in the IR-block sections below.
+        "e_battery_charge_today_alt3": None,  # HR(4114), dead/never polled
+        "e_battery_charge_today": 9.0,  # canonical: GEN1 today→alt2 (IR183)
+        "e_battery_charge_total_alt2": None,  # HR(4111-4112), dead/never polled
+        "e_battery_charge_total": 174.4,  # canonical: GEN1 total→alt1 (IR181)
+        "e_battery_discharge_today_alt3": None,  # HR(4113), dead/never polled
+        "e_battery_discharge_today": 8.9,  # canonical: GEN1 today→alt2 (IR182)
+        "e_battery_discharge_total_alt2": None,  # HR(4109-4110), dead/never polled
+        "e_battery_discharge_total": 169.6,  # canonical: GEN1 total→alt1 (IR180)
         # 'e_battery_throughput_total': 183.2,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 20.9,
@@ -479,8 +483,8 @@ def test_from_registers(register_cache):
         "p_backup": 0,
         "e_grid_in_total": 365.3,
         "e_load_day": 9.3,
-        "e_battery_charge_day": 9.0,
-        "e_battery_discharge_day": 8.9,
+        "e_battery_charge_today_alt1": 9.0,  # IR(36)
+        "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
         "fault_code": "00000000",
         "t_inverter_heatsink": 22.2,
@@ -551,10 +555,10 @@ def test_from_registers(register_cache):
         "battery_discharge_limit_ac": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
-        "e_battery_discharge_alt": 169.6,
-        "e_battery_charge_alt": 174.4,
-        "e_battery_discharge_day_alt": 8.9,
-        "e_battery_charge_day_alt": 9.0,
+        "e_battery_discharge_total_alt1": 169.6,  # IR(180)
+        "e_battery_charge_total_alt1": 174.4,  # IR(181)
+        "e_battery_discharge_today_alt2": 8.9,  # IR(182)
+        "e_battery_charge_today_alt2": 9.0,  # IR(183)
         "p_combined_generation": None,
     }
 
@@ -589,16 +593,16 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "debug_inverter": 0,
         "discharge_soc_stop_1": 0,
         "discharge_soc_stop_2": 0,
-        # 'e_battery_charge_day': 9.1,
-        # 'e_battery_charge_day_alt': 9.1,
-        "e_battery_charge_today": None,
-        # 'e_battery_charge_total': 183.5,
-        "e_battery_charge_total_alt": None,
-        # 'e_battery_discharge_day': 3.4,
-        # 'e_battery_discharge_day_alt': 3.4,
-        "e_battery_discharge_today": None,
-        # 'e_battery_discharge_total': 173.0,
-        "e_battery_discharge_total_alt": None,
+        # HYBRID_GEN1 (dtc 2001, arm 449): facade routes today→alt2, total→alt1 (#76).
+        # Raw IR alt1/alt2 sources are asserted in the IR-block sections below.
+        "e_battery_charge_today_alt3": None,  # HR(4114), dead/never polled
+        "e_battery_charge_today": 9.1,  # canonical: GEN1 today→alt2 (IR183)
+        "e_battery_charge_total_alt2": None,  # HR(4111-4112), dead/never polled
+        "e_battery_charge_total": 183.5,  # canonical: GEN1 total→alt1 (IR181)
+        "e_battery_discharge_today_alt3": None,  # HR(4113), dead/never polled
+        "e_battery_discharge_today": 3.4,  # canonical: GEN1 today→alt2 (IR182)
+        "e_battery_discharge_total_alt2": None,  # HR(4109-4110), dead/never polled
+        "e_battery_discharge_total": 173.0,  # canonical: GEN1 total→alt1 (IR180)
         # 'e_battery_throughput_total': 356.5,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 19.8,
@@ -807,8 +811,8 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_backup": 0,
         "e_grid_in_total": 624.2,
         "e_load_day": 9.3,
-        "e_battery_charge_day": 9.1,
-        "e_battery_discharge_day": 3.4,
+        "e_battery_charge_today_alt1": 9.1,  # IR(36)
+        "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
         "fault_code": "00000000",
         "t_inverter_heatsink": 24.4,
@@ -879,10 +883,10 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "battery_discharge_limit_ac": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
-        "e_battery_discharge_alt": 173.0,
-        "e_battery_charge_alt": 183.5,
-        "e_battery_discharge_day_alt": 3.4,
-        "e_battery_charge_day_alt": 9.1,
+        "e_battery_discharge_total_alt1": 173.0,  # IR(180)
+        "e_battery_charge_total_alt1": 183.5,  # IR(181)
+        "e_battery_discharge_today_alt2": 3.4,  # IR(182)
+        "e_battery_charge_today_alt2": 9.1,  # IR(183)
         "p_combined_generation": None,
     }
 
@@ -1130,3 +1134,90 @@ def test_work_time_total_hours_rename_and_deprecated_alias():
     dumped = inv.model_dump()
     assert "work_time_total_hours" in dumped
     assert "work_time_total" not in dumped
+
+
+def test_battery_energy_facade_routes_by_model():
+    """Battery-energy facade routes each metric to the model's declared altN (#76).
+
+    Which register a firmware populates is a static property of the model, declared in
+    _BATTERY_ENERGY_SOURCE — not inferred from live values (the #119 / #150-Codex
+    lesson). The declared source is returned verbatim, including a legitimate 0.0; an
+    undeclared model or metric returns None, with no value inspection and no
+    cross-source fallback. The specific model is resolved via DTC+arm_fw like slot_map,
+    so GEN1 is distinguished from the coarse HYBRID family.
+    """
+    from givenergy_modbus.model.register import HR, IR
+
+    # HYBRID_GEN1 (dtc 0x2001, arm 449): today→alt2 (IR182/183), total→alt1 (IR180/181).
+    # alt1 and alt2 daily are set to DIFFERENT values, so routing (not fallback) is what
+    # selects alt2 — a value-based picker could not tell them apart.
+    gen1 = SinglePhaseInverter.from_register_cache(
+        RegisterCache(
+            {
+                HR(0): 0x2001,
+                HR(21): 449,
+                IR(36): 110,  # charge today alt1 — ignored on GEN1
+                IR(183): 220,  # charge today alt2 — authoritative
+                IR(37): 330,  # discharge today alt1 — ignored
+                IR(182): 440,  # discharge today alt2 — authoritative
+                IR(181): 1000,  # charge total alt1 — authoritative
+                IR(180): 2000,  # discharge total alt1 — authoritative
+            }
+        )
+    )
+    assert gen1.e_battery_charge_today == 22.0  # alt2, not alt1's 11.0
+    assert gen1.e_battery_discharge_today == 44.0  # alt2, not alt1's 33.0
+    assert gen1.e_battery_charge_total == 100.0  # alt1
+    assert gen1.e_battery_discharge_total == 200.0  # alt1
+
+    # GEN1 declared source read as 0.0 is returned verbatim — NOT overridden by a
+    # non-zero in a different source (the Codex stale-zero case, now structurally
+    # impossible: alt2 is 0.0, alt1 is non-zero, the facade still returns 0.0).
+    gen1_zero = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x2001, HR(21): 449, IR(183): 0, IR(36): 910, IR(182): 0, IR(37): 870})
+    )
+    assert gen1_zero.e_battery_charge_today == 0.0
+    assert gen1_zero.e_battery_discharge_today == 0.0
+
+    # AC (dtc 0x3001): today→alt1 (IR36/37); total is undeclared → None even though
+    # IR180/181 read non-zero (their IR totals are a real 0 on hardware; where the
+    # lifetime total lives is unknown, so None beats a misleading value).
+    ac = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x3001, HR(21): 282, IR(36): 120, IR(37): 340, IR(181): 5000, IR(180): 6000})
+    )
+    assert ac.e_battery_charge_today == 12.0  # alt1
+    assert ac.e_battery_discharge_today == 34.0  # alt1
+    assert ac.e_battery_charge_total is None
+    assert ac.e_battery_discharge_total is None
+
+    # ALL_IN_ONE (dtc 0x8001): same routing as AC (today→alt1, total undeclared).
+    aio = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x8001, HR(21): 612, IR(36): 150, IR(37): 250}))
+    assert aio.e_battery_charge_today == 15.0
+    assert aio.e_battery_discharge_today == 25.0
+    assert aio.e_battery_charge_total is None
+    assert aio.e_battery_discharge_total is None
+
+    # Undeclared model (HYBRID_GEN3, fw>302) → None for all four despite populated regs.
+    gen3 = SinglePhaseInverter.from_register_cache(
+        RegisterCache(
+            {
+                HR(0): 0x2003,
+                HR(21): 303,
+                IR(36): 111,
+                IR(37): 222,
+                IR(180): 333,
+                IR(181): 444,
+                IR(182): 555,
+                IR(183): 666,
+            }
+        )
+    )
+    assert gen3.e_battery_charge_today is None
+    assert gen3.e_battery_discharge_today is None
+    assert gen3.e_battery_charge_total is None
+    assert gen3.e_battery_discharge_total is None
+
+    # No model at all (DTC/arm unset) → None: can't resolve a specific model to route by.
+    bare = SinglePhaseInverter.from_register_cache(RegisterCache({IR(36): 110, IR(183): 220}))
+    assert bare.e_battery_charge_today is None
+    assert bare.e_battery_charge_total is None
