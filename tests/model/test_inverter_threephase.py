@@ -182,3 +182,20 @@ def test_work_time_total_hours_rename_and_deprecated_alias():
     dumped = tph.model_dump()
     assert "work_time_total_hours" in dumped
     assert "work_time_total" not in dumped
+
+
+def test_three_phase_inverter_is_ac_coupled():
+    """is_ac_coupled is True for the AC three-phase model, False for DC-coupled 3ph.
+
+    This is the case PlantCapabilities.is_three_phase deliberately excludes downstream,
+    but the inverter field must still report topology correctly (the field is duplicated
+    onto ThreePhaseInverter, not inherited from SinglePhaseInverter).
+    """
+    ac3 = ThreePhaseInverter.from_register_cache(_cache({HR(0): 0x6001}))
+    assert ac3.model is Model.AC_3PH
+    assert ac3.is_ac_coupled is True
+    assert ac3.model_dump()["is_ac_coupled"] is True
+
+    for dtc in (0x4001, 0x8001):  # HYBRID_3PH, ALL_IN_ONE
+        inv = ThreePhaseInverter.from_register_cache(_cache({HR(0): dtc}))
+        assert inv.is_ac_coupled is False, f"{inv.model} should not be AC-coupled"

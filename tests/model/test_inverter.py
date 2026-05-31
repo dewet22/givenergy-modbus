@@ -5,6 +5,7 @@ import pytest
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import (
+    AC_COUPLED_MODELS,
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
@@ -63,6 +64,7 @@ def test_inverter():
             "modbus_version": None,
             "model": None,
             "inverter_max_power": None,
+            "is_ac_coupled": False,
             "module": None,
             "num_mppt": None,
             "num_phases": None,
@@ -446,6 +448,7 @@ def test_from_registers(register_cache):
         "modbus_version": "1.40",
         "model": Model.HYBRID,
         "inverter_max_power": 5000,
+        "is_ac_coupled": False,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -774,6 +777,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "modbus_version": "1.40",
         "model": Model.HYBRID,
         "inverter_max_power": 5000,
+        "is_ac_coupled": False,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -1221,3 +1225,33 @@ def test_battery_energy_facade_routes_by_model():
     bare = SinglePhaseInverter.from_register_cache(RegisterCache({IR(36): 110, IR(183): 220}))
     assert bare.e_battery_charge_today is None
     assert bare.e_battery_charge_total is None
+
+
+def test_ac_coupled_models_constant():
+    """AC_COUPLED_MODELS is exactly the two AC coarse families (no DC-coupled models)."""
+    assert AC_COUPLED_MODELS == frozenset({Model.AC, Model.AC_3PH})
+
+
+def test_single_phase_inverter_is_ac_coupled():
+    """is_ac_coupled is True only for AC-coupled models, via coarse-family resolution.
+
+    An AC DTC (0x3001) resolves to Model.AC, so the computed field reads True; DC-coupled
+    families and an unread model read False.
+    """
+    from givenergy_modbus.model.register import HR
+
+    # AC single-phase (dtc prefix 3) → True
+    ac = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x3001}))
+    assert ac.model is Model.AC
+    assert ac.is_ac_coupled is True
+
+    # DC-coupled families → False
+    for dtc in (0x2001, 0x2003, 0x8001, 0x5001):  # HYBRID, HYBRID(gen3), ALL_IN_ONE, EMS
+        inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): dtc}))
+        assert inv.is_ac_coupled is False, f"{inv.model} should not be AC-coupled"
+
+    # Unknown model (DTC unread) → False, and the field is in the dump.
+    bare = SinglePhaseInverter.from_register_cache(RegisterCache())
+    assert bare.model is None
+    assert bare.is_ac_coupled is False
+    assert bare.model_dump()["is_ac_coupled"] is False
