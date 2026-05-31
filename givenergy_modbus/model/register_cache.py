@@ -79,7 +79,7 @@ class RegisterCache(defaultdict[Register, int]):
 
     def to_datetime(self, y: Register, m: Register, d: Register, h: Register, min: Register, s: Register):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
-        return datetime.datetime(self[y] + 2000, self.get(m, 1), self.get(d, 1), self[h], self[min], self[s])
+        return datetime.datetime(self[y] + 2000, self.get(m, 1) or 1, self.get(d, 1) or 1, self[h], self[min], self[s])
 
     def to_timeslot(self, start: Register, end: Register) -> "TimeSlot | None":
         """Combine two registers into a time slot, or None if either is unset.
