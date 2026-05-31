@@ -548,10 +548,16 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Holding Registers, block 4080-4139
         #
         "pv_power_setting": Def(C.uint32, None, HR(4107), HR(4108)),
-        "e_battery_discharge_total_alt": Def(C.uint32, None, HR(4109), HR(4110)),
-        "e_battery_charge_total_alt": Def(C.uint32, None, HR(4111), HR(4112)),
-        "e_battery_discharge_today": Def(C.uint16, None, HR(4113)),
-        "e_battery_charge_today": Def(C.uint16, None, HR(4114)),
+        # DEAD: never polled. No read path in this repo or GivTCP requests HR>=4000
+        # (our max poll base is HR(240); GivTCP's add_regs detect-probe candidates top
+        # out at HR(300)). Defined for naming symmetry with the IR alt sources and as
+        # scaffold for a future #48 "does this block respond on real hardware?" probe;
+        # no model's _BATTERY_ENERGY_SOURCE routes here. The C.deci scaling diverges
+        # from GivTCP's raw (None) defs — moot while unpolled, reconcile under #48.
+        "e_battery_discharge_total_alt2": Def(C.uint32, C.deci, HR(4109), HR(4110)),
+        "e_battery_charge_total_alt2": Def(C.uint32, C.deci, HR(4111), HR(4112)),
+        "e_battery_discharge_today_alt3": Def(C.uint16, C.deci, HR(4113)),
+        "e_battery_charge_today_alt3": Def(C.uint16, C.deci, HR(4114)),
         #
         # Holding Registers, block 4140-4199
         #
@@ -609,8 +615,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "e_grid_in_total": Def(C.uint32, C.deci, IR(32), IR(33)),
         # IR(34) unknown, skip
         "e_load_day": Def(C.deci, None, IR(35)),
-        "e_battery_charge_day": Def(C.deci, None, IR(36)),
-        "e_battery_discharge_day": Def(C.deci, None, IR(37)),
+        "e_battery_charge_today_alt1": Def(C.deci, None, IR(36)),
+        "e_battery_discharge_today_alt1": Def(C.deci, None, IR(37)),
         "countdown": Def(C.uint16, None, IR(38)),
         "fault_code": Def(C.uint32, (C.hex, 8), IR(39), IR(40)),
         "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
@@ -644,16 +650,38 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Input Registers, block 180-239
         #
-        "e_battery_discharge_alt": Def(C.deci, None, IR(180)),
-        "e_battery_charge_alt": Def(C.deci, None, IR(181)),
-        "e_battery_discharge_day_alt": Def(C.deci, None, IR(182)),
-        "e_battery_charge_day_alt": Def(C.deci, None, IR(183)),
+        "e_battery_discharge_total_alt1": Def(C.deci, None, IR(180)),
+        "e_battery_charge_total_alt1": Def(C.deci, None, IR(181)),
+        "e_battery_discharge_today_alt2": Def(C.deci, None, IR(182)),
+        "e_battery_charge_today_alt2": Def(C.deci, None, IR(183)),
         #
         # Input Registers, block 240-300
         # Gen3
         #
         "p_combined_generation": Def(C.uint32, None, IR(247), IR(248), max=100000),
     }
+
+
+# Per-(specific-model, metric) authoritative battery-energy source, keyed on the
+# Model resolved by resolve_model() — NOT the coarse `self.model` family. Declared
+# only where a wire capture positively confirms it; an absent model or metric routes
+# to None (honest "no evidence yet" + a forcing function for which captures to chase).
+# "today"/"total" each map to an altN whose register name is built as
+# e_battery_{charge,discharge}_{metric}_{altN} (see _battery_energy / the LUT renames).
+#
+#   alt1 = IR(36/37) daily, IR(180/181) total   alt2 = IR(182/183) daily, HR total (dead)
+#   alt3 = HR(4113/4114) daily (dead, never polled — see #48)
+#
+# Evidence (tests/fixtures/captures/): GEN1 populates the alt2 daily registers as
+# authoritative (non-alt read 0 on some firmware) and IR alt1 totals (17526/14791).
+# AC/AIO populate alt1 daily; their IR totals read a real 0 and where the lifetime
+# total actually lives is unknown (the HR block is never polled by anyone) — so total
+# is deliberately left undeclared → None rather than reporting a misleading 0.
+_BATTERY_ENERGY_SOURCE: dict[Model, dict[str, str]] = {
+    Model.HYBRID_GEN1: {"today": "alt2", "total": "alt1"},
+    Model.AC: {"today": "alt1"},
+    Model.ALL_IN_ONE: {"today": "alt1"},
+}
 
 
 _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
@@ -694,6 +722,53 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         if self.e_pv1_day is None or self.e_pv2_day is None:  # type: ignore[attr-defined]
             return None
         return self.e_pv1_day + self.e_pv2_day  # type: ignore[attr-defined]
+
+    def _battery_energy(self, direction: str, metric: str) -> float | None:
+        """Route a battery-energy metric to this model's authoritative alt register.
+
+        Which register location a firmware populates is a *static* property of the
+        model, not something to infer from live values (the #119 lesson — see #76 /
+        Codex review on #150). `_BATTERY_ENERGY_SOURCE` declares, per specific model,
+        which `altN` source is authoritative for each metric; the value is returned
+        verbatim including a legitimate 0.0. Returns None when the model or metric is
+        undeclared (honest "no evidence yet") — no value inspection, no cross-source
+        fallback. Resolves the *specific* model the way `slot_map` does: `self.model`
+        decodes HR(0) alone and only yields the coarse family (e.g. HYBRID, not
+        HYBRID_GEN1), which would miss the models we special-case.
+        """
+        dtc = self.device_type_code  # type: ignore[attr-defined]
+        arm_fw = self.arm_firmware_version  # type: ignore[attr-defined]
+        if dtc is None or arm_fw is None:
+            return None
+        model = resolve_model(int(dtc, 16), int(arm_fw))
+        alt = _BATTERY_ENERGY_SOURCE.get(model, {}).get(metric)
+        if alt is None:
+            return None
+        return getattr(self, f"e_battery_{direction}_{metric}_{alt}")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_battery_charge_today(self) -> float | None:
+        """Canonical daily battery charge energy (kWh), routed by model (see #76)."""
+        return self._battery_energy("charge", "today")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_battery_discharge_today(self) -> float | None:
+        """Canonical daily battery discharge energy (kWh), routed by model (see #76)."""
+        return self._battery_energy("discharge", "today")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_battery_charge_total(self) -> float | None:
+        """Canonical total battery charge energy (kWh), routed by model (see #76)."""
+        return self._battery_energy("charge", "total")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_battery_discharge_total(self) -> float | None:
+        """Canonical total battery discharge energy (kWh), routed by model (see #76)."""
+        return self._battery_energy("discharge", "total")
 
     @property
     def slot_map(self) -> SlotMap:

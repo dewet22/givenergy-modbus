@@ -1008,16 +1008,16 @@ def test_from_actual():
         "debug_inverter": 0,
         "discharge_soc_stop_1": 0,
         "discharge_soc_stop_2": 0,
-        # 'e_battery_charge_day': 5.7,
-        # 'e_battery_charge_day_alt': 5.7,
-        "e_battery_charge_today": None,
-        # 'e_battery_charge_total': 946.6,
-        "e_battery_charge_total_alt": None,
-        # 'e_battery_discharge_day': 5.9,
-        # 'e_battery_discharge_day_alt': 5.9,
-        "e_battery_discharge_today": None,
-        # 'e_battery_discharge_total': 906.1,
-        "e_battery_discharge_total_alt": None,
+        # HYBRID_GEN1 (dtc 0x2001, arm 449): facade routes today→alt2, total→alt1 (#76).
+        # Raw IR alt1/alt2 sources are asserted in the IR-block sections below.
+        "e_battery_charge_today_alt3": None,  # HR(4114), dead/never polled
+        "e_battery_charge_today": 5.7,  # canonical: GEN1 today→alt2 (IR183)
+        "e_battery_charge_total_alt2": None,  # HR(4111-4112), dead/never polled
+        "e_battery_charge_total": 946.6,  # canonical: GEN1 total→alt1 (IR181)
+        "e_battery_discharge_today_alt3": None,  # HR(4113), dead/never polled
+        "e_battery_discharge_today": 5.9,  # canonical: GEN1 today→alt2 (IR182)
+        "e_battery_discharge_total_alt2": None,  # HR(4109-4110), dead/never polled
+        "e_battery_discharge_total": 906.1,  # canonical: GEN1 total→alt1 (IR180)
         # 'e_battery_throughput_total': 1852.7,
         # 'e_discharge_year': 0.0,
         # 'e_grid_in_day': 12.3,
@@ -1225,8 +1225,8 @@ def test_from_actual():
         "p_backup": 0,
         "e_grid_in_total": 1978.3,
         "e_load_day": 4.3,
-        "e_battery_charge_day": 5.7,
-        "e_battery_discharge_day": 5.9,
+        "e_battery_charge_today_alt1": 5.7,  # IR(36)
+        "e_battery_discharge_today_alt1": 5.9,  # IR(37)
         "countdown": 0,
         "fault_code": "00000000",
         "t_inverter_heatsink": 32.2,
@@ -1297,10 +1297,10 @@ def test_from_actual():
         "battery_discharge_limit_ac": None,
         "battery_pause_mode": None,
         "battery_pause_slot_1": None,
-        "e_battery_discharge_alt": 906.1,
-        "e_battery_charge_alt": 946.6,
-        "e_battery_discharge_day_alt": 5.9,
-        "e_battery_charge_day_alt": 5.7,
+        "e_battery_discharge_total_alt1": 906.1,  # IR(180)
+        "e_battery_charge_total_alt1": 946.6,  # IR(181)
+        "e_battery_discharge_today_alt2": 5.9,  # IR(182)
+        "e_battery_charge_today_alt2": 5.7,  # IR(183)
         "p_combined_generation": None,
     }
 
