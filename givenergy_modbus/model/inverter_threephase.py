@@ -26,8 +26,11 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
     """Decode a 16-bit fault register for three-phase inverters.
 
-    `word` selects one of 9 fault tables (words 0–8), each covering 16 bits.
-    Three-phase inverters expose fault words at IR(1300)–IR(1307).
+    `word` selects one of 8 fault tables (words 0-7), each covering 16 bits.
+    Three-phase inverters expose fault words at IR(1300)-IR(1307); the
+    parallel-operation word at IR(1308) is documented in some firmware but
+    not surfaced by the model LUT (no `inverter_fault_codes_8` field), so the
+    decoder only ships tables for the wired-up range.
     """
     if val is None:
         return None
@@ -174,24 +177,6 @@ def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
             "Battery low power",
             "NTC open",
             "Fan warning",
-            None,
-        ],
-        [  # word 8
-            "Parallel version different",
-            "Parallel output voltage different",
-            "Parallel battery voltage different",
-            "Parallel grid voltage different",
-            "Parallel grid frequency different",
-            "Parallel output setting different",
-            "Parallel parameter different",
-            None,
-            "Parallel host line loss",
-            "Parallel comm loss",
-            "Parallel low frequency sync line loss",
-            "Parallel high frequency sync line loss",
-            "Parallel fault",
-            None,
-            None,
             None,
         ],
     ]
