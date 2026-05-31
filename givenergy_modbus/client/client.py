@@ -738,6 +738,12 @@ class Client:
                 ]
             if caps.has_extended_slots:
                 reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
+            if not caps.is_ems and not caps.is_gateway:
+                # HR(300-359) — Single Phase New registers: export_priority (HR311),
+                # battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot
+                # (HR318-320). Polled for all non-EMS / non-gateway models; confirmed
+                # present on Model.AC via hass#52 portal write observations.
+                reqs.append(ReadHoldingRegistersRequest(base_register=300, register_count=60, device_address=inverter))
             if caps.is_ems:
                 reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)

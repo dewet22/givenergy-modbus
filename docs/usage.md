@@ -247,6 +247,8 @@ case-by-case as model-specific mixins land in later 2.x minors.
 | `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` |
 | `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` |
 | `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` |
+| `set_export_priority(priority)` | Set surplus-power dispatch priority (`ExportPriority`: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only |
+| `set_enable_eps(enabled)` | Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only |
 | `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) |
 | `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) |
 | `set_pause_slot_start(t)` | Set just the start of the battery pause slot |
