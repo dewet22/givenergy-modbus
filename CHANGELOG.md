@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b1] - 2026-05-31
+
+### ✨ Added
+
+- route battery-energy registers by model, not live values (#76) ([85f49ce](https://github.com/dewet22/givenergy-modbus/commit/85f49ce09429e461ffd28acac5ebecc858b08de5))
+
+### 🐛 Fixed
+
+- re-apply low-risk model-layer fixes reverted from v2.0 (#74) ([a83f314](https://github.com/dewet22/givenergy-modbus/commit/a83f31465e8b8b6571910cef50d696189efd4c74))
+- redact serials split across capture-frame boundaries (#117) ([1cecc03](https://github.com/dewet22/givenergy-modbus/commit/1cecc0396b809335ef5ae02d67ad9c3365624e02))
+
+### 🔧 Maintenance
+
+- clear actionable in-code TODOs ([a92818f](https://github.com/dewet22/givenergy-modbus/commit/a92818f49547136974f72c9ec8a42a57cf4e56ca))
+- reconcile v2.1 roadmap with shipped reality (a3→a11) ([d3458e1](https://github.com/dewet22/givenergy-modbus/commit/d3458e1e4a06f30ab6ae6b7b1c359c19781ec5a7))
+
 ## [2.1.0a11] - 2026-05-31
 
 ### ✨ Added
