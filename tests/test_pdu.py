@@ -1,4 +1,3 @@
-import logging
 import struct
 from typing import Any
 
@@ -182,12 +181,10 @@ def test_decoding(
     mbap_header: bytes,
     inner_frame: bytes,
     ex: ExceptionBase | None,
-    caplog,
 ):
     """Ensure we correctly decode Request messages to their unencapsulated PDU."""
     assert mbap_header[-1] == pdu_class.function_code
     frame = mbap_header + inner_frame
-    caplog.set_level(logging.DEBUG)  # FIXME remove
 
     if issubclass(pdu_class, ClientIncomingMessage):
         decoder = ClientIncomingMessage.decode_bytes

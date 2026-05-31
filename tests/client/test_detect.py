@@ -344,6 +344,32 @@ async def test_detect_finds_lv_batteries():
 
 
 @pytest.mark.asyncio
+async def test_detect_battery_decode_value_error_stops_probe(monkeypatch):
+    """A battery register-decode ValueError stops the probe rather than propagating.
+
+    An out-of-range enum value while decoding a battery must be swallowed and treated
+    as "no valid battery" — it must not propagate out of detect().
+    """
+    from givenergy_modbus.model.battery import Battery
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)  # battery #1 present at 0x32
+
+    def _raise(cache):
+        raise ValueError("11 is not a valid BatteryState")
+
+    monkeypatch.setattr(Battery, "from_register_cache", staticmethod(_raise))
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    # The decode error at 0x32 is treated as "no valid battery" — probe stops, no raise.
+    assert caps.lv_battery_addresses == []
+
+
+@pytest.mark.asyncio
 async def test_detect_finds_meters():
     client = _make_client()
     _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})

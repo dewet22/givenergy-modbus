@@ -539,7 +539,7 @@ class Client:
                 try:
                     if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
                         break
-                except (KeyError, ValueError):  # fmt: skip  # TODO: drop parens when 3.13 support ends (PEP 758)
+                except KeyError, ValueError:
                     break
                 caps.lv_battery_addresses.append(batt_addr)
             _logger.info(
