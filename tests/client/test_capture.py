@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from givenergy_modbus.client.client import Client, redact
+from givenergy_modbus.client.client import Client, StreamRedactor, redact
 
 # ---------------------------------------------------------------------------
 # redact()
@@ -164,7 +164,12 @@ async def test_capture_frames_tees_tx_to_sink_redacted():
         except asyncio.CancelledError:
             pass
 
-    assert captured == [("tx", b"hello SA1234B000 frame")]
+    # The stream redactor may re-chunk the output (holds a trailing tail across
+    # feeds, flushed at close), so reassemble before asserting. The joined stream
+    # is identical-length to the raw frame with the serial's unit digits zeroed.
+    assert all(d == "tx" for d, _ in captured)
+    reassembled = b"".join(f for _, f in captured)
+    assert reassembled == b"hello SA1234B000 frame"
     # Sink is detached after the capture completes.
     assert client._capture_sink is None
 
@@ -189,3 +194,81 @@ async def test_capture_frames_releases_sink_on_cancellation():
     except asyncio.CancelledError:
         pass
     assert client._capture_sink is None
+
+
+# ---------------------------------------------------------------------------
+# StreamRedactor — cross-chunk redaction (#117)
+# ---------------------------------------------------------------------------
+
+
+def _stream(chunks: list[bytes]) -> bytes:
+    """Feed chunks through a StreamRedactor and reassemble the emitted output."""
+    r = StreamRedactor()
+    return b"".join(r.feed(c) for c in chunks) + r.flush()
+
+
+def test_stream_redactor_catches_serial_split_across_chunks():
+    """A serial split across two chunks is redacted (the leak the per-frame redact misses)."""
+    # 'CE2242G612' split mid-serial: prefix in chunk 1, unit-bearing tail in chunk 2.
+    out = _stream([b"pad CE22", b"42G612 pad"])
+    assert b"CE2242G612" not in out
+    assert b"CE2242G000" in out  # date kept, unit digits zeroed (#113)
+
+
+def test_stream_redactor_reassembles_identically_to_whole_redact():
+    """However the stream is chunked, the reassembled output equals redact(whole)."""
+    whole = b"xx CE2242G612 yy EMS2522018 zz ,192.168.1.100, end"
+    expected = redact(whole)
+    for split in range(1, len(whole)):
+        assert _stream([whole[:split], whole[split:]]) == expected
+    # also multi-chunk
+    assert _stream([whole[i : i + 3] for i in range(0, len(whole), 3)]) == expected
+
+
+def test_stream_redactor_preserves_length_and_offsets():
+    """The reassembled stream is byte-identical in length to the raw input."""
+    raw = b"abc SA1234B567 def XY9876Z543 ghi"
+    assert len(_stream([raw[:7], raw[7:20], raw[20:]])) == len(raw)
+
+
+def test_stream_redactor_buffer_stays_bounded():
+    """A long stream doesn't grow the internal buffer unbounded (prefix pruning)."""
+    r = StreamRedactor()
+    for _ in range(1000):
+        r.feed(b"AB1234C567 some filler bytes ")
+        assert len(r._buffer) < 100  # prunes to ~lookback regardless of stream length
+    r.flush()
+
+
+def test_stream_redactor_no_identifiers_passthrough():
+    """Plain bytes with no identifiers reassemble unchanged."""
+    raw = b"just some plain frame bytes with no serials at all"
+    assert _stream([raw[:10], raw[10:]]) == raw
+
+
+def test_emit_to_sink_swallows_sink_exceptions(caplog):
+    """A sink callback that raises must not propagate out of the network tasks (#117 review)."""
+    import logging
+
+    client = Client(host="foo", port=4321)
+
+    def boom(_direction, _data):
+        raise RuntimeError("sink blew up")
+
+    client._capture_sink = boom
+    with caplog.at_level(logging.ERROR, logger="givenergy_modbus.client.client"):
+        # Must not raise — the capture is a diagnostic tee, never load-bearing.
+        client._emit_to_sink("rx", b"some redacted bytes")
+    assert any("capture sink raised" in r.message for r in caplog.records)
+
+
+def test_emit_to_sink_noops_without_sink_or_data():
+    """No active sink, or empty data, is a silent no-op (doesn't call the sink)."""
+    client = Client(host="foo", port=4321)
+    calls = []
+    # No sink installed → nothing happens even with data.
+    client._emit_to_sink("rx", b"data")
+    # Sink installed but empty data → not called (avoids spurious empty sink calls).
+    client._capture_sink = lambda d, f: calls.append((d, f))
+    client._emit_to_sink("tx", b"")
+    assert calls == []
