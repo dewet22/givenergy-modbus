@@ -87,6 +87,13 @@ _DTC_PREFIX_TO_MODEL: dict[str, Model] = {
     "83": Model.HYBRID_GEN4,
 }
 
+# AC-coupled inverters: no integrated DC battery, so they expose dedicated AC
+# charge/discharge limit registers (HR313/314) that DC-coupled models don't.
+# Both are coarse families with no specific sub-variants, so the set is complete
+# (an AC DTC like 0x3001 resolves to Model.AC via Model._missing_). Consumers gate
+# AC-only controls on this rather than re-deriving the model set themselves.
+AC_COUPLED_MODELS: frozenset[Model] = frozenset({Model.AC, Model.AC_3PH})
+
 # Rated AC output power in watts, keyed by 4-char hex device type code.
 # Sourced from britkat1980/giv_tcp:dev3; likely not exhaustive for all variants.
 _DTC_RATED_POWER: dict[str, int] = {
@@ -803,6 +810,17 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
     def inverter_max_power(self) -> int | None:
         """Returns the rated inverter power in watts, derived from the device type code."""
         return _DTC_RATED_POWER.get(self.device_type_code)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_ac_coupled(self) -> bool:
+        """True for AC-coupled inverters (no integrated DC battery).
+
+        Coarse-family resolution is correct here: AC DTCs resolve to Model.AC /
+        Model.AC_3PH and neither has specific sub-variants. False when the model is
+        unknown (DTC unread).
+        """
+        return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
 
     # Plain @property (not @computed_field) so the deprecated alias doesn't
     # appear in model_dump() output. See #84 — renamed to work_time_total_hours

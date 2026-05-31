@@ -11,6 +11,7 @@ from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
 from givenergy_modbus.model.inverter import (
+    AC_COUPLED_MODELS,
     Model,
     SinglePhaseInverter,
     SinglePhaseInverterRegisterGetter,
@@ -377,6 +378,11 @@ class PlantCapabilities(BaseModel):
     def is_three_phase(self) -> bool:
         """Return True if this system uses three-phase registers (HR/IR 1000-range)."""
         return self.device_type in _THREE_PHASE_MODELS
+
+    @property
+    def is_ac_coupled(self) -> bool:
+        """Return True if this system is AC-coupled (no integrated DC battery)."""
+        return self.device_type in AC_COUPLED_MODELS
 
     @property
     def has_extended_slots(self) -> bool:

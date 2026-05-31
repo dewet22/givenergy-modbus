@@ -9,6 +9,7 @@ from givenergy_modbus.client.commands import _InverterCommands
 from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
     _DTC_RATED_POWER,
+    AC_COUPLED_MODELS,
     BatteryType,
     Model,
     PowerFactorFunctionModel,
@@ -491,6 +492,17 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
     def inverter_max_power(self) -> int | None:
         """Returns the rated inverter power in watts, derived from the device type code."""
         return _DTC_RATED_POWER.get(self.device_type_code)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_ac_coupled(self) -> bool:
+        """True for AC-coupled inverters (no integrated DC battery).
+
+        True for Model.AC_3PH on three-phase; False when the model is unknown.
+        Mirrors the field on SinglePhaseInverter (not inherited — the two inverter
+        classes are parallel, like battery_max_power / inverter_max_power above).
+        """
+        return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
 
     @property
     def slot_map(self) -> SlotMap:

@@ -1188,6 +1188,7 @@ def test_from_actual():
         "modbus_version": "1.40",
         "model": Model.HYBRID,
         "inverter_max_power": 5000,
+        "is_ac_coupled": False,
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
@@ -1661,3 +1662,22 @@ class TestPlantCapabilitiesProperties:
         """GATEWAY reports is_gateway True; other models False."""
         assert self._caps(Model.GATEWAY).is_gateway
         assert not self._caps(Model.HYBRID).is_gateway
+
+
+def test_plant_capabilities_is_ac_coupled():
+    """PlantCapabilities.is_ac_coupled gates AC-only controls without a hardcoded model set.
+
+    This is the surface the givenergy-hass consumer relies on (composed with
+    `not is_three_phase` to scope single-phase AC). True for both AC families,
+    False for DC-coupled systems.
+    """
+    assert PlantCapabilities(device_type=Model.AC).is_ac_coupled is True
+    assert PlantCapabilities(device_type=Model.AC_3PH).is_ac_coupled is True
+    for model in (Model.HYBRID, Model.HYBRID_3PH, Model.ALL_IN_ONE, Model.EMS, Model.GATEWAY):
+        assert PlantCapabilities(device_type=model).is_ac_coupled is False, f"{model} not AC-coupled"
+
+    # The consumer's composition: single-phase AC is AC-coupled and not three-phase.
+    ac = PlantCapabilities(device_type=Model.AC)
+    assert (ac.is_ac_coupled and not ac.is_three_phase) is True
+    ac3 = PlantCapabilities(device_type=Model.AC_3PH)
+    assert (ac3.is_ac_coupled and not ac3.is_three_phase) is False
