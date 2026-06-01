@@ -160,6 +160,17 @@ def test_select_inverter_single_phase():
     assert isinstance(result, SinglePhaseInverter)
 
 
+def test_select_inverter_residential_aio_is_single_phase():
+    """Residential ALL_IN_ONE (0x8001) decodes single-phase, not three-phase.
+
+    Decoding it as ThreePhaseInverter shadows ~30 live fields (battery_soc, v_ac1, f_ac1,
+    firmware, charge slots, status…) to the IR/HR(1000+) addresses the AIO doesn't expose,
+    zeroing them; its data actually lives in the single-phase IR(0)/IR(180) banks. Verified
+    against a real AIO register dump (#105).
+    """
+    assert isinstance(select_inverter(Model.ALL_IN_ONE, RegisterCache()), SinglePhaseInverter)
+
+
 def test_work_time_total_hours_rename_and_deprecated_alias():
     """ThreePhaseInverter inherits the rename via the merged LUT and exposes the same alias shim."""
     import warnings

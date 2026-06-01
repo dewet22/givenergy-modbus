@@ -523,12 +523,18 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
 
 
+# Models that decode via the three-phase / 1000-range register layout. The residential
+# ALL_IN_ONE (DTC family "8", e.g. 0x8001) is deliberately absent: it is HV but single-
+# phase, and decoding it as ThreePhaseInverter shadows ~30 live fields (battery_soc, v_ac1,
+# f_ac1, firmware, charge slots, status…) to IR/HR(1000+) addresses it doesn't expose,
+# zeroing them. It carries its data in the single-phase IR(0)/IR(180) banks and so decodes
+# correctly as SinglePhaseInverter. Verified against real AIO register dumps (#105). HV
+# battery voltage, extended slots and is_hv stay model-keyed at the capabilities layer.
 THREE_PHASE_MODELS: frozenset[Model] = frozenset(
     {
         Model.HYBRID_3PH,
         Model.AC_3PH,
         Model.AIO_COMMERCIAL,
-        Model.ALL_IN_ONE,
         Model.HYBRID_HV_GEN3,
         Model.ALL_IN_ONE_HYBRID,
     }
@@ -538,8 +544,9 @@ THREE_PHASE_MODELS: frozenset[Model] = frozenset(
 def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | ThreePhaseInverter":
     """Return the appropriate inverter model instance for the given device model.
 
-    Three-phase and AIO/HV units use a different register address layout;
-    everything else uses the single-phase layout.
+    Genuinely three-phase and HV-hybrid units use the 1000-range register address layout;
+    everything else — including the residential single-phase ALL_IN_ONE — uses the
+    single-phase layout (see THREE_PHASE_MODELS for why the AIO is excluded).
     """
     if model in THREE_PHASE_MODELS:
         return ThreePhaseInverter.from_register_cache(register_cache)

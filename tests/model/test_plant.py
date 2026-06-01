@@ -1622,7 +1622,6 @@ class TestPlantCapabilitiesProperties:
             Model.HYBRID_3PH,
             Model.AC_3PH,
             Model.AIO_COMMERCIAL,
-            Model.ALL_IN_ONE,
             Model.ALL_IN_ONE_HYBRID,
             Model.HYBRID_HV_GEN3,
         )
@@ -1630,9 +1629,25 @@ class TestPlantCapabilitiesProperties:
             assert self._caps(m).is_three_phase, f"{m} should be three-phase"
 
     def test_is_three_phase_false(self):
-        """Single-phase and non-inverter models report is_three_phase False."""
-        for m in (Model.HYBRID, Model.AC, Model.EMS, Model.GATEWAY):
+        """Single-phase and non-inverter models report is_three_phase False.
+
+        The residential ALL_IN_ONE (DTC family "8", e.g. 0x8001) is HV but single-phase: it
+        has no 1000-range per-phase bank (it error-responds to those reads) and so must NOT
+        be polled there. Confirmed against real AIO hardware + owner confirmation (#105).
+        """
+        for m in (Model.HYBRID, Model.AC, Model.EMS, Model.GATEWAY, Model.ALL_IN_ONE):
             assert not self._caps(m).is_three_phase, f"{m} should not be three-phase"
+
+    def test_all_in_one_is_hv_and_extended_but_not_three_phase(self):
+        """The AIO keeps its HV + extended-slot capabilities while not being three-phase.
+
+        Guards the split: removing ALL_IN_ONE from the per-phase poll set must not regress
+        the capabilities that are correctly model-keyed (HV battery, 10-slot map).
+        """
+        caps = self._caps(Model.ALL_IN_ONE)
+        assert caps.is_hv is True
+        assert caps.has_extended_slots is True
+        assert caps.is_three_phase is False
 
     def test_has_extended_slots_true(self):
         """Models with 10-slot support report has_extended_slots True."""

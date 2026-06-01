@@ -94,6 +94,16 @@ async def test_load_config_extended_slots():
     ]
 
 
+async def test_load_config_residential_aio_no_1000_range():
+    """Residential ALL_IN_ONE: extended-slot blocks but no three-phase HR(1000+) bank (#105)."""
+    client = _client_with_caps(Model.ALL_IN_ONE)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    reqs = _reqs(mock_exec)
+    assert reqs == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(240, 60), _hr(300, 60)]
+    assert all(base < 1000 for _, _, base, _ in reqs), "AIO must not poll the 1000-range bank"
+
+
 async def test_load_config_ems():
     """EMS plant controllers expose HR(0,60) (identity/firmware/serial) and HR(2040,36) only.
 
@@ -161,6 +171,16 @@ async def test_refresh_three_phase():
         _ir(1360, 54),
     ]
     assert _reqs(mock_exec) == [_ir(0, 60), _ir(180, 60)] + expected_3ph
+
+
+async def test_refresh_residential_aio_no_1000_range():
+    """Residential ALL_IN_ONE refreshes from IR(0)/IR(180) only — no per-phase IR(1000+) (#105)."""
+    client = _client_with_caps(Model.ALL_IN_ONE)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    reqs = _reqs(mock_exec)
+    assert reqs == [_ir(0, 60), _ir(180, 60)]
+    assert all(base < 1000 for _, _, base, _ in reqs), "AIO must not poll the 1000-range bank"
 
 
 async def test_refresh_ems():
