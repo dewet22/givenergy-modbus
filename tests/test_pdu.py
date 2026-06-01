@@ -379,3 +379,41 @@ def test_read_registers_response_caps_decode_at_60():
     assert result.register_count == 100
     assert len(result.register_values) == 60
     assert result.register_values == list(range(60))
+
+
+def test_request_crc_includes_device_address_matches_real_wire():
+    """Request CRC must cover the device-address byte — pinned to a real GivTCP frame (#105).
+
+    GivTCP and the GivEnergy app both compute the request check code over
+    device_address + function_code + base + count; omitting the device byte produces a
+    frame a strict inverter (All-in-One) silently drops. This value (0x474b) is the exact
+    CRC GivTCP put on the wire for ReadHoldingRegisters(device=0x11, base=0, count=60),
+    captured during the #105 investigation — external ground truth, not just internal
+    consistency.
+    """
+    req = ReadHoldingRegistersRequest(device_address=0x11, base_register=0, register_count=60)
+    raw = req.encode()
+    # 0x474b is both the stored check and the on-wire trailing bytes (the CRC is
+    # byte-swapped on emit, matching GivTCP/app frames — the old code emitted 0x1160).
+    assert req.check == 0x474B
+    assert raw[-2:] == b"\x47\x4b"
+    # Same logical read at a different device address must produce a different CRC —
+    # proving the device byte actually participates (regression guard for the old bug).
+    other = ReadHoldingRegistersRequest(device_address=0x32, base_register=0, register_count=60)
+    other.encode()
+    assert other.check != req.check
+
+
+def test_write_request_crc_includes_device_address():
+    """Write request CRC also covers the device byte (#105).
+
+    Uses a write-safe register so ensure_valid_state() doesn't reject the encode.
+    """
+    from givenergy_modbus.client.commands import RegisterMap
+
+    # ENABLE_CHARGE (96) is in WRITE_SAFE_REGISTERS.
+    req = WriteHoldingRegisterRequest(register=RegisterMap.ENABLE_CHARGE, value=1, device_address=0x11)
+    req.encode()
+    at_other = WriteHoldingRegisterRequest(register=RegisterMap.ENABLE_CHARGE, value=1, device_address=0x32)
+    at_other.encode()
+    assert req.check != at_other.check, "device address must participate in the write CRC"

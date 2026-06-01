@@ -194,11 +194,15 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
             raise InvalidPduState(f"HR({self.register}) is not safe to write to", self)
 
     def _update_check_code(self):
+        # Request CRC covers the device-address byte and is byte-swapped on the wire —
+        # same layout as reads and FC 0x16 (see read_registers.py / #105 / #58).
         crc_builder = PayloadEncoder()
+        crc_builder.add_8bit_uint(self.device_address)
         crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.register)
         crc_builder.add_16bit_uint(self.value)
-        self.check = crc_builder.crc
+        raw = crc_builder.crc
+        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
         self._builder.add_16bit_uint(self.check)
 
     def expected_response(self):
