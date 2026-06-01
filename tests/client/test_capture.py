@@ -49,6 +49,31 @@ def _make_input_response(serial: str, *, base: int = 0, values: list[int] | None
     return pdu.encode()
 
 
+def test_frame_redactor_tx_redacts_request_serial():
+    """TX-direction FrameRedactor decodes outgoing requests and redacts their adapter serial.
+
+    Regression for the bug found in review: using ClientIncomingMessage for TX frames
+    caused them to fall through to intact-passthrough, leaking the serial in every request.
+    """
+    from givenergy_modbus.pdu import ClientOutgoingMessage, ReadHoldingRegistersRequest
+
+    req = ReadHoldingRegistersRequest(
+        base_register=0,
+        register_count=60,
+        device_address=0x11,
+        data_adapter_serial_number="WF2125G047",
+    )
+    frame = req.encode()
+    assert b"WF2125G047" in frame  # serial is in the raw bytes before redaction
+
+    r = FrameRedactor("tx")
+    out = r.feed(frame) + r.flush()
+
+    pdu = ClientOutgoingMessage.decode_bytes(out)
+    assert pdu.data_adapter_serial_number == "WF2125G000"  # unit digits zeroed
+    assert b"WF2125G047" not in out
+
+
 def test_frame_redactor_redacts_envelope_serial():
     """Adapter and inverter serials in the envelope are zeroed in the re-encoded output."""
     from givenergy_modbus.pdu import ClientIncomingMessage

@@ -81,7 +81,8 @@ def _build_serial_register_groups() -> "list[tuple[str, int, int]]":
             if not lut:
                 continue
             for _field, defn in lut.items():
-                if defn.pre_conv is Converter.serial and defn.registers:
+                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
+                if pre_conv is Converter.serial and defn.registers:
                     reg_type = type(defn.registers[0]).__name__  # "HR" or "IR"
                     base = defn.registers[0]._idx
                     count = len(defn.registers)
@@ -118,8 +119,9 @@ class FrameRedactor:
     handles the #100 WO-dongle LAN-config broadcasts.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, direction: "Direction" = "rx") -> None:
         self._buf = b""
+        self._direction = direction  # determines which PDU decoder to use
 
     def feed(self, chunk: bytes) -> bytes:
         """Absorb raw bytes; return redacted output for any complete frames found."""
@@ -166,12 +168,17 @@ class FrameRedactor:
 
     def _redact_frame(self, frame: bytes) -> bytes:
         from givenergy_modbus.model.register import Converter
-        from givenergy_modbus.pdu import ClientIncomingMessage
+        from givenergy_modbus.pdu import ClientIncomingMessage, ClientOutgoingMessage
         from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
         from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
 
+        # TX frames are ClientOutgoingMessage (requests); RX frames are
+        # ClientIncomingMessage (responses/heartbeats).  Using the wrong decoder
+        # silently falls through to intact-passthrough, leaking the adapter serial
+        # in every captured request.  Pass the right decoder by direction.
+        decoder_class = ClientOutgoingMessage if self._direction == "tx" else ClientIncomingMessage
         try:
-            pdu = ClientIncomingMessage.decode_bytes(frame)
+            pdu = decoder_class.decode_bytes(frame)
         except Exception:
             _logger.warning("FrameRedactor: undecodable frame (%db) emitted intact", len(frame))
             return frame
@@ -192,7 +199,7 @@ class FrameRedactor:
         if isinstance(pdu, ReadRegistersResponse) and not pdu.error:
             reg_type = "HR" if pdu.transparent_function_code == 3 else "IR"
             win_base = pdu.base_register
-            win_end = win_base + pdu.register_count
+            win_end = win_base + len(pdu.register_values)  # safer than register_count
             for g_type, g_base, g_count in _SERIAL_GROUPS:
                 if g_type != reg_type:
                     continue
@@ -983,8 +990,8 @@ class Client:
         if self._capture_sink is not None:
             raise RuntimeError("a frame capture is already running on this client")
         self._capture_sink = sink
-        self._capture_redactor_rx = FrameRedactor()
-        self._capture_redactor_tx = FrameRedactor()
+        self._capture_redactor_rx = FrameRedactor("rx")
+        self._capture_redactor_tx = FrameRedactor("tx")
         try:
             await asyncio.sleep(duration)
         finally:

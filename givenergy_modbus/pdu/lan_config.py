@@ -7,8 +7,10 @@ from givenergy_modbus.pdu.base import ClientIncomingMessage
 _DIGIT_RE = re.compile(rb"\d")
 
 
-def _zero_ip(s: str) -> str:
+def _zero_ip(s: str | None) -> str:
     """Zero every digit in a dotted-quad IPv4 string, preserving dots and length."""
+    if not s:
+        return ""
     return _DIGIT_RE.sub(b"0", s.encode("latin1")).decode("latin1")
 
 
@@ -119,7 +121,7 @@ class LanConfigBroadcast(ClientIncomingMessage):
         """Return a new instance with the adapter serial and all IP fields zeroed."""
         from givenergy_modbus.model.register import Converter
 
-        redacted_serial = Converter.redact_serial(self.data_adapter_serial_number)
+        redacted_serial = Converter.redact_serial(self.data_adapter_serial_number) or ""
         redacted_ip = _zero_ip(self.ip)
         redacted_netmask = _zero_ip(self.netmask)
         redacted_gateway = _zero_ip(self.gateway)
