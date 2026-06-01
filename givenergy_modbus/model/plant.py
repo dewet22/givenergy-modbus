@@ -45,13 +45,18 @@ _HV_MODELS: frozenset[Model] = frozenset(
     }
 )
 
-# Models with registers in the 1000-range (HR 1000–1124, IR 1000–1413).
+# Models with registers in the 1000-range (HR 1000–1124, IR 1000–1413), i.e. genuinely
+# three-phase units that expose the per-phase bank. NB: the residential ALL_IN_ONE (DTC
+# family "8", e.g. 0x8001) is HV but SINGLE-phase — it has no 1000-range bank (it error-
+# responds to those reads) and its data lives in the single-phase IR(0)/IR(180) banks. It
+# is intentionally excluded here (and from the decode-layout set in inverter_threephase.py)
+# while remaining in _HV_MODELS / _EXTENDED_SLOT_MODELS. Confirmed against real AIO hardware
+# (HR(0)=0x8001, owner-confirmed 1-phase) and the GE spec sheet (3.6 kW/16 A). See #105.
 _THREE_PHASE_MODELS: frozenset[Model] = frozenset(
     {
         Model.HYBRID_3PH,
         Model.AC_3PH,
         Model.AIO_COMMERCIAL,
-        Model.ALL_IN_ONE,
         Model.ALL_IN_ONE_HYBRID,
         Model.HYBRID_HV_GEN3,
     }
