@@ -39,13 +39,12 @@ dates not recoverable).
 
 ## Known manufacture dates
 
-`YYWW` dates we know for this plant (prefix + week only; not backported
-into the bytes — see [`../README.md`](../README.md#known-manufacture-dates-are-not-backported)):
+`YYWW` dates we know for this plant (prefix + week only):
 
 | Device | Prefix | Manufacture | In the bytes |
 |---|---|---|---|
-| Inverter (AIO) | `CH` | week 14, 2024 | `CH0000G000` — zeroed at capture |
-| Dongle | `WJ` | week 14, 2024 | `WJ0000G000` — zeroed at capture |
+| Inverter (AIO) | `CH` | week 14, 2024 | `CH2414G000` — date backported (#158) |
+| Dongle | `WJ` | week 14, 2024 | `WJ2414G000` — date backported (#158) |
 
 HV BCU/BMS serials (`HC`/`HX`) and the `AB` response-source: prefixes
 known, manufacture dates not disclosed.

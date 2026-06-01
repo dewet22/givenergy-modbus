@@ -41,13 +41,12 @@ manufacture dates not recoverable).
 
 ## Known manufacture dates
 
-`YYWW` dates we know for this plant (prefix + week only; not backported
-into the bytes — see [`../README.md`](../README.md#known-manufacture-dates-are-not-backported)):
+`YYWW` dates we know for this plant (prefix + week only):
 
 | Device | Prefix | Manufacture | In the bytes |
 |---|---|---|---|
-| Inverter | `SA` | week 14, 2021 | `SA0000G000` — zeroed at capture |
-| Dongle | `WF` | week 25, 2021 | `WF0000G000` — zeroed at capture |
+| Inverter | `SA` | week 14, 2021 | `SA2114G000` — date backported (#158) |
+| Dongle | `WF` | week 25, 2021 | `WF2125G000` — date backported (#158) |
 
 The inverter's firmware ceiling (ARM 449, can't take >449) ties to its
 early-2021 manufacture — the transformer-spec change that landed in 2022.
