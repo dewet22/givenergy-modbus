@@ -11,74 +11,46 @@ capture we accumulate is irreplaceable ground truth.
 
 ## Redaction surface
 
-Three identifier categories are handled by the library redactor
-(`givenergy_modbus.client.redact` — see PR #99) and applied
-automatically during `givenergy-cli capture`:
+Redaction is handled by the `FrameRedactor` class (`givenergy_modbus.client.client`)
+and applied automatically during `givenergy-cli capture`. It decodes each complete
+GivEnergy frame and zeroes exactly the fields whose register type (`C.serial`) or
+PDU class (`LanConfigBroadcast`) mark them as sensitive, then re-encodes with a
+freshly-computed CRC. This covers:
 
-- Standard 10-char GE serials (`XXYYWWXNNN`) — covers inverter,
-  dongle, battery, meter serials.
-- EMS-style serials (`EMSYYWWNNN`) — the EMS controller's
-  serial format, which doesn't match the standard pattern.
-- IPv4 dotted-quads — caught at source so the WO-prefix dongle
-  heartbeat (see [#100](https://github.com/dewet22/givenergy-modbus/issues/100))
-  doesn't leak LAN topology even into raw captures.
+- **Envelope serials** — `data_adapter_serial_number` and `inverter_serial_number`
+  on every Transparent PDU.
+- **Payload register serials** — register groups tagged `C.serial` in the model
+  LUTs: inverter `HR(8-12)/HR(13-17)`, battery `IR(110-114)`, EMS rollup
+  `IR(2066-2085)` (×4), and gateway AIO serials. Cross-frame EMS-rollup splits
+  are handled automatically because the `FrameRedactor` always redacts complete
+  frames, not raw byte chunks.
+- **LAN-config broadcasts** (`#100`) — WO-prefix dongle heartbeats carrying
+  `,ip,netmask,gateway` as a CSV payload are recognised as `LanConfigBroadcast`
+  frames and the IP fields are digit-zeroed.
 
-Serial redaction preserves the family prefix, the `YYWW` manufacture
-date, and the middle letter, zeroing only the trailing three-digit unit
-identifier (see [#113](https://github.com/dewet22/givenergy-modbus/issues/113)
-for why the date is kept — it's a coarse, diagnostically useful cohort
-marker, not a per-unit identifier). So a redacted serial reads like
-`CE2242G000` (week 42 of 2022, unit zeroed) rather than `CE0000G000`.
+Serial redaction preserves the family prefix, the `YYWW` manufacture date, and
+the middle letter, zeroing only the trailing three-digit unit identifier (see
+[#113](https://github.com/dewet22/givenergy-modbus/issues/113)). So a redacted
+serial reads like `CE2242G000` (week 42 of 2022, unit zeroed) rather than
+`CE0000G000`.
 
-One residual case still needs a fixture-side pass — `_redact_extra.py`
-next to this README applies it, idempotently:
-
-- **Serials split across frame boundaries** — consecutive inverter
-  serials in the EMS rollup at `IR(2066..2085)` can straddle a capture
-  frame boundary, so the leading fragment (`…CE22`) lands in one frame
-  and the unit-bearing continuation (`42G612…`) in the next. Per-frame
-  redaction sees neither as a complete serial, so the unit digits leak
-  when the rollup is reassembled. `_redact_extra.py` is **reassembly-
-  aware**: it concatenates the frame payloads, redacts the whole stream
-  (date-preserving, matching the library policy), then re-slices back to
-  the original frame lengths. The broader `[A-Z]{2}\d{2,}` matching it
-  uses has too much false-positive risk to codify in the library-wide
-  redactor, hence it lives here.
-
-Run before committing new captures (no-op on captures with no
-cross-frame serial splits):
-
-```bash
-uv run python tests/fixtures/captures/_redact_extra.py path/to/*.log
-```
-
-### Known manufacture dates are *not* backported
+### Manufacture dates in fixture bytes
 
 All current fixtures predate the date-preserving redactor
 ([#113](https://github.com/dewet22/givenergy-modbus/issues/113)) and were
-taken with a library version that zeroed *every* serial digit at capture
-time — so most serials read `XX0000X000`, with the `YYWW` manufacture
-date gone from the bytes. We do know the real dates for several devices
-(from contributor disclosures), but **we deliberately don't edit them
-back into the captured bytes**: the fixture stays exactly as it came off
-the wire, redaction and all. Restoring digits we happen to know
-out-of-band would make the bytes partly hand-authored, and the dates
-don't affect anything the fixtures are *for* (decoder parsing, addressing,
-prefix-based model identification).
+originally captured with a version that zeroed *every* serial digit —
+so serials initially read `XX0000X000`. In #158, the known `YYWW` dates
+were **backported** into the fixture bytes so they match what the current
+`FrameRedactor` would produce for those devices: a serial like `CE2231G000`
+rather than `CE0000G000`. The trailing three unit digits remain zeroed.
 
-Instead, each plant's README records the `YYWW` values we know (prefix +
-week only — never the trailing unit digits) so the data can still be
-reasoned about later. A few dates do survive *in the bytes* where the old
-redactor missed a serial shape (EMS-format serials, cross-frame splits)
-and the current redactor preserved them — those are genuine wire data,
-not backported.
+Devices whose dates we didn't have at backport time (batteries, the `AB`
+response-source) still carry `XX0000X000`. A few devices had dates preserved
+by the old redactor already (EMS controller `EMS2522000`, and inverter #2's
+`CE2242G000` which survived a cross-frame split) — those were left untouched.
 
-Forward note: if `YYWW`-based logic ever lands (a hardware-revision or
-`BatteryModel` resolver that reads the date), these pre-#113 fixtures
-won't carry dates in their bytes and would need re-capturing or a
-purpose-built synthetic fixture — a decision to revisit then, by which
-point there should be a stock of natively date-preserving captures to
-draw on.
+Each plant README's "Known manufacture dates" table records which serials
+were backported vs which survived vs which remain all-zeros.
 
 ## What's in scope here
 
@@ -185,12 +157,13 @@ plant is self-documenting rather than growing a section here:
 ## Adding new captures
 
 1. Run `uvx givenergy-cli capture` against the device (redaction is
-   automatic).
+   automatic — the `FrameRedactor` handles all serial types including
+   cross-frame EMS-rollup splits and LAN-config broadcasts).
 2. Drop the log into the appropriate plant directory, or create a new
    one named per the layout scheme above (`<type>[_<N>_inv]_<M>_bat_<letter>`)
    for a new topology shape.
-3. Run `_redact_extra.py` over the new file (catches cross-frame serial
-   splits that the per-frame CLI redactor misses).
+3. Run `python scripts/regen_fixture_crcs.py` if the CRCs need recomputing
+   after any post-capture edits (no-op if already consistent).
 4. Add or update that directory's `README.md` with topology, origin,
    and any anomalies (decoder errors, unusual frames). Don't include
    contributor-identifying information. Extend the battery-model table

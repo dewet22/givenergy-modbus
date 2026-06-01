@@ -1,7 +1,7 @@
 import logging
 from abc import ABC
 
-from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
+from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
@@ -192,18 +192,6 @@ class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
         super().ensure_valid_state()
         if self.register not in WRITE_SAFE_REGISTERS:
             raise InvalidPduState(f"HR({self.register}) is not safe to write to", self)
-
-    def _update_check_code(self):
-        # Request CRC covers the device-address byte and is byte-swapped on the wire —
-        # same layout as reads and FC 0x16 (see read_registers.py / #105 / #58).
-        crc_builder = PayloadEncoder()
-        crc_builder.add_8bit_uint(self.device_address)
-        crc_builder.add_8bit_uint(self.transparent_function_code)
-        crc_builder.add_16bit_uint(self.register)
-        crc_builder.add_16bit_uint(self.value)
-        raw = crc_builder.crc
-        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
-        self._builder.add_16bit_uint(self.check)
 
     def expected_response(self):
         return WriteHoldingRegisterResponse(

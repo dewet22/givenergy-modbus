@@ -27,15 +27,14 @@ during EMS support investigation (May 2026).
 
 ## Known manufacture dates
 
-`YYWW` dates we know for this plant (prefix + week only; not backported
-into the bytes — see [`../README.md`](../README.md#known-manufacture-dates-are-not-backported)):
+`YYWW` dates we know for this plant (prefix + week only):
 
 | Device | Prefix | Manufacture | In the bytes |
 |---|---|---|---|
-| EMS controller | `EMS` | week 22, 2025 | `EMS2522000` — survived (old redactor missed EMS-format serials) |
-| Inverter #1 | `CE` | week 31, 2022 | `CE0000G000` — zeroed at capture |
-| Inverter #2 | `CE` | week 42, 2022 | `CE2242G000` — survived (cross-frame split) |
-| Data adapter | `FO` | week 22, 2025 | `FO0000G000` — zeroed at capture |
+| EMS controller | `EMS` | week 22, 2025 | `EMS2522000` — date preserved (EMS format survived old redactor) |
+| Inverter #1 | `CE` | week 31, 2022 | `CE2231G000` — date backported (#158) |
+| Inverter #2 | `CE` | week 42, 2022 | `CE2242G000` — date preserved (cross-frame split survived old redactor) |
+| Data adapter | `FO` | week 22, 2025 | `FO2522G000` — date backported (#158) |
 
 Battery serials (`BE`/`BJ` Giv-Bat 5.2, `AC` Giv-Bat 5.12 Gen3) and the
 `AB` response-source: prefixes known, manufacture dates not disclosed.

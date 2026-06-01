@@ -41,135 +41,181 @@ _logger = logging.getLogger(__name__)
 # (``CE0000G000``). Used to sanity-check serial strings decoded out of the EMS rollup.
 _GE_SERIAL_STR_PATTERN = re.compile(r"^[A-Z]{2}\d{4}[A-Z]\d{3}$")
 
-
-# GivEnergy serial numbers are 10 ASCII bytes. Two shapes have been
-# observed in real captures:
-#
-# - Standard form `AAYYWWANNN` (two letters, four-digit YYWW manufacture
-#   date, one letter, three-digit unit identifier) — covers inverters,
-#   dongles, batteries, meters.
-# - EMS plant controller form `AAAYYWWNNN` (three letters, four-digit
-#   YYWW date, three-digit unit identifier) — distinct enough to warrant
-#   its own pattern.
-#
-# Redaction preserves the family-prefix letters, the YYWW manufacture
-# date, and (for the standard form) the middle letter, while zeroing only
-# the trailing three-digit unit identifier — that's the install-unique
-# part. The manufacture date is a coarse cohort marker that's useful for
-# diagnostics (hardware-revision / firmware-compatibility windows) and a
-# far weaker signal than the unit digits. The four-digit cluster is read
-# as YYWW: every serial observed parses to a valid week (01–53) and the
-# year digits track known install recency. See #113. The middle letter
-# is preserved on the principle that it may carry signal (constant "G" in
-# every sample so far). Capture group 2 (the date) is kept verbatim.
-_SERIAL_PATTERN = re.compile(rb"([A-Z]{2})(\d{4})([A-Z])\d{3}")
-_EMS_SERIAL_PATTERN = re.compile(rb"([A-Z]{3})(\d{4})\d{3}")
-
-# Some inverter dongles emit their network configuration as an ASCII
-# CSV inside protocol responses — observed as the WO-prefix heartbeat
-# carrying `ip,netmask,gateway` every three minutes (see #100). Per-
-# octet digit-zeroing preserves the dot-separated structure and total
-# length, consistent with the same-offset guarantee the serial
-# patterns above already make.
-_IPV4_PATTERN = re.compile(rb"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}")
-
 Direction = Literal["rx", "tx"]
 
 
-def _zero_digits(match: re.Match[bytes]) -> bytes:
-    """Replace every digit in the matched span with `0`. Length-preserving."""
-    return re.sub(rb"\d", b"0", match.group(0))
+# ---------------------------------------------------------------------------
+# Serial-register lookup — which register addresses carry C.serial values
+# ---------------------------------------------------------------------------
+#
+# Built once at import time by walking every registered RegisterGetter LUT and
+# collecting all Defs whose pre_conv is Converter.serial.  The result maps
+# (register_type_name, address) → field_name. Register addresses are globally
+# unique per type across all models (HR_13 is always the inverter serial, etc.),
+# so no device-address filter is needed.
+#
+# Populated set (verified at B-3 implementation time):
+#   HR: 8-12 (battery serial), 13-17 (inverter serial)
+#   IR: 110-114 (battery), 1627-1631 (gateway first_inverter),
+#       1831-1835/1838-1842/1845-1849 (gateway v1 AIO 1-3),
+#       1841-1845/1848-1852/1855-1859 (gateway v2 AIO 1-3),
+#       2066-2085 (EMS rollup ×4)
+def _build_serial_register_groups() -> "list[tuple[str, int, int]]":
+    """Build a list of (reg_type, base_address, count) for every C.serial register group.
 
-
-def redact(frame: bytes) -> bytes:
-    """Replace identifying byte runs with their install-unique digits zeroed.
-
-    Currently covers:
-
-    - Standard 10-char GE serials (`AAYYWWANNN`) — family prefix, YYWW
-      manufacture date and middle letter preserved; trailing unit digits
-      zeroed.
-    - EMS plant-controller serials (`AAAYYWWNNN`) — family prefix and
-      YYWW date preserved; trailing unit digits zeroed.
-    - IPv4 dotted-quads — dots preserved, every digit zeroed. Catches
-      LAN topology leaks like the WO-prefix dongle heartbeat (see #100).
-
-    Serial redaction retains the manufacture date (a coarse, diagnostically
-    useful cohort marker) while zeroing the install-unique unit identifier;
-    see #113 for the rationale. Same length, same byte offsets across all
-    substitutions — frame-level CRC/length fields remain consistent so
-    offline parsing tools still work on the redacted output.
+    A serial field spans `count` consecutive registers starting at `base_address`.
+    Addresses are globally unique per type across all models (HR_13 is always the
+    inverter serial, etc.), so no device-address filter is needed.
     """
-    frame = _SERIAL_PATTERN.sub(rb"\g<1>\g<2>\g<3>000", frame)
-    frame = _EMS_SERIAL_PATTERN.sub(rb"\g<1>\g<2>000", frame)
-    frame = _IPV4_PATTERN.sub(_zero_digits, frame)
-    return frame
+    from givenergy_modbus.model import battery, ems, gateway, inverter
+    from givenergy_modbus.model.register import Converter
+
+    seen: set[tuple[str, int, int]] = set()
+    groups: list[tuple[str, int, int]] = []
+    for module in (inverter, battery, ems, gateway):
+        for attr in dir(module):
+            cls = getattr(module, attr)
+            if not isinstance(cls, type):
+                continue
+            lut = getattr(cls, "REGISTER_LUT", None)
+            if not lut:
+                continue
+            for _field, defn in lut.items():
+                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
+                if pre_conv is Converter.serial and defn.registers:
+                    reg_type = type(defn.registers[0]).__name__  # "HR" or "IR"
+                    base = defn.registers[0]._idx
+                    count = len(defn.registers)
+                    key = (reg_type, base, count)
+                    if key not in seen:
+                        seen.add(key)
+                        groups.append(key)
+    return groups
 
 
-# Longest token redact() matches is a 10-char serial; an IPv4 dotted-quad can be
-# up to 15. Holding back the last 14 bytes guarantees any identifier straddling a
-# chunk boundary is reassembled before the boundary is emitted.
-_REDACT_LOOKBACK = 14
+# List of (reg_type, base_address, count) for all C.serial register groups.
+_SERIAL_GROUPS: "list[tuple[str, int, int]]" = _build_serial_register_groups()
+
+# MBAP start marker used by the framer to locate frames within a byte stream.
+_FRAME_MARKER = bytes.fromhex("59590001")
 
 
-class StreamRedactor:
-    """Stateful redactor for a chunked byte stream (e.g. raw socket reads).
+class FrameRedactor:
+    """Frame-aware stateful redactor for a captured GivEnergy byte stream.
 
-    ``redact()`` is per-buffer, so an identifier split across two chunks — the
-    prefix in one, the unit-bearing continuation in the next — is seen by neither
-    pass and leaks on reassembly (#117; observed in the EMS rollup at IR(2066+)).
+    Replaces ``StreamRedactor``: instead of running byte-level regex over raw socket
+    chunks, it reassembles complete GivEnergy frames (using the same 0x5959 marker
+    scan the ``Framer`` uses), decodes each one, redacts only the known-sensitive
+    fields by type (envelope serials, C.serial-tagged register values, LAN-config IPs),
+    and re-encodes with a freshly-computed CRC.
 
-    This wrapper carries the trailing ``_REDACT_LOOKBACK`` bytes of each chunk over
-    to the next, redacts across the join, and only emits bytes once they're far
-    enough from the frontier that no further identifier can overlap them. Byte
-    count and offsets are preserved exactly (same guarantee as ``redact()``), so
-    the reassembled stream is identical-length to the raw one. Call ``flush()`` at
-    end-of-stream to emit the final held tail.
+    Any bytes that cannot be decoded — ``InvalidFrame`` results, inter-frame garbage,
+    or a partial frame held at stream end — are emitted **intact** (not mangled) with
+    a log message.  Nothing on the wire is ever dropped: the capture is always complete.
 
-    Not thread-safe; use one instance per capture stream (per direction).
+    Not thread-safe; use one instance per capture direction.
+
+    See #158 B-3 for the design rationale and the ``LanConfigBroadcast`` PDU that
+    handles the #100 WO-dongle LAN-config broadcasts.
     """
 
-    def __init__(self) -> None:
-        # Raw bytes seen but whose redaction isn't yet settled, plus how many of
-        # them we've already emitted. We keep the *raw* prefix (not the redacted
-        # output) so each pass re-redacts with full left-context, and a match
-        # straddling a previous cut is never double-processed.
-        self._buffer = b""
-        self._emitted = 0
+    def __init__(self, direction: "Direction" = "rx") -> None:
+        self._buf = b""
+        self._direction = direction  # determines which PDU decoder to use
 
     def feed(self, chunk: bytes) -> bytes:
-        """Absorb a chunk; return the bytes that are now safe to emit, redacted.
-
-        Bytes within ``_REDACT_LOOKBACK`` of the buffer end are held back — an
-        identifier could still extend into the next chunk — so they aren't emitted
-        until enough following bytes arrive (or ``flush()`` is called).
-        """
-        self._buffer += chunk
-        stable_end = len(self._buffer) - _REDACT_LOOKBACK
-        if stable_end <= self._emitted:
-            return b""
-        # Redact the whole buffer for full left-context (offset-preserving), then
-        # slice out only the newly-settled span [already-emitted, stable_end).
-        redacted = redact(self._buffer)
-        out = redacted[self._emitted : stable_end]
-        self._emitted = stable_end
-        # Prune the settled prefix so a long capture doesn't grow the buffer
-        # unbounded. Keep a lookback-sized margin behind the emit frontier as
-        # left-context (a match can span at most _REDACT_LOOKBACK bytes), so
-        # dropping bytes older than that can't change any future redaction.
-        if self._emitted > _REDACT_LOOKBACK:
-            drop = self._emitted - _REDACT_LOOKBACK
-            self._buffer = self._buffer[drop:]
-            self._emitted -= drop
-        return out
+        """Absorb raw bytes; return redacted output for any complete frames found."""
+        self._buf += chunk
+        return self._process()
 
     def flush(self) -> bytes:
-        """Emit the remaining held bytes, redacted. Call once at end of stream."""
-        redacted = redact(self._buffer)
-        out = redacted[self._emitted :]
-        self._buffer = b""
-        self._emitted = 0
+        """Emit any remaining buffered bytes intact and reset. Call at stream end."""
+        tail = self._buf
+        self._buf = b""
+        if tail:
+            _logger.debug("FrameRedactor flushing %db of incomplete/trailing bytes intact", len(tail))
+        return tail
+
+    def _process(self) -> bytes:
+        out = b""
+        while self._buf:
+            marker_pos = self._buf.find(_FRAME_MARKER)
+            if marker_pos < 0:
+                # No frame marker in buffer — keep the last 3 bytes (a split marker
+                # could arrive next chunk) and emit the rest intact.
+                keep = len(_FRAME_MARKER) - 1
+                if len(self._buf) > keep:
+                    garbage, self._buf = self._buf[:-keep], self._buf[-keep:]
+                    _logger.debug("FrameRedactor: %db pre-marker garbage emitted intact", len(garbage))
+                    out += garbage
+                break
+            if marker_pos > 0:
+                # Garbage before the marker — emit intact.
+                garbage, self._buf = self._buf[:marker_pos], self._buf[marker_pos:]
+                _logger.debug("FrameRedactor: %db inter-frame garbage emitted intact", len(garbage))
+                out += garbage
+                continue
+            # Marker is at position 0. Read the length field to know frame size.
+            if len(self._buf) < 6:
+                break  # not enough bytes for the MBAP length field yet
+            hdr_len = int.from_bytes(self._buf[4:6], "big")
+            frame_len = 6 + hdr_len
+            if len(self._buf) < frame_len:
+                break  # partial frame — wait for more data
+            frame, self._buf = self._buf[:frame_len], self._buf[frame_len:]
+            out += self._redact_frame(frame)
         return out
+
+    def _redact_frame(self, frame: bytes) -> bytes:
+        from givenergy_modbus.model.register import Converter
+        from givenergy_modbus.pdu import ClientIncomingMessage, ClientOutgoingMessage
+        from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
+        from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
+
+        # TX frames are ClientOutgoingMessage (requests); RX frames are
+        # ClientIncomingMessage (responses/heartbeats).  Using the wrong decoder
+        # silently falls through to intact-passthrough, leaking the adapter serial
+        # in every captured request.  Pass the right decoder by direction.
+        decoder_class = ClientOutgoingMessage if self._direction == "tx" else ClientIncomingMessage
+        try:
+            pdu = decoder_class.decode_bytes(frame)
+        except Exception:
+            _logger.warning("FrameRedactor: undecodable frame (%db) emitted intact", len(frame))
+            return frame
+
+        # LanConfigBroadcast: delegate to its own redact() — handles serial + IPs
+        if isinstance(pdu, LanConfigBroadcast):
+            return pdu.redact().encode()
+
+        # Redact envelope serials (present on all Transparent PDUs)
+        if hasattr(pdu, "data_adapter_serial_number"):
+            pdu.data_adapter_serial_number = Converter.redact_serial(pdu.data_adapter_serial_number) or ""
+        if hasattr(pdu, "inverter_serial_number"):
+            pdu.inverter_serial_number = Converter.redact_serial(pdu.inverter_serial_number) or ""
+
+        # Redact payload serials in register responses.
+        # A serial is stored across 5 consecutive registers; decode the group as a
+        # string, apply redact_serial, and re-encode back into register values.
+        if isinstance(pdu, ReadRegistersResponse) and not pdu.error:
+            reg_type = "HR" if pdu.transparent_function_code == 3 else "IR"
+            win_base = pdu.base_register
+            win_end = win_base + len(pdu.register_values)  # safer than register_count
+            for g_type, g_base, g_count in _SERIAL_GROUPS:
+                if g_type != reg_type:
+                    continue
+                g_end = g_base + g_count
+                if g_base < win_base or g_end > win_end:
+                    continue  # group not fully within this response window
+                offset = g_base - win_base
+                raw_bytes = b"".join(v.to_bytes(2, "big") for v in pdu.register_values[offset : offset + g_count])
+                serial_str = raw_bytes.decode("latin1").replace("\x00", "").upper()
+                redacted = Converter.redact_serial(serial_str) or ""
+                # Re-encode: right-pad to g_count*2 bytes, split back into registers
+                redacted_bytes = redacted.encode("latin1").ljust(g_count * 2, b"\x00")[: g_count * 2]
+                for i in range(g_count):
+                    pdu.register_values[offset + i] = int.from_bytes(redacted_bytes[i * 2 : i * 2 + 2], "big")
+
+        return pdu.encode()
 
 
 class Client:
@@ -231,8 +277,8 @@ class Client:
     # Per-direction stream redactors for an active capture — carry a small tail
     # across socket-read chunks so a serial split across a boundary is still
     # redacted (#117). Created in capture_frames(), None when no capture runs.
-    _capture_redactor_rx: "StreamRedactor | None" = None
-    _capture_redactor_tx: "StreamRedactor | None" = None
+    _capture_redactor_rx: "FrameRedactor | None" = None
+    _capture_redactor_tx: "FrameRedactor | None" = None
     reader: StreamReader
     writer: StreamWriter
     network_consumer_task: Task | None
@@ -924,29 +970,28 @@ class Client:
     ) -> None:
         """Tee redacted TX/RX wire frames to *sink* for *duration* seconds.
 
-        *sink* is called with the direction ('rx' or 'tx') and the *redacted*
-        bytes. The library always redacts before invoking the sink so callers
-        can't accidentally see raw hardware identifiers; persistence, formatting
-        and forwarding are the caller's choice.
+        *sink* is called with the direction ('rx' or 'tx') and the redacted bytes.
+        The library always redacts before invoking the sink so callers can't
+        accidentally see raw hardware identifiers; persistence, formatting and
+        forwarding are the caller's choice.
 
-        Redaction is cross-chunk-aware: a serial split across two socket reads is
-        still caught (#117), at the cost of the sink seeing the stream re-chunked
-        (a small trailing tail of each read is deferred to the next sink call, and
-        flushed when the capture ends). The reassembled byte stream is identical
-        in length and offsets to the raw one. Sinks must not assume one call maps
-        to one decodable frame — that was never guaranteed (reads tee raw socket
-        buffers, not framer output).
+        Redaction is frame-aware: each complete GivEnergy frame is decoded, its
+        serial-bearing fields (envelope serials, C.serial-tagged register values,
+        LAN-config IPs) are zeroed by type, and the frame is re-encoded with a
+        freshly-computed CRC. Frames that cannot be decoded (unknown function codes,
+        malformed/truncated frames) are emitted intact with a log message — they are
+        never dropped or mangled. The sink sees complete frames (one call per
+        complete frame) rather than raw socket chunks.
 
-        Runs alongside the normal refresh loop — does not suspend reads or
-        writes, just tees a copy of each frame to *sink*. Only one capture
-        may run on a Client at a time; calling while one is in flight raises
-        RuntimeError.
+        Runs alongside the normal refresh loop — does not suspend reads or writes,
+        just tees a copy of each frame to *sink*. Only one capture may run on a
+        Client at a time; calling while one is in flight raises RuntimeError.
         """
         if self._capture_sink is not None:
             raise RuntimeError("a frame capture is already running on this client")
         self._capture_sink = sink
-        self._capture_redactor_rx = StreamRedactor()
-        self._capture_redactor_tx = StreamRedactor()
+        self._capture_redactor_rx = FrameRedactor("rx")
+        self._capture_redactor_tx = FrameRedactor("tx")
         try:
             await asyncio.sleep(duration)
         finally:

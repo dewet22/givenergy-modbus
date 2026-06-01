@@ -404,8 +404,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "num_phases": Def((C.duint8, 1), None, HR(3)),
         # HR(4-6) unused
         "enable_ammeter": Def(C.bool, None, HR(7)),
-        "first_battery_serial_number": Def(C.string, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
-        "serial_number": Def(C.string, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
+        "first_battery_serial_number": Def(C.serial, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
+        "serial_number": Def(C.serial, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
         "first_battery_bms_firmware_version": Def(C.uint16, None, HR(18)),
         "dsp_firmware_version": Def(C.uint16, None, HR(19)),
         "enable_charge_target": Def(C.bool, None, HR(20)),
