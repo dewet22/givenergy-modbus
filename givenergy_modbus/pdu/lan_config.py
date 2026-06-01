@@ -118,7 +118,18 @@ class LanConfigBroadcast(ClientIncomingMessage):
         raise NotImplementedError()
 
     def redact(self) -> "LanConfigBroadcast":
-        """Return a new instance with the adapter serial and all IP fields zeroed."""
+        """Return a new instance with the adapter serial and all IP fields zeroed.
+
+        The trailing 2-byte ``check`` field is carried through verbatim. Its
+        derivation for this non-standard frame type is unknown — verified to not
+        follow the ``CRC16/Modbus(payload[18:], byte-swapped)`` scheme used by
+        all other GivEnergy frames (no candidate span produces a match). This is
+        consistent with the fact that real captures arrive with the IPs already
+        zeroed and a ``check`` value computed by the dongle over those zeroed bytes;
+        redaction of a live frame would leave the check inconsistent with the new CSV
+        bytes, but without understanding the formula it cannot be corrected. A comment
+        in the test documents the implication.
+        """
         from givenergy_modbus.model.register import Converter
 
         redacted_serial = Converter.redact_serial(self.data_adapter_serial_number) or ""
@@ -131,6 +142,6 @@ class LanConfigBroadcast(ClientIncomingMessage):
             ip=redacted_ip,
             netmask=redacted_netmask,
             gateway=redacted_gateway,
-            check=self.check,
+            check=self.check,  # opaque: derivation unknown for this frame type
             _csv_raw=new_csv_raw,
         )

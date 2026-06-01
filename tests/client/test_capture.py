@@ -192,6 +192,15 @@ def test_frame_redactor_lan_config_broadcast_redacted():
     # IPs already zeroed in the fixture; verify idempotent
     assert pdu.ip == _zero_ip(pdu.ip)
     assert len(out) == len(full_frame)
+    # The trailing 2-byte check field (0xb4f2) is preserved verbatim.
+    # Its derivation does not follow the CRC16/Modbus(payload[18:], byte-swapped)
+    # formula used by all other GivEnergy frames — no candidate span produces a
+    # match — so it is opaque and cannot be recomputed.  The fixture was captured
+    # with IPs already zeroed, so the check is already consistent with the current
+    # CSV bytes; redacting a live frame with real IPs would leave the check
+    # inconsistent with the rewritten CSV, but this is unavoidable without
+    # understanding the dongle-firmware-private derivation.
+    assert out[-2:] == full_frame[-2:]  # check bytes pass through unchanged
 
 
 # ---------------------------------------------------------------------------
