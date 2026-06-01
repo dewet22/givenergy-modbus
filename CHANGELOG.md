@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b6] - 2026-06-01
+
+### 🐛 Fixed
+
+- treat residential All-in-One as single-phase (#105) ([0bb591b](https://github.com/dewet22/givenergy-modbus/commit/0bb591bdcfdf5d5087cd445565de2aad094d0452))
+
 ## [2.1.0b5] - 2026-06-01
 
 ### 🐛 Fixed
