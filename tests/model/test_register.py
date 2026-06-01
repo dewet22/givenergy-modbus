@@ -125,6 +125,34 @@ def test_converter_gateway_version():
     assert Converter.gateway_version(first, None, third, fourth) is None
 
 
+def test_converter_serial_decodes_like_string():
+    # 'CE' 0x4345, '2231' 0x3232 0x3331, 'G454' 0x4734 0x3534 → CE2231G454
+    regs = (0x4345, 0x3232, 0x3331, 0x4734, 0x3534)
+    assert Converter.serial(*regs) == "CE2231G454"
+    assert Converter.serial(*regs) == Converter.string(*regs)
+    assert Converter.serial(0x4345, None, 0x3331, 0x4734, 0x3534) is None
+
+
+def test_redact_serial_standard_form():
+    # Family prefix, YYWW date and middle letter preserved; trailing unit digits zeroed.
+    assert Converter.redact_serial("CE2231G454") == "CE2231G000"
+    assert Converter.redact_serial("WO2310G227") == "WO2310G000"
+
+
+def test_redact_serial_ems_form():
+    # Three-letter prefix + YYWW kept; trailing three digits zeroed.
+    assert Converter.redact_serial("EMS2522018") == "EMS2522000"
+
+
+def test_redact_serial_passthrough_and_empty():
+    assert Converter.redact_serial(None) is None
+    assert Converter.redact_serial("") == ""
+    # Unrecognised shapes (e.g. a 4-char meter code) are returned unchanged, not mangled.
+    assert Converter.redact_serial("AB12") == "AB12"
+    # Already-redacted input is idempotent.
+    assert Converter.redact_serial("CE2231G000") == "CE2231G000"
+
+
 def test_battery_max_power():
     from givenergy_modbus.model.inverter import _battery_max_power
 

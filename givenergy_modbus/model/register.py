@@ -71,6 +71,39 @@ class Converter:
         return None
 
     @staticmethod
+    def serial(*vals: int) -> str | None:
+        """Decode one or more registers as a GivEnergy serial/identifier string.
+
+        Identical wire form to `string` (concatenated big-endian ASCII), but a distinct
+        converter so the capture redactor can locate serial-bearing registers *by type*
+        — `Def`s tagged `C.serial` — rather than guessing from byte shape. The redaction
+        rule itself lives in `redact_serial`, so "this field is an identifier" and "here's
+        how it's redacted" are declared together on the type, in one place.
+        """
+        return Converter.string(*vals)
+
+    @staticmethod
+    def redact_serial(s: str | None) -> str | None:
+        """Redact a GivEnergy serial: keep the prefix + date, zero the trailing unit digits.
+
+        Keeps the family prefix, YYWW manufacture date and (standard form) the middle letter;
+        zeroes only the install-unique trailing unit identifier.
+        Two observed shapes: standard `AAYYWWANNN` (inverters, dongles, batteries, meters)
+        and EMS `AAAYYWWNNN`. Mirrors the byte-level rule the stream redactor applied (#113)
+        — the manufacture date is a coarse, diagnostically useful cohort marker, the unit
+        digits are the unique part. Unrecognised shapes are returned unchanged.
+        """
+        if not s:
+            return s
+        m = re.fullmatch(r"([A-Z]{2})(\d{4})([A-Z])\d{3}", s)
+        if m:
+            return f"{m.group(1)}{m.group(2)}{m.group(3)}000"
+        m = re.fullmatch(r"([A-Z]{3})(\d{4})\d{3}", s)
+        if m:
+            return f"{m.group(1)}{m.group(2)}000"
+        return s
+
+    @staticmethod
     def fstr(val, fmt) -> str | None:
         """Render a value using a format string."""
         if val is not None:

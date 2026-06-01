@@ -79,7 +79,7 @@ _GATEWAY_COMMON_LUT = {
     "gateway_fault_codes": Def(C.uint32, _gateway_fault_code, IR(1622), IR(1623)),
     "v_grid_relay": Def(C.deci, None, IR(1624), min=0.0, max=500.0),
     "v_inverter_relay": Def(C.deci, None, IR(1625), min=0.0, max=500.0),
-    "first_inverter_serial_number": Def(C.string, None, IR(1627), IR(1628), IR(1629), IR(1630), IR(1631)),
+    "first_inverter_serial_number": Def(C.serial, None, IR(1627), IR(1628), IR(1629), IR(1630), IR(1631)),
     #
     # Input Registers 1640 — Daily / today energy (same in both variants)
     #
@@ -157,15 +157,15 @@ _GATEWAY_V2_ENERGY_TOTALS = {
 
 # AIO serial number addresses differ between v1 and v2 firmware
 _GATEWAY_V1_SERIALS = {
-    "aio1_serial_number": Def(C.string, None, IR(1831), IR(1832), IR(1833), IR(1834), IR(1835)),
-    "aio2_serial_number": Def(C.string, None, IR(1838), IR(1839), IR(1840), IR(1841), IR(1842)),
-    "aio3_serial_number": Def(C.string, None, IR(1845), IR(1846), IR(1847), IR(1848), IR(1849)),
+    "aio1_serial_number": Def(C.serial, None, IR(1831), IR(1832), IR(1833), IR(1834), IR(1835)),
+    "aio2_serial_number": Def(C.serial, None, IR(1838), IR(1839), IR(1840), IR(1841), IR(1842)),
+    "aio3_serial_number": Def(C.serial, None, IR(1845), IR(1846), IR(1847), IR(1848), IR(1849)),
 }
 
 _GATEWAY_V2_SERIALS = {
-    "aio1_serial_number": Def(C.string, None, IR(1841), IR(1842), IR(1843), IR(1844), IR(1845)),
-    "aio2_serial_number": Def(C.string, None, IR(1848), IR(1849), IR(1850), IR(1851), IR(1852)),
-    "aio3_serial_number": Def(C.string, None, IR(1855), IR(1856), IR(1857), IR(1858), IR(1859)),
+    "aio1_serial_number": Def(C.serial, None, IR(1841), IR(1842), IR(1843), IR(1844), IR(1845)),
+    "aio2_serial_number": Def(C.serial, None, IR(1848), IR(1849), IR(1850), IR(1851), IR(1852)),
+    "aio3_serial_number": Def(C.serial, None, IR(1855), IR(1856), IR(1857), IR(1858), IR(1859)),
 }
 
 

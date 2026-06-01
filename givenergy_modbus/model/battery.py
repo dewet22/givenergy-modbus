@@ -69,7 +69,7 @@ class BatteryRegisterGetter(RegisterGetter):
         "t_max": Def(DT.deci, None, IR(103), min=-60.0, max=150.0),
         "t_min": Def(DT.deci, None, IR(104), min=-60.0, max=150.0),
         # IR(105-109) unused
-        "serial_number": Def(DT.string, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
+        "serial_number": Def(DT.serial, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
         # IR(115) meaning unverified — manufacturer specs only document 0 and 8 (originally
         # decoded as a UsbDevice enum), but observed values outside that set (e.g. 11 on
         # D0.449-A0.449) caused decode failures. Exposed as a raw uint16 until documented.
