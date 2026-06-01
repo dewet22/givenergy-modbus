@@ -209,6 +209,20 @@ async def test_refresh_plant_no_caps_detects_first():
     mock_refresh.assert_awaited_once()
 
 
+async def test_refresh_plant_warns_on_ignored_max_batteries():
+    """refresh_plant(max_batteries=...) now no-ops that arg — warn rather than silently ignore.
+
+    Battery addresses come from detect()/capabilities; the old fixed-count poll is gone.
+    """
+    client = _client_with_caps(Model.HYBRID)
+    with (
+        patch.object(client, "load_config", new_callable=AsyncMock),
+        patch.object(client, "refresh", new_callable=AsyncMock),
+    ):
+        with pytest.warns(DeprecationWarning, match="max_batteries"):
+            await client.refresh_plant(max_batteries=3)
+
+
 async def test_watch_plant_deprecated():
     """watch_plant() warns on entry (before doing any work)."""
     client = Client("localhost", 8899)

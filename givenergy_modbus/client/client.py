@@ -826,6 +826,16 @@ class Client:
             DeprecationWarning,
             stacklevel=2,
         )
+        if max_batteries != 5:
+            # Battery addresses now come from detect()/capabilities, so this argument
+            # no longer does anything — warn rather than silently ignore a custom value.
+            warnings.warn(
+                "The max_batteries argument to refresh_plant() is ignored — battery "
+                "addresses are now discovered by detect(). It will be removed with "
+                "refresh_plant() in 3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         # The primitives require capabilities; as the legacy one-call wrapper, detect
         # them here if the caller hasn't, so connect()-then-refresh_plant() still works
         # (it now addresses correctly per model — issue #105, where an AIO answering at
