@@ -196,13 +196,26 @@ async def test_refresh_plant_no_caps_detects_first():
     client = _client_with_caps(Model.HYBRID)
     client.plant.capabilities = None  # simulate no prior detect()
     detected = PlantCapabilities(device_type=Model.HYBRID)
+    # Record call order — detecting *before* polling is the whole regression (#105),
+    # so pin the sequence rather than just asserting each was awaited.
+    calls: list[str] = []
     with (
-        patch.object(client, "detect", new_callable=AsyncMock, return_value=detected) as mock_detect,
-        patch.object(client, "load_config", new_callable=AsyncMock) as mock_load,
-        patch.object(client, "refresh", new_callable=AsyncMock) as mock_refresh,
+        patch.object(
+            client,
+            "detect",
+            new_callable=AsyncMock,
+            side_effect=lambda *a, **k: calls.append("detect") or detected,
+        ) as mock_detect,
+        patch.object(
+            client, "load_config", new_callable=AsyncMock, side_effect=lambda *a, **k: calls.append("load_config")
+        ) as mock_load,
+        patch.object(
+            client, "refresh", new_callable=AsyncMock, side_effect=lambda *a, **k: calls.append("refresh")
+        ) as mock_refresh,
     ):
         with pytest.warns(DeprecationWarning):
             await client.refresh_plant()
+    assert calls == ["detect", "load_config", "refresh"]
     mock_detect.assert_awaited_once()
     assert client.plant.capabilities is detected
     mock_load.assert_awaited_once()
