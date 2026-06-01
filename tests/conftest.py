@@ -189,14 +189,14 @@ _server_messages: PduTestCases = [
         {
             "base_register": 0x10,
             "register_count": 6,
-            "check": 0x0754,
+            "check": 0x740E,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",  # 8 bytes
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x04\x00\x10\x00\x06\x07\x54",  # 26 bytes
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x04\x00\x10\x00\x06\x74\x0e",  # 26 bytes
         None,
     ),
     (
@@ -205,14 +205,14 @@ _server_messages: PduTestCases = [
         {
             "base_register": 0x5151,
             "register_count": 20,
-            "check": 0x2221,
+            "check": 0x012B,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x14\x22\x21",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x14\x01\x2b",
         None,
     ),
     (
@@ -221,14 +221,14 @@ _server_messages: PduTestCases = [
         {
             "base_register": 0x5151,
             "register_count": 30,
-            "check": 0x25A1,
+            "check": 0x812C,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x1e\x25\xa1",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x03\x51\x51\x00\x1e\x81\x2c",
         None,
     ),
     (
@@ -237,14 +237,14 @@ _server_messages: PduTestCases = [
         {
             "register": 179,
             "value": 2000,
-            "check": 0x81EE,
+            "check": 0x7E42,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xb3\x07\xd0\x81\xee",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xb3\x07\xd0\x7e\x42",
         InvalidPduState(r"HR\(179\) is not safe to write to", None),
     ),
     (
@@ -253,14 +253,14 @@ _server_messages: PduTestCases = [
         {
             "register": 199,
             "value": 2000,
-            "check": 0x81EE,
+            "check": 0x3E58,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xc7\x07\xd0\x81\xee",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\xc7\x07\xd0\x3e\x58",
         InvalidPduState(r"HR\(199\) is not safe to write to", None),
     ),
     (
@@ -269,14 +269,14 @@ _server_messages: PduTestCases = [
         {
             "register": 0x14,
             "value": 1,
-            "check": 0xC42D,
+            "check": 0x0DCD,
             "data_adapter_serial_number": "AB1234G567",
             "error": False,
             "padding": 8,
             "device_address": 0x32,
         },
         b"YY\x00\x01\x00\x1c\x01\x02",
-        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\x14\x00\x01\xc4\x2d",
+        b"AB1234G567\x00\x00\x00\x00\x00\x00\x00\x08\x32\x06\x00\x14\x00\x01\x0d\xcd",
         None,
     ),
     (

@@ -56,11 +56,19 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         self._update_check_code()
 
     def _update_check_code(self):
+        # Request CRC covers the device-address byte and is byte-swapped on the wire.
+        # Confirmed against real GivTCP + GivEnergy-app frames for an All-in-One (#105):
+        # ReadHolding(device=0x11, base=0, count=60) → wire CRC 0x474b. Omitting the
+        # device byte (the old behaviour) produced frames a strict inverter silently
+        # dropped. This matches the FC 0x16 layout (ReadMeterProductRegistersRequest, #58)
+        # — all request types share it.
         crc_builder = PayloadEncoder()
+        crc_builder.add_8bit_uint(self.device_address)
         crc_builder.add_8bit_uint(self.transparent_function_code)
         crc_builder.add_16bit_uint(self.base_register)
         crc_builder.add_16bit_uint(self.register_count)
-        self.check = crc_builder.crc
+        raw = crc_builder.crc
+        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
         self._builder.add_16bit_uint(self.check)
 
     def ensure_valid_state(self):
