@@ -669,3 +669,17 @@ def test_ems_commands_are_write_safe():
     for r in reqs:
         assert r.register in WRITE_SAFE_REGISTERS, f"register {r.register} not write-safe"
         assert r.device_address == 0x11, f"EMS write to {r.register} should target 0x11"
+
+
+def test_refresh_plant_data_is_a_raising_stub():
+    """The removed 0x32-poll builder is import-compatible but raises on call (#105/#156).
+
+    Kept so external `from ...commands import refresh_plant_data` doesn't ImportError,
+    but raises PlantNotDetected pointing at detect()/load_config()/refresh() rather
+    than rebuilding the unsafe fixed-0x32 poll.
+    """
+    from givenergy_modbus.exceptions import PlantNotDetected
+
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(PlantNotDetected, match="detect()"):
+            commands.refresh_plant_data(True)
