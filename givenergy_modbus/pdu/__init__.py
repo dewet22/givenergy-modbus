@@ -8,6 +8,7 @@ from givenergy_modbus.pdu.base import (
     ServerOutgoingMessage,
 )
 from givenergy_modbus.pdu.heartbeat import HeartbeatMessage, HeartbeatRequest, HeartbeatResponse
+from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
 from givenergy_modbus.pdu.null import NullResponse
 from givenergy_modbus.pdu.read_registers import (
     ReadHoldingRegisters,
@@ -33,6 +34,7 @@ from givenergy_modbus.pdu.write_registers import (
 __all__ = [
     "BasePDU",
     "ClientIncomingMessage",
+    "LanConfigBroadcast",
     "ClientOutgoingMessage",
     "HeartbeatMessage",
     "HeartbeatRequest",

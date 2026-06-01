@@ -98,8 +98,18 @@ class TransparentMessage(BasePDU, ABC):
         # self._update_check_code()
 
     @classmethod
-    def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> "TransparentMessage":
+    def decode_main_function(cls, decoder: PayloadDecoder, **attrs) -> "TransparentMessage | BasePDU":
+        from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
+
         attrs["data_adapter_serial_number"] = decoder.decode_string(10)
+
+        # LAN-config broadcast discriminator: some WO-prefix dongles emit a function-0x02
+        # frame whose body is adapter_serial + 7-byte pad + ",ip,netmask,gateway\r\n\r\n" + check.
+        # The 7th pad byte is 0x00 (not a valid transparent_function_code) and the next
+        # byte is ',' — nothing in the normal transparent protocol can produce that sequence.
+        if LanConfigBroadcast.is_lan_config(decoder.remaining_payload):
+            return LanConfigBroadcast.decode_main_function(decoder, **attrs)
+
         attrs["padding"] = decoder.decode_64bit_uint()
         attrs["device_address"] = decoder.decode_8bit_uint()
         transparent_function_code = decoder.decode_8bit_uint()
