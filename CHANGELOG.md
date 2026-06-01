@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b3] - 2026-06-01
+
+### ✨ Added
+
+- add export_priority (HR311) and enable_eps (HR317) for AC inverters ([732643c](https://github.com/dewet22/givenergy-modbus/commit/732643c73d5e9be6e95b64d8f966cf03d2096a2d))
+
+### 🐛 Fixed
+
+- clamp zero month/day in to_datetime to prevent crash (#153) ([30f4a5f](https://github.com/dewet22/givenergy-modbus/commit/30f4a5f523a08b8e119e9d8326a8da2b725aefed))
+- add HR311/317 to PDU write allowlist; validate AC setters ([d1c3634](https://github.com/dewet22/givenergy-modbus/commit/d1c3634ed0dc7e4fd05eb599ee50d7a35d1b5cb9))
+
 ## [2.1.0b2] - 2026-05-31
 
 ### ✨ Added
