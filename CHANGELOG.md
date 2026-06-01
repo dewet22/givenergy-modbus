@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b5] - 2026-06-01
+
+### 🐛 Fixed
+
+- include device address + byte-swap in request CRC (#105) ([b85b33a](https://github.com/dewet22/givenergy-modbus/commit/b85b33a270088a54ab7d3fed3060ba67eca244b2))
+
+### 🔧 Maintenance
+
+- drop now-redundant FC 0x16 CRC override ([421f92b](https://github.com/dewet22/givenergy-modbus/commit/421f92b1134d8f5e2f03286c7a3a7c4d4395e276))
+
 ## [2.1.0b4] - 2026-06-01
 
 ### 🐛 Fixed
