@@ -2,6 +2,8 @@ import logging
 import warnings
 from abc import ABC
 
+from crccheck.crc import CrcModbus
+
 from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.pdu.base import BasePDU, ClientIncomingMessage, ClientOutgoingMessage
 
@@ -128,8 +130,21 @@ class TransparentMessage(BasePDU, ABC):
         #     _logger.debug(f'Expected padding 0x8a, found 0x{self.padding:02x} instead')
 
     def _update_check_code(self) -> None:
-        """Recalculate CRC of the PDU message."""
-        raise NotImplementedError()
+        """Append the trailing CRC over the already-built payload.
+
+        One scheme for the entire Transparent protocol — every request *and* response
+        type. CRC16/Modbus over the buffer from the device-address byte onward (skipping
+        the 10-byte data-adapter serial + 8-byte padding = `payload[18:]`), byte-swapped
+        on the wire. Operating on the built buffer rather than re-listing fields is what
+        keeps request and response CRCs from drifting apart (the bug behind #105/#158).
+
+        Confirmed against real GivTCP + GivEnergy-app request frames (#105:
+        ReadHolding(0x11,0,60) → 0x474b) and the real All-in-One response corpus (#158:
+        102/102 wire frames valid, incl. error responses).
+        """
+        raw = CrcModbus().process(self._builder.payload[18:]).final()
+        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
+        self._builder.add_16bit_uint(self.check)
 
     def _extra_shape_hash_keys(self):
         return (self.device_address,)
@@ -198,12 +213,6 @@ class TransparentResponse(TransparentMessage, ClientIncomingMessage, ABC):
             return ReadMeterProductRegistersResponse
         else:
             raise NotImplementedError(f"TransparentResponse function #{transparent_function_code} decoder")
-
-    def _update_check_code(self):
-        if hasattr(self, "check"):
-            # Until we know how Responses' CRCs are calculated there's nothing we can do here; self.check stays 0x0000
-            _logger.warning("Unable to recalculate checksum, using whatever value was set")
-            self._builder.add_16bit_uint(self.check)
 
 
 __all__ = ()

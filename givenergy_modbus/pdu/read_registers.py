@@ -1,7 +1,9 @@
 import logging
 from abc import ABC
 
-from givenergy_modbus.codec import PayloadDecoder, PayloadEncoder
+from crccheck.crc import CrcModbus
+
+from givenergy_modbus.codec import PayloadDecoder
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.pdu.transparent import TransparentMessage, TransparentRequest, TransparentResponse
 
@@ -53,24 +55,7 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         super()._encode_function_data()
         self._builder.add_16bit_uint(self.base_register)
         self._builder.add_16bit_uint(self.register_count)
-        self._update_check_code()
-
-    def _update_check_code(self):
-        # Request CRC covers the device-address byte and is byte-swapped on the wire.
-        # Confirmed against real GivTCP + GivEnergy-app frames for an All-in-One (#105):
-        # ReadHolding(device=0x11, base=0, count=60) → wire CRC 0x474b. Omitting the
-        # device byte (the old behaviour) produced frames a strict inverter silently
-        # dropped. This is the same layout originally confirmed for FC 0x16 against a
-        # meter wire capture (device=0x01, base=0x3c, count=0x3c → 0x8814; see #58) —
-        # all request function codes (0x03/0x04/0x06/0x16) share it.
-        crc_builder = PayloadEncoder()
-        crc_builder.add_8bit_uint(self.device_address)
-        crc_builder.add_8bit_uint(self.transparent_function_code)
-        crc_builder.add_16bit_uint(self.base_register)
-        crc_builder.add_16bit_uint(self.register_count)
-        raw = crc_builder.crc
-        self.check = ((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF)
-        self._builder.add_16bit_uint(self.check)
+        self._update_check_code()  # unified CRC lives on TransparentMessage
 
     def ensure_valid_state(self):
         """Sanity check our internal state."""
@@ -113,14 +98,26 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         if self.padding != expected_padding:
             _logger.debug(f"Expected padding 0x{expected_padding:02x}, found 0x{self.padding:02x} instead: {self}")
 
-        # FIXME how to test crc
-        # crc_builder = BinaryPayloadBuilder(byteorder=Endian.Big)
-        # crc_builder.add_8bit_uint(self.function_code)
-        # crc_builder.add_16bit_uint(self.base_register)
-        # crc_builder.add_16bit_uint(self.register_count)
-        # # [crc_builder.add_16bit_uint(r) for r in self.register_values]
-        # crc = CrcModbus().process(crc_builder.to_string()).final()
-        # _logger.warning(f'supplied crc = {self.check}, calculated crc = {crc}')
+        self._validate_check_code()
+
+    def _validate_check_code(self) -> None:
+        """Log-only CRC check of a decoded response against the received bytes.
+
+        Recomputes the unified CRC (CRC16/Modbus over `raw_frame[26:-2]` — the
+        device-address byte onward, mirroring `TransparentMessage._update_check_code`'s
+        `payload[18:]`, byte-swapped) and compares to the decoded `check`. Confirmed valid
+        for every frame in the real All-in-One corpus (#158: 102/102, incl. error
+        responses). Deliberately **non-fatal**: incoming inverter frames are the source of
+        truth, so a mismatch is logged for diagnosis but never rejects the data. Only runs
+        when `raw_frame` is present (i.e. on decoded frames).
+        """
+        raw_frame = getattr(self, "raw_frame", None)
+        if not raw_frame or len(raw_frame) < 28:
+            return
+        computed = CrcModbus().process(raw_frame[26:-2]).final()
+        expected = ((computed & 0xFF) << 8) | ((computed >> 8) & 0xFF)
+        if expected != self.check:
+            _logger.debug(f"Response CRC mismatch on {self}: wire=0x{self.check:04x} computed=0x{expected:04x}")
 
     def to_dict(self) -> dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""
