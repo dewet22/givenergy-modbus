@@ -39,19 +39,6 @@ def _reqs(mock_execute) -> list[tuple]:
 # ---------------------------------------------------------------------------
 
 
-async def test_load_config_no_caps():
-    """Without capabilities, only the four base blocks are requested, at the legacy 0x32."""
-    client = Client("localhost", 8899)
-    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
-        await client.load_config()
-    assert _reqs(mock_exec) == [
-        _hr(0, 60, device=0x32),
-        _hr(60, 60, device=0x32),
-        _hr(120, 60, device=0x32),
-        _ir(120, 60, device=0x32),
-    ]
-
-
 async def test_load_config_single_phase():
     """Standard single-phase HYBRID requests the four base blocks plus HR(300-359), at 0x11."""
     client = _client_with_caps(Model.HYBRID)
@@ -124,17 +111,31 @@ async def test_load_config_ems():
 # ---------------------------------------------------------------------------
 
 
-async def test_refresh_no_caps_runs_legacy_path():
-    """Without capabilities, refresh() runs the legacy capability-free fallback.
+async def test_refresh_without_caps_raises_plant_not_detected():
+    """refresh() refuses to guess an address when detect() hasn't run (#105).
 
-    It must NOT route through the deprecated refresh_plant() (that would warn);
-    _refresh_no_caps() builds the legacy request list and dispatches it.
+    Previously it fell back to a hardcoded 0x32 poll, which silently timed out on
+    models answering elsewhere (e.g. an All-in-One at 0x11). It now raises
+    PlantNotDetected rather than dispatching a blind request.
     """
+    from givenergy_modbus.exceptions import PlantNotDetected
+
     client = Client("localhost", 8899)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
-        plant = await client.refresh()
-    assert plant is client.plant
-    mock_exec.assert_awaited_once()
+        with pytest.raises(PlantNotDetected, match="detect()"):
+            await client.refresh()
+    mock_exec.assert_not_awaited()
+
+
+async def test_load_config_without_caps_raises_plant_not_detected():
+    """load_config() likewise refuses without capabilities (#105)."""
+    from givenergy_modbus.exceptions import PlantNotDetected
+
+    client = Client("localhost", 8899)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        with pytest.raises(PlantNotDetected, match="detect()"):
+            await client.load_config()
+    mock_exec.assert_not_awaited()
 
 
 async def test_refresh_single_phase_no_peripherals():

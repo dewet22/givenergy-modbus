@@ -38,6 +38,18 @@ class CommunicationError(ExceptionBase):
     """Exception to indicate a communication error."""
 
 
+class PlantNotDetected(CommunicationError):
+    """Raised when a capability-aware poll is attempted before ``detect()`` has run.
+
+    ``load_config()`` / ``refresh()`` route by ``plant.capabilities`` (device kind,
+    inverter address, slot layout). With no capabilities there is no safe default —
+    guessing an inverter address (historically ``0x32``) silently times out on models
+    that answer elsewhere (e.g. an All-in-One at ``0x11``). Rather than guess, the poll
+    refuses: call ``detect()`` once first, or restore a persisted ``PlantCapabilities``
+    onto ``client.plant.capabilities`` before polling.
+    """
+
+
 class PlantTopologyMismatch(CommunicationError):
     """Raised when detect(prior=...) finds the plant doesn't match the supplied prior.
 

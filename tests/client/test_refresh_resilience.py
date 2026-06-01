@@ -186,13 +186,27 @@ async def test_refresh_plant_propagates_partial():
             await client.refresh_plant()
 
 
-async def test_refresh_plant_no_caps_uses_legacy_path():
-    """refresh_plant() without capabilities routes to the legacy fallback (and warns)."""
-    client = Client("localhost", 8899)
-    with patch.object(client, "_refresh_no_caps", new_callable=AsyncMock) as mock_legacy:
+async def test_refresh_plant_no_caps_detects_first():
+    """refresh_plant() without capabilities runs detect() first, then polls (#105).
+
+    The deprecated wrapper keeps the legacy connect()-then-refresh_plant() shape
+    working — but by detecting (so the inverter address is model-correct, e.g. 0x11
+    for an AIO) rather than the old blind 0x32 fallback that timed out.
+    """
+    client = _client_with_caps(Model.HYBRID)
+    client.plant.capabilities = None  # simulate no prior detect()
+    detected = PlantCapabilities(device_type=Model.HYBRID)
+    with (
+        patch.object(client, "detect", new_callable=AsyncMock, return_value=detected) as mock_detect,
+        patch.object(client, "load_config", new_callable=AsyncMock) as mock_load,
+        patch.object(client, "refresh", new_callable=AsyncMock) as mock_refresh,
+    ):
         with pytest.warns(DeprecationWarning):
             await client.refresh_plant()
-    mock_legacy.assert_awaited_once()
+    mock_detect.assert_awaited_once()
+    assert client.plant.capabilities is detected
+    mock_load.assert_awaited_once()
+    mock_refresh.assert_awaited_once()
 
 
 async def test_watch_plant_deprecated():
