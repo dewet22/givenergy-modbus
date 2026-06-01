@@ -8,10 +8,10 @@ from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from typing import Literal
 
-from givenergy_modbus.client import commands
 from givenergy_modbus.exceptions import (
     CommunicationError,
     ExceptionBase,
+    PlantNotDetected,
     PlantTopologyMismatch,
     ReadFailure,
     RefreshFailed,
@@ -691,20 +691,6 @@ class Client:
             cause=group,
         )
 
-    async def _refresh_no_caps(
-        self,
-        *,
-        full_refresh: bool,
-        max_batteries: int,
-        timeout: float,
-        retries: int,
-        retry_delay: float,
-    ) -> Plant:
-        """Legacy capability-free refresh — the pre-detect fallback shape."""
-        reqs = commands.refresh_plant_data(full_refresh, self.plant.number_batteries, max_batteries)
-        await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
-        return self.plant
-
     async def load_config(self, timeout: float = 2.0, retries: int = 3, retry_delay: float = 0.5) -> Plant:
         """Read HR configuration blocks for the inverter.
 
@@ -712,8 +698,13 @@ class Client:
         failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
         """
         caps = self.plant.capabilities
-        inverter = caps.inverter_address if caps else 0x32
-        is_ems = bool(caps and caps.is_ems)
+        if caps is None:
+            raise PlantNotDetected(
+                "load_config() requires plant capabilities — call detect() once first, "
+                "or restore a persisted PlantCapabilities onto client.plant.capabilities."
+            )
+        inverter = caps.inverter_address
+        is_ems = caps.is_ems
         # HR(0,60) is the identity/firmware/serial bank that every device type — including EMS —
         # answers; it's the same bank detect() reads to identify the device. The HR(60,60),
         # HR(120,60) and IR(120,60) banks are inverter-specific; EMS plant controllers don't
@@ -729,23 +720,22 @@ class Client:
                 ReadHoldingRegistersRequest(base_register=120, register_count=60, device_address=inverter),
                 ReadInputRegistersRequest(base_register=120, register_count=60, device_address=inverter),
             ]
-        if caps:
-            if caps.is_three_phase:
-                reqs += [
-                    ReadHoldingRegistersRequest(base_register=1000, register_count=60, device_address=inverter),
-                    ReadHoldingRegistersRequest(base_register=1060, register_count=60, device_address=inverter),
-                    ReadHoldingRegistersRequest(base_register=1120, register_count=5, device_address=inverter),
-                ]
-            if caps.has_extended_slots:
-                reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
-            if not caps.is_ems and not caps.is_gateway:
-                # HR(300-359) — Single Phase New registers: export_priority (HR311),
-                # battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot
-                # (HR318-320). Polled for all non-EMS / non-gateway models; confirmed
-                # present on Model.AC via hass#52 portal write observations.
-                reqs.append(ReadHoldingRegistersRequest(base_register=300, register_count=60, device_address=inverter))
-            if caps.is_ems:
-                reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
+        if caps.is_three_phase:
+            reqs += [
+                ReadHoldingRegistersRequest(base_register=1000, register_count=60, device_address=inverter),
+                ReadHoldingRegistersRequest(base_register=1060, register_count=60, device_address=inverter),
+                ReadHoldingRegistersRequest(base_register=1120, register_count=5, device_address=inverter),
+            ]
+        if caps.has_extended_slots:
+            reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
+        if not caps.is_ems and not caps.is_gateway:
+            # HR(300-359) — Single Phase New registers: export_priority (HR311),
+            # battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot
+            # (HR318-320). Polled for all non-EMS / non-gateway models; confirmed
+            # present on Model.AC via hass#52 portal write observations.
+            reqs.append(ReadHoldingRegistersRequest(base_register=300, register_count=60, device_address=inverter))
+        if caps.is_ems:
+            reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
@@ -763,8 +753,9 @@ class Client:
         """
         caps = self.plant.capabilities
         if caps is None:
-            return await self._refresh_no_caps(
-                full_refresh=False, max_batteries=5, timeout=timeout, retries=retries, retry_delay=retry_delay
+            raise PlantNotDetected(
+                "refresh() requires plant capabilities — call detect() once first, "
+                "or restore a persisted PlantCapabilities onto client.plant.capabilities."
             )
         inverter = caps.inverter_address
         reqs: list[TransparentRequest] = []
@@ -814,12 +805,19 @@ class Client:
         """Deprecated orchestrator — run ``detect()`` once, then drive your own loop.
 
         .. deprecated::
-            Will be removed in 3.0. This composes ``load_config()`` + ``refresh()``,
-            which is trivial to do in the consumer where the partial-failure policy
-            belongs. It now also propagates ``RefreshPartiallySucceeded`` /
-            ``RefreshFailed`` like the primitives — note that on a full refresh a
-            partial failure in ``load_config()`` short-circuits before ``refresh()``
-            runs; call the primitives directly for full control.
+            Will be removed in 3.0 (soon). This composes ``detect()`` (when needed) +
+            ``load_config()`` + ``refresh()``, which is trivial to do in the consumer
+            where the partial-failure policy belongs. It propagates
+            ``RefreshPartiallySucceeded`` / ``RefreshFailed`` like the primitives —
+            note that on a full refresh a partial failure in ``load_config()``
+            short-circuits before ``refresh()`` runs; call the primitives directly for
+            full control.
+
+            Unlike the primitives, this wrapper runs ``detect()`` for you if
+            capabilities are absent (preserving the legacy connect-then-refresh shape).
+            New code should call ``detect()`` then ``load_config()`` / ``refresh()``
+            directly — the primitives raise ``PlantNotDetected`` rather than guessing
+            an address.
         """
         warnings.warn(
             "Client.refresh_plant() is deprecated and will be removed in 3.0. Run detect() once, then "
@@ -828,18 +826,16 @@ class Client:
             DeprecationWarning,
             stacklevel=2,
         )
-        if self.plant.capabilities:
-            if full_refresh:
-                await self.load_config(timeout=timeout, retries=retries, retry_delay=retry_delay)
-            await self.refresh(timeout=timeout, retries=retries, retry_delay=retry_delay)
-            return self.plant
-        return await self._refresh_no_caps(
-            full_refresh=full_refresh,
-            max_batteries=max_batteries,
-            timeout=timeout,
-            retries=retries,
-            retry_delay=retry_delay,
-        )
+        # The primitives require capabilities; as the legacy one-call wrapper, detect
+        # them here if the caller hasn't, so connect()-then-refresh_plant() still works
+        # (it now addresses correctly per model — issue #105, where an AIO answering at
+        # 0x11 timed out under the old 0x32 fallback).
+        if self.plant.capabilities is None:
+            self.plant.capabilities = await self.detect(timeout=timeout, retries=retries)
+        if full_refresh:
+            await self.load_config(timeout=timeout, retries=retries, retry_delay=retry_delay)
+        await self.refresh(timeout=timeout, retries=retries, retry_delay=retry_delay)
+        return self.plant
 
     async def watch_plant(
         self,
