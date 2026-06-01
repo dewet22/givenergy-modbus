@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b4] - 2026-06-01
+
+### 🐛 Fixed
+
+- refuse to poll without capabilities instead of guessing 0x32 (#105) ([ae0502c](https://github.com/dewet22/givenergy-modbus/commit/ae0502c6e6dcb9e02621150901842bf604e98041))
+- warn when refresh_plant max_batteries is passed (now ignored) ([d1d6cf8](https://github.com/dewet22/givenergy-modbus/commit/d1d6cf899f96f48aef0dbf1c76aed3b3e2ccb550))
+- keep refresh_plant_data as a deprecated raising stub ([e044541](https://github.com/dewet22/givenergy-modbus/commit/e0445414192301b74b7693cd464078e4dcc29ed5))
+
+### 🔧 Maintenance
+
+- consolidate CLAUDE.md into AGENTS.md as single source of truth (#155) ([55c411c](https://github.com/dewet22/givenergy-modbus/commit/55c411c87390d341e06655ddae0f4da0e2d8f2b7))
+- pin detect-before-poll order in refresh_plant no-caps test ([16c2768](https://github.com/dewet22/givenergy-modbus/commit/16c2768bbc4f1b653c33e45b4a510f5d554f4af6))
+
 ## [2.1.0b3] - 2026-06-01
 
 ### ✨ Added
