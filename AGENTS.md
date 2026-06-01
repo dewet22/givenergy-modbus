@@ -3,26 +3,127 @@
 Python library for local Modbus TCP communication with GivEnergy inverters,
 with no dependency on the GivEnergy Cloud. Implements a custom framer,
 decoder, and PDUs specific to GivEnergy's Modbus variant from scratch.
+Async client, pydantic v2 data models, conventional-commit changelog.
 
 ## Architecture
 - `givenergy_modbus/client/client.py` — `Client`: primary public interface
-- `givenergy_modbus/client/commands.py` — `RegisterMap` and high-level command methods (including all `set_*` controls)
+- `givenergy_modbus/client/commands.py` — `RegisterMap` and high-level command methods (all `set_*` controls / write commands)
 - `givenergy_modbus/model/` — inverter/battery data models and register definitions
+  - `inverter.py` — `SinglePhaseInverter`, `SlotMap`, `SINGLE_PHASE_SLOTS`, `EXTENDED_SLOTS`
+  - `inverter_threephase.py` — `ThreePhaseInverter`, `THREE_PHASE_SLOTS`
 - `givenergy_modbus/pdu/` — Protocol Data Units (custom GivEnergy framing)
+  - `write_registers.py` — `WRITE_SAFE_REGISTERS` allowlist (see Critical Caution)
 - `givenergy_modbus/framer.py` — custom Modbus framer (GivEnergy wire format)
 - `givenergy_modbus/codec.py` — decoder for PDU payloads
+- `docs/usage.md` — user-facing command reference (keep in sync with commands.py)
 
-## Critical Caution
+## Critical Caution — register writes
 ⚠️ Writing to registers can cause real hardware damage. Be extremely conservative
 with any changes that touch register writes, PDU construction, or the LUT.
 Never speculatively change register addresses or values. When in doubt, read only.
+
+Prefer real evidence (wire captures, GivTCP cross-reference) before adding a writable
+register. A new writable register must be added in **two** places or it fails at
+send time:
+
+1. the command-mixin `WRITE_SAFE_REGISTERS` in `client/commands.py`, and
+2. the canonical `WRITE_SAFE_REGISTERS` in `pdu/write_registers.py` — enforced by
+   `WriteHoldingRegisterRequest.ensure_valid_state()` at `encode()` time. A register
+   missing here builds a request fine but raises `InvalidPduState` on the wire.
+
+Add a regression test that calls `.encode()` on the new command (not just constructs
+it) — constructing alone won't catch a missing PDU-allowlist entry.
+
+## Slot maps
+Slot availability is model-dependent. `SinglePhaseInverter.slot_map` returns either
+`SINGLE_PHASE_SLOTS` (2 slots) or `EXTENDED_SLOTS` (10 slots) based on DTC + ARM
+firmware version. Always pass `inverter.slot_map` to slot commands; never hardcode
+register addresses.
+
+## Commands and docs
+When adding, removing, or changing any function in `client/commands.py`, update
+`docs/usage.md` in the same commit. That commands table is the primary reference for
+downstream consumers.
+
+## Conventions
+- Inclusive terminology only: `device_address`, never `slave_address`; no master/slave
+  in code, comments, commit messages, or docs (quote legacy protocol terms verbatim,
+  in a quote block, if unavoidable).
+- Conventional commits: `feat:`, `fix:`, `refactor:`, etc.
+
+## Testing
+**Run `tox` before every commit, not just before a PR.** The CI matrix runs the same
+envs; `pytest` alone misses things CI catches in ~20s of local tox:
+
+- `lint` runs mypy, which spots mixin-pattern cross-class invariants (e.g. a mixin
+  reading `self.slot_map` when the attribute lives on the composed inverter class)
+  that pytest can't see.
+- `format` runs `ruff format --check`, which catches preferred-syntax drift — notably
+  PEP 758 unparenthesised `except` clauses on the py314 target.
+- `build` runs `mkdocs build`, `twine check`, and the wheel build, where docstring
+  problems, broken nav links, and packaging regressions surface before a release.
+
+```bash
+uv run --group test tox        # full check — pytest + ruff + mypy + bandit + build + docs
+uv run --group test pytest     # faster: tests only
+uv run ruff check --fix && uv run ruff format  # faster: format + lint only
+```
+
+## Public API & downstream consumers
+- `Client` is the primary public interface — backwards compatibility matters.
+- `set_*` methods in `commands.py` expose inverter control; treat with extra care.
+- This library is consumed by **givenergy-hass** (Home Assistant integration) and
+  **givenergy-cli**, each maintained separately. Keep public API changes conservative
+  and backwards-compatible where possible. Cross-repo changes are coordinated via
+  self-contained handoff specs that state the expected outcomes at the API boundary
+  without prescribing the consumer's implementation.
+- Public API changes require a CHANGELOG entry (see below).
+
+## Changelog
+`CHANGELOG.md` is generated at release time by `scripts/release.py generate`, which
+walks `git log <last-v-tag>..HEAD` on the current branch and writes a new versioned
+section. There is no `[Unreleased]` section between releases. The conventional-commit
+prefix determines the section:
+
+| Prefix | Section |
+|---|---|
+| `feat:` | ✨ Added |
+| `fix:` / `revert:` | 🐛 Fixed |
+| `perf:` / `<type>!:` (breaking) | 🔄 Changed |
+| `security:` | 🔒 Security |
+| `refactor:` / `docs:` / `chore:` / `ci:` / `test:` / `style:` / `build:` / `wip:` | 🔧 Maintenance |
+
+**Default rule: don't edit `CHANGELOG.md` directly.** Let `release.py generate` build
+it from commits at release time. Editing by hand is reserved for fixing past mistakes
+in already-released sections; the most-recent section is rewritten on the next release
+if you touch it.
+
+### Per-commit overrides (`Changelog:` trailer)
+When the conventional-commit prefix doesn't reflect the user impact, add a `Changelog:`
+git trailer to the commit body:
+
+```text
+refactor: rename a public model field for clarity
+
+Changelog: Changed
+```
+
+- `Changelog: <section>` redirects the entry to that section (case-insensitive; matches
+  `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Maintenance`).
+- `Changelog: skip` suppresses the entry entirely. Useful for fixup commits whose
+  narrative is already captured by their parent.
+
+Trailer must live in the final paragraph of the commit body (standard git trailer
+semantics). Last `Changelog:` trailer in the final paragraph wins.
+
+### Previewing the upcoming section
+```bash
+python3 scripts/release.py generate <next-version> --preview
+```
+Walks the same commits and prints the rendered section without modifying the file.
+`git log <last-v-tag>..HEAD --oneline` is the lighter-weight alternative.
 
 ## Key Dependencies
 - `pydantic` — data models and validation
 - `crccheck` — CRC computation for frame integrity
 - Apache-2.0 licensed, published to PyPI
-
-## Public API
-- `Client` is the primary public interface — backwards compatibility matters
-- `set_*` methods in `commands.py` expose inverter control; treat these with extra care
-- Changes to the public API require CHANGELOG.md updates
