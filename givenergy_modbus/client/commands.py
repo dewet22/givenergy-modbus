@@ -5,6 +5,7 @@ from datetime import time as dt_time
 from typing import TYPE_CHECKING, ClassVar
 from warnings import deprecated  # type: ignore[attr-defined]
 
+from givenergy_modbus.exceptions import PlantNotDetected
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import BatteryPauseMode, ExportPriority
 from givenergy_modbus.model.slot_map import EMS_SLOTS, SINGLE_PHASE_SLOTS, SlotMap
@@ -106,6 +107,26 @@ class RegisterMap:
     EXPORT_SLOT_3_END = 2069
     EMS_EXPORT_TARGET_SOC_3 = 2070
     EMS_EXPORT_POWER_LIMIT = 2071
+
+
+@deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
+def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
+    """Removed: built a fixed 0x32-addressed poll that timed out on non-0x32 models.
+
+    This helper hardcoded ``device_address=0x32`` for every read, which silently
+    failed on models answering elsewhere (e.g. an All-in-One at 0x11 — issue #105).
+    Capability-aware polling — ``Client.detect()`` then ``Client.load_config()`` /
+    ``Client.refresh()`` — replaces it and addresses each device correctly.
+
+    Kept as an import-compatible stub so existing imports don't break with an
+    ``ImportError``; it raises ``PlantNotDetected`` to signpost the migration rather
+    than rebuild the unsafe blind poll.
+    """
+    raise PlantNotDetected(
+        "commands.refresh_plant_data() has been removed — it built a fixed 0x32 poll "
+        "that timed out on models answering at other addresses (e.g. All-in-One at 0x11). "
+        "Call Client.detect() once, then Client.load_config() / Client.refresh()."
+    )
 
 
 def disable_charge_target() -> list[TransparentRequest]:
