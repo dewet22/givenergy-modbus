@@ -68,8 +68,10 @@ WRITE_SAFE_REGISTERS = {
     297,  # DISCHARGE_SLOT_10_START
     298,  # DISCHARGE_SLOT_10_END
     166,  # ENABLE_RTC
+    311,  # EXPORT_PRIORITY (AC-coupled; confirmed writable via hass#52 portal observations)
     313,  # BATTERY_CHARGE_LIMIT_AC
     314,  # BATTERY_DISCHARGE_LIMIT_AC
+    317,  # ENABLE_EPS (AC-coupled; confirmed writable via hass#52 portal observations)
     318,  # BATTERY_PAUSE_MODE
     319,  # BATTERY_PAUSE_SLOT_START
     320,  # BATTERY_PAUSE_SLOT_END

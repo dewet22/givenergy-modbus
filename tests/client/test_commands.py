@@ -6,7 +6,7 @@ import pytest
 from givenergy_modbus.client import commands
 from givenergy_modbus.client.commands import RegisterMap
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.model.battery import BatteryPauseMode
+from givenergy_modbus.model.battery import BatteryPauseMode, ExportPriority
 from givenergy_modbus.model.inverter import EXTENDED_SLOTS, SINGLE_PHASE_SLOTS
 from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS
 from givenergy_modbus.pdu import WriteHoldingRegisterRequest
@@ -342,6 +342,27 @@ async def test_set_active_power_rate():
 async def test_set_enable_rtc():
     assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, True)]
     assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, False)]
+
+
+async def test_set_export_priority():
+    assert commands.set_export_priority(ExportPriority.GRID_FIRST) == [
+        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.GRID_FIRST)
+    ]
+    # Raw int that maps to a valid member is coerced.
+    assert commands.set_export_priority(2) == [
+        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.LOAD_FIRST)
+    ]
+    with pytest.raises(ValueError, match="Invalid export priority"):
+        commands.set_export_priority(99)
+    # HR311 must be in the lower-level PDU allowlist, or encode() raises InvalidPduState.
+    commands.set_export_priority(ExportPriority.BATTERY_FIRST)[0].encode()
+
+
+async def test_set_enable_eps():
+    assert commands.set_enable_eps(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, True)]
+    assert commands.set_enable_eps(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, False)]
+    # HR317 must be in the lower-level PDU allowlist, or encode() raises InvalidPduState.
+    commands.set_enable_eps(True)[0].encode()
 
 
 async def test_set_battery_charge_limit_ac():

@@ -6,6 +6,7 @@ from typing import ClassVar
 from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.client.commands import _InverterCommands
+from givenergy_modbus.model.battery import ExportPriority
 from givenergy_modbus.model.register import HR, IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
@@ -260,12 +261,6 @@ class BatteryPowerMode(int, Enum):
 
     EXPORT = 0
     SELF_CONSUMPTION = 1
-
-
-# ExportPriority lives in model.battery (same module as BatteryPauseMode) so that
-# client.commands can import it without a circular dependency. Re-exported here for
-# callers who import from model.inverter.
-from givenergy_modbus.model.battery import ExportPriority  # noqa: E402
 
 
 class BatteryCalibrationStage(int, Enum):

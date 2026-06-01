@@ -274,6 +274,10 @@ def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
     Determines where surplus energy goes: battery first, grid first, or load first.
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
+    try:
+        priority = ExportPriority(priority)
+    except ValueError as e:
+        raise ValueError(f"Invalid export priority: {priority}") from e
     return [WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, priority)]
 
 
@@ -282,7 +286,7 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, bool(enabled))]
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
