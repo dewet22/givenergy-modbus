@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b13] - 2026-06-02
+
+### ✨ Added
+
+- extend WRITE_SAFE_REGISTERS with app-confirmed registers (#48) ([6d5d964](https://github.com/dewet22/givenergy-modbus/commit/6d5d96486d9dc89ae4c84cebbec783bd3ab12d23))
+
+### 🐛 Fixed
+
+- drop spurious base-register alignment warning (#163) ([880ba13](https://github.com/dewet22/givenergy-modbus/commit/880ba132e374cb82b9e7f4434fa0b12a133e617b))
+
 ## [2.1.0b12] - 2026-06-02
 
 ### ✨ Added
