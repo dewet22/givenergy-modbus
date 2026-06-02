@@ -218,7 +218,9 @@ class MockPlant:
         if reg_type is None or any(reg_type(base + i) not in cache for i in range(count)):
             _logger.debug(
                 "← error response (absent bank) device=0x%02x base=%d count=%d",
-                req.device_address, base, count,
+                req.device_address,
+                base,
+                count,
             )
             return self._error(req)
         resp = cast(ReadRegistersResponse, req.expected_response())
@@ -241,7 +243,8 @@ class MockPlant:
         self._stamp(resp)
         _logger.debug(
             "← WriteHoldingRegisterResponse (ack, no state mutation) device=0x%02x reg=%d",
-            req.device_address, req.register,
+            req.device_address,
+            req.register,
         )
         return resp.encode()
 

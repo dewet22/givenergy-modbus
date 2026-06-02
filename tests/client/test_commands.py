@@ -671,6 +671,45 @@ def test_ems_commands_are_write_safe():
         assert r.device_address == 0x11, f"EMS write to {r.register} should target 0x11"
 
 
+def test_app_confirmed_registers_are_write_safe():
+    """Registers GE exposes on the app's Direct Control (Control) tab are write-safe.
+
+    The app listing each as user-editable is authoritative evidence they accept
+    writes (see #48). Locks in the 2026-06-02 batch so they can't silently regress.
+    """
+    from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
+
+    app_confirmed = {
+        104,
+        172,
+        199,
+        299,
+        331,  # standard block
+        1005,
+        1078,
+        1108,
+        1109,
+        1110,
+        1111,  # three-phase rates/limits
+        1113,
+        1114,
+        1115,
+        1116,
+        1118,
+        1119,
+        1120,
+        1121,  # three-phase slots
+        5010,
+        5014,  # hardware-control block
+        *range(554, 574),  # SMART_LOAD_SLOT_1..10 start/end (HR554-573)
+    }
+    missing = app_confirmed - WRITE_SAFE_REGISTERS
+    assert not missing, f"app-confirmed registers not write-safe: {sorted(missing)}"
+    # HR479 (DC Wind CVT Voltage) is app-writable but held back — an unbounded
+    # voltage setpoint with no range guard; admit only with a validating set_*.
+    assert 479 not in WRITE_SAFE_REGISTERS
+
+
 def test_refresh_plant_data_is_a_raising_stub():
     """The removed 0x32-poll builder is import-compatible but raises on call (#105/#156).
 

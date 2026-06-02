@@ -110,6 +110,60 @@ WRITE_SAFE_REGISTERS = {
     2069,  # EXPORT_SLOT_3_END
     2070,  # EMS_EXPORT_TARGET_SOC_3
     2071,  # EMS_EXPORT_POWER_LIMIT
+    # ------------------------------------------------------------------------
+    # App-confirmed writable registers. Source: GivEnergy Android app "Direct
+    # Control" → Control tab (2026-06-02), the writable-register surface GE
+    # exposes to end users now that the cloud portal is being retired. The app
+    # listing each of these as a user-editable control is authoritative evidence
+    # they are safe to write. See givenergy-modbus#48.
+    104,  # ENABLE_BATTERY_SELF_HEATING — hardware/batch-gated: write may be rejected per-unit
+    172,  # ENABLE_MANUAL_BATTERY_HEATER — likely hardware-gated like 104
+    199,  # ENABLE_INVERTER_PARALLEL_MODE (was mis-modelled as self-consumption logic)
+    299,  # DISCHARGE_TARGET_SOC_10 (app: "DC Discharge 10 Lower SOC % Limit")
+    331,  # FORCE_OFF_GRID — non-damaging, but a SUSTAINED islanding state (not a
+    #        momentary reboot): a stuck write leaves a site off-grid with no
+    #        auto-recovery. Bounded boolean; admit, but treat with care at call sites.
+    # SMART_LOAD_SLOT_1..10 start/end (bounded timeslot values, same class as the
+    # charge/discharge slots). app: "Smart Load Start/End Time 1..10".
+    554,  # SMART_LOAD_SLOT_1_START
+    555,  # SMART_LOAD_SLOT_1_END
+    556,  # SMART_LOAD_SLOT_2_START
+    557,  # SMART_LOAD_SLOT_2_END
+    558,  # SMART_LOAD_SLOT_3_START
+    559,  # SMART_LOAD_SLOT_3_END
+    560,  # SMART_LOAD_SLOT_4_START
+    561,  # SMART_LOAD_SLOT_4_END
+    562,  # SMART_LOAD_SLOT_5_START
+    563,  # SMART_LOAD_SLOT_5_END
+    564,  # SMART_LOAD_SLOT_6_START
+    565,  # SMART_LOAD_SLOT_6_END
+    566,  # SMART_LOAD_SLOT_7_START
+    567,  # SMART_LOAD_SLOT_7_END
+    568,  # SMART_LOAD_SLOT_8_START
+    569,  # SMART_LOAD_SLOT_8_END
+    570,  # SMART_LOAD_SLOT_9_START
+    571,  # SMART_LOAD_SLOT_9_END
+    572,  # SMART_LOAD_SLOT_10_START
+    573,  # SMART_LOAD_SLOT_10_END
+    1005,  # REAL_TIME_CONTROL (three-phase mirror of HR166)
+    1078,  # BATTERY_RESERVE_PERCENT (app: "Battery Reserve %")
+    1108,  # DISCHARGE_POWER_RATE (three-phase)
+    1109,  # DISCHARGE_DOWN_TO_PERCENT (three-phase)
+    1110,  # CHARGE_POWER_RATE (three-phase)
+    1111,  # CHARGE_UP_TO_PERCENT (three-phase)
+    1113,  # AC_CHARGE_1_START (three-phase)
+    1114,  # AC_CHARGE_1_END (three-phase)
+    1115,  # AC_CHARGE_2_START (three-phase)
+    1116,  # AC_CHARGE_2_END (three-phase)
+    1118,  # DC_DISCHARGE_1_START (three-phase)
+    1119,  # DC_DISCHARGE_1_END (three-phase)
+    1120,  # DC_DISCHARGE_2_START (three-phase)
+    1121,  # DC_DISCHARGE_2_END (three-phase)
+    5010,  # RESTART_HARDWARE — disruptive but non-damaging, same class as 163 REBOOT
+    5014,  # ENABLE_CALCULATED_LOAD
+    # Held back (app-writable but not admitted yet):
+    #  - HR479 "DC Wind CVT Voltage" is a raw voltage setpoint (unbounded 16-bit)
+    #    with no range guard or set_* wrapper; admit only with a validating command.
 }
 
 
