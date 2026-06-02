@@ -1,5 +1,6 @@
 """GivEnergy EMS (Energy Management System) data model."""
 
+from enum import IntEnum
 from typing import ClassVar
 
 from pydantic import ConfigDict, computed_field, create_model
@@ -16,6 +17,36 @@ from givenergy_modbus.model.register import RegisterDefinition as Def
 # fields for slots 1..MAX_MANAGED_INVERTERS; slots beyond ``inverter_count``
 # are unpopulated and skipped by ``Ems.managed_inverters``.
 MAX_MANAGED_INVERTERS = 4
+
+
+class EmsInverterStatus(IntEnum):
+    """SUSPECTED labels for the EMS per-slot inverter status code (IR(2045), 3-bit).
+
+    These are a best-effort interpretation, exposed via ``inverter_N_suspected_status``
+    so the raw code (``inverter_N_status``, hex) becomes human-inspectable and users can
+    confirm or correct it (#108). Only ``ABSENT`` (0) and ``ONLINE`` (2) are verified —
+    against the committed EMS capture, where empty slots read 0 and present, idle
+    inverters read 2. The other 3-bit codes (1, 3–7) have never been observed; they
+    decode to ``None`` here rather than being guessed. If your inverter shows an
+    unexpected suspected status (or ``None``), that feedback is exactly what closes #108.
+    """
+
+    ABSENT = 0
+    ONLINE = 2
+
+
+def _ems_inverter_suspected_status(code: int | None) -> "EmsInverterStatus | None":
+    """Map a raw 3-bit EMS inverter status code to a SUSPECTED label, or None if unknown.
+
+    Lenient by design: only verified codes (0, 2) resolve; unobserved codes return None
+    rather than raising, so an unexpected firmware value can't break the whole decode.
+    """
+    if code is None:
+        return None
+    try:
+        return EmsInverterStatus(code)
+    except ValueError:
+        return None
 
 
 class EmsRegisterGetter(RegisterGetter):
@@ -72,10 +103,26 @@ class EmsRegisterGetter(RegisterGetter):
         "inverter_count": Def(C.uint16, None, IR(2044)),
         # IR(2045) packs up to 4 inverter statuses as 3-bit fields, LSB-first (slot N
         # occupies bits [(3N-3):(3N-1)] from LSB). MSB-first indices: [16-3N : 18-3N].
-        "inverter_1_status": Def((C.bitfield, 13, 15), Status, IR(2045)),
-        "inverter_2_status": Def((C.bitfield, 10, 12), Status, IR(2045)),
-        "inverter_3_status": Def((C.bitfield, 7, 9), Status, IR(2045)),
-        "inverter_4_status": Def((C.bitfield, 4, 6), Status, IR(2045)),
+        # The per-slot status CODE is exposed as a hex string (the house idiom for raw,
+        # uninterpreted codes — cf. device_type_code / fault_code), NOT mapped through the
+        # inverter Status enum: that enum's values don't match this field's encoding
+        # (a present, idle inverter reads code 2 here, which Status would mislabel as
+        # WARNING). The only values verified against the committed EMS capture are
+        # 0 = empty slot and 2 = present/idle; the full code→meaning mapping isn't exposed
+        # by the GivEnergy app (which abstracts the EMS to one PCS object) and remains
+        # undocumented. Use `inverter_count` for how many inverters are present (#108).
+        "inverter_1_status": Def((C.bitfield, 13, 15), (C.hex, 1), IR(2045)),
+        "inverter_2_status": Def((C.bitfield, 10, 12), (C.hex, 1), IR(2045)),
+        "inverter_3_status": Def((C.bitfield, 7, 9), (C.hex, 1), IR(2045)),
+        "inverter_4_status": Def((C.bitfield, 4, 6), (C.hex, 1), IR(2045)),
+        # SUSPECTED human-readable interpretation of the same per-slot code, for user
+        # inspection/feedback (#108). Only 0=ABSENT and 2=ONLINE are verified; other
+        # codes decode to None pending real-world confirmation. The raw code stays
+        # authoritative on inverter_N_status above.
+        "inverter_1_suspected_status": Def((C.bitfield, 13, 15), _ems_inverter_suspected_status, IR(2045)),
+        "inverter_2_suspected_status": Def((C.bitfield, 10, 12), _ems_inverter_suspected_status, IR(2045)),
+        "inverter_3_suspected_status": Def((C.bitfield, 7, 9), _ems_inverter_suspected_status, IR(2045)),
+        "inverter_4_suspected_status": Def((C.bitfield, 4, 6), _ems_inverter_suspected_status, IR(2045)),
         "meter_1_power": Def(C.int16, None, IR(2046)),
         "meter_2_power": Def(C.int16, None, IR(2047)),
         "meter_3_power": Def(C.int16, None, IR(2048)),

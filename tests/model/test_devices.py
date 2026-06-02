@@ -198,7 +198,7 @@ def test_ems_managed_inverters_constructs_summaries_per_populated_slot():
         power=1800,
         soc=65,
         temp_deci=285,  # 28.5 °C (deci scaling)
-        status=Status.NORMAL.value,
+        status=2,  # per-slot EMS status code (2 = present/idle, the verified value)
     )
     _add_rollup_slot(
         values,
@@ -207,7 +207,7 @@ def test_ems_managed_inverters_constructs_summaries_per_populated_slot():
         power=2200,
         soc=78,
         temp_deci=312,
-        status=Status.NORMAL.value,
+        status=2,
     )
     ems = Ems.from_register_cache(RegisterCache(values))
 
@@ -218,12 +218,13 @@ def test_ems_managed_inverters_constructs_summaries_per_populated_slot():
     # encode/decode contract — the bit positions for the per-slot status
     # fields are MSB-first (see ``Converter.bitfield``), so a regression in
     # the encoder shift direction or in the decoder slice would surface here.
-    assert managed[0].status == Status.NORMAL
+    # The per-slot status is an uninterpreted hex code (#108), so code 2 → "2".
+    assert managed[0].status == "2"
     assert managed[0].p_inverter_out == 1800
     assert managed[0].battery_soc == 65
     assert managed[0].t_inverter_heatsink == 28.5
     assert managed[1].serial_number == "ZZ9876B543"
-    assert managed[1].status == Status.NORMAL
+    assert managed[1].status == "2"
     assert managed[1].p_inverter_out == 2200
 
 
