@@ -145,6 +145,20 @@ def test_iter_capture_frames_ignores_truncated_tail(tmp_path: Path):
     assert _iter_capture_frames(log) == []
 
 
+def test_iter_capture_frames_skips_false_positive_marker(tmp_path: Path):
+    """A 5959-marker with frame_len < 18 is a false positive; parsing continues past it."""
+    req = ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11)
+    good_frame = req.encode()
+    # frame_len = 6 + 0x05 = 11 < 18 → false positive; good_frame should still be found
+    false_positive = bytes.fromhex("59590001000501")
+    payload = false_positive + good_frame
+    log = tmp_path / "fp.log"
+    log.write_text(f"2026-01-01T00:00:00Z rx {payload.hex()}\n")
+    frames = _iter_capture_frames(log)
+    assert len(frames) == 1
+    assert frames[0] == good_frame
+
+
 async def test_context_manager_lifecycle():
     """Async with MockPlant starts and stops the server cleanly."""
     mock = MockPlant(devices={})

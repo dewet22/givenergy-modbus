@@ -101,8 +101,8 @@ def plant_from_capture(*paths: str | Path) -> Plant:
     for frame in _iter_capture_frames(*paths):
         try:
             pdu = ClientIncomingMessage.decode_bytes(frame)
-        except Exception:  # noqa: BLE001  # nosec B112 — skipping an undecodable frame is intended
-            continue
+        except Exception:  # noqa: BLE001  # nosec B112 — skipping an undecodable frame is intended  # pragma: no cover
+            continue  # pragma: no cover
         if isinstance(pdu, TransparentResponse) and not pdu.error:
             plant.update(pdu)
     return plant
@@ -142,7 +142,7 @@ class MockPlant:
         _logger.info("MockPlant listening on %s:%s — %d devices seeded", sock[0], sock[1], len(self.devices))
         return sock[0], sock[1]
 
-    async def serve_forever(self) -> None:
+    async def serve_forever(self) -> None:  # pragma: no cover
         """Serve until cancelled (after :meth:`start`)."""
         assert self._server is not None, "call start() first"
         async with self._server:
@@ -175,8 +175,8 @@ class MockPlant:
                         await writer.drain()
         except asyncio.CancelledError, ConnectionError:
             raise
-        except Exception:  # noqa: BLE001 — a mock should keep serving other clients
-            _logger.exception("MockPlant handler error")
+        except Exception:  # noqa: BLE001 — a mock should keep serving other clients  # pragma: no cover
+            _logger.exception("MockPlant handler error")  # pragma: no cover
         finally:
             writer.close()
 
