@@ -174,6 +174,8 @@ def identify(
         For single-pass: one entry per scale factor whose inverse is an integer
         address (possibly multiple candidates — use two-pass to disambiguate).
     """
+    if k <= 0:
+        raise ValueError(f"k must be a positive integer (got {k})")
     if d2 is not None:
         return _identify_two_pass(d1, d2, k=k, reg_range=reg_range, tolerance=tolerance)
     return _identify_single_pass(d1, reg_range=reg_range, tolerance=tolerance)

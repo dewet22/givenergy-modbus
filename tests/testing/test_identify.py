@@ -152,6 +152,14 @@ def test_identify_two_pass_centi():
     assert abs(candidates[0].scale - 0.01) < 1e-9
 
 
+def test_identify_invalid_k_raises():
+    """identify() raises ValueError for non-positive k."""
+    with pytest.raises(ValueError, match="k must be a positive integer"):
+        identify(100.0, 200.0, k=0)
+    with pytest.raises(ValueError, match="k must be a positive integer"):
+        identify(100.0, 200.0, k=-1)
+
+
 def test_identify_two_pass_equal_values_returns_empty():
     """If both passes show the same value (zero diff), return empty."""
     assert identify(100.0, 100.0, k=1000) == []
