@@ -58,21 +58,24 @@ class EmsRegisterGetter(RegisterGetter):
         "ems_status": Def(C.uint16, Status, IR(2040)),
         "meter_count": Def(C.uint16, None, IR(2041)),
         "meter_types": Def(C.uint16, None, IR(2042)),
-        # IR(2043) packs 8 meter statuses as 2-bit fields
-        "meter_1_status": Def((C.bitfield, 0, 1), MeterStatus, IR(2043)),
-        "meter_2_status": Def((C.bitfield, 2, 3), MeterStatus, IR(2043)),
-        "meter_3_status": Def((C.bitfield, 4, 5), MeterStatus, IR(2043)),
-        "meter_4_status": Def((C.bitfield, 6, 7), MeterStatus, IR(2043)),
-        "meter_5_status": Def((C.bitfield, 8, 9), MeterStatus, IR(2043)),
-        "meter_6_status": Def((C.bitfield, 10, 11), MeterStatus, IR(2043)),
-        "meter_7_status": Def((C.bitfield, 12, 13), MeterStatus, IR(2043)),
-        "meter_8_status": Def((C.bitfield, 14, 15), MeterStatus, IR(2043)),
+        # IR(2043) packs 8 meter statuses as 2-bit fields, LSB-first (slot N occupies
+        # bits [(2N-2):(2N-1)] counting from LSB). C.bitfield uses MSB-first indices
+        # (0=bit15), so slot N maps to bitfield indices [16-2N : 17-2N].
+        "meter_1_status": Def((C.bitfield, 14, 15), MeterStatus, IR(2043)),
+        "meter_2_status": Def((C.bitfield, 12, 13), MeterStatus, IR(2043)),
+        "meter_3_status": Def((C.bitfield, 10, 11), MeterStatus, IR(2043)),
+        "meter_4_status": Def((C.bitfield, 8, 9), MeterStatus, IR(2043)),
+        "meter_5_status": Def((C.bitfield, 6, 7), MeterStatus, IR(2043)),
+        "meter_6_status": Def((C.bitfield, 4, 5), MeterStatus, IR(2043)),
+        "meter_7_status": Def((C.bitfield, 2, 3), MeterStatus, IR(2043)),
+        "meter_8_status": Def((C.bitfield, 0, 1), MeterStatus, IR(2043)),
         "inverter_count": Def(C.uint16, None, IR(2044)),
-        # IR(2045) packs up to 4 inverter statuses as 3-bit fields
-        "inverter_1_status": Def((C.bitfield, 0, 2), Status, IR(2045)),
-        "inverter_2_status": Def((C.bitfield, 3, 5), Status, IR(2045)),
-        "inverter_3_status": Def((C.bitfield, 6, 8), Status, IR(2045)),
-        "inverter_4_status": Def((C.bitfield, 9, 11), Status, IR(2045)),
+        # IR(2045) packs up to 4 inverter statuses as 3-bit fields, LSB-first (slot N
+        # occupies bits [(3N-3):(3N-1)] from LSB). MSB-first indices: [16-3N : 18-3N].
+        "inverter_1_status": Def((C.bitfield, 13, 15), Status, IR(2045)),
+        "inverter_2_status": Def((C.bitfield, 10, 12), Status, IR(2045)),
+        "inverter_3_status": Def((C.bitfield, 7, 9), Status, IR(2045)),
+        "inverter_4_status": Def((C.bitfield, 4, 6), Status, IR(2045)),
         "meter_1_power": Def(C.int16, None, IR(2046)),
         "meter_2_power": Def(C.int16, None, IR(2047)),
         "meter_3_power": Def(C.int16, None, IR(2048)),

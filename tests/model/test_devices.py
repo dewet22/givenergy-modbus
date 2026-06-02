@@ -57,10 +57,9 @@ def _add_rollup_slot(values: dict, slot: int, *, serial: str, **fields) -> dict:
         # IR(2062..2065) holds inverter_N_temp at C.deci scaling
         values[IR(2061 + slot)] = fields["temp_deci"]
     if "status" in fields:
-        # IR(2045) packs 4 inverter statuses as 3-bit fields. Converter.bitfield
-        # extracts MSB-first: bitfield(low=0, high=2) reads ``val >> (15 - high)``,
-        # i.e. bits 15..13 for slot 1. So shifts are 13, 10, 7, 4 for slots 1..4.
-        shift = 13 - (slot - 1) * 3
+        # IR(2045) packs 4 inverter statuses as 3-bit fields, LSB-first:
+        # slot N occupies bits [(3N-3):(3N-1)] from the LSB, so shifts are 0, 3, 6, 9.
+        shift = (slot - 1) * 3
         values[IR(2045)] = values.get(IR(2045), 0) | ((fields["status"] & 0x7) << shift)
     return values
 

@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.testing.mock_plant import plant_from_capture
 
 
 def _cache(values: dict) -> RegisterCache:
@@ -74,11 +77,12 @@ def test_charge_and_discharge_slots():
 
 
 def test_meter_status_bitfield():
-    # bitfield(val, low, high) uses f"{val:016b}"[low:high+1], index 0 = MSB (bit 15).
-    # meter_1 at [0:2]: ONLINE=1=0b01 → bit 14 set → 0x4000
-    # meter_2 at [2:4]: OFFLINE=2=0b10 → bit 13 set → 0x2000
-    # meter_3 at [4:6]: DISABLED=0 → 0x0000
-    packed = 0x4000 | 0x2000  # = 0x6000
+    # IR(2043) packs 8 × 2-bit meter statuses, LSB-first: slot N occupies bits [2N-2:2N-1].
+    # C.bitfield uses MSB-first indices, so slot N = bitfield(16-2N, 17-2N).
+    # meter_1 (bits[1:0] = LSB bits 0-1 → 0b01 = ONLINE=1 → 0x0001)
+    # meter_2 (bits[3:2] → 0b10 = OFFLINE=2 → 0x0008)
+    # meter_3 (bits[5:4] → 0b00 = DISABLED)
+    packed = 0b01 | (0b10 << 2)  # = 0x0009
     cache = _cache({IR(2043): packed})
     ems = Ems.from_register_cache(cache)
     assert ems.meter_1_status == MeterStatus.ONLINE  # type: ignore[attr-defined]
@@ -87,13 +91,42 @@ def test_meter_status_bitfield():
 
 
 def test_inverter_status_bitfield():
-    # inverter_1 at [0:3]: NORMAL=1=0b001 → bit 13 set → 0x2000
-    # inverter_2 at [3:6]: FAULT=3=0b011 → bits 11,10 set → 0x0C00
-    packed = 0x2000 | 0x0C00  # = 0x2C00
+    # IR(2045) packs 4 × 3-bit inverter statuses, LSB-first: slot N occupies bits [3N-3:3N-1].
+    # C.bitfield uses MSB-first indices, so slot N = bitfield(16-3N, 18-3N).
+    # inverter_1 (bits[2:0] → 0b001 = NORMAL=1 → 0x0001)
+    # inverter_2 (bits[5:3] → 0b011 = FAULT=3 → 0b011<<3 = 0x0018)
+    packed = 0b001 | (0b011 << 3)  # = 0x0019
     cache = _cache({IR(2045): packed})
     ems = Ems.from_register_cache(cache)
     assert ems.inverter_1_status == Status.NORMAL  # type: ignore[attr-defined]
     assert ems.inverter_2_status == Status.FAULT  # type: ignore[attr-defined]
+
+
+def test_bitfield_decode_matches_fixture():
+    """Regression for #108 — per-slot status bitfields use LSB-first layout.
+
+    Pinned to the committed ems_2_inv_3_bat_a fixture where:
+    - IR(2043)=17 (0b10001): bits[1:0]=01=ONLINE (meter_1 −94 W), bits[5:4]=01=ONLINE
+      (meter_3 583 W), everything else DISABLED
+    - IR(2045)=18 (0b10010): bits[2:0]=010=WARNING (inv_1), bits[5:3]=010=WARNING (inv_2)
+    """
+    fixture = Path(__file__).parent.parent / "fixtures/captures/ems_2_inv_3_bat_a/ems_arm1036_30min.log"
+    plant = plant_from_capture(str(fixture))
+    cache = plant.register_caches[0x11]
+    ems = Ems.from_register_cache(cache)
+
+    # Meter statuses — only meters with power should be ONLINE
+    assert ems.meter_1_status == MeterStatus.ONLINE  # type: ignore[attr-defined]  # -94 W
+    assert ems.meter_2_status == MeterStatus.DISABLED  # type: ignore[attr-defined]  # 0 W
+    assert ems.meter_3_status == MeterStatus.ONLINE  # type: ignore[attr-defined]  # +583 W
+    for n in range(4, 9):
+        assert getattr(ems, f"meter_{n}_status") == MeterStatus.DISABLED  # type: ignore[attr-defined]
+
+    # Inverter statuses — inv_1/inv_2 are present and active; inv_3/inv_4 absent
+    assert ems.inverter_1_status in (Status.NORMAL, Status.WARNING)  # type: ignore[attr-defined]
+    assert ems.inverter_2_status in (Status.NORMAL, Status.WARNING)  # type: ignore[attr-defined]
+    assert ems.inverter_3_status == Status.WAITING  # type: ignore[attr-defined]  # no physical inverter
+    assert ems.inverter_4_status == Status.WAITING  # type: ignore[attr-defined]  # no physical inverter
 
 
 def test_per_inverter_data():
