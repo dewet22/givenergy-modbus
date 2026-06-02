@@ -1235,7 +1235,10 @@ def test_from_actual():
         "p_grid_out": -39,
         "p_backup": 0,
         "e_grid_in_total": 1978.3,
-        "e_load_day": 4.3,
+        "e_ac_charge_today": 4.3,  # IR(35) — was mislabelled e_load_day (#174)
+        # computed: e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
+        #         = 38.0 + 12.3 − 2.4 − 4.3
+        "e_consumption_today": 43.6,
         "e_battery_charge_today_alt1": 5.7,  # IR(36)
         "e_battery_discharge_today_alt1": 5.9,  # IR(37)
         "countdown": 0,
@@ -1243,7 +1246,7 @@ def test_from_actual():
         "t_inverter_heatsink": 32.2,
         "p_load_demand": 745,
         "p_grid_apparent": 654,
-        "e_inverter_out_day": 38.0,
+        "e_pv_generation_today": 38.0,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_inverter_out_total": 1698.7,
         "work_time_total_hours": 2754,
         "system_mode": 1,

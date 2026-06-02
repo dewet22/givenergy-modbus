@@ -644,7 +644,13 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "p_backup": Def(C.uint16, None, IR(31), max=50000),  # EPS
         "e_grid_in_total": Def(C.uint32, C.deci, IR(32), IR(33)),
         # IR(34) unknown, skip
-        "e_load_day": Def(C.deci, None, IR(35)),
+        # IR(35) is AC-charge-today, NOT house-load/consumption. The GivTCP-era
+        # "e_load_day" name was a mislabel (#174): sentinel cross-correlation via the
+        # GE app's Energy-today screen confirmed IR(35) backs "AC charge today". The
+        # app's "Consumption today" is computed, not a register — see e_consumption_today
+        # on SinglePhaseInverter. Aligned to the existing three-phase e_ac_charge_today
+        # name so the three-phase native (IR1376/7) overrides this inherited entry.
+        "e_ac_charge_today": Def(C.deci, None, IR(35)),
         "e_battery_charge_today_alt1": Def(C.deci, None, IR(36)),
         "e_battery_discharge_today_alt1": Def(C.deci, None, IR(37)),
         "countdown": Def(C.uint16, None, IR(38)),
@@ -656,7 +662,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
         # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
-        "e_inverter_out_day": Def(C.deci, None, IR(44)),
+        # IR(44) is PV-generation-today (sentinel cross-correlation, #174), not the
+        # inverter AC output. Renamed from "e_inverter_out_day"; the old name is kept
+        # as a deprecated @property alias on both inverter classes for a release.
+        "e_pv_generation_today": Def(C.deci, None, IR(44)),
         "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
         # Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per
         # wall-clock hour and persists across reboots; cap at ~100 years to
@@ -845,6 +854,34 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         """
         return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_consumption_today(self) -> float | None:
+        """House consumption today (kWh), matching the GE app's "Consumption today".
+
+        DERIVED, not metered: single-phase units expose no consumption register, so the
+        GE app computes this value. Sentinel cross-correlation against the app's
+        Energy-today screen (#174) recovered the exact formula:
+
+            consumption = pv_generation + grid_import − grid_export − ac_charge
+
+        Battery DC charge/discharge throughput nets out and is not a term. The result
+        carries the same conversion-loss bias the app shows (energy balance overshoots
+        real consumption by a few %). This is the GE-universe definition of
+        "consumption" specifically — other plant equipment may define it differently.
+
+        Three-phase units have a native e_load_today register and so do NOT get this
+        computed field (it lives on SinglePhaseInverter only, not in the register LUT).
+        Returns None if any input is unavailable.
+        """
+        pv = self.e_pv_generation_today  # type: ignore[attr-defined]
+        grid_in = self.e_grid_in_day  # type: ignore[attr-defined]
+        grid_out = self.e_grid_out_day  # type: ignore[attr-defined]
+        ac_charge = self.e_ac_charge_today  # type: ignore[attr-defined]
+        if None in (pv, grid_in, grid_out, ac_charge):
+            return None
+        return pv + grid_in - grid_out - ac_charge
+
     # Plain @property (not @computed_field) so the deprecated alias doesn't
     # appear in model_dump() output. See #84 — renamed to work_time_total_hours
     # to put the unit at the call site.
@@ -874,6 +911,20 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
+
+    # Plain @property so the deprecated alias doesn't appear in model_dump().
+    # IR(44) was decoded as e_inverter_out_day (GivTCP-era guess); sentinel
+    # cross-correlation (#174) confirmed it is PV-generation-today. Renamed to
+    # e_pv_generation_today; this alias preserves back-compat for a release.
+    @property
+    def e_inverter_out_day(self) -> float | None:
+        """Deprecated alias for `e_pv_generation_today`."""
+        warnings.warn(
+            "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):

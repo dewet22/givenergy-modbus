@@ -533,6 +533,22 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         )
         return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
 
+    # IR(44) was decoded as e_inverter_out_day (GivTCP-era guess); sentinel
+    # cross-correlation (#174) confirmed it is PV-generation-today. Renamed to
+    # e_pv_generation_today (inherited from the single-phase LUT, IR44); this alias
+    # preserves back-compat. Note: the verified three-phase PV-generation register is
+    # e_pv_today (IR1412/3) — IR(44) leaks via single-phase inheritance and is
+    # unverified on three-phase hardware (see #48).
+    @property
+    def e_inverter_out_day(self) -> float | None:
+        """Deprecated alias for `e_pv_generation_today`."""
+        warnings.warn(
+            "ThreePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
+
 
 # Models that decode via the three-phase / 1000-range register layout. The residential
 # ALL_IN_ONE (DTC family "8", e.g. 0x8001) is deliberately absent: it is HV but single-
