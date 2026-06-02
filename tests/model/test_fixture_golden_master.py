@@ -140,3 +140,30 @@ def test_inverter_address_matches_classification_for_all_fixtures():
     assert inverter_address_for(Model.EMS) == 0x11
     assert inverter_address_for(Model.ALL_IN_ONE) == 0x11
     assert inverter_address_for(Model.HYBRID_GEN1) == 0x31
+
+
+@pytest.mark.parametrize(
+    ("relpath", "expected_errors"),
+    [
+        ("aio_a/aio_arm612_5min.log", 1),
+        ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", 4),
+        ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", 0),
+        ("ems_2_inv_3_bat_a/ac_arm282_1x_givbat512gen3_30min.log", 0),
+    ],
+)
+async def test_fixture_error_response_count(relpath: str, expected_errors: int):
+    """Pin each fixture's error-response coverage.
+
+    A decode→re-encode CRC regen once silently stripped the transparent-function-code error
+    bit (encode didn't re-add the 0x80 that decode strips into `error`), turning genuine
+    error frames into malformed "success" frames that no longer decode. Counting the error
+    responses requires them to decode as `error=True`, so this guards both the bit and
+    decodability against a recurrence (#158).
+    """
+    framer = ClientFramer()
+    errors = 0
+    for raw in _rx_frames(relpath):
+        async for pdu in framer.decode(raw):
+            if isinstance(pdu, TransparentResponse) and pdu.error:
+                errors += 1
+    assert errors == expected_errors

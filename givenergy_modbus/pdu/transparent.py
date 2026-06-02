@@ -94,7 +94,11 @@ class TransparentMessage(BasePDU, ABC):
     def _encode_function_data(self):
         self._builder.add_64bit_uint(self.padding)
         self._builder.add_8bit_uint(self.device_address)
-        self._builder.add_8bit_uint(self.transparent_function_code)
+        # The high bit of the transparent function code is the error flag (decode strips
+        # it into `self.error`). Re-add it on encode so error responses round-trip — without
+        # this, a decoded error response re-encodes as a malformed "success" frame (the bug
+        # that silently corrupted fixture error frames during the #158 CRC regen).
+        self._builder.add_8bit_uint(self.transparent_function_code | (0x80 if self.error else 0))
         # self._update_check_code()
 
     @classmethod
