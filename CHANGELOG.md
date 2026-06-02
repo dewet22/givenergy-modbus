@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-06-02
+
+### 🐛 Fixed
+
+- surface per-slot inverter status as raw hex code (#108) (#173) ([a96d091](https://github.com/dewet22/givenergy-modbus/commit/a96d09114413a967e32c59b1984da93fb9fe02cb))
+- correct e_load_day mislabel; add e_consumption_today (#174) (#175) ([c2a33ee](https://github.com/dewet22/givenergy-modbus/commit/c2a33ee57a39815e3e033306687cb340ee1008b9))
+
 ## [2.1.0] - 2026-06-02
 
 ### 🐛 Fixed
