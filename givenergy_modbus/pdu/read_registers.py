@@ -61,8 +61,10 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
         """Sanity check our internal state."""
         self._ensure_registers_spec_correct()
 
-        if self.register_count != 1 and self.base_register % 60 != 0:
-            _logger.warning(f"Base register {self.base_register} not aligned on 60-byte boundary")
+        # The 1000+ three-phase and 1600+ gateway banks intentionally use non-60-aligned
+        # bases (range(1000, 1414, 60) etc.) — confirmed against the GivEnergy Android app
+        # which sends the same pattern. Warning removed as it fired on every legitimate
+        # three-phase poll, producing noise rather than signal. (#163)
         if self.register_count <= 0 or 60 < self.register_count:
             raise InvalidPduState("Register count must be in (0,60]", self)
 
