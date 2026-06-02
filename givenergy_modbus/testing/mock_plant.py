@@ -133,6 +133,42 @@ class MockPlant:
             adapter_serial=plant.data_adapter_serial_number,
         )
 
+    @classmethod
+    def from_sentinels(
+        cls,
+        *paths: str | Path,
+        spec: "list[tuple[int, type, range]]",
+        offset: int = 0,
+    ) -> "MockPlant":
+        """Build a sentinel-overlaid mock for register cross-correlation.
+
+        Loads a base plant from *paths* (same as :meth:`from_capture`), then
+        overlays *spec* with sentinel values ``raw = address + offset``.  Run the
+        app against the resulting mock and call :func:`.identify` on each displayed
+        value to recover the backing register address.
+
+        Parameters
+        ----------
+        *paths:
+            One or more capture ``.log`` files to seed the base state.
+        spec:
+            Sentinel overlay: list of ``(device_address, HR|IR|MR, address_range)``
+            triples.  Every address in ``address_range`` is written as
+            ``register_class(addr) → addr + offset``.
+        offset:
+            Added to every sentinel value.  Use ``offset=0`` for pass 1,
+            ``offset=K`` (e.g. 1000) for pass 2.
+        """
+        from givenergy_modbus.testing.identify import sentinel_devices
+
+        plant = plant_from_capture(*paths)
+        devices = sentinel_devices(plant.register_caches, spec, offset=offset)
+        return cls(
+            devices,
+            inverter_serial=plant.inverter_serial_number,
+            adapter_serial=plant.data_adapter_serial_number,
+        )
+
     # -- serving ---------------------------------------------------------------
 
     async def start(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
