@@ -182,8 +182,21 @@ class MockPlant:
 
     def _respond(self, pdu: object) -> bytes | None:
         if isinstance(pdu, WriteHoldingRegisterRequest):
+            _logger.debug(
+                "→ WriteHoldingRegisterRequest device=0x%02x reg=%d val=%d",
+                pdu.device_address,
+                pdu.register,
+                pdu.value,
+            )
             return self._ack_write(pdu)
         if isinstance(pdu, (ReadHoldingRegistersRequest, ReadInputRegistersRequest, ReadMeterProductRegistersRequest)):
+            _logger.debug(
+                "→ %s device=0x%02x base=%d count=%d",
+                type(pdu).__name__,
+                pdu.device_address,
+                pdu.base_register,
+                pdu.register_count,
+            )
             return self._read(pdu)
         # Heartbeat responses (client → server) and anything else need no reply.
         return None
@@ -196,16 +209,22 @@ class MockPlant:
         if cache is None:
             # Absent device address: real hardware doesn't answer at all → no reply (the
             # client times out). This is what detect()'s peripheral probe sweep expects.
+            _logger.debug("← no reply (absent device 0x%02x)", req.device_address)
             return None
         base, count = req.base_register, req.register_count
         # Present device but absent/partial bank → error response (the 0x12-padding shape
         # real hardware uses, e.g. an AIO on IR(1000+)). Membership test avoids the
         # RegisterCache defaultdict silently materialising 0s for missing registers.
         if reg_type is None or any(reg_type(base + i) not in cache for i in range(count)):
+            _logger.debug(
+                "← error response (absent bank) device=0x%02x base=%d count=%d",
+                req.device_address, base, count,
+            )
             return self._error(req)
         resp = cast(ReadRegistersResponse, req.expected_response())
         resp.register_values = [cache[reg_type(base + i)] for i in range(count)]
         self._stamp(resp)
+        _logger.debug("← %s device=0x%02x base=%d count=%d", type(resp).__name__, req.device_address, base, count)
         return resp.encode()
 
     def _error(self, req: TransparentRequest) -> bytes:
@@ -220,6 +239,10 @@ class MockPlant:
         # Phase 1: acknowledge with a valid readback response; state is not mutated.
         resp = cast(TransparentResponse, req.expected_response())
         self._stamp(resp)
+        _logger.debug(
+            "← WriteHoldingRegisterResponse (ack, no state mutation) device=0x%02x reg=%d",
+            req.device_address, req.register,
+        )
         return resp.encode()
 
     def _stamp(self, resp: TransparentResponse) -> None:
