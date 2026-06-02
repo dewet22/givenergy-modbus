@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from givenergy_modbus.model.ems import Ems
+from givenergy_modbus.model.ems import Ems, EmsInverterStatus
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
 from givenergy_modbus.model.register import HR, IR
@@ -102,6 +102,9 @@ def test_inverter_status_bitfield():
     ems = Ems.from_register_cache(cache)
     assert ems.inverter_1_status == "1"  # type: ignore[attr-defined]
     assert ems.inverter_2_status == "3"  # type: ignore[attr-defined]
+    # codes 1 and 3 are unverified → suspected_status is None (not guessed)
+    assert ems.inverter_1_suspected_status is None  # type: ignore[attr-defined]
+    assert ems.inverter_2_suspected_status is None  # type: ignore[attr-defined]
 
 
 def test_bitfield_decode_matches_fixture():
@@ -132,6 +135,11 @@ def test_bitfield_decode_matches_fixture():
     assert ems.inverter_2_status == "2"  # type: ignore[attr-defined]
     assert ems.inverter_3_status == "0"  # type: ignore[attr-defined]
     assert ems.inverter_4_status == "0"  # type: ignore[attr-defined]
+    # ...and the SUSPECTED interpretation (verified codes only): 2→ONLINE, 0→ABSENT
+    assert ems.inverter_1_suspected_status == EmsInverterStatus.ONLINE  # type: ignore[attr-defined]
+    assert ems.inverter_2_suspected_status == EmsInverterStatus.ONLINE  # type: ignore[attr-defined]
+    assert ems.inverter_3_suspected_status == EmsInverterStatus.ABSENT  # type: ignore[attr-defined]
+    assert ems.inverter_4_suspected_status == EmsInverterStatus.ABSENT  # type: ignore[attr-defined]
     # inverter_count is the authoritative presence signal (#108)
     assert ems.inverter_count == 2  # type: ignore[attr-defined]
 
