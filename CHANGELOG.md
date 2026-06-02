@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b14] - 2026-06-02
+
+### ✨ Added
+
+- rename HR(199) + add smart_load_slot_1..10 decode Defs ([3f86f84](https://github.com/dewet22/givenergy-modbus/commit/3f86f84eed747732cdaa2313e0abc7f0e3e8adcd))
+
 ## [2.1.0b13] - 2026-06-02
 
 ### ✨ Added
