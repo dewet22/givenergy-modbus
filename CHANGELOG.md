@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b8] - 2026-06-02
+
+### 🐛 Fixed
+
+- gate HR(300-359) load_config poll on AC-config-block models (#162) ([1d85d60](https://github.com/dewet22/givenergy-modbus/commit/1d85d60aa6e1e4b8361f91fdafe0bd0d34e2f15f))
+
 ## [2.1.0b7] - 2026-06-01
 
 ### 🐛 Fixed
