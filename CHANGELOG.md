@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b12] - 2026-06-02
+
+### ✨ Added
+
+- add DEBUG-level PDU logging to MockPlant ([c912de5](https://github.com/dewet22/givenergy-modbus/commit/c912de55d9f3eefd7e833d2a6e4781d4afa3f365))
+
 ## [2.1.0b11] - 2026-06-02
 
 ### 🐛 Fixed
