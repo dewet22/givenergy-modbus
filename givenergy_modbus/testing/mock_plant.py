@@ -79,8 +79,12 @@ def _iter_capture_frames(*paths: str | Path) -> list[bytes]:
             i += 1
             continue
         frame_len = 6 + int.from_bytes(buf[i + 4 : i + 6], "big")
-        if frame_len < 18 or i + frame_len > n:
-            break  # truncated tail
+        if frame_len < 18:
+            # False-positive marker or corrupted length — skip one byte and keep searching.
+            i += 1
+            continue
+        if i + frame_len > n:
+            break  # genuine truncated tail; wait for more data (or end of file)
         frames.append(buf[i : i + frame_len])
         i += frame_len
     return frames

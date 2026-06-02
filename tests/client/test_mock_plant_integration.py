@@ -88,22 +88,23 @@ async def test_aio_errors_on_absent_three_phase_bank():
 
     The AIO has no per-phase bank, so this is the faithful reproduction of the #105
     symptom — end-to-end over a real socket through the synthesizing mock.
+
+    Uses a fresh raw connection rather than the Client's internal reader, because the
+    Client's _task_network_consumer is already consuming the same StreamReader in the
+    background — sharing it causes a race condition (Codex review).
     """
-    mock = MockPlant.from_capture(_CAPTURES / "aio_a/aio_arm612_5min.log")
-    client, host, port = await _connected_client(mock)
-    try:
-        # Bypass detect's gating: ask for the absent bank directly and inspect the reply.
+    import asyncio
+
+    async with MockPlant.from_capture(_CAPTURES / "aio_a/aio_arm612_5min.log") as mock:
+        _, port = await mock.start("127.0.0.1", 0)
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
         req = ReadInputRegistersRequest(base_register=1000, register_count=60, device_address=0x11)
-        raw = req.encode()
-        reader, writer = client.reader, client.writer  # reuse the open connection
-        writer.write(raw)
+        writer.write(req.encode())
         await writer.drain()
         data = await reader.read(4096)
         pdu = ClientIncomingMessage.decode_bytes(data)
         assert pdu.error is True
-    finally:
-        await client.close()
-        await mock.aclose()
+        writer.close()
 
 
 # ---------------------------------------------------------------------------
