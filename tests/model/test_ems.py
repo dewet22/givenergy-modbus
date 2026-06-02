@@ -93,13 +93,15 @@ def test_meter_status_bitfield():
 def test_inverter_status_bitfield():
     # IR(2045) packs 4 × 3-bit inverter statuses, LSB-first: slot N occupies bits [3N-3:3N-1].
     # C.bitfield uses MSB-first indices, so slot N = bitfield(16-3N, 18-3N).
-    # inverter_1 (bits[2:0] → 0b001 = NORMAL=1 → 0x0001)
-    # inverter_2 (bits[5:3] → 0b011 = FAULT=3 → 0b011<<3 = 0x0018)
+    # The 3-bit code is surfaced as a hex string (uninterpreted raw code, #108) — NOT the
+    # inverter Status enum, whose values don't match this field's encoding.
+    # inverter_1 (bits[2:0] → 0b001 = code 1 → "1")
+    # inverter_2 (bits[5:3] → 0b011 = code 3 → "3")
     packed = 0b001 | (0b011 << 3)  # = 0x0019
     cache = _cache({IR(2045): packed})
     ems = Ems.from_register_cache(cache)
-    assert ems.inverter_1_status == Status.NORMAL  # type: ignore[attr-defined]
-    assert ems.inverter_2_status == Status.FAULT  # type: ignore[attr-defined]
+    assert ems.inverter_1_status == "1"  # type: ignore[attr-defined]
+    assert ems.inverter_2_status == "3"  # type: ignore[attr-defined]
 
 
 def test_bitfield_decode_matches_fixture():
@@ -107,26 +109,31 @@ def test_bitfield_decode_matches_fixture():
 
     Pinned to the committed ems_2_inv_3_bat_a fixture where:
     - IR(2043)=17 (0b10001): bits[1:0]=01=ONLINE (meter_1 −94 W), bits[5:4]=01=ONLINE
-      (meter_3 583 W), everything else DISABLED
-    - IR(2045)=18 (0b10010): bits[2:0]=010=WARNING (inv_1), bits[5:3]=010=WARNING (inv_2)
+      (meter_3 583 W), everything else DISABLED — verified against the meter power regs.
+    - IR(2045)=18 (0b10010): bits[2:0]=010=code 2 (inv_1 present), bits[5:3]=010=code 2
+      (inv_2 present), inv_3/inv_4 = code 0 (empty). Per-slot inverter status is an
+      uninterpreted hex code (the GivEnergy app doesn't expose it); only 0=empty and
+      2=present/idle are verified. Presence is authoritatively given by `inverter_count`.
     """
     fixture = Path(__file__).parent.parent / "fixtures/captures/ems_2_inv_3_bat_a/ems_arm1036_30min.log"
     plant = plant_from_capture(str(fixture))
     cache = plant.register_caches[0x11]
     ems = Ems.from_register_cache(cache)
 
-    # Meter statuses — only meters with power should be ONLINE
+    # Meter statuses — only meters with power should be ONLINE (verified vs power regs)
     assert ems.meter_1_status == MeterStatus.ONLINE  # type: ignore[attr-defined]  # -94 W
     assert ems.meter_2_status == MeterStatus.DISABLED  # type: ignore[attr-defined]  # 0 W
     assert ems.meter_3_status == MeterStatus.ONLINE  # type: ignore[attr-defined]  # +583 W
     for n in range(4, 9):
         assert getattr(ems, f"meter_{n}_status") == MeterStatus.DISABLED  # type: ignore[attr-defined]
 
-    # Inverter statuses — inv_1/inv_2 are present and active; inv_3/inv_4 absent
-    assert ems.inverter_1_status in (Status.NORMAL, Status.WARNING)  # type: ignore[attr-defined]
-    assert ems.inverter_2_status in (Status.NORMAL, Status.WARNING)  # type: ignore[attr-defined]
-    assert ems.inverter_3_status == Status.WAITING  # type: ignore[attr-defined]  # no physical inverter
-    assert ems.inverter_4_status == Status.WAITING  # type: ignore[attr-defined]  # no physical inverter
+    # Inverter statuses — raw hex codes: inv_1/inv_2 present (code 2), inv_3/inv_4 empty (0)
+    assert ems.inverter_1_status == "2"  # type: ignore[attr-defined]
+    assert ems.inverter_2_status == "2"  # type: ignore[attr-defined]
+    assert ems.inverter_3_status == "0"  # type: ignore[attr-defined]
+    assert ems.inverter_4_status == "0"  # type: ignore[attr-defined]
+    # inverter_count is the authoritative presence signal (#108)
+    assert ems.inverter_count == 2  # type: ignore[attr-defined]
 
 
 def test_per_inverter_data():

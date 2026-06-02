@@ -72,10 +72,18 @@ class EmsRegisterGetter(RegisterGetter):
         "inverter_count": Def(C.uint16, None, IR(2044)),
         # IR(2045) packs up to 4 inverter statuses as 3-bit fields, LSB-first (slot N
         # occupies bits [(3N-3):(3N-1)] from LSB). MSB-first indices: [16-3N : 18-3N].
-        "inverter_1_status": Def((C.bitfield, 13, 15), Status, IR(2045)),
-        "inverter_2_status": Def((C.bitfield, 10, 12), Status, IR(2045)),
-        "inverter_3_status": Def((C.bitfield, 7, 9), Status, IR(2045)),
-        "inverter_4_status": Def((C.bitfield, 4, 6), Status, IR(2045)),
+        # The per-slot status CODE is exposed as a hex string (the house idiom for raw,
+        # uninterpreted codes — cf. device_type_code / fault_code), NOT mapped through the
+        # inverter Status enum: that enum's values don't match this field's encoding
+        # (a present, idle inverter reads code 2 here, which Status would mislabel as
+        # WARNING). The only values verified against the committed EMS capture are
+        # 0 = empty slot and 2 = present/idle; the full code→meaning mapping isn't exposed
+        # by the GivEnergy app (which abstracts the EMS to one PCS object) and remains
+        # undocumented. Use `inverter_count` for how many inverters are present (#108).
+        "inverter_1_status": Def((C.bitfield, 13, 15), (C.hex, 1), IR(2045)),
+        "inverter_2_status": Def((C.bitfield, 10, 12), (C.hex, 1), IR(2045)),
+        "inverter_3_status": Def((C.bitfield, 7, 9), (C.hex, 1), IR(2045)),
+        "inverter_4_status": Def((C.bitfield, 4, 6), (C.hex, 1), IR(2045)),
         "meter_1_power": Def(C.int16, None, IR(2046)),
         "meter_2_power": Def(C.int16, None, IR(2047)),
         "meter_3_power": Def(C.int16, None, IR(2048)),
