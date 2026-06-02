@@ -636,6 +636,10 @@ class Client:
         # 0x33–0x37 (the inverter itself now lives at 0x11/0x31, not 0x32 — issue #119). All
         # slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)
         # and EMS plant controllers (don't expose IR at the inverter address — see #86).
+        # Per-slot (not break-on-fail) for the same reasons as the meter sweep above: battery
+        # addresses can be non-contiguous (DIP-switch misconfiguration) and a transient BMS
+        # timeout on pack N must not silently drop pack N+1 onward. Cold detect is affordable
+        # since the probe budget only applies on cold sweeps; warm/hinted starts skip this.
         if not caps.is_hv and not caps.is_ems:
             await self.send_request_and_await_response(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
@@ -650,14 +654,18 @@ class Client:
                         timeout=probe_timeout,
                         retries=probe_retries,
                     ):
-                        break
+                        continue
                     if not self.plant.register_caches.get(batt_addr):
-                        break
+                        continue
                 try:
                     if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
-                        break
+                        _logger.debug(
+                            "detect: battery probe responded at 0x%02x but is_valid()=False — skipping",
+                            batt_addr,
+                        )
+                        continue
                 except KeyError, ValueError:
-                    break
+                    continue
                 caps.lv_battery_addresses.append(batt_addr)
             _logger.info(
                 "detect: lv_battery_addresses=[%s]",

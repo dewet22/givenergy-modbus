@@ -876,3 +876,77 @@ async def test_detect_hinted_raises_on_bcu_module_count_drift():
 
     assert exc_info.value.prior.bcu_stacks == [(0, 3), (1, 2)]
     assert exc_info.value.actual.bcu_stacks == [(0, 2), (1, 2)]
+
+
+@pytest.mark.asyncio
+async def test_detect_lv_batteries_non_contiguous():
+    """Non-contiguous battery addresses (e.g. 0x32 + 0x34, gap at 0x33) are all detected.
+
+    Regression for break-on-first-absent: a gap at 0x33 must not prevent 0x34 from
+    being found. Mirrors the meter sweep which already uses per-slot continue (#95).
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # 0x33 is absent; 0x34 is present and valid.
+    _prime_battery_serial(client, 0x34)
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in {0x34}  # 0x33 absent, 0x34 present
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert 0x32 in caps.lv_battery_addresses
+    assert 0x33 not in caps.lv_battery_addresses
+    assert 0x34 in caps.lv_battery_addresses
+
+
+@pytest.mark.asyncio
+async def test_detect_lv_batteries_transient_failure_mid_range():
+    """A transient probe failure on one battery slot does not drop all subsequent slots."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # 0x33 times out transiently; 0x34 is present and valid.
+    _prime_battery_serial(client, 0x34)
+
+    call_count = {}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        addr = request.device_address
+        call_count[addr] = call_count.get(addr, 0) + 1
+        return addr == 0x34  # 0x33 fails, 0x34 succeeds
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert 0x32 in caps.lv_battery_addresses
+    assert 0x33 not in caps.lv_battery_addresses
+    assert 0x34 in caps.lv_battery_addresses
+    # 0x34 must have been probed (not short-circuited after 0x33 failed)
+    assert call_count.get(0x34, 0) >= 1
+
+
+@pytest.mark.asyncio
+async def test_detect_lv_batteries_invalid_slot_skipped_not_aborted():
+    """A ghost slot that ACKs but fails Battery.is_valid() is skipped; later slots still found."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # 0x33 responds but has no valid serial → is_valid()=False (ghost).
+    _prime_cache(client, 0x33, {})  # no serial registers → is_valid False
+    _prime_battery_serial(client, 0x34)
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in {0x33, 0x34}
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert 0x32 in caps.lv_battery_addresses
+    assert 0x33 not in caps.lv_battery_addresses  # ghost — skipped
+    assert 0x34 in caps.lv_battery_addresses
