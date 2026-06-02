@@ -522,6 +522,17 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         )
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
 
+    @property
+    def enable_standard_self_consumption_logic(self) -> bool | None:
+        """Deprecated alias for `enable_inverter_parallel_mode`."""
+        warnings.warn(
+            "ThreePhaseInverter.enable_standard_self_consumption_logic is deprecated; "
+            "use enable_inverter_parallel_mode",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
+
 
 # Models that decode via the three-phase / 1000-range register layout. The residential
 # ALL_IN_ONE (DTC family "8", e.g. 0x8001) is deliberately absent: it is HV but single-

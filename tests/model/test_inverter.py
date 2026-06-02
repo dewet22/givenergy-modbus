@@ -168,7 +168,17 @@ def test_inverter():
             "threephase_balance_3": None,
             "threephase_balance_mode": None,
             "cmd_bms_flash_update": None,
-            "enable_standard_self_consumption_logic": None,
+            "enable_inverter_parallel_mode": None,
+            "smart_load_slot_1": None,
+            "smart_load_slot_2": None,
+            "smart_load_slot_3": None,
+            "smart_load_slot_4": None,
+            "smart_load_slot_5": None,
+            "smart_load_slot_6": None,
+            "smart_load_slot_7": None,
+            "smart_load_slot_8": None,
+            "smart_load_slot_9": None,
+            "smart_load_slot_10": None,
             "e_battery_charge_today": None,
             "e_battery_charge_today_alt3": None,
             "e_battery_charge_total": None,
@@ -304,10 +314,20 @@ def test_from_registers(register_cache):
         "enable_charge": True,
         "enable_frequency_derating": None,
         "enable_g100_limit_switch": None,
+        "enable_inverter_parallel_mode": None,
         "enable_low_voltage_fault_ride_through": None,
         "enable_spi": None,
-        "enable_standard_self_consumption_logic": None,
         "enable_ups_mode": None,
+        "smart_load_slot_1": None,
+        "smart_load_slot_2": None,
+        "smart_load_slot_3": None,
+        "smart_load_slot_4": None,
+        "smart_load_slot_5": None,
+        "smart_load_slot_6": None,
+        "smart_load_slot_7": None,
+        "smart_load_slot_8": None,
+        "smart_load_slot_9": None,
+        "smart_load_slot_10": None,
         # 'f_ac1': 49.9,
         # 'f_ac_fault_value': 0.0,
         # 'f_ac_high_c': 52.0,
@@ -634,10 +654,20 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "enable_charge": True,
         "enable_frequency_derating": True,
         "enable_g100_limit_switch": False,
+        "enable_inverter_parallel_mode": None,
         "enable_low_voltage_fault_ride_through": False,
         "enable_spi": True,
-        "enable_standard_self_consumption_logic": None,
         "enable_ups_mode": False,
+        "smart_load_slot_1": None,
+        "smart_load_slot_2": None,
+        "smart_load_slot_3": None,
+        "smart_load_slot_4": None,
+        "smart_load_slot_5": None,
+        "smart_load_slot_6": None,
+        "smart_load_slot_7": None,
+        "smart_load_slot_8": None,
+        "smart_load_slot_9": None,
+        "smart_load_slot_10": None,
         # 'f_ac1': 49.96,
         # 'f_ac_fault_value': 0.0,
         # 'f_ac_high_c': 52.0,
@@ -1144,6 +1174,36 @@ def test_work_time_total_hours_rename_and_deprecated_alias():
     dumped = inv.model_dump()
     assert "work_time_total_hours" in dumped
     assert "work_time_total" not in dumped
+
+
+def test_enable_inverter_parallel_mode_rename_and_deprecated_alias():
+    """HR(199) is now enable_inverter_parallel_mode; enable_standard_self_consumption_logic is a deprecated alias."""
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import HR
+
+    cache = RegisterCache({HR(199): 1})
+
+    for cls in (SinglePhaseInverter, ThreePhaseInverter):
+        inv = cls.from_register_cache(cache)
+
+        # New name returns the value cleanly with no warning.
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            assert inv.enable_inverter_parallel_mode is True  # type: ignore[attr-defined]
+        assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+        # Deprecated alias still works, warns, and returns the same value.
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            assert inv.enable_standard_self_consumption_logic is True  # type: ignore[attr-defined]
+        deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert len(deprecations) == 1
+        assert "enable_inverter_parallel_mode" in str(deprecations[0].message)
+
+        # Dump output uses the new name only — the alias must not duplicate the field.
+        dumped = inv.model_dump()
+        assert "enable_inverter_parallel_mode" in dumped
+        assert "enable_standard_self_consumption_logic" not in dumped
 
 
 def test_battery_energy_facade_routes_by_model():

@@ -498,7 +498,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Holding Registers, block 180-239
         #
-        "enable_standard_self_consumption_logic": Def(C.bool, None, HR(199)),
+        "enable_inverter_parallel_mode": Def(C.bool, None, HR(199)),
         "cmd_bms_flash_update": Def(C.bool, None, HR(200)),
         "inverter_errors": Def(C.uint32, None, HR(223), HR(224)),
         "inverter_fault_messages": Def(C.uint32, _inverter_fault_code, HR(223), HR(224)),
@@ -544,6 +544,21 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "discharge_target_soc_9": Def(C.uint16, None, HR(296)),
         "discharge_slot_10": Def(C.timeslot, None, HR(297), HR(298)),
         "discharge_target_soc_10": Def(C.uint16, None, HR(299)),
+        #
+        # Holding Registers, block 554-573
+        # Smart Load scheduling — 10 time-window slots (HR554-573).
+        # app: "Smart Load Start/End Time 1..10"
+        #
+        "smart_load_slot_1": Def(C.timeslot, None, HR(554), HR(555)),
+        "smart_load_slot_2": Def(C.timeslot, None, HR(556), HR(557)),
+        "smart_load_slot_3": Def(C.timeslot, None, HR(558), HR(559)),
+        "smart_load_slot_4": Def(C.timeslot, None, HR(560), HR(561)),
+        "smart_load_slot_5": Def(C.timeslot, None, HR(562), HR(563)),
+        "smart_load_slot_6": Def(C.timeslot, None, HR(564), HR(565)),
+        "smart_load_slot_7": Def(C.timeslot, None, HR(566), HR(567)),
+        "smart_load_slot_8": Def(C.timeslot, None, HR(568), HR(569)),
+        "smart_load_slot_9": Def(C.timeslot, None, HR(570), HR(571)),
+        "smart_load_slot_10": Def(C.timeslot, None, HR(572), HR(573)),
         #
         # Holding Registers, block 300-359
         # Single Phase New registers
@@ -842,6 +857,23 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
+
+    # Plain @property so the deprecated alias doesn't appear in model_dump().
+    # HR(199) was decoded as enable_standard_self_consumption_logic (GivTCP-era guess);
+    # the GE app names it "Enable Inverter Parallel Mode". The new field name is
+    # enable_inverter_parallel_mode; this alias preserves back-compat for existing
+    # consumers. Hass: keep your current entity using this property and fold the
+    # entity-ID rename into the one-shot #106 migration — do NOT migrate now.
+    @property
+    def enable_standard_self_consumption_logic(self) -> bool | None:
+        """Deprecated alias for `enable_inverter_parallel_mode`."""
+        warnings.warn(
+            "SinglePhaseInverter.enable_standard_self_consumption_logic is deprecated; "
+            "use enable_inverter_parallel_mode",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):
