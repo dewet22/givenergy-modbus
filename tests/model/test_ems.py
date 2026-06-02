@@ -90,6 +90,16 @@ def test_meter_status_bitfield():
     assert ems.meter_3_status == MeterStatus.DISABLED  # type: ignore[attr-defined]
 
 
+def test_ems_inverter_suspected_status_converter():
+    """The lenient converter resolves verified codes, returns None otherwise."""
+    from givenergy_modbus.model.ems import _ems_inverter_suspected_status
+
+    assert _ems_inverter_suspected_status(0) == EmsInverterStatus.ABSENT
+    assert _ems_inverter_suspected_status(2) == EmsInverterStatus.ONLINE
+    assert _ems_inverter_suspected_status(3) is None  # unobserved code → not guessed
+    assert _ems_inverter_suspected_status(None) is None  # absent register → None
+
+
 def test_inverter_status_bitfield():
     # IR(2045) packs 4 × 3-bit inverter statuses, LSB-first: slot N occupies bits [3N-3:3N-1].
     # C.bitfield uses MSB-first indices, so slot N = bitfield(16-3N, 18-3N).
