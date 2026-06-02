@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b9] - 2026-06-02
+
+### ✨ Added
+
+- MockPlant capture-seeded mock inverter + encode error-bit fix (#158 B-2) ([f28617a](https://github.com/dewet22/givenergy-modbus/commit/f28617a291bddd8d16f61f17258bc381d4891680))
+
 ## [2.1.0b8] - 2026-06-02
 
 ### 🐛 Fixed
