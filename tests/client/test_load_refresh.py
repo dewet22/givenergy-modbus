@@ -40,17 +40,20 @@ def _reqs(mock_execute) -> list[tuple]:
 
 
 async def test_load_config_single_phase():
-    """Standard single-phase HYBRID requests the four base blocks plus HR(300-359), at 0x11."""
+    """Standard single-phase HYBRID requests the four base blocks only — no HR(300-359).
+
+    HR(300-359) holds AC-coupled-only config; polling it on a DC-coupled/hybrid model
+    causes a timeout → RefreshPartiallySucceeded → ConfigEntryNotReady in hass (#162).
+    """
     client = _client_with_caps(Model.HYBRID)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(300, 60)]
+    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
 
 
-@pytest.mark.parametrize("model", [Model.AC, Model.HYBRID_GEN1])
-async def test_load_config_ac_gen1_uses_0x31(model: Model):
-    """AC and HYBRID_GEN1 both expose their registers at 0x31, not 0x11 (issue #119)."""
-    client = _client_with_caps(model)
+async def test_load_config_ac_polls_hr300():
+    """AC-coupled model polls HR(300-359) at 0x31 (export priority, EPS, AC charge/discharge limits)."""
+    client = _client_with_caps(Model.AC)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
@@ -62,8 +65,21 @@ async def test_load_config_ac_gen1_uses_0x31(model: Model):
     ]
 
 
+async def test_load_config_hybrid_gen1_uses_0x31_no_hr300():
+    """HYBRID_GEN1 exposes registers at 0x31 but is DC-coupled — no HR(300-359) (#162)."""
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    assert _reqs(mock_exec) == [
+        _hr(0, 60, device=0x31),
+        _hr(60, 60, device=0x31),
+        _hr(120, 60, device=0x31),
+        _ir(120, 60, device=0x31),
+    ]
+
+
 async def test_load_config_three_phase():
-    """Three-phase models add HR 1000–1124 as three reads (60 + 60 + 5), plus HR(300-359)."""
+    """Three-phase DC-coupled models add HR 1000–1124 but not HR(300-359)."""
     client = _client_with_caps(Model.HYBRID_3PH)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
@@ -75,12 +91,11 @@ async def test_load_config_three_phase():
         _hr(1000, 60),
         _hr(1060, 60),
         _hr(1120, 5),
-        _hr(300, 60),
     ]
 
 
 async def test_load_config_extended_slots():
-    """Extended-slot models add HR 240–299 and HR 300–359."""
+    """Extended-slot DC-coupled model adds HR 240–299 but not HR(300-359)."""
     client = _client_with_caps(Model.HYBRID_GEN3)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
@@ -90,12 +105,16 @@ async def test_load_config_extended_slots():
         _hr(120, 60),
         _ir(120, 60),
         _hr(240, 60),
-        _hr(300, 60),
     ]
 
 
 async def test_load_config_residential_aio_no_1000_range():
-    """Residential ALL_IN_ONE: extended-slot blocks but no three-phase HR(1000+) bank (#105)."""
+    """Residential ALL_IN_ONE: extended-slot + HR(300-359) AC-config, but no HR(1000+) bank.
+
+    ALL_IN_ONE is HV + extended-slot + single-phase. It does NOT poll the three-phase
+    HR(1000+) bank (#105), but it DOES carry the HR(300-359) AC-output config block
+    (export priority/EPS/AC limits) and must keep polling it (#162).
+    """
     client = _client_with_caps(Model.ALL_IN_ONE)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
