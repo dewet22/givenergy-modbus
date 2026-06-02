@@ -8,10 +8,8 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/post-v2-improvement-plan/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/register-identification/">
       
-      
-        <link rel="prev" href="../v2.1-roadmap/">
       
       
       
@@ -23,7 +21,7 @@
     
     
       
-        <title>Post-v2.0 improvement plan - GivEnergy Modbus</title>
+        <title>Register identification - GivEnergy Modbus</title>
       
     
     
@@ -76,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#post-v20-improvement-plan" class="md-skip">
+        <a href="#register-identification-via-sentinel-cross-correlation" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Post-v2.0 improvement plan
+              Register identification
             
           </span>
         </div>
@@ -530,10 +528,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -545,11 +541,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
           <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
@@ -570,7 +566,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -613,35 +609,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Post-v2.0 improvement plan
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../post-v2-improvement-plan/" class="md-nav__link">
         
   
   
@@ -657,162 +628,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Post-v2.0 Improvement Plan
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Existing GitHub coverage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Model-aware write policy at the Client boundary
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Dry-run write validation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Internal refresh serialization
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Fail CI on async resource warnings
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Register provenance and confidence
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Broader golden-frame fixtures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -850,22 +665,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
+  <a href="#register-identification-via-sentinel-cross-correlation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Post-v2.0 Improvement Plan
+        Register identification via sentinel cross-correlation
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
+    <nav class="md-nav" aria-label="Register identification via sentinel cross-correlation">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
+  <a href="#principle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Existing GitHub coverage
+        Principle
       
     </span>
   </a>
@@ -873,10 +688,22 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
+  <a href="#step-by-step-procedure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Model-aware write policy at the Client boundary
+        Step-by-step procedure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step-by-step procedure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-choose-the-register-banks-to-probe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Choose the register banks to probe
       
     </span>
   </a>
@@ -884,10 +711,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
+  <a href="#2-run-pass-1-offset-0" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Dry-run write validation
+        2. Run pass 1 (offset = 0)
       
     </span>
   </a>
@@ -895,10 +722,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
+  <a href="#3-run-pass-2-offset-1000" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Internal refresh serialization
+        3. Run pass 2 (offset = 1000)
       
     </span>
   </a>
@@ -906,10 +733,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
+  <a href="#4-identify-each-register" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Fail CI on async resource warnings
+        4. Identify each register
       
     </span>
   </a>
@@ -917,10 +744,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
+  <a href="#5-cross-check-against-the-existing-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Register provenance and confidence
+        5. Cross-check against the existing model
       
     </span>
   </a>
@@ -928,10 +755,26 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
+  <a href="#6-handle-clamping-and-non-linear-registers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Broader golden-frame fixtures
+        6. Handle clamping and non-linear registers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-mapping-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example mapping table
       
     </span>
   </a>
@@ -939,43 +782,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
+  <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
+        Reference
       
     </span>
   </a>
@@ -1007,210 +817,198 @@
   
 
 
-  <h1>Post-v2.0 improvement plan</h1>
+  <h1>Register identification</h1>
 
-<h2 id="post-v20-improvement-plan">Post-v2.0 Improvement Plan<a class="headerlink" href="#post-v20-improvement-plan" title="Permanent link">&para;</a></h2>
-<p>This plan captures concrete follow-up work after the v2.0 release. The focus is
-hardware safety, protocol reliability, and maintainability rather than new user
-features.</p>
-<h3 id="existing-github-coverage">Existing GitHub coverage<a class="headerlink" href="#existing-github-coverage" title="Permanent link">&para;</a></h3>
-<p>The repository currently tracks v2.1 work with a <code>v2.1</code> issue label rather than
-a GitHub milestone. Some items below overlap existing issues:</p>
+<h2 id="register-identification-via-sentinel-cross-correlation">Register identification via sentinel cross-correlation<a class="headerlink" href="#register-identification-via-sentinel-cross-correlation" title="Permanent link">&para;</a></h2>
+<p>The GivEnergy Android app's <strong>Read Only</strong> tab displays telemetry labels (e.g.
+"Grid voltage 242.7 V", "Battery temperature 25.0 °C") but does not show register
+numbers.  This document describes how to identify the register address backing each
+label using the <code>MockPlant</code> sentinel approach.</p>
+<h3 id="principle">Principle<a class="headerlink" href="#principle" title="Permanent link">&para;</a></h3>
+<p>Seed a <code>MockPlant</code> with <em>sentinel</em> values — raw register value = register address.
+When the app reads a register and applies its converter (e.g. divide by 10 for "deci"
+scale), it displays a value that encodes the address.  Reading that value off the
+screen and inverting the converter recovers the address.</p>
+<p>For a linear converter with scale <code>s</code>:</p>
+<div class="highlight"><pre><span></span><code>raw = address
+displayed = address × s
+</code></pre></div>
+<p><strong>Single-pass ambiguity:</strong> the same displayed value can match multiple <code>(address, scale)</code> pairs.
+For example <code>24.2</code> matches both address 242 at scale 0.1 <em>and</em> address 2420 at scale 0.01.</p>
+<p><strong>Two-pass resolution:</strong> run a second pass with <code>offset=K</code> (e.g. 1000):</p>
+<div class="highlight"><pre><span></span><code>pass 1:  d1 = address × s
+pass 2:  d2 = (address + K) × s
+
+s = (d2 − d1) / K          ← scale, uniquely determined
+address = d1 / s            ← address, uniquely determined
+</code></pre></div>
+<h3 id="step-by-step-procedure">Step-by-step procedure<a class="headerlink" href="#step-by-step-procedure" title="Permanent link">&para;</a></h3>
+<h4 id="1-choose-the-register-banks-to-probe">1. Choose the register banks to probe<a class="headerlink" href="#1-choose-the-register-banks-to-probe" title="Permanent link">&para;</a></h4>
+<p>Decide which device address and register type to seed.  For inverter telemetry:</p>
 <table>
 <thead>
 <tr>
-<th>Plan item</th>
-<th>Existing coverage</th>
+<th>Bank</th>
+<th>Device</th>
+<th>Type</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Model-aware write policy at the Client boundary</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>, which moves commands onto inverter models so model-specific command contracts are enforceable. The extra Client-boundary rejection remains distinct.</td>
+<td>Standard inverter IR</td>
+<td>0x31</td>
+<td>IR</td>
 </tr>
 <tr>
-<td>Dry-run write validation</td>
-<td>Not currently captured.</td>
+<td>Holding registers</td>
+<td>0x11</td>
+<td>HR</td>
 </tr>
 <tr>
-<td>Internal refresh serialization</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Fail CI on async resource warnings</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Register provenance and confidence</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a>, which tracks field-validation of inherited mappings. Provenance metadata remains distinct.</td>
-</tr>
-<tr>
-<td>Broader golden-frame fixtures</td>
-<td>Adjacent to closed <a href="https://github.com/dewet22/givenergy-modbus/issues/66">#66</a>, which shipped the in-cli capture mechanism, and open <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a>, the active corruption-pattern investigation that produces sample captures as a byproduct. Committing those captures as durable, redacted test fixtures across device families remains distinct work.</td>
-</tr>
-<tr>
-<td>Stricter type checking</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Cleaner release artifact checks</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Documentation warning cleanup</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Public API compatibility tests</td>
-<td>Not currently captured.</td>
+<td>Battery</td>
+<td>0x32–0x37</td>
+<td>IR</td>
 </tr>
 </tbody>
 </table>
-<p>The remaining v2.1-labelled issues are tracked independently of this plan:
-<a href="https://github.com/dewet22/givenergy-modbus/issues/65">#65</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/71">#71</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/72">#72</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/73">#73</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/74">#74</a>, and
-<a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a>. They're
-roadmap items rather than the infrastructure focus of this document.</p>
-<h3 id="1-model-aware-write-policy-at-the-client-boundary">1. Model-aware write policy at the Client boundary<a class="headerlink" href="#1-model-aware-write-policy-at-the-client-boundary" title="Permanent link">&para;</a></h3>
-<p>Add a model-aware write policy check at the <code>Client</code> execution boundary,
-complementing the existing PDU-level enforcement.</p>
-<p>Current protection runs in <code>WriteHoldingRegisterRequest.ensure_valid_state()</code>
-(invoked from <code>encode()</code>) against the global <code>WRITE_SAFE_REGISTERS</code> allowlist —
-so it already fires at execution time, but only knows about register-level
-safety, not the detected inverter model. Model-specific command mixins define
-smaller safe-write sets, but callers can still manually construct write PDUs
-that bypass them.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>Client.one_shot_command()</code> and <code>Client.execute()</code> can reject writes that are
-  not valid for the detected inverter model.</li>
-<li>The default remains conservative when model capabilities are unknown.</li>
-<li>Tests cover direct <code>WriteHoldingRegisterRequest</code> construction, not just
-  high-level command helpers.</li>
-</ul>
-<h3 id="2-dry-run-write-validation">2. Dry-run write validation<a class="headerlink" href="#2-dry-run-write-validation" title="Permanent link">&para;</a></h3>
-<p>Add a supported way to validate write requests without sending frames to
-hardware.</p>
-<p>Target outcome:</p>
-<ul>
-<li>A caller can encode and validate request lists before transmission.</li>
-<li>Validation reports the register, value, device address, and reason for any
-  rejection.</li>
-<li>Downstream integrations can use this before enabling live writes.</li>
-</ul>
-<p>Possible API shapes:</p>
-<ul>
-<li><code>client.validate_requests(requests)</code></li>
-<li><code>client.one_shot_command(requests, dry_run=True)</code></li>
-</ul>
-<h3 id="3-internal-refresh-serialization">3. Internal refresh serialization<a class="headerlink" href="#3-internal-refresh-serialization" title="Permanent link">&para;</a></h3>
-<p>Move refresh serialization into <code>Client</code> instead of relying only on downstream
-consumers to lock around polling.</p>
-<p>Current documentation correctly says callers should avoid overlapping
-<code>refresh_plant()</code> calls. An internal <code>asyncio.Lock</code> would make accidental
-overlap safer.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>detect()</code>, <code>load_config()</code>, <code>refresh()</code>, and <code>refresh_plant()</code> cannot mutate
-  <code>plant</code> concurrently.</li>
-<li>Writes can still interleave where safe.</li>
-<li>Tests cover overlapping refresh calls and detect/refresh interaction.</li>
-</ul>
-<h3 id="4-fail-ci-on-async-resource-warnings">4. Fail CI on async resource warnings<a class="headerlink" href="#4-fail-ci-on-async-resource-warnings" title="Permanent link">&para;</a></h3>
-<p>Keep async test leaks visible by treating unawaited coroutine and unraisable
-exception warnings as failures.</p>
-<p>Target outcome:</p>
-<ul>
-<li>CI fails on <code>PytestUnraisableExceptionWarning</code>.</li>
-<li>CI fails on unawaited coroutine <code>RuntimeWarning</code>.</li>
-<li>The existing timeout test remains warning-clean.</li>
-</ul>
-<p>Suggested pytest flags:</p>
-<div class="highlight"><pre><span></span><code>pytest<span class="w"> </span>-W<span class="w"> </span>error::pytest.PytestUnraisableExceptionWarning<span class="w"> </span>-W<span class="w"> </span>error::RuntimeWarning<span class="w"> </span>tests
+<p>Seed ranges densely (e.g. <code>range(0, 240)</code>) so the app's read requests always find
+populated registers and don't time out.</p>
+<h4 id="2-run-pass-1-offset-0">2. Run pass 1 (offset = 0)<a class="headerlink" href="#2-run-pass-1-offset-0" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># Using givenergy-cli (once the identify commands are implemented):</span>
+givenergy-cli<span class="w"> </span>mock-plant<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--capture<span class="w"> </span>path/to/plant.log<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--sentinels<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--device<span class="w"> </span>0x31<span class="w"> </span>--type<span class="w"> </span>ir<span class="w"> </span>--base<span class="w"> </span><span class="m">0</span><span class="w"> </span>--count<span class="w"> </span><span class="m">240</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--offset<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8899</span>
+
+<span class="c1"># Or directly in Python:</span>
+from<span class="w"> </span>givenergy_modbus.testing<span class="w"> </span>import<span class="w"> </span>MockPlant
+from<span class="w"> </span>givenergy_modbus.model.register<span class="w"> </span>import<span class="w"> </span>IR
+
+<span class="nv">mock</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MockPlant.from_sentinels<span class="o">(</span>
+<span class="w">    </span><span class="s2">&quot;path/to/plant.log&quot;</span>,
+<span class="w">    </span><span class="nv">spec</span><span class="o">=[(</span>0x31,<span class="w"> </span>IR,<span class="w"> </span>range<span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">240</span><span class="o">))]</span>,
+<span class="w">    </span><span class="nv">offset</span><span class="o">=</span><span class="m">0</span>,
+<span class="o">)</span>
+import<span class="w"> </span>asyncio
+asyncio.run<span class="o">(</span>mock.serve_forever<span class="o">())</span>
 </code></pre></div>
-<h3 id="5-register-provenance-and-confidence">5. Register provenance and confidence<a class="headerlink" href="#5-register-provenance-and-confidence" title="Permanent link">&para;</a></h3>
-<p>Make provisional register knowledge explicit in the model definitions.</p>
-<p>Some LUT entries come from field captures or related projects rather than
-official documentation. That is normal for this domain, but the source and
-confidence should be visible.</p>
-<p>Target outcome:</p>
+<p>Connect the GivEnergy app to the mock's IP and port.  Navigate to
+<strong>Direct Control → Read Only</strong>.  For each displayed label, record the value as <code>d1</code>.</p>
+<h4 id="3-run-pass-2-offset-1000">3. Run pass 2 (offset = 1000)<a class="headerlink" href="#3-run-pass-2-offset-1000" title="Permanent link">&para;</a></h4>
+<p>Stop the mock; re-start with <code>--offset 1000</code>.  Record each value as <code>d2</code>.</p>
+<blockquote>
+<p><strong>Choosing K:</strong> use K = 1000.  This is safe for all known GivEnergy register
+addresses (max address ≈ 5014; 5014 + 1000 = 6014 ≪ 65535 uint16 max).</p>
+</blockquote>
+<h4 id="4-identify-each-register">4. Identify each register<a class="headerlink" href="#4-identify-each-register" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="c1"># CLI:</span>
+givenergy-cli<span class="w"> </span>identify<span class="w"> </span><span class="m">242</span>.7<span class="w"> </span>--second<span class="w"> </span><span class="m">342</span>.7<span class="w"> </span>--k<span class="w"> </span><span class="m">1000</span>
+<span class="c1"># → address=2427, scale=0.1 (deci), confidence=two-pass</span>
+
+<span class="c1"># Python:</span>
+from<span class="w"> </span>givenergy_modbus.testing<span class="w"> </span>import<span class="w"> </span>identify
+<span class="nv">candidates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>identify<span class="o">(</span><span class="m">242</span>.7,<span class="w"> </span><span class="m">342</span>.7,<span class="w"> </span><span class="nv">k</span><span class="o">=</span><span class="m">1000</span><span class="o">)</span>
+print<span class="o">(</span>candidates<span class="o">)</span>
+<span class="c1"># → [Candidate(address=2427, scale=0.1, confidence=&#39;two-pass&#39;)]</span>
+</code></pre></div>
+<h4 id="5-cross-check-against-the-existing-model">5. Cross-check against the existing model<a class="headerlink" href="#5-cross-check-against-the-existing-model" title="Permanent link">&para;</a></h4>
+<p>Compare each <code>(address, scale)</code> against the existing register LUT
+(<code>SinglePhaseInverterRegisterGetter.REGISTER_LUT</code> in <code>model/inverter.py</code>).</p>
 <ul>
-<li><code>RegisterDefinition</code> can optionally carry provenance metadata.</li>
-<li>Docs can distinguish verified, field-observed, and provisional registers.</li>
-<li>High-risk writes require stronger provenance before being added to safe-write
-  sets.</li>
+<li><strong>Address matches an existing Def</strong> → confirm the app label is the human-readable
+  name for that field.  Update the field's comment/docstring if it differs.</li>
+<li><strong>Address unknown</strong> → record it as a new Def candidate for the #48 register audit.
+  Note the app label and inferred scale; submit a PR adding <code>Def(C.deci, None, IR(address))</code>
+  (or the appropriate converter) under the right field name.</li>
 </ul>
-<p>Possible metadata:</p>
+<h4 id="6-handle-clamping-and-non-linear-registers">6. Handle clamping and non-linear registers<a class="headerlink" href="#6-handle-clamping-and-non-linear-registers" title="Permanent link">&para;</a></h4>
+<p>Some fields are problematic for auto-identification:</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Symptom</th>
+<th>Workaround</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clamped field</strong> (e.g. SOC %)</td>
+<td>App shows 100.0 % even with sentinel=2427</td>
+<td>Use a sentinel value in the valid range; probe with a third pass using a smaller offset</td>
+</tr>
+<tr>
+<td><strong>Boolean/enum</strong></td>
+<td>App shows only 0 or 1</td>
+<td>Use a non-zero in-range sentinel and check which field toggles</td>
+</tr>
+<tr>
+<td><strong>uint32 pair</strong></td>
+<td>Two registers combine into one displayed value</td>
+<td>Seed the two adjacent addresses and note which label changes when each changes</td>
+</tr>
+<tr>
+<td><strong>timeslot</strong></td>
+<td>Two registers encode start/end time</td>
+<td>Similar to uint32</td>
+</tr>
+</tbody>
+</table>
+<p>Non-linear registers cannot be uniquely identified by <code>identify()</code> — handle them manually.</p>
+<h3 id="example-mapping-table">Example mapping table<a class="headerlink" href="#example-mapping-table" title="Permanent link">&para;</a></h3>
+<p>After completing both passes, build a table like:</p>
+<table>
+<thead>
+<tr>
+<th>App label</th>
+<th>address</th>
+<th>type</th>
+<th>scale</th>
+<th>Existing field</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Grid voltage</td>
+<td>2427</td>
+<td>IR</td>
+<td>0.1 (deci)</td>
+<td><code>v_ac1</code> at IR(8)</td>
+<td><strong>Mismatch</strong> — re-probe, likely IR(8) not 2427</td>
+</tr>
+<tr>
+<td>Battery temperature</td>
+<td>250</td>
+<td>IR</td>
+<td>0.1 (deci)</td>
+<td><code>t_battery</code> at IR(56)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>AC charge today</td>
+<td>?</td>
+<td>IR</td>
+<td>0.1 (deci)</td>
+<td>unmapped</td>
+<td>Add <code>Def(C.deci, None, IR(?))</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: the sentinel value is the <em>address</em>, not necessarily a realistic reading.
+"Grid voltage 242.7 V" from a sentinel means address 2427, but the real v_ac1 at
+address 8 would display 0.8 V in sentinel mode.  Use cross-referencing, not
+absolute values, to confirm names.</p>
+</blockquote>
+<h3 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>source="field-capture"</code></li>
-<li><code>source="GivTCP"</code></li>
-<li><code>verified=True</code></li>
-<li><code>risk="provisional"</code></li>
-</ul>
-<h3 id="6-broader-golden-frame-fixtures">6. Broader golden-frame fixtures<a class="headerlink" href="#6-broader-golden-frame-fixtures" title="Permanent link">&para;</a></h3>
-<p>Add redacted binary TX/RX fixtures for representative device families and use
-them in decoder/framer/client tests.</p>
-<p>Target fixture coverage:</p>
-<ul>
-<li>Single-phase inverter</li>
-<li>Three-phase inverter</li>
-<li>EMS</li>
-<li>Gateway</li>
-<li>HV BCU/BMU stack</li>
-<li>External meter</li>
-<li>Write response success and error cases</li>
-</ul>
-<p>Target outcome:</p>
-<ul>
-<li>Protocol changes can be checked against real frame shapes.</li>
-<li>Redaction remains guaranteed for captured serial numbers.</li>
-<li>Edge cases are represented by durable fixtures rather than only constructed
-  PDUs.</li>
-</ul>
-<h3 id="7-stricter-type-checking">7. Stricter type checking<a class="headerlink" href="#7-stricter-type-checking" title="Permanent link">&para;</a></h3>
-<p>Gradually enable <code>mypy --check-untyped-defs</code>.</p>
-<p>Current mypy output notes that several untyped function bodies are not checked.
-This is not urgent, but it is a useful way to catch mistakes in protocol and
-test helper code.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Enable <code>check_untyped_defs = true</code> after fixing the first wave of findings.</li>
-<li>Keep generated or intentionally dynamic Pydantic model code scoped with local
-  ignores where needed.</li>
-<li>Avoid weakening public types to satisfy mypy.</li>
-</ul>
-<h3 id="8-cleaner-release-artifact-checks">8. Cleaner release artifact checks<a class="headerlink" href="#8-cleaner-release-artifact-checks" title="Permanent link">&para;</a></h3>
-<p>Ensure release validation checks only freshly built artifacts.</p>
-<p>Current local <code>twine check dist/*</code> can include older files in <code>dist/</code>, which is
-harmless but noisy.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Release scripts clean <code>dist/</code> before building, or check only the files built
-  in the current run.</li>
-<li>CI output shows only the version being released.</li>
-</ul>
-<h3 id="9-documentation-warning-cleanup">9. Documentation warning cleanup<a class="headerlink" href="#9-documentation-warning-cleanup" title="Permanent link">&para;</a></h3>
-<p>Fix the MkDocs warning for the relative <code>../LICENSE</code> link in <code>docs/index.md</code>.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>mkdocs build</code> emits no project-specific warnings.</li>
-<li>The license link works both in GitHub-rendered Markdown and the published
-  docs site.</li>
-</ul>
-<h3 id="10-public-api-compatibility-tests">10. Public API compatibility tests<a class="headerlink" href="#10-public-api-compatibility-tests" title="Permanent link">&para;</a></h3>
-<p>Add explicit tests for documented imports, deprecated aliases, and common
-downstream usage patterns.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>Client</code> remains importable from documented paths.</li>
-<li>Deprecated aliases keep emitting <code>DeprecationWarning</code> until intentionally
-  removed.</li>
-<li>Public command helpers remain importable and callable with documented
-  signatures.</li>
-<li>Public API changes require matching changelog updates.</li>
+<li><code>givenergy_modbus/testing/identify.py</code> — <code>sentinel_devices</code>, <code>identify</code>, <code>Candidate</code></li>
+<li><code>givenergy_modbus/testing/mock_plant.py</code> — <code>MockPlant.from_sentinels</code></li>
+<li><code>givenergy_modbus/model/inverter.py</code> — <code>SinglePhaseInverterRegisterGetter.REGISTER_LUT</code></li>
+<li>Issue #48 — register audit tracking confirmed and candidate fields</li>
 </ul>
 
 

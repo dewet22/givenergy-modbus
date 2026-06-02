@@ -8,11 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/post-v2-improvement-plan/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/v2.1-roadmap/">
       
       
-        <link rel="prev" href="../v2.1-roadmap/">
+        <link rel="prev" href="../release-notes/v2.0/">
       
+      
+        <link rel="next" href="../post-v2-improvement-plan/">
       
       
         
@@ -23,7 +25,7 @@
     
     
       
-        <title>Post-v2.0 improvement plan - GivEnergy Modbus</title>
+        <title>v2.1 roadmap - GivEnergy Modbus</title>
       
     
     
@@ -76,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#post-v20-improvement-plan" class="md-skip">
+        <a href="#v21-release-roadmap" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Post-v2.0 improvement plan
+              v2.1 roadmap
             
           </span>
         </div>
@@ -585,34 +587,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../v2.1-roadmap/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    v2.1 roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -630,7 +604,7 @@
   <span class="md-ellipsis">
     
   
-    Post-v2.0 improvement plan
+    v2.1 roadmap
   
 
     
@@ -648,7 +622,7 @@
   <span class="md-ellipsis">
     
   
-    Post-v2.0 improvement plan
+    v2.1 roadmap
   
 
     
@@ -672,22 +646,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
+  <a href="#v21-release-roadmap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Post-v2.0 Improvement Plan
+        v2.1 release roadmap
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
+    <nav class="md-nav" aria-label="v2.1 release roadmap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
+  <a href="#cadence-philosophy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Existing GitHub coverage
+        Cadence philosophy
       
     </span>
   </a>
@@ -695,10 +669,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
+  <a href="#shipped-a3-a11" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Model-aware write policy at the Client boundary
+        Shipped (a3 → a11)
       
     </span>
   </a>
@@ -706,10 +680,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
+  <a href="#whats-next" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Dry-run write validation
+        What's next
       
     </span>
   </a>
@@ -717,10 +691,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
+  <a href="#path-to-210b1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Internal refresh serialization
+        Path to 2.1.0b1
       
     </span>
   </a>
@@ -728,10 +702,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
+  <a href="#210rc1-210" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Fail CI on async resource warnings
+        2.1.0rc1 → 2.1.0
       
     </span>
   </a>
@@ -739,10 +713,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
+  <a href="#investigation-threads-no-release-gating" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Register provenance and confidence
+        Investigation threads (no release gating)
       
     </span>
   </a>
@@ -750,54 +724,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
+  <a href="#out-of-scope-for-v21" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Broader golden-frame fixtures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
+        Out of scope for v2.1
       
     </span>
   </a>
@@ -813,6 +743,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../post-v2-improvement-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-v2.0 improvement plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -850,22 +808,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
+  <a href="#v21-release-roadmap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Post-v2.0 Improvement Plan
+        v2.1 release roadmap
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
+    <nav class="md-nav" aria-label="v2.1 release roadmap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
+  <a href="#cadence-philosophy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Existing GitHub coverage
+        Cadence philosophy
       
     </span>
   </a>
@@ -873,10 +831,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
+  <a href="#shipped-a3-a11" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Model-aware write policy at the Client boundary
+        Shipped (a3 → a11)
       
     </span>
   </a>
@@ -884,10 +842,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
+  <a href="#whats-next" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Dry-run write validation
+        What's next
       
     </span>
   </a>
@@ -895,10 +853,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
+  <a href="#path-to-210b1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Internal refresh serialization
+        Path to 2.1.0b1
       
     </span>
   </a>
@@ -906,10 +864,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
+  <a href="#210rc1-210" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Fail CI on async resource warnings
+        2.1.0rc1 → 2.1.0
       
     </span>
   </a>
@@ -917,10 +875,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
+  <a href="#investigation-threads-no-release-gating" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Register provenance and confidence
+        Investigation threads (no release gating)
       
     </span>
   </a>
@@ -928,54 +886,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
+  <a href="#out-of-scope-for-v21" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Broader golden-frame fixtures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
+        Out of scope for v2.1
       
     </span>
   </a>
@@ -1007,210 +921,137 @@
   
 
 
-  <h1>Post-v2.0 improvement plan</h1>
+  <h1>v2.1 roadmap</h1>
 
-<h2 id="post-v20-improvement-plan">Post-v2.0 Improvement Plan<a class="headerlink" href="#post-v20-improvement-plan" title="Permanent link">&para;</a></h2>
-<p>This plan captures concrete follow-up work after the v2.0 release. The focus is
-hardware safety, protocol reliability, and maintainability rather than new user
-features.</p>
-<h3 id="existing-github-coverage">Existing GitHub coverage<a class="headerlink" href="#existing-github-coverage" title="Permanent link">&para;</a></h3>
-<p>The repository currently tracks v2.1 work with a <code>v2.1</code> issue label rather than
-a GitHub milestone. Some items below overlap existing issues:</p>
-<table>
-<thead>
-<tr>
-<th>Plan item</th>
-<th>Existing coverage</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Model-aware write policy at the Client boundary</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>, which moves commands onto inverter models so model-specific command contracts are enforceable. The extra Client-boundary rejection remains distinct.</td>
-</tr>
-<tr>
-<td>Dry-run write validation</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Internal refresh serialization</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Fail CI on async resource warnings</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Register provenance and confidence</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a>, which tracks field-validation of inherited mappings. Provenance metadata remains distinct.</td>
-</tr>
-<tr>
-<td>Broader golden-frame fixtures</td>
-<td>Adjacent to closed <a href="https://github.com/dewet22/givenergy-modbus/issues/66">#66</a>, which shipped the in-cli capture mechanism, and open <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a>, the active corruption-pattern investigation that produces sample captures as a byproduct. Committing those captures as durable, redacted test fixtures across device families remains distinct work.</td>
-</tr>
-<tr>
-<td>Stricter type checking</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Cleaner release artifact checks</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Documentation warning cleanup</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Public API compatibility tests</td>
-<td>Not currently captured.</td>
-</tr>
-</tbody>
-</table>
-<p>The remaining v2.1-labelled issues are tracked independently of this plan:
-<a href="https://github.com/dewet22/givenergy-modbus/issues/65">#65</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/71">#71</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/72">#72</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/73">#73</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/74">#74</a>, and
-<a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a>. They're
-roadmap items rather than the infrastructure focus of this document.</p>
-<h3 id="1-model-aware-write-policy-at-the-client-boundary">1. Model-aware write policy at the Client boundary<a class="headerlink" href="#1-model-aware-write-policy-at-the-client-boundary" title="Permanent link">&para;</a></h3>
-<p>Add a model-aware write policy check at the <code>Client</code> execution boundary,
-complementing the existing PDU-level enforcement.</p>
-<p>Current protection runs in <code>WriteHoldingRegisterRequest.ensure_valid_state()</code>
-(invoked from <code>encode()</code>) against the global <code>WRITE_SAFE_REGISTERS</code> allowlist —
-so it already fires at execution time, but only knows about register-level
-safety, not the detected inverter model. Model-specific command mixins define
-smaller safe-write sets, but callers can still manually construct write PDUs
-that bypass them.</p>
-<p>Target outcome:</p>
+<h2 id="v21-release-roadmap">v2.1 release roadmap<a class="headerlink" href="#v21-release-roadmap" title="Permanent link">&para;</a></h2>
+<p>A working document. Expected to change as alphas land and consumers
+(<code>givenergy-hass</code>, <code>givenergy-cli</code>) report back. The intent is a chain of
+small, frequent prereleases rather than a single "land everything, then
+release" push — each alpha self-contained enough that scope can move
+between alphas, or fall out to v2.2, without blocking the line.</p>
+<blockquote>
+<p><strong>Reconciled 2026-05-31</strong> against shipped reality (a3 → a11). The original
+a4/a5/b1 theme plan was overtaken by a real-user-driven arc (EMS support for
+a live install via <a href="https://github.com/dewet22/givenergy-hass/issues/52">givenergy-hass#52</a>),
+which produced more than the plan pencilled in — including the wire-capture
+fixtures and golden-master harness originally slated for beta. The cadence
+philosophy held; the specific themes didn't. "What's next" below is now
+re-derived from the actual open issues rather than the superseded plan.</p>
+</blockquote>
+<h3 id="cadence-philosophy">Cadence philosophy<a class="headerlink" href="#cadence-philosophy" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>Client.one_shot_command()</code> and <code>Client.execute()</code> can reject writes that are
-  not valid for the detected inverter model.</li>
-<li>The default remains conservative when model capabilities are unknown.</li>
-<li>Tests cover direct <code>WriteHoldingRegisterRequest</code> construction, not just
-  high-level command helpers.</li>
+<li>Release often, iterate visibly. The PyPI alpha publishes downstream
+  dispatch events to <code>givenergy-hass</code> and <code>givenergy-cli</code>, so each cut
+  becomes a tester checkpoint. This worked exactly as intended — Nick's
+  live EMS install drove a4–a11 through fast feedback on each alpha.</li>
+<li>Self-contained alphas. If scope slips on one item, it falls out and
+  becomes a v2.2.0 candidate rather than gating the line. Better a
+  shipped narrower release than a wider one that never ships.</li>
+<li>Investigation items ride alongside but don't gate any release. They
+  produce findings and shape later design decisions.</li>
+<li>Documentation: each alpha's changelog section is generated from
+  conventional-commit prefixes; the release workflow walks the range
+  since the previous tag (see <code>scripts/release.py</code>).</li>
 </ul>
-<h3 id="2-dry-run-write-validation">2. Dry-run write validation<a class="headerlink" href="#2-dry-run-write-validation" title="Permanent link">&para;</a></h3>
-<p>Add a supported way to validate write requests without sending frames to
-hardware.</p>
-<p>Target outcome:</p>
+<h3 id="shipped-a3-a11">Shipped (a3 → a11)<a class="headerlink" href="#shipped-a3-a11" title="Permanent link">&para;</a></h3>
+<p>What actually landed. Grouped by theme rather than strict per-alpha, since
+the work cut across alphas.</p>
+<p><strong>EMS support</strong> — the dominant arc, driven by a live EMS + 2-inverter install:
+- EMS-aware polling: skip inverter-style banks on EMS controllers (#93, a4);
+  read + sanity-check the IR(2040) rollup at detect (#109/#111, a5).
+- Device addressing redesign: <code>0x11</code> is the inverter's canonical address, not
+  <code>0x32</code>; removed the blanket rewrite, made addressing model-derived (#119/#121,
+  a5). Live-validated on HYBRID_GEN1 hardware (reads <code>0x31</code>, writes <code>0x11</code>).
+- EMS plant writes: charge/discharge/export slots, SoC targets, export power
+  limit (#134, a7); per-endpoint + EMS-named export setters for HA entity
+  parity (#138 a8, #143 a10); <code>plant_enabled</code> read-back (#145, a11).
+- EMS serial-format recognition to silence per-poll warnings (a7).</p>
+<p><strong>Wire-capture fixtures + golden master</strong> <em>(was planned for b1; landed early)</em>:
+- Real redacted EMS/hybrid/AIO captures with per-plant READMEs (#103 a4, #120 a5).
+- Date-preserving serial redaction (#113/#116, a5).
+- Golden-master regression tests replaying fixtures through the full
+  classification/decode machinery (#137, a7); register-node documentation (#140, a9).</p>
+<p><strong>Resilience + correctness:</strong>
+- <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</code> partial-failure contract (#125, a5).
+- Contended-bus refresh defaults <code>2.0s/1 retry</code> (#132, a9).
+- Per-attribute display precision (#129, a6); unified <code>Inverter</code> facade for
+  EMS-managed topology (#98, a4).</p>
+<p><strong>Infra:</strong> lean CI matrix (Linux per-PR, cross-OS weekly, a5); <code>uv</code> security
+bump (a9); release-workflow hardening (a3).</p>
+<h3 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h3>
+<p>Re-derived from the open issue tracker. No fixed alpha assignments — pick by
+what a consumer needs next or what unblocks the beta.</p>
+<p><strong>Original a4/a5 items never actioned</strong> (still open, still wanted):
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/74">#74</a> — re-apply
+  reverted v2.0 model-layer correctness fixes (needs the history-dig first).
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a> — unify the
+  battery-energy registers behind computed properties.
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/65">#65</a> — RegisterCache
+  freshness timestamps (record-only; invalidation policy stays a v2.2 item).
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a> — <em>re-scoped</em>:
+  the command mixin landed; what remains is the per-model write-safety contract
+  (reject setters that don't apply to the detected model).</p>
+<p><strong>Surfaced by the EMS arc:</strong>
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/144">#144</a> — identify
+  registers for self-heating / winter conditioning / EPS-enable / export-priority
+  (blocked on GE-portal write-captures; the rest of the EMS-parity request shipped).
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/117">#117</a> — cross-frame
+  redactor serial-leak edge (a genuine redaction gap worth closing).
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/108">#108</a> — EMS rollup
+  bitfield decode mismatch against real capture.
+- <a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a> — field-validate
+  register mappings inherited from britkat's fork (open-ended audit).</p>
+<h3 id="path-to-210b1">Path to 2.1.0b1<a class="headerlink" href="#path-to-210b1" title="Permanent link">&para;</a></h3>
+<p>The line has had 11 alphas and the model layer has settled — the original beta
+criterion ("API stable, done rearranging the model layer") is largely met. Before
+promoting to beta:</p>
 <ul>
-<li>A caller can encode and validate request lists before transmission.</li>
-<li>Validation reports the register, value, device address, and reason for any
-  rejection.</li>
-<li>Downstream integrations can use this before enabling live writes.</li>
+<li><strong>Confirm the EMS write path on live hardware.</strong> #134 shipped EMS writes
+  correct-by-construction + register-safety-reviewed, but they haven't been
+  exercised against a real EMS. The live write-test is being driven from
+  givenergy-hass#52; a clean result is the last gate on the EMS feature.</li>
+<li><strong>Decide <a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>
+  (graph-shaped Plant) in-or-out.</strong> It's the one large architectural item left.
+  If it's a v2.2 effort (likely — it's a big abstraction shift), say so explicitly
+  so it stops shadowing the beta.</li>
+<li>Pick up whichever of the "what's next" items are tractable; let the rest fall
+  to v2.2 rather than gate the beta.</li>
 </ul>
-<p>Possible API shapes:</p>
+<p>Beta then promotes the line out of "still rearranging the model layer" into "API
+stable, fix bugs and tighten contracts", with public-API compatibility tests and
+register provenance/confidence
+(<a href="../post-v2-improvement-plan/">post-v2 §5/§10</a>) as the beta's own scope.</p>
+<h3 id="210rc1-210">2.1.0rc1 → 2.1.0<a class="headerlink" href="#210rc1-210" title="Permanent link">&para;</a></h3>
+<p>Soak period. No new scope; only bug fixes from beta-tester feedback. Final cut
+when consumers report clean.</p>
+<h3 id="investigation-threads-no-release-gating">Investigation threads (no release gating)<a class="headerlink" href="#investigation-threads-no-release-gating" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>client.validate_requests(requests)</code></li>
-<li><code>client.one_shot_command(requests, dry_run=True)</code></li>
+<li><a href="https://github.com/dewet22/givenergy-modbus/issues/91">#91</a> — detect frozen
+  BMS cache during firmware updates (needs firmware-update wire captures).</li>
+<li><a href="https://github.com/dewet22/givenergy-modbus/issues/147">#147</a> — BMS block
+  dropouts on the battery sub-bus (Pattern B from #78; needs paired RS485 capture).</li>
+<li><a href="https://github.com/dewet22/givenergy-modbus/issues/114">#114</a> — undecoded
+  function #57 frame; <a href="https://github.com/dewet22/givenergy-modbus/issues/100">#100</a>
+  — WO-prefix LAN-config broadcast; <a href="https://github.com/dewet22/givenergy-modbus/issues/115">#115</a>
+  — function #134 Gen1 BPM workaround.</li>
+<li><a href="https://github.com/dewet22/givenergy-modbus/issues/141">#141</a> — three-phase
+  grid-power register nodes (needs a 3-phase capture).</li>
+<li>Internal refresh serialization
+  (<a href="../post-v2-improvement-plan/#3-internal-refresh-serialization">post-v2 §3</a>) —
+  needs the locking-model design first; likely a v2.2 item.</li>
 </ul>
-<h3 id="3-internal-refresh-serialization">3. Internal refresh serialization<a class="headerlink" href="#3-internal-refresh-serialization" title="Permanent link">&para;</a></h3>
-<p>Move refresh serialization into <code>Client</code> instead of relying only on downstream
-consumers to lock around polling.</p>
-<p>Current documentation correctly says callers should avoid overlapping
-<code>refresh_plant()</code> calls. An internal <code>asyncio.Lock</code> would make accidental
-overlap safer.</p>
-<p>Target outcome:</p>
+<h3 id="out-of-scope-for-v21">Out of scope for v2.1<a class="headerlink" href="#out-of-scope-for-v21" title="Permanent link">&para;</a></h3>
+<p>If something falls out and won't fit before beta, it becomes a v2.2 candidate.
+Better a shipped narrower v2.1 than a perpetually in-progress one. Likely v2.2:</p>
 <ul>
-<li><code>detect()</code>, <code>load_config()</code>, <code>refresh()</code>, and <code>refresh_plant()</code> cannot mutate
-  <code>plant</code> concurrently.</li>
-<li>Writes can still interleave where safe.</li>
-<li>Tests cover overlapping refresh calls and detect/refresh interaction.</li>
-</ul>
-<h3 id="4-fail-ci-on-async-resource-warnings">4. Fail CI on async resource warnings<a class="headerlink" href="#4-fail-ci-on-async-resource-warnings" title="Permanent link">&para;</a></h3>
-<p>Keep async test leaks visible by treating unawaited coroutine and unraisable
-exception warnings as failures.</p>
-<p>Target outcome:</p>
-<ul>
-<li>CI fails on <code>PytestUnraisableExceptionWarning</code>.</li>
-<li>CI fails on unawaited coroutine <code>RuntimeWarning</code>.</li>
-<li>The existing timeout test remains warning-clean.</li>
-</ul>
-<p>Suggested pytest flags:</p>
-<div class="highlight"><pre><span></span><code>pytest<span class="w"> </span>-W<span class="w"> </span>error::pytest.PytestUnraisableExceptionWarning<span class="w"> </span>-W<span class="w"> </span>error::RuntimeWarning<span class="w"> </span>tests
-</code></pre></div>
-<h3 id="5-register-provenance-and-confidence">5. Register provenance and confidence<a class="headerlink" href="#5-register-provenance-and-confidence" title="Permanent link">&para;</a></h3>
-<p>Make provisional register knowledge explicit in the model definitions.</p>
-<p>Some LUT entries come from field captures or related projects rather than
-official documentation. That is normal for this domain, but the source and
-confidence should be visible.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>RegisterDefinition</code> can optionally carry provenance metadata.</li>
-<li>Docs can distinguish verified, field-observed, and provisional registers.</li>
-<li>High-risk writes require stronger provenance before being added to safe-write
-  sets.</li>
-</ul>
-<p>Possible metadata:</p>
-<ul>
-<li><code>source="field-capture"</code></li>
-<li><code>source="GivTCP"</code></li>
-<li><code>verified=True</code></li>
-<li><code>risk="provisional"</code></li>
-</ul>
-<h3 id="6-broader-golden-frame-fixtures">6. Broader golden-frame fixtures<a class="headerlink" href="#6-broader-golden-frame-fixtures" title="Permanent link">&para;</a></h3>
-<p>Add redacted binary TX/RX fixtures for representative device families and use
-them in decoder/framer/client tests.</p>
-<p>Target fixture coverage:</p>
-<ul>
-<li>Single-phase inverter</li>
-<li>Three-phase inverter</li>
-<li>EMS</li>
-<li>Gateway</li>
-<li>HV BCU/BMU stack</li>
-<li>External meter</li>
-<li>Write response success and error cases</li>
-</ul>
-<p>Target outcome:</p>
-<ul>
-<li>Protocol changes can be checked against real frame shapes.</li>
-<li>Redaction remains guaranteed for captured serial numbers.</li>
-<li>Edge cases are represented by durable fixtures rather than only constructed
-  PDUs.</li>
-</ul>
-<h3 id="7-stricter-type-checking">7. Stricter type checking<a class="headerlink" href="#7-stricter-type-checking" title="Permanent link">&para;</a></h3>
-<p>Gradually enable <code>mypy --check-untyped-defs</code>.</p>
-<p>Current mypy output notes that several untyped function bodies are not checked.
-This is not urgent, but it is a useful way to catch mistakes in protocol and
-test helper code.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Enable <code>check_untyped_defs = true</code> after fixing the first wave of findings.</li>
-<li>Keep generated or intentionally dynamic Pydantic model code scoped with local
-  ignores where needed.</li>
-<li>Avoid weakening public types to satisfy mypy.</li>
-</ul>
-<h3 id="8-cleaner-release-artifact-checks">8. Cleaner release artifact checks<a class="headerlink" href="#8-cleaner-release-artifact-checks" title="Permanent link">&para;</a></h3>
-<p>Ensure release validation checks only freshly built artifacts.</p>
-<p>Current local <code>twine check dist/*</code> can include older files in <code>dist/</code>, which is
-harmless but noisy.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Release scripts clean <code>dist/</code> before building, or check only the files built
-  in the current run.</li>
-<li>CI output shows only the version being released.</li>
-</ul>
-<h3 id="9-documentation-warning-cleanup">9. Documentation warning cleanup<a class="headerlink" href="#9-documentation-warning-cleanup" title="Permanent link">&para;</a></h3>
-<p>Fix the MkDocs warning for the relative <code>../LICENSE</code> link in <code>docs/index.md</code>.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>mkdocs build</code> emits no project-specific warnings.</li>
-<li>The license link works both in GitHub-rendered Markdown and the published
-  docs site.</li>
-</ul>
-<h3 id="10-public-api-compatibility-tests">10. Public API compatibility tests<a class="headerlink" href="#10-public-api-compatibility-tests" title="Permanent link">&para;</a></h3>
-<p>Add explicit tests for documented imports, deprecated aliases, and common
-downstream usage patterns.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>Client</code> remains importable from documented paths.</li>
-<li>Deprecated aliases keep emitting <code>DeprecationWarning</code> until intentionally
-  removed.</li>
-<li>Public command helpers remain importable and callable with documented
-  signatures.</li>
-<li>Public API changes require matching changelog updates.</li>
+<li>The graph-shaped Plant abstraction
+  (<a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>) if it doesn't
+  make the beta cut.</li>
+<li>Freshness-aware <code>RegisterCache</code> invalidation policy (the layer above
+  <a href="https://github.com/dewet22/givenergy-modbus/issues/65">#65</a>'s recording).</li>
+<li>Internal refresh serialization
+  (<a href="../post-v2-improvement-plan/#3-internal-refresh-serialization">post-v2 §3</a>) if
+  the design hasn't matured.</li>
 </ul>
 
 

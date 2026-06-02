@@ -393,10 +393,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#watching-for-updates" class="md-nav__link">
+  <a href="#polling-the-plant" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Watching for updates
+        Polling the plant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-register-measurement-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power register measurement points
       
     </span>
   </a>
@@ -770,6 +781,122 @@
   
 
     
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Planning
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Planning
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v2.1-roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    v2.1 roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../post-v2-improvement-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-v2.0 improvement plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
   </ul>
 </nav>
                   </div>
@@ -818,10 +945,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#watching-for-updates" class="md-nav__link">
+  <a href="#polling-the-plant" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Watching for updates
+        Polling the plant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-register-measurement-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power register measurement points
       
     </span>
   </a>
@@ -1030,8 +1168,11 @@ requests, which you send via <code>one_shot_command</code> or <code>execute</cod
     <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
 
-    <span class="c1"># Read current state first (needed for slot_map)</span>
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># Detect the topology once, then read the config banks (needed for slot_map).</span>
+    <span class="c1"># load_config()/refresh() raise RefreshPartiallySucceeded / RefreshFailed on</span>
+    <span class="c1"># read failures — see &quot;Polling the plant&quot; below for handling.</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">detect</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">load_config</span><span class="p">()</span>
     <span class="n">plant</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">plant</span>
 
     <span class="c1"># Write configuration to the device</span>
@@ -1055,25 +1196,121 @@ requests, which you send via <code>one_shot_command</code> or <code>execute</cod
 
 <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
 </code></pre></div>
-<h3 id="watching-for-updates">Watching for updates<a class="headerlink" href="#watching-for-updates" title="Permanent link">&para;</a></h3>
-<p>Use <code>watch_plant</code> to keep the plant state refreshed in the background:</p>
-<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">on_update</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SOC: </span><span class="si">{</span><span class="n">client</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">soc</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
-
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">watch_plant</span><span class="p">(</span><span class="n">handler</span><span class="o">=</span><span class="n">on_update</span><span class="p">,</span> <span class="n">refresh_period</span><span class="o">=</span><span class="mf">15.0</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="tuning-timeouts-and-retries">Tuning timeouts and retries<a class="headerlink" href="#tuning-timeouts-and-retries" title="Permanent link">&para;</a></h3>
-<p><code>refresh_plant</code>, <code>refresh</code>, <code>load_config</code>, <code>one_shot_command</code> and <code>watch_plant</code> all accept
-the same three knobs:</p>
+<h3 id="polling-the-plant">Polling the plant<a class="headerlink" href="#polling-the-plant" title="Permanent link">&para;</a></h3>
+<p>Run <code>detect()</code> once after connecting, then drive your own poll loop over the
+primitives: <code>load_config()</code> reads the HR configuration banks, <code>refresh()</code> reads
+the IR measurement banks. Both return the populated <code>Plant</code> on full success, and
+raise on read failures:</p>
 <ul>
-<li><code>timeout</code> (default 1.0s for refresh, 1.5s for <code>one_shot_command</code>) — how long to wait for
-  each response.</li>
-<li><code>retries</code> (default 0) — number of additional attempts after a timeout.</li>
+<li><code>RefreshPartiallySucceeded</code> — some reads failed, some succeeded. The data that
+  <em>did</em> arrive is on <code>exc.plant</code>; <code>exc.failures</code> lists the dropped reads (device
+  address, request type, base register) and <code>exc.cause</code> is an <code>ExceptionGroup</code> of
+  the raw errors. This is the one chance to use the partial data — cache it,
+  surface it, count it — before deciding how to treat the gaps. How to treat them
+  is the consumer's policy, not the library's.</li>
+<li><code>RefreshFailed</code> — every read failed; the link is effectively dead and there is
+  no partial data. Treat the device as unavailable.</li>
+</ul>
+<p>Both share the base <code>RefreshError</code>, so a consumer that doesn't care to
+distinguish can catch that.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">RefreshFailed</span><span class="p">,</span> <span class="n">RefreshPartiallySucceeded</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s2">&quot;192.168.99.99&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">8899</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">detect</span><span class="p">()</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">plant</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">RefreshPartiallySucceeded</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">plant</span> <span class="o">=</span> <span class="n">exc</span><span class="o">.</span><span class="n">plant</span>                  <span class="c1"># use what we did collect</span>
+            <span class="c1"># ...consumer policy: log exc.failures, bump a counter, etc.</span>
+        <span class="k">except</span> <span class="n">RefreshFailed</span><span class="p">:</span>
+            <span class="n">plant</span> <span class="o">=</span> <span class="kc">None</span>                       <span class="c1"># mark unavailable; maybe reconnect</span>
+
+        <span class="k">if</span> <span class="n">plant</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>                  <span class="c1"># full or partial success</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SOC: </span><span class="si">{</span><span class="n">plant</span><span class="o">.</span><span class="n">batteries</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">soc</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+</code></pre></div>
+<blockquote>
+<p><code>Client.watch_plant()</code> and <code>Client.refresh_plant()</code> are deprecated and will be
+removed in 3.0 — own the loop as above. They now also propagate
+<code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</code>.</p>
+</blockquote>
+<h3 id="power-register-measurement-points">Power register measurement points<a class="headerlink" href="#power-register-measurement-points" title="Permanent link">&para;</a></h3>
+<p>The instantaneous "grid" power registers on a single-phase Hybrid do <strong>not</strong> all
+measure the same physical point — the shared <code>grid</code> prefix is misleading. There are
+two distinct nodes: the inverter's own AC terminal (where it connects to the consumer
+unit's busbar) and the external grid CT (the clamp at the meter boundary).</p>
+<div class="highlight"><pre><span></span><code>   PV ─DC─┐                       ┌─► house load            p_load_demand  (IR42)
+          ├─[INVERTER]─AC─busbar──┤
+   Bat ─DC┘   terminal            └─► grid CT ─► meter      p_grid_out     (IR30)
+        p_grid_out_ph1 (IR24)          boundary
+        p_grid_apparent (IR43)
+        i_grid_port (IR58)
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Node</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>p_grid_out_ph1</code> (IR24)</td>
+<td><strong>Inverter AC terminal</strong> real power</td>
+<td>onto the busbar; +ve = delivering. <em>Not</em> the grid CT despite the name</td>
+</tr>
+<tr>
+<td><code>p_grid_apparent</code> (IR43)</td>
+<td><strong>Inverter AC terminal</strong> apparent power (VA)</td>
+<td>pairs with IR24 → sensible power factor</td>
+</tr>
+<tr>
+<td><code>i_grid_port</code> (IR58)</td>
+<td><strong>Inverter AC terminal</strong> current</td>
+<td>pairs with IR24/IR43</td>
+</tr>
+<tr>
+<td><code>p_grid_out</code> (IR30)</td>
+<td><strong>External grid CT</strong> net flow</td>
+<td>+ve = export, −ve = import; the meter boundary</td>
+</tr>
+<tr>
+<td><code>p_load_demand</code> (IR42)</td>
+<td>House load at the busbar</td>
+<td>independently sensed, not derived from IR24−IR30</td>
+</tr>
+<tr>
+<td><code>p_battery</code> (IR52)</td>
+<td>Battery DC port</td>
+<td>+ve = discharge, −ve = charge</td>
+</tr>
+</tbody>
+</table>
+<p>On a single-phase unit <code>p_grid_out_ph1</code> and <code>p_grid_out</code> are related but distinct
+(per-phase inverter throughput vs net grid flow), so <code>inverter_terminal = load +
+grid_export</code> (IR24 = IR42 + IR30) holds at the busbar. These node assignments were
+established empirically against a single-phase Hybrid Gen 1; the three-phase layout
+(whether <code>p_grid_out</code> aggregates the inverter phases or stays a separate CT register)
+is not yet confirmed.</p>
+<h3 id="tuning-timeouts-and-retries">Tuning timeouts and retries<a class="headerlink" href="#tuning-timeouts-and-retries" title="Permanent link">&para;</a></h3>
+<p><code>refresh</code>, <code>load_config</code> and <code>one_shot_command</code> all accept the same three knobs:</p>
+<ul>
+<li><code>timeout</code> — how long to wait for each response. Defaults: <code>refresh</code> 2.0s, <code>load_config</code>
+  2.0s, <code>one_shot_command</code> 1.5s.</li>
+<li><code>retries</code> — number of additional attempts after a timeout. Defaults: <code>refresh</code> 1,
+  <code>load_config</code> 3, <code>one_shot_command</code> 0.</li>
 <li><code>retry_delay</code> (default 0.5s) — seconds to wait between a timed-out attempt and the next.</li>
 </ul>
+<p><code>refresh</code> defaults to <code>timeout=2.0, retries=1</code> because the inverter serialises requests:
+when other clients (GivTCP, the vendor app, Predbat) poll the same unit, a tighter budget
+loses the race and produces spurious "register read failed" timeouts even though the
+device is responsive (#132). If you own the bus exclusively and want genuine failures
+surfaced faster, pass a tighter <code>timeout</code>/<code>retries</code>.</p>
 <p>The retry delay exists because some inverters exhibit multi-second silent windows where
 they stop responding to anything; firing the retry immediately tends to land it inside
 the same window, accomplishing nothing. The 0.5s default matches what GivTCP independently
@@ -1273,6 +1510,14 @@ case-by-case as model-specific mixins land in later 2.x minors.</p>
 <td>Set just the end of export slot <code>idx</code></td>
 </tr>
 <tr>
+<td><code>set_export_priority(priority)</code></td>
+<td>Set surplus-power dispatch priority (<code>ExportPriority</code>: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only</td>
+</tr>
+<tr>
+<td><code>set_enable_eps(enabled)</code></td>
+<td>Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only</td>
+</tr>
+<tr>
 <td><code>set_battery_pause_mode(val)</code></td>
 <td>Set pause mode (<code>BatteryPauseMode</code>: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH)</td>
 </tr>
@@ -1288,8 +1533,70 @@ case-by-case as model-specific mixins land in later 2.x minors.</p>
 <td><code>set_pause_slot_end(t)</code></td>
 <td>Set just the end of the battery pause slot</td>
 </tr>
+<tr>
+<td><code>set_ems_plant(enabled)</code></td>
+<td>Enable/disable EMS plant control</td>
+</tr>
+<tr>
+<td><code>set_ems_charge_slot(idx, timeslot)</code></td>
+<td>Set EMS plant charge slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+</tr>
+<tr>
+<td><code>set_ems_charge_slot_start(idx, t)</code></td>
+<td>Set just the start of EMS charge slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_charge_slot_end(idx, t)</code></td>
+<td>Set just the end of EMS charge slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_discharge_slot(idx, timeslot)</code></td>
+<td>Set EMS plant discharge slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+</tr>
+<tr>
+<td><code>set_ems_discharge_slot_start(idx, t)</code></td>
+<td>Set just the start of EMS discharge slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_discharge_slot_end(idx, t)</code></td>
+<td>Set just the end of EMS discharge slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_charge_target_soc(idx, soc)</code></td>
+<td>EMS charge slot <code>idx</code> target SOC (0–100%)</td>
+</tr>
+<tr>
+<td><code>set_ems_discharge_target_soc(idx, soc)</code></td>
+<td>EMS discharge slot <code>idx</code> target SOC (0–100%)</td>
+</tr>
+<tr>
+<td><code>set_ems_export_slot(idx, timeslot)</code></td>
+<td>Set EMS plant export slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+</tr>
+<tr>
+<td><code>set_ems_export_slot_start(idx, t)</code></td>
+<td>Set just the start of EMS export slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_export_slot_end(idx, t)</code></td>
+<td>Set just the end of EMS export slot <code>idx</code></td>
+</tr>
+<tr>
+<td><code>set_ems_export_target_soc(idx, soc)</code></td>
+<td>EMS export slot <code>idx</code> target SOC (0–100%)</td>
+</tr>
+<tr>
+<td><code>set_ems_export_power_limit(watts)</code></td>
+<td>EMS plant export power limit (watts)</td>
+</tr>
 </tbody>
 </table>
+<p>EMS plant scheduling commands (<code>set_ems_*</code>) target the EMS controller's own
+plant-config registers (HR 2040-2071) and use a fixed three-slot layout, so —
+unlike the inverter charge/discharge setters — they take no <code>slot_map</code>. Use them
+only against an EMS device (<code>plant.capabilities.is_ems</code>); they have no effect on a
+standalone inverter. Export slots themselves (<code>set_export_slot</code>) are shared with the
+EMS export schedule.</p>
 <p>The whole-slot setters (<code>set_charge_slot</code>, <code>set_discharge_slot</code>, <code>set_pause_slot</code>,
 <code>set_export_slot</code>) write both endpoints in one call. The <code>_start</code> / <code>_end</code> variants
 each write a single register and exist for callers (notably Home Assistant) whose UI
@@ -1394,15 +1701,26 @@ family silently targeting wrong registers on another.</p>
 <p>The library does the redaction; persistence and format are the caller's choice. A minimal file-based capture looks like:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
 
+<span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">RefreshError</span>
+
 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;capture.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">write_line</span><span class="p">(</span><span class="n">direction</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
         <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(</span><span class="n">timespec</span><span class="o">=</span><span class="s2">&quot;microseconds&quot;</span><span class="p">)</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">frame</span><span class="o">.</span><span class="n">hex</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">f</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
     <span class="k">async</span> <span class="k">with</span> <span class="n">Client</span><span class="p">(</span><span class="s2">&quot;inverter.local&quot;</span><span class="p">,</span> <span class="mi">8899</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
-        <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh_plant</span><span class="p">(</span><span class="n">full_refresh</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">detect</span><span class="p">()</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll</span><span class="p">():</span>
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+                <span class="k">except</span> <span class="n">RefreshError</span><span class="p">:</span>  <span class="c1"># ignore partial/total failures for this capture demo</span>
+                    <span class="k">pass</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
         <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span>
-            <span class="n">client</span><span class="o">.</span><span class="n">watch_plant</span><span class="p">(</span><span class="n">refresh_period</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+            <span class="n">poll</span><span class="p">(),</span>
             <span class="n">client</span><span class="o">.</span><span class="n">capture_frames</span><span class="p">(</span><span class="n">write_line</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="mi">60</span><span class="p">),</span>
         <span class="p">)</span>
 </code></pre></div>
@@ -1446,12 +1764,17 @@ itself; storage location and lifecycle are entirely the caller's responsibility.
 <div class="highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">&quot;schema_version&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;device_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;HYBRID&quot;</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;inverter_address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0x32&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;inverter_address&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;0x11&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">&quot;meter_addresses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;0x01&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;lv_battery_addresses&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;0x32&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;0x33&quot;</span><span class="p">],</span>
 <span class="w">  </span><span class="nt">&quot;bcu_stacks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
 </code></pre></div>
+<p><code>inverter_address</code> is derived from the model: <code>0x11</code> for most inverters, <code>0x31</code>
+for <code>AC</code> and <code>HYBRID_GEN1</code>. LV battery pack #1 lives at <code>0x32</code>, additional packs
+at <code>0x33</code>–<code>0x37</code>. State persisted before this mapping (which used <code>0x32</code> as the
+inverter address) reloads unchanged and self-heals on the next <code>detect()</code> via a
+one-off <code>PlantTopologyMismatch</code>.</p>
 
 
 
