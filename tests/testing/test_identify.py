@@ -1,5 +1,7 @@
 """Tests for register cross-correlation helpers (identify.py)."""
 
+import pytest
+
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.testing.identify import (
@@ -92,10 +94,14 @@ def test_identify_single_pass_range_filter():
 
 
 def test_identify_single_pass_non_integer_address_excluded():
-    """Values that don't invert to an integer address for any scale are excluded."""
-    # 0.37 → uint16: 0.37 (not int), deci: 3.7 (not int), centi: 37 (int! address=37)
+    """Non-integer inverses at a given scale are excluded; only integer-address scales returned."""
+    # 0.37 → uint16: 0.37 (not int, excluded), deci: 3.7 (not int, excluded),
+    #         centi: 37.0 (int, included), milli: 370 (int, included)
     candidates = identify(0.37)
-    assert all(c.address == round(c.address) for c in candidates)
+    scales = {c.scale for c in candidates}
+    assert 0.01 in scales  # centi: 0.37/0.01 = 37 ✓
+    assert 1.0 not in scales  # uint16: 0.37 not an integer
+    assert 0.1 not in scales  # deci: 3.7 not an integer
 
 
 def test_identify_single_pass_returns_all_candidates():
@@ -212,3 +218,87 @@ def test_sentinel_identify_round_trip_uint16():
     candidates = identify(d1, d2, k=k, reg_range=range(95, 110))
     assert len(candidates) == 1
     assert candidates[0].address == address
+
+
+# ---------------------------------------------------------------------------
+# sentinel_devices — validation
+# ---------------------------------------------------------------------------
+
+
+def test_sentinel_devices_overflow_raises():
+    """sentinel_devices raises ValueError when address + offset exceeds uint16 max."""
+    base: dict[int, RegisterCache] = {0x31: RegisterCache()}
+    spec = [(0x31, IR, range(65530, 65540))]
+    with pytest.raises(ValueError, match="is out of the valid 16-bit unsigned integer range"):
+        sentinel_devices(base, spec, offset=10)
+
+
+def test_sentinel_devices_max_valid_address():
+    """Address + offset = 65535 is accepted."""
+    base: dict[int, RegisterCache] = {0x31: RegisterCache()}
+    spec = [(0x31, IR, range(65535, 65536))]
+    devices = sentinel_devices(base, spec, offset=0)
+    assert devices[0x31][IR(65535)] == 65535
+
+
+def test_sentinel_devices_address_zero():
+    """Register address 0 is valid and correctly seeded."""
+    base: dict[int, RegisterCache] = {0x11: RegisterCache()}
+    spec = [(0x11, HR, range(0, 3))]
+    devices = sentinel_devices(base, spec)
+    assert devices[0x11][HR(0)] == 0
+
+
+# ---------------------------------------------------------------------------
+# identify — address 0 and two-pass scale snapping
+# ---------------------------------------------------------------------------
+
+
+def test_identify_single_pass_address_zero():
+    """Register 0 at uint16 scale (displayed 0.0) should be a candidate."""
+    # Seeded value = 0 → displayed 0.0 at scale 1.0 → address = 0
+    candidates = identify(0.0, reg_range=range(0, 5))
+    # address=0 at scale=1.0 should be included
+    assert any(c.address == 0 and abs(c.scale - 1.0) < 1e-9 for c in candidates)
+
+
+def test_identify_two_pass_snaps_to_known_scale():
+    """Two-pass result uses the snapped known scale even with minor rounding."""
+    # Simulate app rounding: true deci scale 0.1, displayed values rounded to 1dp
+    # d1 = 24.2 (true: 242 * 0.1), d2 = 124.2 (true: (242+1000) * 0.1)
+    # diff / k = 100.0 / 1000 = 0.1 exactly — scale snaps to 0.1
+    candidates = identify(24.2, 124.2, k=1000)
+    assert len(candidates) == 1
+    assert abs(candidates[0].scale - 0.1) < 1e-9
+    assert candidates[0].address == 242
+
+
+def test_identify_two_pass_unknown_scale_returns_empty():
+    """Two-pass returns empty if computed scale doesn't match any known converter."""
+    # d2 - d1 = 3 with k=1000 → scale = 0.003 — not in CONVERTER_SCALES
+    candidates = identify(1.0, 4.0, k=1000)
+    assert candidates == []
+
+
+# ---------------------------------------------------------------------------
+# MockPlant.from_sentinels integration
+# ---------------------------------------------------------------------------
+
+
+def test_mock_plant_from_sentinels_overlays_values():
+    """from_sentinels seeds sentinel values on top of the base capture."""
+    from pathlib import Path
+
+    from givenergy_modbus.testing import MockPlant
+
+    fixture = (
+        Path(__file__).parent.parent
+        / "fixtures/captures/hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log"
+    )
+    if not fixture.exists():
+        pytest.skip("fixture not available")
+
+    spec = [(0x31, IR, range(100, 105))]
+    mock = MockPlant.from_sentinels(fixture, spec=spec, offset=500)
+    # Sentinel: IR(100) should be 600 (= 100 + 500)
+    assert mock.devices[0x31][IR(100)] == 600

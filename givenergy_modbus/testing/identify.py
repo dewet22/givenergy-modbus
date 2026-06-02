@@ -126,7 +126,14 @@ def sentinel_devices(
             devices[device_address] = RegisterCache()
         cache = devices[device_address]
         for a in reg_range:
-            cache[reg_cls(a)] = a + offset
+            val = a + offset
+            if not (0 <= val <= 65535):
+                raise ValueError(
+                    f"Sentinel value {val} at address {a} with offset {offset} "
+                    "is out of the valid 16-bit unsigned integer range (0–65535). "
+                    "Choose a smaller offset or a narrower address range."
+                )
+            cache[reg_cls(a)] = val
     return devices
 
 
@@ -183,8 +190,15 @@ def _identify_two_pass(
     diff = d2 - d1
     if abs(diff) < 1e-9:
         return []
-    scale = diff / k
-    if scale <= 0:
+    scale_raw = diff / k
+    if scale_raw <= 0:
+        return []
+    # Snap to the nearest known scale to handle minor app display rounding.
+    # If the computed scale doesn't match any known converter, the identification
+    # is unreliable — return empty rather than a spurious result.
+    known = list(CONVERTER_SCALES.values())
+    scale = min(known, key=lambda s: abs(scale_raw - s))
+    if abs(scale_raw - scale) > tolerance:
         return []
     address_float = d1 / scale
     address = round(address_float)
@@ -209,7 +223,7 @@ def _identify_single_pass(
         address = round(address_float)
         if abs(address_float - address) > tolerance:
             continue
-        if not (0 < address <= 65535):
+        if not (0 <= address <= 65535):
             continue
         if reg_range is not None and address not in reg_range:
             continue
