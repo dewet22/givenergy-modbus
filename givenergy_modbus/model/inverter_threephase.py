@@ -541,9 +541,16 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
     # unverified on three-phase hardware (see #48).
     @property
     def e_inverter_out_day(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_today`."""
+        """Deprecated alias for `e_pv_generation_today`.
+
+        Note: on three-phase units the verified PV-generation register is
+        `e_pv_today` (IR1412/1413). `e_pv_generation_today` (IR44) is inherited
+        from the single-phase LUT and has not been verified on three-phase hardware.
+        """
         warnings.warn(
-            "ThreePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today",
+            "ThreePhaseInverter.e_inverter_out_day is deprecated; "
+            "use e_pv_today (verified three-phase PV generation) or "
+            "e_pv_generation_today (inherited single-phase IR44, unverified on 3ph)",
             DeprecationWarning,
             stacklevel=2,
         )
