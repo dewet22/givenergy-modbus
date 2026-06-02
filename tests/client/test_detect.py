@@ -894,9 +894,11 @@ async def test_detect_lv_batteries_non_contiguous():
     async def _probe_side_effect(request, *, timeout, retries):
         return request.device_address in {0x34}  # 0x33 absent, 0x34 present
 
-    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
-        with patch.object(client, "_probe", side_effect=_probe_side_effect):
-            caps = await client.detect()
+    with (
+        patch.object(client, "send_request_and_await_response", new_callable=AsyncMock),
+        patch.object(client, "_probe", side_effect=_probe_side_effect),
+    ):
+        caps = await client.detect()
 
     assert 0x32 in caps.lv_battery_addresses
     assert 0x33 not in caps.lv_battery_addresses
@@ -919,9 +921,11 @@ async def test_detect_lv_batteries_transient_failure_mid_range():
         call_count[addr] = call_count.get(addr, 0) + 1
         return addr == 0x34  # 0x33 fails, 0x34 succeeds
 
-    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
-        with patch.object(client, "_probe", side_effect=_probe_side_effect):
-            caps = await client.detect()
+    with (
+        patch.object(client, "send_request_and_await_response", new_callable=AsyncMock),
+        patch.object(client, "_probe", side_effect=_probe_side_effect),
+    ):
+        caps = await client.detect()
 
     assert 0x32 in caps.lv_battery_addresses
     assert 0x33 not in caps.lv_battery_addresses
@@ -943,9 +947,11 @@ async def test_detect_lv_batteries_invalid_slot_skipped_not_aborted():
     async def _probe_side_effect(request, *, timeout, retries):
         return request.device_address in {0x33, 0x34}
 
-    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
-        with patch.object(client, "_probe", side_effect=_probe_side_effect):
-            caps = await client.detect()
+    with (
+        patch.object(client, "send_request_and_await_response", new_callable=AsyncMock),
+        patch.object(client, "_probe", side_effect=_probe_side_effect),
+    ):
+        caps = await client.detect()
 
     assert 0x32 in caps.lv_battery_addresses
     assert 0x33 not in caps.lv_battery_addresses  # ghost — skipped
