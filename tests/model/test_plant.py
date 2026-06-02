@@ -1666,6 +1666,16 @@ class TestPlantCapabilitiesProperties:
         for m in (Model.HYBRID, Model.HYBRID_GEN2, Model.AC, Model.EMS):
             assert not self._caps(m).has_extended_slots, f"{m} should not have extended slots"
 
+    def test_has_ac_config_block_true(self):
+        """AC-coupled inverters and the All-in-One carry the HR(300-359) AC-output config block."""
+        for m in (Model.AC, Model.AC_3PH, Model.ALL_IN_ONE):
+            assert self._caps(m).has_ac_config_block, f"{m} should have the AC config block"
+
+    def test_has_ac_config_block_false(self):
+        """DC-coupled/hybrid models lack HR(300-359) and time out if polled for it (#162)."""
+        for m in (Model.HYBRID, Model.HYBRID_GEN1, Model.HYBRID_GEN3, Model.HYBRID_3PH, Model.EMS, Model.GATEWAY):
+            assert not self._caps(m).has_ac_config_block, f"{m} should not have the AC config block"
+
     def test_is_ems_true(self):
         """EMS and EMS_COMMERCIAL report is_ems True."""
         assert self._caps(Model.EMS).is_ems

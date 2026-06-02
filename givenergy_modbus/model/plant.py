@@ -73,6 +73,24 @@ _EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
     }
 )
 
+# Models that expose the HR(300–359) AC-output config block: export_priority (HR311),
+# battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot (HR318–320).
+# Present on AC-coupled inverters AND the All-in-One (which has an AC output stage with
+# the same export/EPS/AC-limit controls). DC-coupled/hybrid inverters lack the block and
+# time out when polled for it (#162). Evidence: Model.AC fixtures answer HR(300,60); the
+# AIO fixture answers HR(300,21) and a live AIO populates export_priority/enable_eps/
+# battery_*_limit_ac (#105). NB this is deliberately a separate set from AC_COUPLED_MODELS
+# (the is_ac_coupled predicate, which hass uses to scope AC controls) — whether the AIO is
+# "AC-coupled" for that purpose is a separate consumer decision; here we only care which
+# models carry this register block.
+_AC_CONFIG_BLOCK_MODELS: frozenset[Model] = frozenset(
+    {
+        Model.AC,
+        Model.AC_3PH,
+        Model.ALL_IN_ONE,
+    }
+)
+
 
 _CAPABILITIES_LEGACY_ALIASES = {
     "inverter_slave": "inverter_address",
@@ -393,6 +411,16 @@ class PlantCapabilities(BaseModel):
     def has_extended_slots(self) -> bool:
         """Return True if this system supports the extended 10-slot map (HR 240–299)."""
         return self.device_type in _EXTENDED_SLOT_MODELS
+
+    @property
+    def has_ac_config_block(self) -> bool:
+        """Return True if this system exposes the HR(300–359) AC-output config block.
+
+        Covers export priority, EPS enable, AC charge/discharge limits and pause mode —
+        present on AC-coupled inverters and the All-in-One, absent (times out) on
+        DC-coupled/hybrid models. See `_AC_CONFIG_BLOCK_MODELS` (#162).
+        """
+        return self.device_type in _AC_CONFIG_BLOCK_MODELS
 
     @property
     def is_ems(self) -> bool:
