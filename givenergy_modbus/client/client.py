@@ -782,6 +782,12 @@ class Client:
             ]
         if caps.has_extended_slots:
             reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
+        if not is_ems:
+            # HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Polled for
+            # all non-EMS inverters: Smart Load confirmed on HYBRID_GEN1 via the app
+            # and likely present across all HYBRID generations. Unmodelled registers
+            # in 540-553 and 574-599 are silently ignored by Plant.update(). (#48)
+            reqs.append(ReadHoldingRegistersRequest(base_register=540, register_count=60, device_address=inverter))
         if caps.has_ac_config_block:
             # HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac
             # (HR313/314), enable_eps (HR317), pause mode/slot (HR318-320). Present on

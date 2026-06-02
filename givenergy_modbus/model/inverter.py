@@ -868,7 +868,8 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
     def enable_standard_self_consumption_logic(self) -> bool | None:
         """Deprecated alias for `enable_inverter_parallel_mode`."""
         warnings.warn(
-            "enable_standard_self_consumption_logic is deprecated; use enable_inverter_parallel_mode",
+            "SinglePhaseInverter.enable_standard_self_consumption_logic is deprecated; "
+            "use enable_inverter_parallel_mode",
             DeprecationWarning,
             stacklevel=2,
         )
