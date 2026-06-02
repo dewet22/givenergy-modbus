@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b15] - 2026-06-02
+
+### ✨ Added
+
+- add set_smart_load_slot_start/end/slot helpers ([d0c8caa](https://github.com/dewet22/givenergy-modbus/commit/d0c8caa1ea75fdb2a881c71dfd00a803e8fafdc9))
+- register cross-correlation helpers (sentinel_devices + identify) ([6631d43](https://github.com/dewet22/givenergy-modbus/commit/6631d4397f125fdcdbdc241b31cdeacfc4388a76))
+
 ## [2.1.0b14] - 2026-06-02
 
 ### ✨ Added
