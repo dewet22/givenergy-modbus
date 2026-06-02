@@ -548,9 +548,7 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         from the single-phase LUT and has not been verified on three-phase hardware.
         """
         warnings.warn(
-            "ThreePhaseInverter.e_inverter_out_day is deprecated; "
-            "use e_pv_today (verified three-phase PV generation) or "
-            "e_pv_generation_today (inherited single-phase IR44, unverified on 3ph)",
+            "ThreePhaseInverter.e_inverter_out_day is deprecated; use e_pv_today",
             DeprecationWarning,
             stacklevel=2,
         )

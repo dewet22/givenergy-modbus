@@ -1250,12 +1250,17 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
         assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
 
         # Deprecated alias still works, warns, and returns the same value.
+        # The warning message differs by class: single-phase points to e_pv_generation_today
+        # (the renamed register); three-phase points to e_pv_today (the verified 3ph field).
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             assert inv.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
         deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
         assert len(deprecations) == 1
-        assert "e_pv_generation_today" in str(deprecations[0].message)
+        if cls is SinglePhaseInverter:
+            assert "e_pv_generation_today" in str(deprecations[0].message)
+        else:
+            assert "e_pv_today" in str(deprecations[0].message)
 
         # Dump output uses the new name only — the alias must not duplicate the field.
         dumped = inv.model_dump()
