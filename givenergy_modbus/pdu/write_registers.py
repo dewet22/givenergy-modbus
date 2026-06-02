@@ -9,107 +9,168 @@ _logger = logging.getLogger(__name__)
 
 # Canonical list of registers that are safe to write to.
 WRITE_SAFE_REGISTERS = {
-    20,  # ENABLE_CHARGE_TARGET
-    27,  # BATTERY_POWER_MODE
-    29,  # SOC_FORCE_ADJUST
-    31,  # CHARGE_SLOT_2_START
-    32,  # CHARGE_SLOT_2_END
-    35,  # SYSTEM_TIME_YEAR
-    36,  # SYSTEM_TIME_MONTH
-    37,  # SYSTEM_TIME_DAY
-    38,  # SYSTEM_TIME_HOUR
-    39,  # SYSTEM_TIME_MINUTE
-    40,  # SYSTEM_TIME_SECOND
-    44,  # DISCHARGE_SLOT_2_START
-    45,  # DISCHARGE_SLOT_2_END
-    50,  # ACTIVE_POWER_RATE
-    56,  # DISCHARGE_SLOT_1_START
-    57,  # DISCHARGE_SLOT_1_END
-    59,  # ENABLE_DISCHARGE
-    94,  # CHARGE_SLOT_1_START
-    95,  # CHARGE_SLOT_1_END
-    96,  # ENABLE_CHARGE
-    110,  # BATTERY_SOC_RESERVE
-    111,  # BATTERY_CHARGE_LIMIT
-    112,  # BATTERY_DISCHARGE_LIMIT
-    114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
-    116,  # CHARGE_TARGET_SOC
-    163,  # REBOOT
-    246,  # CHARGE_SLOT_3_START
-    247,  # CHARGE_SLOT_3_END
-    249,  # CHARGE_SLOT_4_START
-    250,  # CHARGE_SLOT_4_END
-    252,  # CHARGE_SLOT_5_START
-    253,  # CHARGE_SLOT_5_END
-    255,  # CHARGE_SLOT_6_START
-    256,  # CHARGE_SLOT_6_END
-    258,  # CHARGE_SLOT_7_START
-    259,  # CHARGE_SLOT_7_END
-    261,  # CHARGE_SLOT_8_START
-    262,  # CHARGE_SLOT_8_END
-    264,  # CHARGE_SLOT_9_START
-    265,  # CHARGE_SLOT_9_END
-    267,  # CHARGE_SLOT_10_START
-    268,  # CHARGE_SLOT_10_END
-    276,  # DISCHARGE_SLOT_3_START
-    277,  # DISCHARGE_SLOT_3_END
-    279,  # DISCHARGE_SLOT_4_START
-    280,  # DISCHARGE_SLOT_4_END
-    282,  # DISCHARGE_SLOT_5_START
-    283,  # DISCHARGE_SLOT_5_END
-    285,  # DISCHARGE_SLOT_6_START
-    286,  # DISCHARGE_SLOT_6_END
-    288,  # DISCHARGE_SLOT_7_START
-    289,  # DISCHARGE_SLOT_7_END
-    291,  # DISCHARGE_SLOT_8_START
-    292,  # DISCHARGE_SLOT_8_END
-    294,  # DISCHARGE_SLOT_9_START
-    295,  # DISCHARGE_SLOT_9_END
-    297,  # DISCHARGE_SLOT_10_START
-    298,  # DISCHARGE_SLOT_10_END
-    166,  # ENABLE_RTC
-    311,  # EXPORT_PRIORITY (AC-coupled; confirmed writable via hass#52 portal observations)
-    313,  # BATTERY_CHARGE_LIMIT_AC
-    314,  # BATTERY_DISCHARGE_LIMIT_AC
-    317,  # ENABLE_EPS (AC-coupled; confirmed writable via hass#52 portal observations)
-    318,  # BATTERY_PAUSE_MODE
-    319,  # BATTERY_PAUSE_SLOT_START
-    320,  # BATTERY_PAUSE_SLOT_END
-    1112,  # AC_CHARGE_ENABLE
-    1122,  # FORCE_DISCHARGE_ENABLE
-    1123,  # FORCE_CHARGE_ENABLE
-    2040,  # EMS_PLANT_ENABLE
-    # EMS plant-level scheduling (HR 2044-2071). Slot start/end pairs, per-slot SoC
-    # targets, and export power limit. Decoded in model/ems.py; written via the
-    # set_ems_* commands. See givenergy-modbus#130.
-    2044,  # EMS_DISCHARGE_SLOT_1_START
-    2045,  # EMS_DISCHARGE_SLOT_1_END
-    2046,  # EMS_DISCHARGE_TARGET_SOC_1
-    2047,  # EMS_DISCHARGE_SLOT_2_START
-    2048,  # EMS_DISCHARGE_SLOT_2_END
-    2049,  # EMS_DISCHARGE_TARGET_SOC_2
-    2050,  # EMS_DISCHARGE_SLOT_3_START
-    2051,  # EMS_DISCHARGE_SLOT_3_END
-    2052,  # EMS_DISCHARGE_TARGET_SOC_3
-    2053,  # EMS_CHARGE_SLOT_1_START
-    2054,  # EMS_CHARGE_SLOT_1_END
-    2055,  # EMS_CHARGE_TARGET_SOC_1
-    2056,  # EMS_CHARGE_SLOT_2_START
-    2057,  # EMS_CHARGE_SLOT_2_END
-    2058,  # EMS_CHARGE_TARGET_SOC_2
-    2059,  # EMS_CHARGE_SLOT_3_START
-    2060,  # EMS_CHARGE_SLOT_3_END
-    2061,  # EMS_CHARGE_TARGET_SOC_3
-    2062,  # EXPORT_SLOT_1_START
-    2063,  # EXPORT_SLOT_1_END
-    2064,  # EMS_EXPORT_TARGET_SOC_1
-    2065,  # EXPORT_SLOT_2_START
-    2066,  # EXPORT_SLOT_2_END
-    2067,  # EMS_EXPORT_TARGET_SOC_2
-    2068,  # EXPORT_SLOT_3_START
-    2069,  # EXPORT_SLOT_3_END
-    2070,  # EMS_EXPORT_TARGET_SOC_3
-    2071,  # EMS_EXPORT_POWER_LIMIT
+    # --- Charge/discharge enable and target ---
+    20,  # enable AC charge upper % limit (app name; app: "Enable AC Charge Upper % Limit")
+    96,  # enable charge
+    59,  # enable discharge
+    116,  # AC charge upper % limit (app: "AC Charge Upper % Limit")
+    110,  # battery SOC reserve / discharge floor
+    111,  # battery charge power limit
+    112,  # battery discharge power limit
+    114,  # battery discharge min power reserve
+    # --- Charge slots 1–10 ---
+    94,  # charge slot 1 start
+    95,  # charge slot 1 end
+    31,  # charge slot 2 start
+    32,  # charge slot 2 end
+    246,  # charge slot 3 start
+    247,  # charge slot 3 end
+    249,  # charge slot 4 start
+    250,  # charge slot 4 end
+    252,  # charge slot 5 start
+    253,  # charge slot 5 end
+    255,  # charge slot 6 start
+    256,  # charge slot 6 end
+    258,  # charge slot 7 start
+    259,  # charge slot 7 end
+    261,  # charge slot 8 start
+    262,  # charge slot 8 end
+    264,  # charge slot 9 start
+    265,  # charge slot 9 end
+    267,  # charge slot 10 start
+    268,  # charge slot 10 end
+    # --- Discharge slots 1–10 ---
+    56,  # discharge slot 1 start
+    57,  # discharge slot 1 end
+    44,  # discharge slot 2 start
+    45,  # discharge slot 2 end
+    276,  # discharge slot 3 start
+    277,  # discharge slot 3 end
+    279,  # discharge slot 4 start
+    280,  # discharge slot 4 end
+    282,  # discharge slot 5 start
+    283,  # discharge slot 5 end
+    285,  # discharge slot 6 start
+    286,  # discharge slot 6 end
+    288,  # discharge slot 7 start
+    289,  # discharge slot 7 end
+    291,  # discharge slot 8 start
+    292,  # discharge slot 8 end
+    294,  # discharge slot 9 start
+    295,  # discharge slot 9 end
+    297,  # discharge slot 10 start
+    298,  # discharge slot 10 end
+    # --- Battery mode and scheduling ---
+    27,  # enable eco mode (app: "Enable Eco Mode")
+    29,  # SOC force-adjust
+    50,  # active power rate
+    163,  # restart inverter (app: "Restart Inverter")
+    166,  # real-time control (app: "Real-Time Control")
+    # --- System time ---
+    35,  # system time: year
+    36,  # system time: month
+    37,  # system time: day
+    38,  # system time: hour
+    39,  # system time: minute
+    40,  # system time: second
+    # --- AC-coupled config (AC/HYBRID_GEN1 with AC config block) ---
+    311,  # export power priority (app: "Export Power Priority"; confirmed via hass#52)
+    313,  # inverter charge power percentage (app: "Inverter Charge Power Percentage")
+    314,  # inverter discharge power percentage (app: "Inverter Discharge Power Percentage")
+    317,  # enable EPS (app: "Enable EPS"; confirmed via hass#52)
+    318,  # pause battery (app: "Pause Battery")
+    319,  # pause battery start time
+    320,  # pause battery end time
+    # --- Three-phase ---
+    1112,  # enable AC charge (three-phase)
+    1122,  # enable force discharge (three-phase)
+    1123,  # enable force charge (three-phase)
+    # --- EMS plant-level scheduling (HR 2040–2071) ---
+    # Slot start/end pairs, per-slot SoC targets, and export power limit.
+    # Decoded in model/ems.py; written via the set_ems_* commands. See #130.
+    2040,  # enable plant EMS control (app: "Enable Plant EMS Control")
+    2044,  # EMS discharge slot 1 start
+    2045,  # EMS discharge slot 1 end
+    2046,  # EMS discharge SOC % limit 1
+    2047,  # EMS discharge slot 2 start
+    2048,  # EMS discharge slot 2 end
+    2049,  # EMS discharge SOC % limit 2
+    2050,  # EMS discharge slot 3 start
+    2051,  # EMS discharge slot 3 end
+    2052,  # EMS discharge SOC % limit 3
+    2053,  # EMS charge slot 1 start
+    2054,  # EMS charge slot 1 end
+    2055,  # EMS charge SOC % limit 1
+    2056,  # EMS charge slot 2 start
+    2057,  # EMS charge slot 2 end
+    2058,  # EMS charge SOC % limit 2
+    2059,  # EMS charge slot 3 start
+    2060,  # EMS charge slot 3 end
+    2061,  # EMS charge SOC % limit 3
+    2062,  # EMS export slot 1 start
+    2063,  # EMS export slot 1 end
+    2064,  # EMS export SOC % limit 1
+    2065,  # EMS export slot 2 start
+    2066,  # EMS export slot 2 end
+    2067,  # EMS export SOC % limit 2
+    2068,  # EMS export slot 3 start
+    2069,  # EMS export slot 3 end
+    2070,  # EMS export SOC % limit 3
+    2071,  # EMS export power limit (installer/DNO — not user-writable via app)
+    # ------------------------------------------------------------------------
+    # App-confirmed writable registers. Source: GivEnergy Android app "Direct
+    # Control" → Control tab (2026-06-02), the writable-register surface GE
+    # exposes to end users now that the cloud portal is being retired. The app
+    # listing each of these as a user-editable control is authoritative evidence
+    # they are safe to write. See givenergy-modbus#48.
+    104,  # ENABLE_BATTERY_SELF_HEATING — hardware/batch-gated: write may be rejected per-unit
+    172,  # ENABLE_MANUAL_BATTERY_HEATER — likely hardware-gated like 104
+    199,  # ENABLE_INVERTER_PARALLEL_MODE (was mis-modelled as self-consumption logic)
+    299,  # DISCHARGE_TARGET_SOC_10 (app: "DC Discharge 10 Lower SOC % Limit")
+    331,  # FORCE_OFF_GRID — non-damaging, but a SUSTAINED islanding state (not a
+    #        momentary reboot): a stuck write leaves a site off-grid with no
+    #        auto-recovery. Bounded boolean; admit, but treat with care at call sites.
+    # SMART_LOAD_SLOT_1..10 start/end (bounded timeslot values, same class as the
+    # charge/discharge slots). app: "Smart Load Start/End Time 1..10".
+    554,  # SMART_LOAD_SLOT_1_START
+    555,  # SMART_LOAD_SLOT_1_END
+    556,  # SMART_LOAD_SLOT_2_START
+    557,  # SMART_LOAD_SLOT_2_END
+    558,  # SMART_LOAD_SLOT_3_START
+    559,  # SMART_LOAD_SLOT_3_END
+    560,  # SMART_LOAD_SLOT_4_START
+    561,  # SMART_LOAD_SLOT_4_END
+    562,  # SMART_LOAD_SLOT_5_START
+    563,  # SMART_LOAD_SLOT_5_END
+    564,  # SMART_LOAD_SLOT_6_START
+    565,  # SMART_LOAD_SLOT_6_END
+    566,  # SMART_LOAD_SLOT_7_START
+    567,  # SMART_LOAD_SLOT_7_END
+    568,  # SMART_LOAD_SLOT_8_START
+    569,  # SMART_LOAD_SLOT_8_END
+    570,  # SMART_LOAD_SLOT_9_START
+    571,  # SMART_LOAD_SLOT_9_END
+    572,  # SMART_LOAD_SLOT_10_START
+    573,  # SMART_LOAD_SLOT_10_END
+    1005,  # REAL_TIME_CONTROL (three-phase mirror of HR166)
+    1078,  # BATTERY_RESERVE_PERCENT (app: "Battery Reserve %")
+    1108,  # DISCHARGE_POWER_RATE (three-phase)
+    1109,  # DISCHARGE_DOWN_TO_PERCENT (three-phase)
+    1110,  # CHARGE_POWER_RATE (three-phase)
+    1111,  # CHARGE_UP_TO_PERCENT (three-phase)
+    1113,  # AC_CHARGE_1_START (three-phase)
+    1114,  # AC_CHARGE_1_END (three-phase)
+    1115,  # AC_CHARGE_2_START (three-phase)
+    1116,  # AC_CHARGE_2_END (three-phase)
+    1118,  # DC_DISCHARGE_1_START (three-phase)
+    1119,  # DC_DISCHARGE_1_END (three-phase)
+    1120,  # DC_DISCHARGE_2_START (three-phase)
+    1121,  # DC_DISCHARGE_2_END (three-phase)
+    5010,  # RESTART_HARDWARE — disruptive but non-damaging, same class as 163 REBOOT
+    5014,  # ENABLE_CALCULATED_LOAD
+    # Held back (app-writable but not admitted yet):
+    #  - HR479 "DC Wind CVT Voltage" is a raw voltage setpoint (unbounded 16-bit)
+    #    with no range guard or set_* wrapper; admit only with a validating command.
 }
 
 
