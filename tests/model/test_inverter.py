@@ -102,7 +102,8 @@ def test_inverter():
             "p_grid_out": None,
             "p_backup": None,
             "e_grid_in_total": None,
-            "e_load_day": None,
+            "e_ac_charge_today": None,
+            "e_consumption_today": None,
             "e_battery_charge_today_alt1": None,
             "e_battery_discharge_today_alt1": None,
             "countdown": None,
@@ -110,7 +111,7 @@ def test_inverter():
             "t_inverter_heatsink": None,
             "p_load_demand": None,
             "p_grid_apparent": None,
-            "e_inverter_out_day": None,
+            "e_pv_generation_today": None,
             "e_inverter_out_total": None,
             "work_time_total_hours": None,
             "system_mode": None,
@@ -507,7 +508,10 @@ def test_from_registers(register_cache):
         "p_grid_out": -342,
         "p_backup": 0,
         "e_grid_in_total": 365.3,
-        "e_load_day": 9.3,
+        "e_ac_charge_today": 9.3,  # IR(35) — was mislabelled e_load_day (#174)
+        # computed: e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
+        #         = 8.1 + 20.9 − 0.0 − 9.3
+        "e_consumption_today": 19.7,
         "e_battery_charge_today_alt1": 9.0,  # IR(36)
         "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
@@ -515,7 +519,7 @@ def test_from_registers(register_cache):
         "t_inverter_heatsink": 22.2,
         "p_load_demand": 342,
         "p_grid_apparent": 680,
-        "e_inverter_out_day": 8.1,
+        "e_pv_generation_today": 8.1,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_inverter_out_total": 93.0,
         "work_time_total_hours": 213,
         "system_mode": 1,
@@ -848,7 +852,10 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_grid_out": 21,
         "p_backup": 0,
         "e_grid_in_total": 624.2,
-        "e_load_day": 9.3,
+        "e_ac_charge_today": 9.3,  # IR(35) — was mislabelled e_load_day (#174)
+        # computed: e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
+        #         = 3.8 + 19.8 − 0.0 − 9.3
+        "e_consumption_today": 14.3,
         "e_battery_charge_today_alt1": 9.1,  # IR(36)
         "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
@@ -856,7 +863,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "t_inverter_heatsink": 24.4,
         "p_load_demand": 515,
         "p_grid_apparent": 554,
-        "e_inverter_out_day": 3.8,
+        "e_pv_generation_today": 3.8,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_inverter_out_total": 172.5,
         "work_time_total_hours": 385,
         "system_mode": 1,
@@ -1204,6 +1211,126 @@ def test_enable_inverter_parallel_mode_rename_and_deprecated_alias():
         dumped = inv.model_dump()
         assert "enable_inverter_parallel_mode" in dumped
         assert "enable_standard_self_consumption_logic" not in dumped
+
+
+def test_e_ac_charge_today_rename_no_alias():
+    """IR(35) is e_ac_charge_today (#174). The old e_load_day name was a mislabel.
+
+    Unlike the other renames there is NO deprecated alias: e_load_day never held
+    house-load, so keeping a back-compat alias would perpetuate the wrong meaning.
+    """
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache({IR(35): 93})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+
+    assert inv.e_ac_charge_today == 9.3  # type: ignore[attr-defined]
+    dumped = inv.model_dump()
+    assert "e_ac_charge_today" in dumped
+    # The mislabel is gone entirely — no field, no alias.
+    assert "e_load_day" not in dumped
+    with pytest.raises(AttributeError):
+        _ = inv.e_load_day  # type: ignore[attr-defined]
+
+
+def test_e_pv_generation_today_rename_and_deprecated_alias():
+    """IR(44) is e_pv_generation_today (#174); e_inverter_out_day is a deprecated alias.
+
+    The two classes behave slightly differently:
+    - SinglePhaseInverter: alias returns e_pv_generation_today (IR44, verified).
+    - ThreePhaseInverter: alias returns e_pv_today (IR1412/3, the verified 3ph register),
+      so warning and return value agree. IR44 still leaks as e_pv_generation_today via
+      single-phase LUT inheritance, but the alias migration path is unambiguous.
+    """
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import IR
+
+    # Single-phase: IR44 is the authoritative PV-generation register.
+    sp_cache = RegisterCache({IR(44): 81})
+    sp = SinglePhaseInverter.from_register_cache(sp_cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp.e_pv_generation_today == 8.1  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]  # returns e_pv_generation_today
+    sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(sp_deprecations) == 1
+    assert "e_pv_generation_today" in str(sp_deprecations[0].message)
+
+    sp_dumped = sp.model_dump()
+    assert "e_pv_generation_today" in sp_dumped
+    assert "e_inverter_out_day" not in sp_dumped
+
+    # Three-phase: IR44 leaks as e_pv_generation_today (unverified); the alias
+    # returns e_pv_today (IR1412/3) so the migration path is unambiguous.
+    # Seed both IR44 and IR1412/3 with the same decoded value (8.1) so the
+    # alias-vs-field comparison is meaningful even on this synthetic cache.
+    tp_cache = RegisterCache({IR(44): 81, IR(1412): 0, IR(1413): 81})
+    tp = ThreePhaseInverter.from_register_cache(tp_cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tp.e_pv_generation_today == 8.1  # type: ignore[attr-defined]  # inherited IR44
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]  # returns e_pv_today
+    tp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(tp_deprecations) == 1
+    assert "e_pv_today" in str(tp_deprecations[0].message)
+
+    tp_dumped = tp.model_dump()
+    assert "e_pv_generation_today" in tp_dumped
+    assert "e_inverter_out_day" not in tp_dumped
+
+
+def test_e_consumption_today_computed_formula():
+    """Single-phase consumption is computed (#174), not a register.
+
+    Formula recovered by sentinel cross-correlation against the GE app's
+    Energy-today screen:
+        consumption = pv_generation + grid_import − grid_export − ac_charge
+    """
+    from givenergy_modbus.model.register import IR
+
+    # IR(44)=8.1 PV gen, IR(26)=20.9 grid import, IR(25)=0.0 grid export, IR(35)=9.3 AC charge
+    cache = RegisterCache({IR(44): 81, IR(26): 209, IR(25): 0, IR(35): 93})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+
+    assert inv.e_consumption_today == 8.1 + 20.9 - 0.0 - 9.3  # type: ignore[attr-defined]
+    assert "e_consumption_today" in inv.model_dump()
+
+    # Missing any input → None (no partial guess).
+    partial = SinglePhaseInverter.from_register_cache(RegisterCache({IR(26): 209, IR(25): 0, IR(35): 93}))
+    assert partial.e_consumption_today is None  # type: ignore[attr-defined]
+
+
+def test_three_phase_has_no_computed_consumption_and_native_ac_charge():
+    """Three-phase has a native e_ac_charge_today register and no computed consumption (#174).
+
+    e_consumption_today is a SinglePhaseInverter computed_field, NOT in the register
+    LUT, so it does not leak onto ThreePhaseInverter — which carries its own
+    e_load_today register (IR1396/7). The native three-phase e_ac_charge_today
+    (IR1376/7) overrides the single-phase IR(35) entry inherited via the LUT merge.
+    """
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import IR
+
+    # Native three-phase e_ac_charge_today = IR(1376/1377) uint32 deci = 35.0;
+    # the inherited single-phase IR(35) is seeded to a different value to prove the
+    # native override wins (not the leaked single-phase register).
+    cache = RegisterCache({IR(1376): 0, IR(1377): 350, IR(35): 99})
+    tp = ThreePhaseInverter.from_register_cache(cache)
+
+    assert tp.e_ac_charge_today == 35.0  # type: ignore[attr-defined]  # native IR1376/7, not 9.9
+    dumped = tp.model_dump()
+    assert "e_consumption_today" not in dumped  # computed field is single-phase only
+    assert "e_load_day" not in dumped  # the single-phase mislabel does not leak
 
 
 def test_battery_energy_facade_routes_by_model():
