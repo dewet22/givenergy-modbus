@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict, computed_field, create_model
 
-from givenergy_modbus.client.commands import _InverterCommands
+from givenergy_modbus.client.commands import _InverterCommands, _ThreePhaseCommands
 from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
     _DTC_RATED_POWER,
@@ -465,13 +465,16 @@ from givenergy_modbus.model.slot_map import THREE_PHASE_SLOTS  # noqa: E402
 
 
 class ThreePhaseInverter(  # type: ignore[valid-type,misc]
-    _ThreePhaseInverterBase, _InverterCommands, RegisterMetadataMixin
+    _ThreePhaseInverterBase, _ThreePhaseCommands, _InverterCommands, RegisterMetadataMixin
 ):
     """GivEnergy three-phase inverter data model.
 
-    Composes the `_InverterCommands` mixin (same base mixin used by
-    `SinglePhaseInverter`). Three-phase-specific command mixins land later in
-    2.x once the register ambiguities flagged on #75 are resolved.
+    Composes the `_InverterCommands` base mixin alongside `_ThreePhaseCommands`
+    (which adds `set_ac_charge`, `set_force_charge`, `set_force_discharge` and
+    their HR(1112/1122/1123) allowlist entries). MRO puts `_ThreePhaseCommands`
+    first so the three-phase `WRITE_SAFE_REGISTERS` (a superset) wins. Methods
+    on the two mixins are disjoint so the resolution order doesn't matter for
+    behaviour.
     """
 
     REGISTER_GETTER: ClassVar[type[RegisterGetter]] = ThreePhaseInverterRegisterGetter
