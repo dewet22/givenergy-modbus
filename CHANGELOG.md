@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0b11] - 2026-06-02
+
+### 🐛 Fixed
+
+- probe all LV battery slots; continue past absent/invalid slots ([a4ba870](https://github.com/dewet22/givenergy-modbus/commit/a4ba870fd5d131ad163418b4d7678f4b07b6ed74))
+
 ## [2.1.0b10] - 2026-06-02
 
 
