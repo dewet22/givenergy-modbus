@@ -84,6 +84,7 @@ class RegisterMap:
     BATTERY_PAUSE_MODE = 318
     BATTERY_PAUSE_SLOT_START = 319
     BATTERY_PAUSE_SLOT_END = 320
+    SMART_LOAD_SLOT_1_START = 554  # HR 554-573: 10 start/end pairs (slot N start = 554 + (N-1)*2)
     AC_CHARGE_ENABLE = 1112
     FORCE_DISCHARGE_ENABLE = 1122
     FORCE_CHARGE_ENABLE = 1123
@@ -327,6 +328,27 @@ def set_pause_slot(slot: TimeSlot | None) -> list[TransparentRequest]:
     start = slot.start if slot else None
     end = slot.end if slot else None
     return set_pause_slot_start(start) + set_pause_slot_end(end)
+
+
+def set_smart_load_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set the start time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    if not (1 <= idx <= 10):
+        raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
+    return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2, t)
+
+
+def set_smart_load_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
+    """Set the end time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    if not (1 <= idx <= 10):
+        raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
+    return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2 + 1, t)
+
+
+def set_smart_load_slot(idx: int, slot: "TimeSlot | None") -> list[TransparentRequest]:
+    """Set Smart Load slot *idx* (1-based, 1–10) atomically, or clear it if slot is None."""
+    start = slot.start if slot else None
+    end = slot.end if slot else None
+    return set_smart_load_slot_start(idx, start) + set_smart_load_slot_end(idx, end)
 
 
 def set_ac_charge(enabled: bool) -> list[TransparentRequest]:
