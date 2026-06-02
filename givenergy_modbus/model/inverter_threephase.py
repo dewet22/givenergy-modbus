@@ -541,18 +541,22 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
     # unverified on three-phase hardware (see #48).
     @property
     def e_inverter_out_day(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_today`.
+        """Deprecated alias — returns `e_pv_today` (IR1412/1413), the verified three-phase PV-generation register.
 
-        Note: on three-phase units the verified PV-generation register is
-        `e_pv_today` (IR1412/1413). `e_pv_generation_today` (IR44) is inherited
-        from the single-phase LUT and has not been verified on three-phase hardware.
+        The old name is a GivTCP-era mislabel.
+
+        The old `e_inverter_out_day` name was a GivTCP-era mislabel; IR44
+        (`e_pv_generation_today`) leaks via single-phase LUT inheritance and is
+        unverified on three-phase hardware. This alias returns `e_pv_today`
+        directly so consumers following the deprecation warning get the same
+        value they were reading via the alias.
         """
         warnings.warn(
             "ThreePhaseInverter.e_inverter_out_day is deprecated; use e_pv_today",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
+        return self.e_pv_today  # type: ignore[attr-defined,no-any-return]
 
 
 # Models that decode via the three-phase / 1000-range register layout. The residential
