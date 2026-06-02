@@ -14,8 +14,16 @@ import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model.inverter import Model
-from givenergy_modbus.pdu import ClientIncomingMessage, ReadInputRegistersRequest
+from givenergy_modbus.model.register import HR
+from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.pdu import (
+    ClientIncomingMessage,
+    ReadHoldingRegistersRequest,
+    ReadInputRegistersRequest,
+    WriteHoldingRegisterRequest,
+)
 from givenergy_modbus.testing import MockPlant
+from givenergy_modbus.testing.mock_plant import _iter_capture_frames
 
 _CAPTURES = Path(__file__).parents[1] / "fixtures" / "captures"
 
@@ -96,3 +104,81 @@ async def test_aio_errors_on_absent_three_phase_bank():
     finally:
         await client.close()
         await mock.aclose()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for MockPlant internals (improve patch coverage)
+# ---------------------------------------------------------------------------
+
+
+def test_iter_capture_frames_skips_invalid_hex(tmp_path: Path):
+    """Lines with malformed hex payloads are silently skipped."""
+    log = tmp_path / "bad.log"
+    log.write_text("2026-01-01T00:00:00Z rx notvalidhex\n")
+    assert _iter_capture_frames(log) == []
+
+
+def test_iter_capture_frames_skips_non_rx(tmp_path: Path):
+    """TX lines are not included."""
+    log = tmp_path / "tx.log"
+    log.write_text("2026-01-01T00:00:00Z tx 5959000100060102ab0000003c000f\n")
+    assert _iter_capture_frames(log) == []
+
+
+def test_iter_capture_frames_handles_junk_before_marker(tmp_path: Path):
+    """Bytes before the 5959 frame marker are silently skipped."""
+    req = ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11)
+    good_frame = req.encode()
+    payload = b"\x00\xff\xab" + good_frame
+    log = tmp_path / "junk.log"
+    log.write_text(f"2026-01-01T00:00:00Z rx {payload.hex()}\n")
+    frames = _iter_capture_frames(log)
+    assert len(frames) == 1
+    assert frames[0] == good_frame
+
+
+def test_iter_capture_frames_ignores_truncated_tail(tmp_path: Path):
+    """A frame that ends mid-payload (truncated) is not returned."""
+    log = tmp_path / "trunc.log"
+    log.write_text("2026-01-01T00:00:00Z rx 595900010064010200\n")
+    assert _iter_capture_frames(log) == []
+
+
+async def test_context_manager_lifecycle():
+    """Async with MockPlant starts and stops the server cleanly."""
+    mock = MockPlant(devices={})
+    async with mock:
+        _, port = await mock.start("127.0.0.1", 0)
+        assert port > 0
+    assert mock._server is None
+
+
+async def test_write_request_acknowledged():
+    """A write request returns a valid ack response (Phase 1: no state mutation)."""
+    import asyncio
+
+    cache = RegisterCache({HR(94): 1380})  # CHARGE_SLOT_1_START — safe to write
+    mock = MockPlant(devices={0x11: cache}, inverter_serial="SA2114G000")
+    _, port = await mock.start("127.0.0.1", 0)
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        req = WriteHoldingRegisterRequest(register=94, value=1400, device_address=0x11)
+        writer.write(req.encode())
+        await writer.drain()
+        data = await reader.read(4096)
+        pdu = ClientIncomingMessage.decode_bytes(data)
+        assert not pdu.error
+        assert pdu.register == 94
+        assert pdu.value == 1400
+        writer.close()
+    finally:
+        await mock.aclose()
+
+
+async def test_respond_returns_none_for_unknown_pdus():
+    """_respond yields None (no reply) for PDU types that don't expect a response."""
+    from givenergy_modbus.pdu.heartbeat import HeartbeatResponse
+
+    mock = MockPlant(devices={})
+    hb = HeartbeatResponse(data_adapter_serial_number="AB1234G567", data_adapter_type=0)
+    assert mock._respond(hb) is None
