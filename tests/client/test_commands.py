@@ -708,6 +708,11 @@ def test_app_confirmed_registers_are_write_safe():
     # HR479 (DC Wind CVT Voltage) is app-writable but held back — an unbounded
     # voltage setpoint with no range guard; admit only with a validating set_*.
     assert 479 not in WRITE_SAFE_REGISTERS
+    # Each register must encode without raising — symmetric with the negative test
+    # in conftest.py that verifies unsafe registers raise on encode().
+    for reg in app_confirmed:
+        req = WriteHoldingRegisterRequest(register=reg, value=0)
+        assert req.encode(), f"encode() failed for app-confirmed register {reg}"
 
 
 def test_refresh_plant_data_is_a_raising_stub():
