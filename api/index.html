@@ -1974,6 +1974,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_consumption_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_consumption_today
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_day" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_inverter_out_day
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.enable_standard_self_consumption_logic" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5271,6 +5293,28 @@
     <span class="md-ellipsis">
       
         e_battery_discharge_total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_consumption_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_consumption_today
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_day" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_inverter_out_day
       
     </span>
   </a>
@@ -16001,16 +16045,7 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">724</span>
-<span class="normal">725</span>
-<span class="normal">726</span>
-<span class="normal">727</span>
-<span class="normal">728</span>
-<span class="normal">729</span>
-<span class="normal">730</span>
-<span class="normal">731</span>
-<span class="normal">732</span>
-<span class="normal">733</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">733</span>
 <span class="normal">734</span>
 <span class="normal">735</span>
 <span class="normal">736</span>
@@ -16153,7 +16188,58 @@ in later 2.x minors — see #75.</p>
 <span class="normal">873</span>
 <span class="normal">874</span>
 <span class="normal">875</span>
-<span class="normal">876</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">876</span>
+<span class="normal">877</span>
+<span class="normal">878</span>
+<span class="normal">879</span>
+<span class="normal">880</span>
+<span class="normal">881</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span>
+<span class="normal">890</span>
+<span class="normal">891</span>
+<span class="normal">892</span>
+<span class="normal">893</span>
+<span class="normal">894</span>
+<span class="normal">895</span>
+<span class="normal">896</span>
+<span class="normal">897</span>
+<span class="normal">898</span>
+<span class="normal">899</span>
+<span class="normal">900</span>
+<span class="normal">901</span>
+<span class="normal">902</span>
+<span class="normal">903</span>
+<span class="normal">904</span>
+<span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span>
+<span class="normal">912</span>
+<span class="normal">913</span>
+<span class="normal">914</span>
+<span class="normal">915</span>
+<span class="normal">916</span>
+<span class="normal">917</span>
+<span class="normal">918</span>
+<span class="normal">919</span>
+<span class="normal">920</span>
+<span class="normal">921</span>
+<span class="normal">922</span>
+<span class="normal">923</span>
+<span class="normal">924</span>
+<span class="normal">925</span>
+<span class="normal">926</span>
+<span class="normal">927</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -16277,6 +16363,34 @@ in later 2.x minors — see #75.</p>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">in</span> <span class="n">AC_COUPLED_MODELS</span>  <span class="c1"># type: ignore[attr-defined]</span>
 
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_consumption_today</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;House consumption today (kWh), matching the GE app&#39;s &quot;Consumption today&quot;.</span>
+
+<span class="sd">        DERIVED, not metered: single-phase units expose no consumption register, so the</span>
+<span class="sd">        GE app computes this value. Sentinel cross-correlation against the app&#39;s</span>
+<span class="sd">        Energy-today screen (#174) recovered the exact formula:</span>
+
+<span class="sd">            consumption = pv_generation + grid_import − grid_export − ac_charge</span>
+
+<span class="sd">        Battery DC charge/discharge throughput nets out and is not a term. The result</span>
+<span class="sd">        carries the same conversion-loss bias the app shows (energy balance overshoots</span>
+<span class="sd">        real consumption by a few %). This is the GE-universe definition of</span>
+<span class="sd">        &quot;consumption&quot; specifically — other plant equipment may define it differently.</span>
+
+<span class="sd">        Three-phase units have a native e_load_today register and so do NOT get this</span>
+<span class="sd">        computed field (it lives on SinglePhaseInverter only, not in the register LUT).</span>
+<span class="sd">        Returns None if any input is unavailable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_today</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">grid_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_grid_in_day</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">grid_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_grid_out_day</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">ac_charge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_ac_charge_today</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_in</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">,</span> <span class="n">ac_charge</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">pv</span> <span class="o">+</span> <span class="n">grid_in</span> <span class="o">-</span> <span class="n">grid_out</span> <span class="o">-</span> <span class="n">ac_charge</span>
+
     <span class="c1"># Plain @property (not @computed_field) so the deprecated alias doesn&#39;t</span>
     <span class="c1"># appear in model_dump() output. See #84 — renamed to work_time_total_hours</span>
     <span class="c1"># to put the unit at the call site.</span>
@@ -16306,6 +16420,20 @@ in later 2.x minors — see #75.</p>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_inverter_parallel_mode</span>  <span class="c1"># type: ignore[attr-defined,no-any-return]</span>
+
+    <span class="c1"># Plain @property so the deprecated alias doesn&#39;t appear in model_dump().</span>
+    <span class="c1"># IR(44) was decoded as e_inverter_out_day (GivTCP-era guess); sentinel</span>
+    <span class="c1"># cross-correlation (#174) confirmed it is PV-generation-today. Renamed to</span>
+    <span class="c1"># e_pv_generation_today; this alias preserves back-compat for a release.</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_inverter_out_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deprecated alias for `e_pv_generation_today`.&quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;SinglePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_today</span>  <span class="c1"># type: ignore[attr-defined,no-any-return]</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -16455,6 +16583,62 @@ in later 2.x minors — see #75.</p>
 
 
 
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_consumption_today" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_consumption_today</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_consumption_today" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>House consumption today (kWh), matching the GE app's "Consumption today".</p>
+<p>DERIVED, not metered: single-phase units expose no consumption register, so the
+GE app computes this value. Sentinel cross-correlation against the app's
+Energy-today screen (#174) recovered the exact formula:</p>
+<div class="highlight"><pre><span></span><code>consumption = pv_generation + grid_import − grid_export − ac_charge
+</code></pre></div>
+<p>Battery DC charge/discharge throughput nets out and is not a term. The result
+carries the same conversion-loss bias the app shows (energy balance overshoots
+real consumption by a few %). This is the GE-universe definition of
+"consumption" specifically — other plant equipment may define it differently.</p>
+<p>Three-phase units have a native e_load_today register and so do NOT get this
+computed field (it lives on SinglePhaseInverter only, not in the register LUT).
+Returns None if any input is unavailable.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_day" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_inverter_out_day</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_day" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Deprecated alias for <code>e_pv_generation_today</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.enable_standard_self_consumption_logic" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">enable_standard_self_consumption_logic</span></code>
 
@@ -16583,11 +16767,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span>
-<span class="normal">753</span>
-<span class="normal">754</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -16618,10 +16802,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span>
-<span class="normal">742</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">748</span>
+<span class="normal">749</span>
+<span class="normal">750</span>
+<span class="normal">751</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -16647,11 +16831,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
-<span class="normal">748</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">753</span>
+<span class="normal">754</span>
+<span class="normal">755</span>
+<span class="normal">756</span>
+<span class="normal">757</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -16997,7 +17181,16 @@ unknown (DTC unread).</p>
 <span class="normal">689</span>
 <span class="normal">690</span>
 <span class="normal">691</span>
-<span class="normal">692</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span>
+<span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span>
+<span class="normal">701</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -17251,7 +17444,13 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;p_backup&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">31</span><span class="p">),</span> <span class="nb">max</span><span class="o">=</span><span class="mi">50000</span><span class="p">),</span>  <span class="c1"># EPS</span>
         <span class="s2">&quot;e_grid_in_total&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">32</span><span class="p">),</span> <span class="n">IR</span><span class="p">(</span><span class="mi">33</span><span class="p">)),</span>
         <span class="c1"># IR(34) unknown, skip</span>
-        <span class="s2">&quot;e_load_day&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">35</span><span class="p">)),</span>
+        <span class="c1"># IR(35) is AC-charge-today, NOT house-load/consumption. The GivTCP-era</span>
+        <span class="c1"># &quot;e_load_day&quot; name was a mislabel (#174): sentinel cross-correlation via the</span>
+        <span class="c1"># GE app&#39;s Energy-today screen confirmed IR(35) backs &quot;AC charge today&quot;. The</span>
+        <span class="c1"># app&#39;s &quot;Consumption today&quot; is computed, not a register — see e_consumption_today</span>
+        <span class="c1"># on SinglePhaseInverter. Aligned to the existing three-phase e_ac_charge_today</span>
+        <span class="c1"># name so the three-phase native (IR1376/7) overrides this inherited entry.</span>
+        <span class="s2">&quot;e_ac_charge_today&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">35</span><span class="p">)),</span>
         <span class="s2">&quot;e_battery_charge_today_alt1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">36</span><span class="p">)),</span>
         <span class="s2">&quot;e_battery_discharge_today_alt1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">37</span><span class="p">)),</span>
         <span class="s2">&quot;countdown&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">38</span><span class="p">)),</span>
@@ -17263,7 +17462,10 @@ unknown (DTC unread).</p>
         <span class="c1"># Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)</span>
         <span class="c1"># (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).</span>
         <span class="s2">&quot;p_grid_apparent&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">43</span><span class="p">),</span> <span class="nb">max</span><span class="o">=</span><span class="mi">50000</span><span class="p">),</span>
-        <span class="s2">&quot;e_inverter_out_day&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">44</span><span class="p">)),</span>
+        <span class="c1"># IR(44) is PV-generation-today (sentinel cross-correlation, #174), not the</span>
+        <span class="c1"># inverter AC output. Renamed from &quot;e_inverter_out_day&quot;; the old name is kept</span>
+        <span class="c1"># as a deprecated @property alias on both inverter classes for a release.</span>
+        <span class="s2">&quot;e_pv_generation_today&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">44</span><span class="p">)),</span>
         <span class="s2">&quot;e_inverter_out_total&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="n">IR</span><span class="p">(</span><span class="mi">46</span><span class="p">)),</span>
         <span class="c1"># Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per</span>
         <span class="c1"># wall-clock hour and persists across reboots; cap at ~100 years to</span>
