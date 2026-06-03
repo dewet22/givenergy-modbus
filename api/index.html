@@ -1996,6 +1996,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_inverter_out_total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.enable_standard_self_consumption_logic" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5315,6 +5326,17 @@
     <span class="md-ellipsis">
       
         e_inverter_out_day
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_inverter_out_total
       
     </span>
   </a>
@@ -15237,17 +15259,17 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">272</span>
 <span class="normal">273</span>
 <span class="normal">274</span>
 <span class="normal">275</span>
-<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryCalibrationStage</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryCalibrationStage</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery calibration stages.&quot;&quot;&quot;</span>
 
     <span class="n">OFF</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15310,11 +15332,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPowerMode</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPowerMode</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery discharge strategy.&quot;&quot;&quot;</span>
 
     <span class="n">EXPORT</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15371,11 +15393,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Installed battery type.&quot;&quot;&quot;</span>
 
     <span class="n">LEAD_ACID</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15432,18 +15454,18 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">335</span>
 <span class="normal">336</span>
 <span class="normal">337</span>
 <span class="normal">338</span>
 <span class="normal">339</span>
-<span class="normal">340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Certification</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Certification</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid compliance certification.&quot;&quot;&quot;</span>
 
     <span class="n">UNKNOWN</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15507,16 +15529,16 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">356</span>
-<span class="normal">357</span>
-<span class="normal">358</span>
-<span class="normal">359</span>
-<span class="normal">360</span>
-<span class="normal">361</span>
-<span class="normal">362</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">362</span>
 <span class="normal">363</span>
 <span class="normal">364</span>
-<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Generation</span><span class="p">(</span><span class="n">StrEnum</span><span class="p">):</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Generation</span><span class="p">(</span><span class="n">StrEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter hardware generation.&quot;&quot;&quot;</span>
 
     <span class="n">GEN1</span> <span class="o">=</span> <span class="s2">&quot;Gen 1&quot;</span>
@@ -15578,17 +15600,17 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span>
-<span class="normal">348</span>
-<span class="normal">349</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
 <span class="normal">350</span>
 <span class="normal">351</span>
 <span class="normal">352</span>
-<span class="normal">353</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InverterType</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InverterType</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter phase and voltage type.&quot;&quot;&quot;</span>
 
     <span class="n">SINGLE_PHASE_LV</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15651,11 +15673,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MeterType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MeterType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Installed meter type.&quot;&quot;&quot;</span>
 
     <span class="n">CT_OR_EM418</span> <span class="o">=</span> <span class="mi">0</span>
@@ -15893,18 +15915,18 @@ raise ValueError. A field report from a Gen 2 owner is needed to add support.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">379</span>
-<span class="normal">380</span>
-<span class="normal">381</span>
-<span class="normal">382</span>
-<span class="normal">383</span>
-<span class="normal">384</span>
-<span class="normal">385</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">385</span>
 <span class="normal">386</span>
 <span class="normal">387</span>
 <span class="normal">388</span>
 <span class="normal">389</span>
-<span class="normal">390</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Phase</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Phase</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of AC phases.&quot;&quot;&quot;</span>
 
     <span class="n">ONE</span> <span class="o">=</span> <span class="mi">1</span>
@@ -15968,16 +15990,16 @@ raise ValueError. A field report from a Gen 2 owner is needed to add support.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">299</span>
 <span class="normal">300</span>
 <span class="normal">301</span>
-<span class="normal">302</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PowerFactorFunctionModel</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PowerFactorFunctionModel</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Power Factor function model.&quot;&quot;&quot;</span>
 
     <span class="n">PF_1</span> <span class="o">=</span> <span class="mi">0</span>
@@ -16045,17 +16067,7 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">733</span>
-<span class="normal">734</span>
-<span class="normal">735</span>
-<span class="normal">736</span>
-<span class="normal">737</span>
-<span class="normal">738</span>
-<span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span>
-<span class="normal">742</span>
-<span class="normal">743</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">743</span>
 <span class="normal">744</span>
 <span class="normal">745</span>
 <span class="normal">746</span>
@@ -16239,7 +16251,32 @@ in later 2.x minors — see #75.</p>
 <span class="normal">924</span>
 <span class="normal">925</span>
 <span class="normal">926</span>
-<span class="normal">927</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">927</span>
+<span class="normal">928</span>
+<span class="normal">929</span>
+<span class="normal">930</span>
+<span class="normal">931</span>
+<span class="normal">932</span>
+<span class="normal">933</span>
+<span class="normal">934</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span>
+<span class="normal">943</span>
+<span class="normal">944</span>
+<span class="normal">945</span>
+<span class="normal">946</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -16434,6 +16471,21 @@ in later 2.x minors — see #75.</p>
             <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_today</span>  <span class="c1"># type: ignore[attr-defined,no-any-return]</span>
+
+    <span class="c1"># IR(45/46) was decoded as e_inverter_out_total (GivTCP-era guess); the same</span>
+    <span class="c1"># sentinel cross-correlation (#174) confirmed it is PV-generation-total. Renamed</span>
+    <span class="c1"># to e_pv_generation_total; this alias preserves back-compat for a release.</span>
+    <span class="c1"># Single-phase only: ThreePhaseInverter keeps its native e_inverter_out_total</span>
+    <span class="c1"># (IR1362/3), which is a genuine register there, so no alias is defined on 3ph.</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_inverter_out_total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deprecated alias for `e_pv_generation_total`.&quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;SinglePhaseInverter.e_inverter_out_total is deprecated; use e_pv_generation_total&quot;</span><span class="p">,</span>
+            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_total</span>  <span class="c1"># type: ignore[attr-defined,no-any-return]</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -16639,6 +16691,28 @@ Returns None if any input is unavailable.</p>
 
 
 
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_total" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_inverter_out_total</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_inverter_out_total" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Deprecated alias for <code>e_pv_generation_total</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
 <h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.enable_standard_self_consumption_logic" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">enable_standard_self_consumption_logic</span></code>
 
@@ -16767,11 +16841,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">759</span>
-<span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -16802,10 +16876,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -16831,11 +16905,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">753</span>
-<span class="normal">754</span>
-<span class="normal">755</span>
-<span class="normal">756</span>
-<span class="normal">757</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -16882,13 +16956,7 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">393</span>
-<span class="normal">394</span>
-<span class="normal">395</span>
-<span class="normal">396</span>
-<span class="normal">397</span>
-<span class="normal">398</span>
-<span class="normal">399</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">399</span>
 <span class="normal">400</span>
 <span class="normal">401</span>
 <span class="normal">402</span>
@@ -17190,7 +17258,17 @@ unknown (DTC unread).</p>
 <span class="normal">698</span>
 <span class="normal">699</span>
 <span class="normal">700</span>
-<span class="normal">701</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">701</span>
+<span class="normal">702</span>
+<span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span>
+<span class="normal">706</span>
+<span class="normal">707</span>
+<span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -17462,11 +17540,15 @@ unknown (DTC unread).</p>
         <span class="c1"># Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)</span>
         <span class="c1"># (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).</span>
         <span class="s2">&quot;p_grid_apparent&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">43</span><span class="p">),</span> <span class="nb">max</span><span class="o">=</span><span class="mi">50000</span><span class="p">),</span>
-        <span class="c1"># IR(44) is PV-generation-today (sentinel cross-correlation, #174), not the</span>
-        <span class="c1"># inverter AC output. Renamed from &quot;e_inverter_out_day&quot;; the old name is kept</span>
-        <span class="c1"># as a deprecated @property alias on both inverter classes for a release.</span>
+        <span class="c1"># IR(44) is PV-generation-today and IR(45/46) is PV-generation-total (both</span>
+        <span class="c1"># sentinel cross-correlation, #174), not the inverter AC output. Renamed from</span>
+        <span class="c1"># &quot;e_inverter_out_day&quot; / &quot;e_inverter_out_total&quot;; the old names are kept as</span>
+        <span class="c1"># deprecated @property aliases for a release.</span>
+        <span class="c1"># NB: this rename is single-phase only. ThreePhaseInverter has its OWN native</span>
+        <span class="c1"># e_inverter_out_total (IR1362/3) — a genuine, distinct register from its PV</span>
+        <span class="c1"># total (e_pv_total, IR1374/5) — so the 3ph field is left untouched.</span>
         <span class="s2">&quot;e_pv_generation_today&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">44</span><span class="p">)),</span>
-        <span class="s2">&quot;e_inverter_out_total&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="n">IR</span><span class="p">(</span><span class="mi">46</span><span class="p">)),</span>
+        <span class="s2">&quot;e_pv_generation_total&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span> <span class="n">IR</span><span class="p">(</span><span class="mi">46</span><span class="p">)),</span>
         <span class="c1"># Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per</span>
         <span class="c1"># wall-clock hour and persists across reboots; cap at ~100 years to</span>
         <span class="c1"># reject obviously-garbage uint32 values. The `_hours` suffix carries</span>
@@ -17551,14 +17633,14 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span>
-<span class="normal">312</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Status</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Status</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter status.&quot;&quot;&quot;</span>
 
     <span class="n">WAITING</span> <span class="o">=</span> <span class="mi">0</span>
@@ -17618,12 +17700,12 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">UsbDevice</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">UsbDevice</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;USB devices that can be inserted into inverters.&quot;&quot;&quot;</span>
 
     <span class="n">NONE</span> <span class="o">=</span> <span class="mi">0</span>
@@ -17681,18 +17763,18 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">321</span>
 <span class="normal">322</span>
 <span class="normal">323</span>
 <span class="normal">324</span>
 <span class="normal">325</span>
-<span class="normal">326</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WorkMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WorkMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter work mode.&quot;&quot;&quot;</span>
 
     <span class="n">INITIALISING</span> <span class="o">=</span> <span class="mi">0</span>
@@ -17755,13 +17837,7 @@ and key on it like <code>resolve_model()</code> does (issue #119).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">239</span>
 <span class="normal">240</span>
 <span class="normal">241</span>
 <span class="normal">242</span>
@@ -17770,7 +17846,13 @@ and key on it like <code>resolve_model()</code> does (issue #119).</p>
 <span class="normal">245</span>
 <span class="normal">246</span>
 <span class="normal">247</span>
-<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inverter_address_for</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inverter_address_for</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the modbus device address the inverter&#39;s registers are served at.</span>
 
 <span class="sd">    `0x11` is the inverter&#39;s canonical address for every model except AC and</span>
@@ -17812,20 +17894,20 @@ and key on it like <code>resolve_model()</code> does (issue #119).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">216</span>
 <span class="normal">217</span>
 <span class="normal">218</span>
 <span class="normal">219</span>
 <span class="normal">220</span>
 <span class="normal">221</span>
 <span class="normal">222</span>
-<span class="normal">223</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_model</span><span class="p">(</span><span class="n">raw_dtc</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">arm_fw</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_model</span><span class="p">(</span><span class="n">raw_dtc</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">arm_fw</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the most specific Model for a given device type code and ARM firmware version.</span>
 
 <span class="sd">    `raw_dtc` is the raw integer value of HR(0) (e.g. 0x2001).</span>
