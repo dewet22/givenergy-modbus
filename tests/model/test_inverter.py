@@ -112,7 +112,7 @@ def test_inverter():
             "p_load_demand": None,
             "p_grid_apparent": None,
             "e_pv_generation_today": None,
-            "e_inverter_out_total": None,
+            "e_pv_generation_total": None,
             "work_time_total_hours": None,
             "system_mode": None,
             "v_battery": None,
@@ -520,7 +520,7 @@ def test_from_registers(register_cache):
         "p_load_demand": 342,
         "p_grid_apparent": 680,
         "e_pv_generation_today": 8.1,  # IR(44) — was mislabelled e_inverter_out_day (#174)
-        "e_inverter_out_total": 93.0,
+        "e_pv_generation_total": 93.0,
         "work_time_total_hours": 213,
         "system_mode": 1,
         "v_battery": 49.91,
@@ -864,7 +864,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_load_demand": 515,
         "p_grid_apparent": 554,
         "e_pv_generation_today": 3.8,  # IR(44) — was mislabelled e_inverter_out_day (#174)
-        "e_inverter_out_total": 172.5,
+        "e_pv_generation_total": 172.5,
         "work_time_total_hours": 385,
         "system_mode": 1,
         "v_battery": 51.73,
@@ -1287,6 +1287,58 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     tp_dumped = tp.model_dump()
     assert "e_pv_generation_today" in tp_dumped
     assert "e_inverter_out_day" not in tp_dumped
+
+
+def test_e_pv_generation_total_rename_and_deprecated_alias():
+    """IR(45/46) is e_pv_generation_total (#174); e_inverter_out_total is a deprecated alias.
+
+    Unlike the day field, three-phase is NOT symmetric here:
+    - SinglePhaseInverter: IR(45/46) renamed to e_pv_generation_total; e_inverter_out_total
+      becomes a deprecated @property → e_pv_generation_total (not in model_dump()).
+    - ThreePhaseInverter: keeps its OWN native e_inverter_out_total (IR1362/3), a genuine,
+      distinct register from its PV total — so it stays a real field with no deprecation.
+      The single-phase IR(45/46) also leaks in as e_pv_generation_total (unverified on 3ph),
+      consistent with the e_pv_generation_today leak; left for #48.
+    """
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import IR
+
+    # Single-phase: IR(45/46) is the authoritative PV-generation-total register (uint32, deci).
+    sp_cache = RegisterCache({IR(45): 0, IR(46): 930})
+    sp = SinglePhaseInverter.from_register_cache(sp_cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp.e_pv_generation_total == 93.0  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp.e_inverter_out_total == 93.0  # type: ignore[attr-defined]  # returns e_pv_generation_total
+    sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(sp_deprecations) == 1
+    assert "e_pv_generation_total" in str(sp_deprecations[0].message)
+
+    sp_dumped = sp.model_dump()
+    assert "e_pv_generation_total" in sp_dumped
+    assert "e_inverter_out_total" not in sp_dumped
+
+    # Three-phase: e_inverter_out_total is a genuine native register (IR1362/3) — it stays
+    # a real, non-deprecated field. The single-phase IR(45/46) leaks in as
+    # e_pv_generation_total (unverified on 3ph).
+    tp_cache = RegisterCache({IR(45): 0, IR(46): 930, IR(1362): 0, IR(1363): 1725})
+    tp = ThreePhaseInverter.from_register_cache(tp_cache)
+
+    # Native 3ph e_inverter_out_total reads IR1362/3 with no deprecation warning.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tp.e_inverter_out_total == 172.5  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    tp_dumped = tp.model_dump()
+    # Both keys are present on 3ph: the native total field and the leaked single-phase IR(45/46).
+    assert tp_dumped["e_inverter_out_total"] == 172.5  # IR1362/3, native
+    assert tp_dumped["e_pv_generation_total"] == 93.0  # IR45/46, leaked (unverified on 3ph)
 
 
 def test_e_consumption_today_computed_formula():

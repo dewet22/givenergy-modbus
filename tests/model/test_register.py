@@ -162,8 +162,8 @@ def test_battery_max_power():
     assert _battery_max_power("2001", 100) == 2600
     # Known non-'20' DTC
     assert _battery_max_power("8001", 0) == 6000
-    # Unknown DTC → 0
-    assert _battery_max_power("9999", 0) == 0
+    # Unknown DTC → None (table is incomplete/unverified; "unknown", not 0 W)
+    assert _battery_max_power("9999", 0) is None
     assert _battery_max_power(None, 100) is None
     assert _battery_max_power("2001", None) is None
 
