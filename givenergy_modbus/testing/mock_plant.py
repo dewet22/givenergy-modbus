@@ -137,7 +137,7 @@ class MockPlant:
     def from_sentinels(
         cls,
         *paths: str | Path,
-        spec: list[tuple[int, type, range]],
+        spec: list[tuple[int, type[Register], range]],
         offset: int = 0,
     ) -> MockPlant:
         """Build a sentinel-overlaid mock for register cross-correlation.
