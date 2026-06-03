@@ -315,7 +315,7 @@ async def test_send_request_raises_timeout_when_tx_queue_is_full():
         # Simulate the 5s timeout without leaking the Queue.put coroutine that
         # send_request_and_await_response passes into asyncio.wait_for().
         awaitable.close()
-        raise asyncio.TimeoutError
+        raise TimeoutError
 
     # Patch wait_for to immediately raise TimeoutError, simulating the 5s timeout
     # elapsing without the producer draining the queue.

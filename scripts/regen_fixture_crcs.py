@@ -15,6 +15,7 @@ stay exactly as they came off the wire.
 Usage:
     uv run python scripts/regen_fixture_crcs.py [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,6 +65,7 @@ def regen_file(path: Path, *, dry_run: bool) -> tuple[int, int]:
 
 
 def main() -> int:
+    """Recompute and rewrite CRCs across all committed capture fixtures."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true", help="report changes without writing")
     args = ap.parse_args()

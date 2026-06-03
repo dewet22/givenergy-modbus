@@ -104,7 +104,7 @@ class Inverter:
         self._summary = summary
 
     @classmethod
-    def from_direct(cls, direct: Any) -> "Inverter":
+    def from_direct(cls, direct: Any) -> Inverter:
         """Construct from a directly-reachable concrete inverter model.
 
         ``direct`` is duck-typed: anything exposing the standard inverter
@@ -119,7 +119,7 @@ class Inverter:
         return cls(data_source="direct", direct=direct)
 
     @classmethod
-    def from_summary(cls, summary: InverterSummary) -> "Inverter":
+    def from_summary(cls, summary: InverterSummary) -> Inverter:
         """Construct from a rollup summary (e.g. EMS-managed, no direct dongle).
 
         The resulting inverter is "blinded": :attr:`batteries` is empty,
@@ -130,7 +130,7 @@ class Inverter:
         return cls(data_source="ems_rollup", summary=summary)
 
     @classmethod
-    def merge(cls, direct: Any, summary: InverterSummary) -> "Inverter":
+    def merge(cls, direct: Any, summary: InverterSummary) -> Inverter:
         """Construct from a direct source reconciled with a rollup summary.
 
         Reconciliation is the caller's responsibility (typically matching
