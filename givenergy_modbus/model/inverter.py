@@ -151,12 +151,18 @@ _DTC_BATPOWER: dict[str, int] = {
 
 
 def _battery_max_power(dtc_str: str, fw: int) -> int | None:
-    """Map DTC hex string + ARM firmware to rated battery charge/discharge power in watts."""
+    """Map DTC hex string + ARM firmware to rated battery charge/discharge power in watts.
+
+    Returns None for an unmapped DTC — the table is incomplete and unverified against
+    hardware docs, so an unknown model is an honest "unknown", not 0 W. Consumers must
+    treat None as "rated power unavailable" rather than "no capacity" (the latter is what
+    a 0 would have implied to e.g. a watt↔percent conversion or a dispatch coordinator).
+    """
     if dtc_str is None or fw is None:
         return None
     if dtc_str[:2] == "20":
         return 3600 if math.floor(int(fw) / 100) in (3, 8, 9) else 2600
-    return _DTC_BATPOWER.get(dtc_str, 0)
+    return _DTC_BATPOWER.get(dtc_str)
 
 
 def _inverter_fault_code(val: int) -> list[str] | None:
