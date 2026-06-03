@@ -662,11 +662,15 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
         # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
-        # IR(44) is PV-generation-today (sentinel cross-correlation, #174), not the
-        # inverter AC output. Renamed from "e_inverter_out_day"; the old name is kept
-        # as a deprecated @property alias on both inverter classes for a release.
+        # IR(44) is PV-generation-today and IR(45/46) is PV-generation-total (both
+        # sentinel cross-correlation, #174), not the inverter AC output. Renamed from
+        # "e_inverter_out_day" / "e_inverter_out_total"; the old names are kept as
+        # deprecated @property aliases for a release.
+        # NB: this rename is single-phase only. ThreePhaseInverter has its OWN native
+        # e_inverter_out_total (IR1362/3) — a genuine, distinct register from its PV
+        # total (e_pv_total, IR1374/5) — so the 3ph field is left untouched.
         "e_pv_generation_today": Def(C.deci, None, IR(44)),
-        "e_inverter_out_total": Def(C.uint32, C.deci, IR(45), IR(46)),
+        "e_pv_generation_total": Def(C.uint32, C.deci, IR(45), IR(46)),
         # Hours since first power-on. Wire data on HYBRID_GEN1 ticks once per
         # wall-clock hour and persists across reboots; cap at ~100 years to
         # reject obviously-garbage uint32 values. The `_hours` suffix carries
@@ -925,6 +929,21 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
+
+    # IR(45/46) was decoded as e_inverter_out_total (GivTCP-era guess); the same
+    # sentinel cross-correlation (#174) confirmed it is PV-generation-total. Renamed
+    # to e_pv_generation_total; this alias preserves back-compat for a release.
+    # Single-phase only: ThreePhaseInverter keeps its native e_inverter_out_total
+    # (IR1362/3), which is a genuine register there, so no alias is defined on 3ph.
+    @property
+    def e_inverter_out_total(self) -> float | None:
+        """Deprecated alias for `e_pv_generation_total`."""
+        warnings.warn(
+            "SinglePhaseInverter.e_inverter_out_total is deprecated; use e_pv_generation_total",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):
