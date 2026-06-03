@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import datetime
+from enum import Enum
 from json import JSONEncoder
 from typing import Any, ClassVar, get_type_hints
 
@@ -328,6 +329,16 @@ class RegisterGetter:
         if defn.post_conv:
             if isinstance(defn.post_conv, tuple):
                 val = defn.post_conv[0](val, *defn.post_conv[1:])
+            elif isinstance(defn.post_conv, type) and issubclass(defn.post_conv, Enum):
+                # A garbage register value that isn't a defined enum member raises
+                # ValueError from Enum.__call__. Degrade that single field to None
+                # rather than letting it abort the whole build() — same "nonsense
+                # decodes to None" posture as the out-of-bounds guard below (#82, #180).
+                try:
+                    val = defn.post_conv(val)
+                except ValueError, TypeError:
+                    _logger.debug("%r is not a valid %s", val, defn.post_conv.__name__)
+                    return None
             else:
                 val = defn.post_conv(val)
 

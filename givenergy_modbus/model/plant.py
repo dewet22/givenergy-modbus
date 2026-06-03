@@ -91,6 +91,16 @@ _AC_CONFIG_BLOCK_MODELS: frozenset[Model] = frozenset(
     }
 )
 
+# Models with a *readable* Smart Load slot block at HR(540-599). Deliberately empty:
+# the block was added speculatively from the GivEnergy app's Direct Control catalogue
+# (which only proves the writable surface, not that a live read answers), and no model
+# has yet been confirmed to return data on real hardware. HYBRID_GEN1 is confirmed to
+# *time out* on the read (#179, two independent reports). device_type here is the
+# firmware-resolved variant (resolve_model), so members may be gen-specific once any
+# model is confirmed. Until then the bulk read is gated off everywhere; the
+# smart_load_slot_* decode Defs and set_smart_load_slot_* write helpers are unaffected.
+_SMART_LOAD_CAPABLE_MODELS: frozenset[Model] = frozenset()
+
 
 _CAPABILITIES_LEGACY_ALIASES = {
     "inverter_slave": "inverter_address",
@@ -421,6 +431,16 @@ class PlantCapabilities(BaseModel):
         DC-coupled/hybrid models. See `_AC_CONFIG_BLOCK_MODELS` (#162).
         """
         return self.device_type in _AC_CONFIG_BLOCK_MODELS
+
+    @property
+    def has_smart_load_block(self) -> bool:
+        """Return True if this system exposes a readable HR(540–599) Smart Load block.
+
+        Currently False for every model: no inverter has been confirmed to answer the
+        read on real hardware, and HYBRID_GEN1 is confirmed to time out on it. See
+        `_SMART_LOAD_CAPABLE_MODELS` (#179).
+        """
+        return self.device_type in _SMART_LOAD_CAPABLE_MODELS
 
     @property
     def is_ems(self) -> bool:

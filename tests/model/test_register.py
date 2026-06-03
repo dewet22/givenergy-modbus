@@ -376,6 +376,59 @@ def test_issue_82_healthy_soc_values_pass_through():
 
 
 # ---------------------------------------------------------------------------
+# Regression: #180 unmapped enum value must not abort the whole build
+# ---------------------------------------------------------------------------
+
+
+def test_unmapped_enum_value_returns_none(caplog):
+    """A garbage register value that isn't a valid enum member degrades to None.
+
+    Reproduces #180: HR(29) held 62453, which is not a BatteryCalibrationStage,
+    and the strict Enum.__call__ raised ValueError mid-build(), aborting the entire
+    inverter decode. The offending field should resolve to None instead.
+    """
+    from givenergy_modbus.model.inverter import BatteryCalibrationStage
+
+    defn = RegisterDefinition(Converter.uint16, BatteryCalibrationStage, IR(0))
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.register"):
+        val = _getter(defn, 62453).get("field")
+    assert val is None
+    assert any("not a valid BatteryCalibrationStage" in r.message for r in caplog.records)
+
+
+def test_valid_enum_value_still_decodes():
+    """Counter-example: a defined enum member decodes normally."""
+    from givenergy_modbus.model.inverter import BatteryCalibrationStage
+
+    defn = RegisterDefinition(Converter.uint16, BatteryCalibrationStage, IR(0))
+    assert _getter(defn, 1).get("field") == BatteryCalibrationStage.DISCHARGE
+
+
+def test_non_enum_converter_valueerror_still_propagates():
+    """The guard is scoped to enums only — a real converter bug must not be swallowed."""
+
+    def _boom(_val):
+        raise ValueError("converter bug")
+
+    defn = RegisterDefinition(Converter.uint16, _boom, IR(0))
+    with pytest.raises(ValueError, match="converter bug"):
+        _getter(defn, 1).get("field")
+
+
+def test_unmapped_enum_value_survives_full_inverter_build():
+    """Integration: a bad HR(29) leaves battery_calibration_stage None, rest decodes."""
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+
+    cache = RegisterCache({HR(k): v for k, v in HOLDING_REGISTERS.items()})
+    cache.update({IR(k): v for k, v in INPUT_REGISTERS.items()})
+    cache[HR(29)] = 62453
+
+    inverter = SinglePhaseInverter.from_register_cache(cache)
+    assert inverter.battery_calibration_stage is None
+    assert inverter.serial_number is not None
+
+
+# ---------------------------------------------------------------------------
 # is_valid_serial
 # ---------------------------------------------------------------------------
 
