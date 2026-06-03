@@ -90,7 +90,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/astral-sh/ruff-pre-commit"
-rev = "v0.15.12"
+rev = "v0.15.15"
 hooks = [
   {
     id = "ruff",
@@ -101,7 +101,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/pre-commit/mirrors-mypy"
-rev = "v2.0.0"
+rev = "v2.1.0"
 hooks = [
   {
     id = "mypy",
@@ -128,7 +128,7 @@ hooks = [
 
 [[repos]]
 repo = "https://github.com/astral-sh/uv-pre-commit"
-rev = "0.11.12"
+rev = "0.11.18"
 hooks = [
   { id = "uv-lock" }
 ]
