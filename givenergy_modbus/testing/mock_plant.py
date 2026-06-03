@@ -124,7 +124,7 @@ class MockPlant:
         self._server: asyncio.AbstractServer | None = None
 
     @classmethod
-    def from_capture(cls, *paths: str | Path) -> "MockPlant":
+    def from_capture(cls, *paths: str | Path) -> MockPlant:
         """Build a mock plant seeded from one or more capture ``.log`` files."""
         plant = plant_from_capture(*paths)
         return cls(
@@ -137,9 +137,9 @@ class MockPlant:
     def from_sentinels(
         cls,
         *paths: str | Path,
-        spec: "list[tuple[int, type, range]]",
+        spec: list[tuple[int, type[Register], range]],
         offset: int = 0,
-    ) -> "MockPlant":
+    ) -> MockPlant:
         """Build a sentinel-overlaid mock for register cross-correlation.
 
         Loads a base plant from *paths* (same as :meth:`from_capture`), then
@@ -191,7 +191,7 @@ class MockPlant:
             await self._server.wait_closed()
             self._server = None
 
-    async def __aenter__(self) -> "MockPlant":
+    async def __aenter__(self) -> MockPlant:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

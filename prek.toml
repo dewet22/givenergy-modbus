@@ -37,7 +37,9 @@ hooks = [
   },
   {
     id = "name-tests-test",
-    args = ["--django"]
+    args = ["--django"],
+    # tests/debug/ holds interactive probe/replay utilities, not pytest cases.
+    exclude = "^tests/debug/"
   }
 ]
 
@@ -71,7 +73,12 @@ hooks = [
 repo = "https://github.com/codespell-project/codespell"
 rev = "v2.4.2"
 hooks = [
-  { id = "codespell" }
+  {
+    id = "codespell",
+    # Domain false positives: "hass" = Home Assistant (sister repo / integration),
+    # "fo" = a GivEnergy data-adapter serial prefix (e.g. FO2522G000).
+    args = ["-L", "hass,fo"]
+  }
 ]
 
 [[repos]]
