@@ -1643,6 +1643,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.PlantCapabilities.has_smart_load_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        has_smart_load_block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.PlantCapabilities.inverter_slave" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4980,6 +4991,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.PlantCapabilities.has_smart_load_block" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        has_smart_load_block
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.PlantCapabilities.inverter_slave" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7903,7 +7925,10 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
 <span class="normal">1194</span>
 <span class="normal">1195</span>
 <span class="normal">1196</span>
-<span class="normal">1197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.</span>
 
 <span class="sd">    Holds a long-lived connection drained by a single producer/consumer task pair.</span>
@@ -8467,11 +8492,14 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
             <span class="p">]</span>
         <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_extended_slots</span><span class="p">:</span>
             <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="n">inverter</span><span class="p">))</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ems</span><span class="p">:</span>
-            <span class="c1"># HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Polled for</span>
-            <span class="c1"># all non-EMS inverters: Smart Load confirmed on HYBRID_GEN1 via the app</span>
-            <span class="c1"># and likely present across all HYBRID generations. Unmodelled registers</span>
-            <span class="c1"># in 540-553 and 574-599 are silently ignored by Plant.update(). (#48)</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_smart_load_block</span><span class="p">:</span>
+            <span class="c1"># HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Gated because</span>
+            <span class="c1"># the block was added from the app&#39;s Direct Control catalogue (writable</span>
+            <span class="c1"># surface only — never confirmed to answer a live read) and HYBRID_GEN1 times</span>
+            <span class="c1"># out on it (#179). The gate set is currently empty, so this is off for every</span>
+            <span class="c1"># model pending hardware confirmation; the smart_load_slot_* decode Defs and</span>
+            <span class="c1"># set_smart_load_slot_* write helpers are unaffected. Unmodelled registers in</span>
+            <span class="c1"># 540-553 and 574-599 are silently ignored by Plant.update(). (#48, #179)</span>
             <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">540</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="n">inverter</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_ac_config_block</span><span class="p">:</span>
             <span class="c1"># HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac</span>
@@ -8930,10 +8958,7 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 981</span>
-<span class="normal"> 982</span>
-<span class="normal"> 983</span>
-<span class="normal"> 984</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 984</span>
 <span class="normal"> 985</span>
 <span class="normal"> 986</span>
 <span class="normal"> 987</span>
@@ -8968,7 +8993,10 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 <span class="normal">1016</span>
 <span class="normal">1017</span>
 <span class="normal">1018</span>
-<span class="normal">1019</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
+<span class="normal">1019</span>
+<span class="normal">1020</span>
+<span class="normal">1021</span>
+<span class="normal">1022</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">sink</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Direction</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
     <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span>
@@ -9563,10 +9591,7 @@ speculative probes where absence is the common case.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1111</span>
-<span class="normal">1112</span>
-<span class="normal">1113</span>
-<span class="normal">1114</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1114</span>
 <span class="normal">1115</span>
 <span class="normal">1116</span>
 <span class="normal">1117</span>
@@ -9578,7 +9603,10 @@ speculative probes where absence is the common case.</p>
 <span class="normal">1123</span>
 <span class="normal">1124</span>
 <span class="normal">1125</span>
-<span class="normal">1126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+<span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -9675,7 +9703,10 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 <span class="normal">798</span>
 <span class="normal">799</span>
 <span class="normal">800</span>
-<span class="normal">801</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read HR configuration blocks for the inverter.</span>
 
 <span class="sd">    Returns the populated plant on full success. On partial/total read</span>
@@ -9712,11 +9743,14 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
         <span class="p">]</span>
     <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_extended_slots</span><span class="p">:</span>
         <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="n">inverter</span><span class="p">))</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_ems</span><span class="p">:</span>
-        <span class="c1"># HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Polled for</span>
-        <span class="c1"># all non-EMS inverters: Smart Load confirmed on HYBRID_GEN1 via the app</span>
-        <span class="c1"># and likely present across all HYBRID generations. Unmodelled registers</span>
-        <span class="c1"># in 540-553 and 574-599 are silently ignored by Plant.update(). (#48)</span>
+    <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_smart_load_block</span><span class="p">:</span>
+        <span class="c1"># HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Gated because</span>
+        <span class="c1"># the block was added from the app&#39;s Direct Control catalogue (writable</span>
+        <span class="c1"># surface only — never confirmed to answer a live read) and HYBRID_GEN1 times</span>
+        <span class="c1"># out on it (#179). The gate set is currently empty, so this is off for every</span>
+        <span class="c1"># model pending hardware confirmation; the smart_load_slot_* decode Defs and</span>
+        <span class="c1"># set_smart_load_slot_* write helpers are unaffected. Unmodelled registers in</span>
+        <span class="c1"># 540-553 and 574-599 are silently ignored by Plant.update(). (#48, #179)</span>
         <span class="n">reqs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">540</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="n">inverter</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">caps</span><span class="o">.</span><span class="n">has_ac_config_block</span><span class="p">:</span>
         <span class="c1"># HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac</span>
@@ -9755,11 +9789,11 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">959</span>
-<span class="normal">960</span>
-<span class="normal">961</span>
-<span class="normal">962</span>
-<span class="normal">963</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">962</span>
+<span class="normal">963</span>
+<span class="normal">964</span>
+<span class="normal">965</span>
+<span class="normal">966</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a set of requests. Caller is responsible for connecting first.&quot;&quot;&quot;</span>
@@ -9797,10 +9831,7 @@ bus exclusively and want genuine failures surfaced faster.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">806</span>
 <span class="normal">807</span>
 <span class="normal">808</span>
 <span class="normal">809</span>
@@ -9850,7 +9881,10 @@ bus exclusively and want genuine failures surfaced faster.</p>
 <span class="normal">853</span>
 <span class="normal">854</span>
 <span class="normal">855</span>
-<span class="normal">856</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read IR measurement blocks for all known devices.</span>
 
 <span class="sd">    Returns the populated plant on full success. On partial/total read</span>
@@ -9944,10 +9978,7 @@ an address.
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">858</span>
-<span class="normal">859</span>
-<span class="normal">860</span>
-<span class="normal">861</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">861</span>
 <span class="normal">862</span>
 <span class="normal">863</span>
 <span class="normal">864</span>
@@ -9995,7 +10026,10 @@ an address.
 <span class="normal">906</span>
 <span class="normal">907</span>
 <span class="normal">908</span>
-<span class="normal">909</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
+<span class="normal">909</span>
+<span class="normal">910</span>
+<span class="normal">911</span>
+<span class="normal">912</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">full_refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">max_batteries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -10080,10 +10114,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1128</span>
-<span class="normal">1129</span>
-<span class="normal">1130</span>
-<span class="normal">1131</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1131</span>
 <span class="normal">1132</span>
 <span class="normal">1133</span>
 <span class="normal">1134</span>
@@ -10149,7 +10180,10 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">1194</span>
 <span class="normal">1195</span>
 <span class="normal">1196</span>
-<span class="normal">1197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">request</span><span class="p">:</span> <span class="n">TransparentRequest</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -10249,10 +10283,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">911</span>
-<span class="normal">912</span>
-<span class="normal">913</span>
-<span class="normal">914</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">914</span>
 <span class="normal">915</span>
 <span class="normal">916</span>
 <span class="normal">917</span>
@@ -10295,7 +10326,10 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">954</span>
 <span class="normal">955</span>
 <span class="normal">956</span>
-<span class="normal">957</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
+<span class="normal">957</span>
+<span class="normal">958</span>
+<span class="normal">959</span>
+<span class="normal">960</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">refresh_period</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
@@ -13332,27 +13366,7 @@ when it is most valuable to export energy.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">436</span>
-<span class="normal">437</span>
-<span class="normal">438</span>
-<span class="normal">439</span>
-<span class="normal">440</span>
-<span class="normal">441</span>
-<span class="normal">442</span>
-<span class="normal">443</span>
-<span class="normal">444</span>
-<span class="normal">445</span>
-<span class="normal">446</span>
-<span class="normal">447</span>
-<span class="normal">448</span>
-<span class="normal">449</span>
-<span class="normal">450</span>
-<span class="normal">451</span>
-<span class="normal">452</span>
-<span class="normal">453</span>
-<span class="normal">454</span>
-<span class="normal">455</span>
-<span class="normal">456</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">456</span>
 <span class="normal">457</span>
 <span class="normal">458</span>
 <span class="normal">459</span>
@@ -13551,7 +13565,27 @@ when it is most valuable to export energy.</p>
 <span class="normal">652</span>
 <span class="normal">653</span>
 <span class="normal">654</span>
-<span class="normal">655</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -13998,10 +14032,10 @@ back-compat and continues to return the directly-decoded
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">446</span>
-<span class="normal">447</span>
-<span class="normal">448</span>
-<span class="normal">449</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure a default register cache is always present.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span> <span class="o">=</span> <span class="p">{</span><span class="mh">0x32</span><span class="p">:</span> <span class="n">RegisterCache</span><span class="p">()}</span>
@@ -14027,27 +14061,7 @@ back-compat and continues to return the directly-decoded
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">477</span>
-<span class="normal">478</span>
-<span class="normal">479</span>
-<span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span>
-<span class="normal">483</span>
-<span class="normal">484</span>
-<span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span>
-<span class="normal">488</span>
-<span class="normal">489</span>
-<span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span>
-<span class="normal">493</span>
-<span class="normal">494</span>
-<span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">497</span>
 <span class="normal">498</span>
 <span class="normal">499</span>
 <span class="normal">500</span>
@@ -14071,7 +14085,27 @@ back-compat and continues to return the directly-decoded
 <span class="normal">518</span>
 <span class="normal">519</span>
 <span class="normal">520</span>
-<span class="normal">521</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">):</span>
+<span class="normal">521</span>
+<span class="normal">522</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="n">TransparentResponse</span><span class="p">):</span>
         <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ignoring non-Transparent response </span><span class="si">{</span><span class="n">pdu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -14164,17 +14198,7 @@ callers). Both paths emit a DeprecationWarning.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">168</span>
 <span class="normal">169</span>
 <span class="normal">170</span>
 <span class="normal">171</span>
@@ -14439,7 +14463,27 @@ callers). Both paths emit a DeprecationWarning.</p>
 <span class="normal">430</span>
 <span class="normal">431</span>
 <span class="normal">432</span>
-<span class="normal">433</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describes the hardware topology discovered by Client.detect().</span>
 
 <span class="sd">    Returned by Client.detect(); callers assign it to plant.capabilities or</span>
@@ -14707,6 +14751,16 @@ callers). Both paths emit a DeprecationWarning.</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_type</span> <span class="ow">in</span> <span class="n">_AC_CONFIG_BLOCK_MODELS</span>
 
     <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_smart_load_block</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if this system exposes a readable HR(540–599) Smart Load block.</span>
+
+<span class="sd">        Currently False for every model: no inverter has been confirmed to answer the</span>
+<span class="sd">        read on real hardware, and HYBRID_GEN1 is confirmed to time out on it. See</span>
+<span class="sd">        `_SMART_LOAD_CAPABLE_MODELS` (#179).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_type</span> <span class="ow">in</span> <span class="n">_SMART_LOAD_CAPABLE_MODELS</span>
+
+    <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_ems</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if this system is an EMS plant controller (HR/IR 2040-range).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">device_type</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Model</span><span class="o">.</span><span class="n">EMS</span><span class="p">,</span> <span class="n">Model</span><span class="o">.</span><span class="n">EMS_COMMERCIAL</span><span class="p">)</span>
@@ -14793,6 +14847,31 @@ DC-coupled/hybrid models. See <code>_AC_CONFIG_BLOCK_MODELS</code> (#162).</p>
     <div class="doc doc-contents ">
 
         <p>Return True if this system supports the extended 10-slot map (HR 240–299).</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.plant.PlantCapabilities.has_smart_load_block" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">has_smart_load_block</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.plant.PlantCapabilities.has_smart_load_block" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Return True if this system exposes a readable HR(540–599) Smart Load block.</p>
+<p>Currently False for every model: no inverter has been confirmed to answer the
+read on real hardware, and HYBRID_GEN1 is confirmed to time out on it. See
+<code>_SMART_LOAD_CAPABLE_MODELS</code> (#179).</p>
 
     </div>
 
@@ -15013,17 +15092,7 @@ state persisted under the older conventions still loads cleanly.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
-<span class="normal">335</span>
-<span class="normal">336</span>
-<span class="normal">337</span>
-<span class="normal">338</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">338</span>
 <span class="normal">339</span>
 <span class="normal">340</span>
 <span class="normal">341</span>
@@ -15070,7 +15139,17 @@ state persisted under the older conventions still loads cleanly.</p>
 <span class="normal">382</span>
 <span class="normal">383</span>
 <span class="normal">384</span>
-<span class="normal">385</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlantCapabilities&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct from a to_dict() payload.</span>
 
@@ -15153,21 +15232,21 @@ field gives future-us an escape hatch for format changes.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span>
-<span class="normal">320</span>
-<span class="normal">321</span>
-<span class="normal">322</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">322</span>
 <span class="normal">323</span>
 <span class="normal">324</span>
 <span class="normal">325</span>
-<span class="normal">326</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialise to a JSON-safe dict for caller-managed persistence.</span>
 
 <span class="sd">    Round-trips through from_dict(). Addresses render as `0x..` strings to</span>
