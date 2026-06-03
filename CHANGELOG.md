@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-06-03
+
+### 🐛 Fixed
+
+- tolerate unmapped enum values + gate Smart Load poll (#179, #180) (#181) ([b92c04b](https://github.com/dewet22/givenergy-modbus/commit/b92c04bd3f1a7f03f0cc3f976523d891ca6a34af))
+
+### 🔧 Maintenance
+
+- make main prek-clean (hook-coverage reconcile, not a ruff version skew) (#177) ([ad3e1b6](https://github.com/dewet22/givenergy-modbus/commit/ad3e1b61d19db867d072ec9d154c2e2b88d78426))
+- autoupdate hook revs (ruff, mypy, uv-pre-commit) (#178) ([c81780b](https://github.com/dewet22/givenergy-modbus/commit/c81780b21b7f6ff5f8604604130ee80bd009ef83))
+
 ## [2.1.2] - 2026-06-03
 
 ### 🐛 Fixed
