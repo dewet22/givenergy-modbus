@@ -48,7 +48,7 @@ async def test_load_config_single_phase():
     client = _client_with_caps(Model.HYBRID)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(540, 60)]
+    assert _reqs(mock_exec) == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60)]
 
 
 async def test_load_config_ac_polls_hr300():
@@ -61,7 +61,6 @@ async def test_load_config_ac_polls_hr300():
         _hr(60, 60, device=0x31),
         _hr(120, 60, device=0x31),
         _ir(120, 60, device=0x31),
-        _hr(540, 60, device=0x31),
         _hr(300, 60, device=0x31),
     ]
 
@@ -76,8 +75,20 @@ async def test_load_config_hybrid_gen1_uses_0x31_no_hr300():
         _hr(60, 60, device=0x31),
         _hr(120, 60, device=0x31),
         _ir(120, 60, device=0x31),
-        _hr(540, 60, device=0x31),
     ]
+
+
+async def test_load_config_hybrid_gen1_does_not_poll_smart_load():
+    """HYBRID_GEN1 must not poll HR(540-599): the block times out on it (#179).
+
+    The Smart Load gate (_SMART_LOAD_CAPABLE_MODELS) is currently empty, so no model
+    polls it. Once a model is confirmed to answer the read, add it to that set and the
+    HR(540) request returns for that model.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    assert _hr(540, 60, device=0x31) not in _reqs(mock_exec)
 
 
 async def test_load_config_three_phase():
@@ -93,7 +104,6 @@ async def test_load_config_three_phase():
         _hr(1000, 60),
         _hr(1060, 60),
         _hr(1120, 5),
-        _hr(540, 60),
     ]
 
 
@@ -108,7 +118,6 @@ async def test_load_config_extended_slots():
         _hr(120, 60),
         _ir(120, 60),
         _hr(240, 60),
-        _hr(540, 60),
     ]
 
 
@@ -123,7 +132,7 @@ async def test_load_config_residential_aio_no_1000_range():
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     reqs = _reqs(mock_exec)
-    assert reqs == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(240, 60), _hr(540, 60), _hr(300, 60)]
+    assert reqs == [_hr(0, 60), _hr(60, 60), _hr(120, 60), _ir(120, 60), _hr(240, 60), _hr(300, 60)]
     assert all(base < 1000 for _, _, base, _ in reqs), "AIO must not poll the 1000-range bank"
 
 

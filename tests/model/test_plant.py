@@ -1689,6 +1689,27 @@ class TestPlantCapabilitiesProperties:
         for m in (Model.HYBRID, Model.HYBRID_GEN1, Model.HYBRID_GEN3, Model.HYBRID_3PH, Model.EMS, Model.GATEWAY):
             assert not self._caps(m).has_ac_config_block, f"{m} should not have the AC config block"
 
+    def test_has_smart_load_block_empty_for_all_models(self):
+        """No model carries a confirmed readable HR(540-599) Smart Load block yet (#179).
+
+        The gate set is deliberately empty pending live-hardware confirmation; HYBRID_GEN1
+        is confirmed to time out on the read. When a model is confirmed, add it to
+        _SMART_LOAD_CAPABLE_MODELS and assert it here.
+        """
+        for m in (
+            Model.HYBRID,
+            Model.HYBRID_GEN1,
+            Model.HYBRID_GEN3,
+            Model.HYBRID_GEN4,
+            Model.AC,
+            Model.AC_3PH,
+            Model.ALL_IN_ONE,
+            Model.HYBRID_3PH,
+            Model.EMS,
+            Model.GATEWAY,
+        ):
+            assert not self._caps(m).has_smart_load_block, f"{m} should not have the Smart Load block"
+
     def test_is_ems_true(self):
         """EMS and EMS_COMMERCIAL report is_ems True."""
         assert self._caps(Model.EMS).is_ems
