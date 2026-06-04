@@ -266,7 +266,7 @@ _THREE_PHASE_LUT = {
     "f_under_derate_stop": Def(C.centi, None, HR(1074), min=40.0, max=70.0),
     "f_under_derate_recovery_delay": Def(C.centi, None, HR(1075)),
     "p_export_limit": Def(C.deci, None, HR(1063), max=6500),
-    "battery_power_cutoff": Def(C.uint16, None, HR(1078)),
+    "battery_reserve_soc": Def(C.uint16, None, HR(1078)),
     "ac_power_derate_delay": Def(C.centi, None, HR(1079)),
     # battery_type at HR(1080) shadows the single-phase HR(54)
     "battery_type": Def(C.uint16, BatteryType, HR(1080)),
@@ -557,6 +557,19 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.e_pv_today  # type: ignore[attr-defined,no-any-return]
+
+    # HR(1078) was named battery_power_cutoff (implying a power value in watts), but
+    # the GE app confirms it is "Battery Reserve %" — an SOC percentage. Renamed to
+    # battery_reserve_soc; this alias preserves back-compat for a release.
+    @property
+    def battery_power_cutoff(self) -> int | None:
+        """Deprecated alias for `battery_reserve_soc`."""
+        warnings.warn(
+            "ThreePhaseInverter.battery_power_cutoff is deprecated; use battery_reserve_soc",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.battery_reserve_soc  # type: ignore[attr-defined,no-any-return]
 
 
 # Models that decode via the three-phase / 1000-range register layout. The residential

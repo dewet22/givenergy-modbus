@@ -195,6 +195,30 @@ def test_work_time_total_hours_rename_and_deprecated_alias():
     assert "work_time_total" not in dumped
 
 
+def test_battery_reserve_soc_rename_and_deprecated_alias():
+    """battery_power_cutoff (HR1078) is renamed to battery_reserve_soc; old name warns for a release."""
+    import warnings
+
+    cache = _cache({HR(1078): 10})
+    tph = ThreePhaseInverter.from_register_cache(cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tph.battery_reserve_soc == 10  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert tph.battery_power_cutoff == 10  # type: ignore[attr-defined]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "battery_reserve_soc" in str(deprecations[0].message)
+
+    dumped = tph.model_dump()
+    assert "battery_reserve_soc" in dumped
+    assert "battery_power_cutoff" not in dumped
+
+
 def test_three_phase_inverter_is_ac_coupled():
     """is_ac_coupled is True for the AC three-phase model, False for DC-coupled 3ph.
 

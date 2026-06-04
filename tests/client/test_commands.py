@@ -432,6 +432,28 @@ def test_battery_ac_limit_three_phase_readback_diverges_from_write():
     ]
 
 
+def test_set_battery_reserve_soc():
+    """set_battery_reserve_soc targets HR(1078) and enforces [4-100]% bounds."""
+    assert commands.set_battery_reserve_soc(10) == [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, 10)]
+    assert commands.set_battery_reserve_soc(100) == [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, 100)]
+    with pytest.raises(ValueError, match="Battery reserve SOC"):
+        commands.set_battery_reserve_soc(3)
+    with pytest.raises(ValueError, match="Battery reserve SOC"):
+        commands.set_battery_reserve_soc(101)
+
+
+def test_battery_reserve_soc_three_phase_read_write_consistency():
+    """ThreePhaseInverter reads battery_reserve_soc from the same register the command writes."""
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    reg = int(RegisterMap.BATTERY_RESERVE_SOC)  # 1078
+    tph = ThreePhaseInverter.from_register_cache(RegisterCache({HR(reg): 15}))
+    assert tph.battery_reserve_soc == 15
+    assert commands.set_battery_reserve_soc(15) == [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, 15)]
+
+
 async def test_set_battery_pause_mode():
     assert commands.set_battery_pause_mode(BatteryPauseMode.DISABLED) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.DISABLED)

@@ -85,6 +85,7 @@ class RegisterMap:
     BATTERY_PAUSE_SLOT_START = 319
     BATTERY_PAUSE_SLOT_END = 320
     SMART_LOAD_SLOT_1_START = 554  # HR 554-573: 10 start/end pairs (slot N start = 554 + (N-1)*2)
+    BATTERY_RESERVE_SOC = 1078  # three-phase only; no single-phase equivalent
     AC_CHARGE_ENABLE = 1112
     FORCE_DISCHARGE_ENABLE = 1122
     FORCE_CHARGE_ENABLE = 1123
@@ -229,8 +230,21 @@ def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, val)]
 
 
+def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
+    """Set the battery reserve SOC on three-phase inverters (HR 1078, "Battery Reserve %").
+
+    Three-phase only — single-phase units use set_battery_soc_reserve() (HR 110) instead.
+    Bounds [4-100]% are unconfirmed (no GivTCP cross-reference exists for this register);
+    treat as the working assumption until a live three-phase capture confirms them.
+    """
+    val = int(val)
+    if not 4 <= val <= 100:
+        raise ValueError(f"Battery reserve SOC ({val}) must be in [4-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, val)]
+
+
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery charge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
+    """Set the battery charge power limit as a percentage of rated charge power (0–50)."""
     val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-50]%")
@@ -238,7 +252,7 @@ def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
 
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery discharge power limit as percentage. 50% (2.6 kW) is the maximum for most inverters."""
+    """Set the battery discharge power limit as a percentage of rated discharge power (0–50)."""
     val = int(val)
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-50]%")
@@ -828,6 +842,10 @@ class _InverterCommands:
     def set_battery_soc_reserve(self, val: int) -> list[TransparentRequest]:
         """Set the minimum SOC reserve the battery is kept at, even in dynamic mode (4-100)."""
         return set_battery_soc_reserve(val)
+
+    def set_battery_reserve_soc(self, val: int) -> list[TransparentRequest]:
+        """Set the battery reserve SOC on three-phase inverters (HR 1078, "Battery Reserve %", 4-100)."""
+        return set_battery_reserve_soc(val)
 
     def set_battery_charge_limit(self, val: int) -> list[TransparentRequest]:
         """Set the battery charge power limit as a percentage of the rated charge power (0-50)."""
