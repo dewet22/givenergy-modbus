@@ -1,0 +1,420 @@
+"""Audit the GivEnergy MODBUS protocol doc against the library's register map.
+
+One-shot analysis tool (not part of the package). Parses the pandoc-rendered
+protocol markdown into a structured register inventory, introspects the
+library's REGISTER_LUTs + WRITE_SAFE_REGISTERS, and emits a triaged diff.
+
+Usage:
+    uv run python scripts/audit_register_doc.py <protocol.md> [--json out.json]
+
+The doc is a series of pandoc grid tables under "### 4.x" / "## 4.x" headings.
+Each register table has columns: Reg.Num | Variable Name | Description | R/W |
+Value | Unit | Notes. Section-header rows span all columns (single cell).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+# --- Doc parsing -----------------------------------------------------------
+
+HEADING_RE = re.compile(r"^(#{1,4})\s+(.*?)\s*#*\s*$")
+SEP_RE = re.compile(r"^\+[-=:+]+\+?\s*$")
+
+
+def _is_sep(line: str) -> bool:
+    return bool(SEP_RE.match(line.strip()))
+
+
+def _split_row(line: str) -> list[str]:
+    # A grid-table data line: "| c0 | c1 | ... |". Strip the leading/trailing
+    # pipe, split on the rest. Cells keep internal spaces; we strip per-cell.
+    s = line.strip()
+    if not s.startswith("|"):
+        return []
+    parts = s.split("|")[1:-1]
+    return [p.strip() for p in parts]
+
+
+@dataclass
+class DocRegister:
+    """One register row parsed from a protocol-doc grid table."""
+
+    section: str
+    addr: int | None
+    addr_raw: str
+    name: str
+    description: str
+    rw: str
+    value: str
+    unit: str
+    notes: str
+
+    @property
+    def writable(self) -> bool:
+        """True if the doc marks this register writable (R/W)."""
+        return "W" in self.rw.upper()
+
+
+def _parse_addr(raw: str) -> int | None:
+    raw = raw.strip()
+    if not raw:
+        return None
+    # Forms seen: "00", "12", "1143", "0x..", "44~47" (range -> first).
+    m = re.match(r"^(0x[0-9a-fA-F]+|\d+)", raw.replace("\\", ""))
+    if not m:
+        return None
+    tok = m.group(1)
+    try:
+        return int(tok, 16) if tok.lower().startswith("0x") else int(tok)
+    except ValueError:
+        return None
+
+
+def _norm_header(cell: str) -> str | None:
+    c = cell.replace("*", "").strip().lower().replace(".", "").replace(" ", "")
+    if c in {"regnum", "reg"}:
+        return "addr"
+    if c in {"variablename", "variable", "name"}:
+        return "name"
+    if c in {"description", "describe"}:
+        return "description"
+    if c in {"r/w", "rw"}:
+        return "rw"
+    if c == "value":
+        return "value"
+    if c == "unit":
+        return "unit"
+    if c in {"note", "notes"}:
+        return "notes"
+    return None
+
+
+def parse_doc(path: Path) -> list[DocRegister]:
+    """Parse all register grid tables in the protocol doc into DocRegister rows."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    regs: list[DocRegister] = []
+    section = "(preamble)"
+
+    # Accumulate multi-line grid rows: between separator lines, a logical row
+    # may span several physical lines (pandoc wraps long cells). We merge cells
+    # column-wise across the physical lines of one logical row.
+    pending: list[list[str]] = []
+    in_table = False
+    # Column layout of the current table, learned from its header row. Maps a
+    # field name -> column index. Tables vary: HR has R/W, IR doesn't, etc.
+    header: dict[str, int] = {}
+
+    def flush_row(cols_lines: list[list[str]]):
+        nonlocal header
+        if not cols_lines:
+            return
+        width = max(len(c) for c in cols_lines)
+        merged = []
+        for i in range(width):
+            parts = [c[i] for c in cols_lines if i < len(c) and c[i]]
+            merged.append(" ".join(parts).strip())
+        # Header row: detect by recognised column titles, learn the layout.
+        mapped = {}
+        for i, cell in enumerate(merged):
+            key = _norm_header(cell)
+            if key and key not in mapped:
+                mapped[key] = i
+        if "addr" in mapped and "name" in mapped:
+            header = mapped
+            return
+        # Section-header / banner row: single non-empty cell. Skip.
+        nonempty = [m for m in merged if m]
+        if len(merged) <= 2 or len(nonempty) <= 1:
+            return
+        if not header or "addr" not in header:
+            return
+
+        def col(field: str) -> str:
+            i = header.get(field)
+            return merged[i].replace("*", "").strip() if i is not None and i < len(merged) else ""
+
+        addr_raw = col("addr")
+        name = col("name")
+        if not addr_raw and not name:
+            return
+        addr = _parse_addr(addr_raw)
+        regs.append(
+            DocRegister(
+                section=section,
+                addr=addr,
+                addr_raw=addr_raw,
+                name=name,
+                description=col("description"),
+                rw=col("rw") or "R",
+                value=col("value"),
+                unit=col("unit"),
+                notes=col("notes"),
+            )
+        )
+
+    for line in lines:
+        h = HEADING_RE.match(line)
+        if h:
+            section = h.group(2).replace("*", "").strip()
+            in_table = False
+            pending = []
+            header = {}
+            continue
+        if _is_sep(line):
+            flush_row(pending)
+            pending = []
+            in_table = True
+            continue
+        if in_table and line.strip().startswith("|"):
+            cols = _split_row(line)
+            if cols:
+                pending.append(cols)
+        elif line.strip() == "":
+            continue
+        else:
+            # Non-table prose ends the current table.
+            if in_table and pending:
+                flush_row(pending)
+            pending = []
+            in_table = False
+    flush_row(pending)
+    return regs
+
+
+# --- Code introspection ----------------------------------------------------
+
+
+@dataclass
+class CodeRegister:
+    """A register address as mapped by the library's REGISTER_LUTs."""
+
+    reg_type: str  # HR / IR / MR
+    idx: int
+    attrs: list[str] = field(default_factory=list)
+    converters: set[str] = field(default_factory=set)
+    getters: set[str] = field(default_factory=set)
+
+
+def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int]]:
+    """Collect every register the library maps + the WRITE_SAFE address set."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from givenergy_modbus.model.battery import BatteryRegisterGetter
+    from givenergy_modbus.model.ems import EmsRegisterGetter
+    from givenergy_modbus.model.gateway import GatewayV1RegisterGetter, GatewayV2RegisterGetter
+    from givenergy_modbus.model.hv_bcu import BcuRegisterGetter
+    from givenergy_modbus.model.inverter import SinglePhaseInverterRegisterGetter
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverterRegisterGetter
+    from givenergy_modbus.model.meter import MeterProductRegisterGetter, MeterRegisterGetter
+    from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
+
+    getters = {
+        "battery": BatteryRegisterGetter,
+        "ems": EmsRegisterGetter,
+        "gateway_v1": GatewayV1RegisterGetter,
+        "gateway_v2": GatewayV2RegisterGetter,
+        "hv_bcu": BcuRegisterGetter,
+        "inverter_1ph": SinglePhaseInverterRegisterGetter,
+        "inverter_3ph": ThreePhaseInverterRegisterGetter,
+        "meter": MeterRegisterGetter,
+        "meter_product": MeterProductRegisterGetter,
+    }
+
+    def conv_name(c) -> str | None:
+        if c is None:
+            return None
+        if isinstance(c, tuple):
+            c = c[0]
+        return getattr(c, "__name__", str(c))
+
+    out: dict[tuple[str, int], CodeRegister] = {}
+    for gname, g in getters.items():
+        for attr, defn in g.REGISTER_LUT.items():
+            for reg in defn.registers:
+                key = (reg._type, reg._idx)
+                cr = out.setdefault(key, CodeRegister(reg._type, reg._idx))
+                cr.attrs.append(f"{gname}.{attr}")
+                cr.getters.add(gname)
+                for c in (defn.pre_conv, defn.post_conv):
+                    n = conv_name(c)
+                    if n:
+                        cr.converters.add(n)
+    return out, set(WRITE_SAFE_REGISTERS)
+
+
+# --- Diff ------------------------------------------------------------------
+
+# Map doc section prefixes to the register type they describe + the code getter
+# bucket they should diff against. Only the inverter HR/IR sections are diffed
+# by address here; other device sections are reported as inventory only.
+SECTION_TYPE = {
+    "4.1.1": "HR",
+    "4.1.2": "IR",
+}
+
+# Code converters → the decimal scale they imply (multiplier applied to raw).
+_CONV_SCALE = {
+    "milli": 0.001,
+    "centi": 0.01,
+    "deci": 0.1,
+    "uint16": 1.0,
+    "int16": 1.0,
+    "uint32": 1.0,
+    "int32": 1.0,
+}
+
+
+def _doc_scale(unit: str) -> float | None:
+    """Infer the decimal scale a doc unit string implies (e.g. '0.1V' -> 0.1).
+
+    Returns 1.0 for a plain unit (V, A, W, %, Hz), None when no numeric scale
+    can be read (ASCII/hex/enum/blank) so the caller can skip the comparison.
+    """
+    u = re.sub(r"[\[\]]|\{\.mark\}|\\", "", unit).strip().lower()
+    if not u or u in {"hex", "ascii", "-"}:
+        return None
+    m = re.match(r"^(\d*\.?\d+)\s*[a-z%]", u)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            return None
+    # A bare "10w"/"100w" style multiplier.
+    m = re.match(r"^(\d+)\s*w", u)
+    if m:
+        return float(m.group(1))
+    if re.match(r"^[a-z%]", u):  # plain unit, scale 1
+        return 1.0
+    return None
+
+
+def _code_scale(convs: set[str]) -> float | None:
+    """Effective scale of a Def's converters.
+
+    A Def often pairs a width/sign converter (uint32/int16, scale 1) with a
+    fractional one (deci/centi/milli). The fractional converter is what scales
+    the displayed value, so take the smallest matched scale rather than relying
+    on set-iteration order.
+    """
+    scales = [_CONV_SCALE[c] for c in convs if c in _CONV_SCALE]
+    return min(scales) if scales else None
+
+
+def _ascii(s: str) -> str:
+    """Drop non-ASCII (e.g. CJK) so retained fields carry no verbatim doc prose."""
+    return re.sub(r"\s+", " ", "".join(c for c in s if ord(c) < 128)).strip()
+
+
+def _facts_row(r: DocRegister) -> dict:
+    """Factual subset of a register row: address/name/unit/RW/range, ASCII-only.
+
+    Drops the doc's `description` and `notes` (the verbatim, partly-Chinese prose) so
+    the committed inventory carries reusable register *facts* without redistributing
+    GivEnergy's proprietary documentation text.
+    """
+    return {
+        "section": _ascii(r.section),
+        "addr": r.addr,
+        "addr_raw": _ascii(r.addr_raw),
+        "name": _ascii(r.name),
+        "rw": _ascii(r.rw),
+        "value": _ascii(r.value),
+        "unit": _ascii(r.unit),
+    }
+
+
+def main() -> int:
+    """Parse the doc, diff against the library, print a JSON report."""
+    ap = argparse.ArgumentParser()
+    ap.add_argument("doc", type=Path)
+    ap.add_argument("--json", type=Path, default=None)
+    ap.add_argument(
+        "--facts-only",
+        action="store_true",
+        help="Emit only register facts (addr/name/unit/RW/range), dropping the doc's "
+        "verbatim descriptions/notes. Use for a committable inventory.",
+    )
+    args = ap.parse_args()
+
+    doc_regs = parse_doc(args.doc)
+    code_regs, write_safe = introspect_code()
+
+    # Build doc HR/IR address sets from the inverter sections.
+    doc_by_type: dict[str, dict[int, DocRegister]] = {"HR": {}, "IR": {}}
+    for r in doc_regs:
+        for prefix, rtype in SECTION_TYPE.items():
+            if r.section.startswith(prefix) and r.addr is not None:
+                # First wins (avoids later note-rows clobbering).
+                doc_by_type[rtype].setdefault(r.addr, r)
+
+    code_by_type: dict[str, dict[int, CodeRegister]] = {"HR": {}, "IR": {}, "MR": {}}
+    for (rtype, idx), cr in code_regs.items():
+        code_by_type.setdefault(rtype, {})[idx] = cr
+
+    report: dict[str, object] = {}
+    scale_mismatches: list[dict] = []
+    for rtype in ("HR", "IR"):
+        doc_set = set(doc_by_type[rtype])
+        code_set = set(code_by_type[rtype])
+        report[rtype] = {
+            "doc_count": len(doc_set),
+            "code_count": len(code_set),
+            "in_doc_not_code": sorted(doc_set - code_set),
+            "in_code_not_doc": sorted(code_set - doc_set),
+            "in_both": sorted(doc_set & code_set),
+        }
+        for addr in sorted(doc_set & code_set):
+            dr = doc_by_type[rtype][addr]
+            cr = code_by_type[rtype][addr]
+            ds = _doc_scale(dr.unit)
+            cs = _code_scale(cr.converters)
+            if ds is not None and cs is not None and abs(ds - cs) > 1e-9:
+                scale_mismatches.append(
+                    {
+                        "reg": f"{rtype}{addr}",
+                        "doc_name": dr.name,
+                        "doc_unit": dr.unit,
+                        "doc_scale": ds,
+                        "code_attrs": cr.attrs,
+                        "code_convs": sorted(cr.converters),
+                        "code_scale": cs,
+                        "factor_off": round(cs / ds, 4) if ds else None,
+                    }
+                )
+    report["scale_mismatches"] = scale_mismatches
+
+    # Writable-set check: doc-writable HR vs WRITE_SAFE.
+    doc_writable_hr = {a for a, r in doc_by_type["HR"].items() if r.writable}
+    report["write_safe"] = {
+        "write_safe_count": len(write_safe),
+        "doc_writable_hr_count": len(doc_writable_hr),
+        "in_write_safe_not_doc_writable": sorted(write_safe - doc_writable_hr),
+        "doc_writable_not_in_write_safe": sorted(doc_writable_hr - write_safe),
+    }
+
+    # Section inventory (counts per parsed section).
+    by_section: dict[str, int] = {}
+    for r in doc_regs:
+        by_section[r.section] = by_section.get(r.section, 0) + 1
+    report["sections"] = dict(sorted(by_section.items()))
+
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+
+    if args.json:
+        registers = [_facts_row(r) for r in doc_regs] if args.facts_only else [asdict(r) for r in doc_regs]
+        args.json.write_text(
+            json.dumps({"doc_registers": registers, "report": report}, indent=2, ensure_ascii=not args.facts_only),
+            encoding="utf-8",
+        )
+        kind = "facts-only" if args.facts_only else "full"
+        print(f"\nWrote {kind} inventory to {args.json}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

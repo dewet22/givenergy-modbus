@@ -8,6 +8,9 @@ nav:
   - Usage: usage.md
   - Architecture: architecture.md
   - Modules: api.md
+  - Reference:
+      - Register identification: register-identification.md
+      - Hardware & firmware quirks: hardware-firmware-quirks.md
   - Contributing: contributing.md
   - Changelog: changelog.md
   - Release notes:
