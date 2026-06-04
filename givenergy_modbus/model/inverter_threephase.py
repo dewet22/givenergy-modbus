@@ -481,6 +481,24 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         """Construct a ThreePhaseInverter from a RegisterCache."""
         return cls.model_validate(ThreePhaseInverterRegisterGetter(register_cache).build())
 
+    def p_pv(self) -> int | None:
+        """Computes the total PV power across both strings, or None if either is unavailable."""
+        if self.p_pv1 is None or self.p_pv2 is None:  # type: ignore[attr-defined]
+            return None
+        return self.p_pv1 + self.p_pv2  # type: ignore[attr-defined]
+
+    def e_pv_day(self) -> float | None:
+        """Returns the combined PV energy for the day from the dedicated three-phase register."""
+        return self.e_pv_today  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_capacity_kwh(self) -> float | None:
+        """Returns the nominal battery capacity in kWh, derived from Ah and model voltage."""
+        if self.battery_capacity_ah is None or self.model is None:  # type: ignore[attr-defined]
+            return None
+        return self.battery_capacity_ah * self.model.system_battery_voltage / 1000  # type: ignore[attr-defined]
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def battery_max_power(self) -> int | None:
