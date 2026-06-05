@@ -714,8 +714,11 @@ class _InverterCommands:
         def slot_map(self) -> SlotMap: ...
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
-    # Excludes 318-320 (pause mode), 1112/1122/1123 (three-phase), and
-    # 2040/2062-2069 (EMS). Also excludes 313/314 (BATTERY_*_LIMIT_AC): these are
+    # Excludes 318-320 (pause mode), the native three-phase registers (1078 reserve,
+    # 1112/1122/1123 enables, 1113-1116/1118-1121 slots), and 2040/2062-2069 (EMS).
+    # Note: ThreePhaseInverter inherits this single-phase-shaped set as-is — a correct
+    # per-model allowlist is deferred to #106 (see #203). Also excludes 313/314
+    # (BATTERY_*_LIMIT_AC): these are
     # the *single-phase* AC charge/discharge limits, but ThreePhaseInverter remaps
     # the read-backs to HR1110/1108, so read != write on three-phase AC. A correct
     # three-phase write needs per-model command-register selection (#75); until that
@@ -828,6 +831,14 @@ class _InverterCommands:
         """Set the date & time of the inverter."""
         return set_system_date_time(dt)
 
+    def set_export_priority(self, priority: ExportPriority) -> list[TransparentRequest]:
+        """Set surplus-power dispatch priority on AC-coupled inverters (BATTERY_FIRST, GRID_FIRST, LOAD_FIRST)."""
+        return set_export_priority(priority)
+
+    def set_enable_eps(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable Emergency Power Supply (EPS) mode on AC-coupled inverters."""
+        return set_enable_eps(enabled)
+
     # --- discharge mode ------------------------------------------------------
 
     def set_discharge_mode_max_power(self) -> list[TransparentRequest]:
@@ -908,3 +919,130 @@ class _InverterCommands:
     ) -> list[TransparentRequest]:
         """Set system to Storage mode with specific discharge slot(s)."""
         return set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)
+
+
+class _ThreePhaseCommands:
+    """Commands that only apply to three-phase inverters.
+
+    Composed onto `ThreePhaseInverter` alongside `_InverterCommands`, exposing the
+    three-phase-only AC-charge / force-charge / force-discharge enables as instance
+    methods.
+
+    A per-model `WRITE_SAFE_REGISTERS` allowlist is intentionally *not* defined here.
+    The inherited `_InverterCommands` surface still delegates several methods to
+    primitives with hardcoded single-phase registers (#203), so a *correct*
+    three-phase allowlist needs the model-aware command routing tracked in #106 —
+    a half-correct one would mislead future enforcement into allowing the wrong
+    writes. Until then, write-safety is enforced only at the PDU level
+    (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
+    """
+
+    def set_ac_charge(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable AC charging (three-phase only)."""
+        return set_ac_charge(enabled)
+
+    def set_force_charge(self, enabled: bool) -> list[TransparentRequest]:
+        """Force battery charging (three-phase only)."""
+        return set_force_charge(enabled)
+
+    def set_force_discharge(self, enabled: bool) -> list[TransparentRequest]:
+        """Force battery discharging (three-phase only)."""
+        return set_force_discharge(enabled)
+
+
+class _EmsCommands:
+    """Commands that target the EMS plant controller.
+
+    Composed onto `Ems`. Does *not* inherit from `_InverterCommands` — EMS is a
+    peer device of the inverter(s) it manages, not an inverter itself, so the
+    inverter-level allowlist and slot setters do not apply. EMS slot primitives
+    use the `EMS_SLOTS` constant internally so there's no `self.slot_map`
+    dependency.
+
+    The EMS register block (HR 2040, 2044–2071) is decoded in
+    `givenergy_modbus.model.ems`; write-safety for those registers is enforced at
+    the PDU level (`pdu.write_registers.WRITE_SAFE_REGISTERS`). A per-model mixin
+    `WRITE_SAFE_REGISTERS` allowlist is deferred to #106 alongside the inverter ones.
+    """
+
+    # --- plant master enable -------------------------------------------------
+
+    def set_ems_plant(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable plant-level EMS ("Flexi EMS") control."""
+        return set_ems_plant(enabled)
+
+    # --- export slots (HR 2062–2070) ----------------------------------------
+
+    def set_export_slot(self, idx: int, slot: TimeSlot | None) -> list[TransparentRequest]:
+        """Set export slot start & end times by index (1–3), or clear if `slot` is None."""
+        return set_export_slot(idx, slot)
+
+    def set_export_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of export slot `idx` (1–3), or clear it if `t` is None."""
+        return set_export_slot_start(idx, t)
+
+    def set_export_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of export slot `idx` (1–3), or clear it if `t` is None."""
+        return set_export_slot_end(idx, t)
+
+    # --- EMS-named aliases for export slots ---------------------------------
+
+    def set_ems_export_slot(self, idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+        """Set an EMS plant export slot `idx` (1–3), or clear it if None."""
+        return set_ems_export_slot(idx, timeslot)
+
+    def set_ems_export_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of EMS export slot `idx` (1–3), or clear it if None."""
+        return set_ems_export_slot_start(idx, t)
+
+    def set_ems_export_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of EMS export slot `idx` (1–3), or clear it if None."""
+        return set_ems_export_slot_end(idx, t)
+
+    # --- EMS charge slots (HR 2053–2061) ------------------------------------
+
+    def set_ems_charge_slot(self, idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+        """Set an EMS plant charge slot `idx` (1–3), or clear it if None."""
+        return set_ems_charge_slot(idx, timeslot)
+
+    def set_ems_charge_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of EMS charge slot `idx` (1–3), or clear it if None."""
+        return set_ems_charge_slot_start(idx, t)
+
+    def set_ems_charge_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of EMS charge slot `idx` (1–3), or clear it if None."""
+        return set_ems_charge_slot_end(idx, t)
+
+    # --- EMS discharge slots (HR 2044–2052) ---------------------------------
+
+    def set_ems_discharge_slot(self, idx: int, timeslot: TimeSlot | None) -> list[TransparentRequest]:
+        """Set an EMS plant discharge slot `idx` (1–3), or clear it if None."""
+        return set_ems_discharge_slot(idx, timeslot)
+
+    def set_ems_discharge_slot_start(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the start of EMS discharge slot `idx` (1–3), or clear it if None."""
+        return set_ems_discharge_slot_start(idx, t)
+
+    def set_ems_discharge_slot_end(self, idx: int, t: dt_time | None) -> list[TransparentRequest]:
+        """Set just the end of EMS discharge slot `idx` (1–3), or clear it if None."""
+        return set_ems_discharge_slot_end(idx, t)
+
+    # --- per-slot target SoC ------------------------------------------------
+
+    def set_ems_charge_target_soc(self, idx: int, target_soc: int) -> list[TransparentRequest]:
+        """Set the SoC target (0–100%) for EMS charge slot `idx` (1–3)."""
+        return set_ems_charge_target_soc(idx, target_soc)
+
+    def set_ems_discharge_target_soc(self, idx: int, target_soc: int) -> list[TransparentRequest]:
+        """Set the SoC target (0–100%) for EMS discharge slot `idx` (1–3)."""
+        return set_ems_discharge_target_soc(idx, target_soc)
+
+    def set_ems_export_target_soc(self, idx: int, target_soc: int) -> list[TransparentRequest]:
+        """Set the SoC target (0–100%) for EMS export slot `idx` (1–3)."""
+        return set_ems_export_target_soc(idx, target_soc)
+
+    # --- plant export power limit -------------------------------------------
+
+    def set_ems_export_power_limit(self, watts: int) -> list[TransparentRequest]:
+        """Set the EMS plant export power limit in watts."""
+        return set_ems_export_power_limit(watts)
