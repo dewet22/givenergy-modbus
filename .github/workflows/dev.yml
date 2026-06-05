@@ -58,8 +58,9 @@ jobs:
         run: uv run --group test tox -e py312,py313,py314
 
   cross-os:
-    # macOS + Windows run the test env only — and only on the weekly schedule or a
-    # manual dispatch, never on a PR. lint/build/docs are OS-independent (skipped here).
+    # macOS + Windows across the full Python matrix (3.11-3.14) — weekly schedule or
+    # manual dispatch only, never on a PR. lint/build/docs are OS-independent (they run
+    # in the per-PR test job).
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
@@ -76,4 +77,4 @@ jobs:
           enable-cache: true
           python-version: '3.14'
       - name: Test with tox
-        run: uv run --group test tox -e py314
+        run: uv run --group test tox -e py311,py312,py313,py314
