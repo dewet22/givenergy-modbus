@@ -290,3 +290,29 @@ def test_ems_mixin_delegates_to_underlying_primitive():
     em = _ems()
     assert em.set_ems_plant(True) == commands.set_ems_plant(True)
     assert em.set_ems_export_power_limit(5000) == commands.set_ems_export_power_limit(5000)
+
+
+@pytest.mark.parametrize(
+    ("method_name", "args"),
+    [
+        # Per-endpoint export-slot setters (HR 2062–2070).
+        ("set_export_slot_start", (1, dt_time(9, 0))),
+        ("set_export_slot_end", (1, dt_time(17, 0))),
+        # EMS-named export-slot aliases.
+        ("set_ems_export_slot", (1, TimeSlot(start=dt_time(11, 0), end=dt_time(15, 0)))),
+        ("set_ems_export_slot_start", (1, dt_time(9, 0))),
+        ("set_ems_export_slot_end", (1, dt_time(17, 0))),
+        # EMS charge-slot endpoints (HR 2053–2061).
+        ("set_ems_charge_slot_start", (1, dt_time(2, 0))),
+        ("set_ems_charge_slot_end", (1, dt_time(5, 0))),
+        # EMS discharge-slot endpoints (HR 2044–2052).
+        ("set_ems_discharge_slot_start", (1, dt_time(18, 0))),
+        ("set_ems_discharge_slot_end", (1, dt_time(21, 0))),
+        # Per-slot target SoC.
+        ("set_ems_discharge_target_soc", (2, 60)),
+        ("set_ems_export_target_soc", (3, 40)),
+    ],
+)
+def test_ems_command_delegates_to_primitive(method_name, args):
+    """Every remaining thin `_EmsCommands` wrapper returns exactly what its module-level primitive does."""
+    assert getattr(_ems(), method_name)(*args) == getattr(commands, method_name)(*args)
