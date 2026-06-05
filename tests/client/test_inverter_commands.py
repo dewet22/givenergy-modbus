@@ -194,18 +194,6 @@ def test_single_phase_does_not_inherit_three_phase_commands():
     assert not issubclass(SinglePhaseInverter, _ThreePhaseCommands)
 
 
-def test_three_phase_write_safe_registers_is_superset_of_base():
-    """Three-phase allowlist = base plus the native three-phase registers the inherited command surface writes."""
-    assert _InverterCommands.WRITE_SAFE_REGISTERS.issubset(_ThreePhaseCommands.WRITE_SAFE_REGISTERS)
-    # 1078 (set_battery_reserve_soc), 1113-1116 / 1118-1121 (charge/discharge slots 1-2 via
-    # THREE_PHASE_SLOTS), 1112 / 1122 / 1123 (set_ac_charge / set_force_charge / set_force_discharge).
-    assert {1078, 1112, 1113, 1114, 1115, 1116, 1118, 1119, 1120, 1121, 1122, 1123}.issubset(
-        _ThreePhaseCommands.WRITE_SAFE_REGISTERS
-    )
-    # AC-limit / pause-mode / EMS registers are still excluded — those mixins haven't landed yet.
-    assert {313, 314, 318, 319, 320, 2040, 2062}.isdisjoint(_ThreePhaseCommands.WRITE_SAFE_REGISTERS)
-
-
 @pytest.mark.parametrize(
     ("method_name", "register"),
     [
@@ -238,13 +226,6 @@ def test_ems_does_not_inherit_inverter_commands():
 
 def test_single_phase_does_not_inherit_ems_commands():
     assert not issubclass(SinglePhaseInverter, _EmsCommands)
-
-
-def test_ems_write_safe_registers_covers_ems_block():
-    """The EMS allowlist must match the EMS HR block (2040, 2044–2071) and be disjoint from the inverter allowlist."""
-    expected = {2040, *range(2044, 2072)}
-    assert _EmsCommands.WRITE_SAFE_REGISTERS == expected
-    assert _EmsCommands.WRITE_SAFE_REGISTERS.isdisjoint(_InverterCommands.WRITE_SAFE_REGISTERS)
 
 
 def test_ems_set_ems_plant_emits_correct_write():

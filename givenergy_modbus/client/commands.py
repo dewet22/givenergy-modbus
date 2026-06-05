@@ -715,8 +715,10 @@ class _InverterCommands:
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
     # Excludes 318-320 (pause mode), the native three-phase registers (1078 reserve,
-    # 1112/1122/1123 enables, 1113-1116/1118-1121 slots — added by _ThreePhaseCommands),
-    # and 2040/2062-2069 (EMS). Also excludes 313/314 (BATTERY_*_LIMIT_AC): these are
+    # 1112/1122/1123 enables, 1113-1116/1118-1121 slots), and 2040/2062-2069 (EMS).
+    # Note: ThreePhaseInverter inherits this single-phase-shaped set as-is — a correct
+    # per-model allowlist is deferred to #106 (see #203). Also excludes 313/314
+    # (BATTERY_*_LIMIT_AC): these are
     # the *single-phase* AC charge/discharge limits, but ThreePhaseInverter remaps
     # the read-backs to HR1110/1108, so read != write on three-phase AC. A correct
     # three-phase write needs per-model command-register selection (#75); until that
@@ -922,23 +924,18 @@ class _InverterCommands:
 class _ThreePhaseCommands:
     """Commands that only apply to three-phase inverters.
 
-    Composed onto `ThreePhaseInverter` alongside `_InverterCommands`. The
-    `WRITE_SAFE_REGISTERS` set unions the base allowlist with the three-phase
-    additions, so any future write-time enforcement that consults the mixin's
-    allowlist (rather than the global PDU-level set) gets the right view for
-    a three-phase target.
-    """
+    Composed onto `ThreePhaseInverter` alongside `_InverterCommands`, exposing the
+    three-phase-only AC-charge / force-charge / force-discharge enables as instance
+    methods.
 
-    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = _InverterCommands.WRITE_SAFE_REGISTERS | frozenset(
-        {
-            1078,  # BATTERY_RESERVE_SOC — set_battery_reserve_soc (three-phase-only reserve)
-            1112,  # AC_CHARGE_ENABLE
-            1113, 1114, 1115, 1116,  # CHARGE_SLOT_1/2 — inherited slot setters via THREE_PHASE_SLOTS
-            1118, 1119, 1120, 1121,  # DISCHARGE_SLOT_1/2 — inherited slot setters via THREE_PHASE_SLOTS
-            1122,  # FORCE_DISCHARGE_ENABLE
-            1123,  # FORCE_CHARGE_ENABLE
-        }
-    )  # fmt: skip
+    A per-model `WRITE_SAFE_REGISTERS` allowlist is intentionally *not* defined here.
+    The inherited `_InverterCommands` surface still delegates several methods to
+    primitives with hardcoded single-phase registers (#203), so a *correct*
+    three-phase allowlist needs the model-aware command routing tracked in #106 —
+    a half-correct one would mislead future enforcement into allowing the wrong
+    writes. Until then, write-safety is enforced only at the PDU level
+    (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
+    """
 
     def set_ac_charge(self, enabled: bool) -> list[TransparentRequest]:
         """Enable or disable AC charging (three-phase only)."""
@@ -963,28 +960,10 @@ class _EmsCommands:
     dependency.
 
     The EMS register block (HR 2040, 2044–2071) is decoded in
-    `givenergy_modbus.model.ems`; the same registers are listed in the global
-    `pdu.write_registers.WRITE_SAFE_REGISTERS` for PDU-level enforcement.
+    `givenergy_modbus.model.ems`; write-safety for those registers is enforced at
+    the PDU level (`pdu.write_registers.WRITE_SAFE_REGISTERS`). A per-model mixin
+    `WRITE_SAFE_REGISTERS` allowlist is deferred to #106 alongside the inverter ones.
     """
-
-    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
-        {
-            2040,  # EMS_PLANT_ENABLE
-            # EMS discharge slots 1–3 (start, end, target SoC per slot)
-            2044, 2045, 2046,
-            2047, 2048, 2049,
-            2050, 2051, 2052,
-            # EMS charge slots 1–3
-            2053, 2054, 2055,
-            2056, 2057, 2058,
-            2059, 2060, 2061,
-            # EMS / inverter export slots 1–3
-            2062, 2063, 2064,
-            2065, 2066, 2067,
-            2068, 2069, 2070,
-            2071,  # EMS_EXPORT_POWER_LIMIT
-        }
-    )  # fmt: skip
 
     # --- plant master enable -------------------------------------------------
 
