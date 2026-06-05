@@ -293,6 +293,7 @@ def test_identify_two_pass_unknown_scale_returns_empty():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.timeout(15)
 def test_mock_plant_from_sentinels_overlays_values():
     """from_sentinels seeds sentinel values on top of the base capture."""
     from pathlib import Path

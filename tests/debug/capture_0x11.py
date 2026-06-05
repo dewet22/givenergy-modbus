@@ -77,13 +77,13 @@ async def main(host: str, duration: float) -> None:
             while True:
                 try:
                     await client.refresh(timeout=3.0, retries=1)
-                except Exception:
+                except Exception:  # nosec B110 - best-effort capture loop; transient read errors ignored
                     pass
                 # Periodically re-run load_config so HR banks appear throughout the capture.
                 if len(frames) % 60 == 0 and len(frames) > 0:
                     try:
                         await client.load_config(timeout=5.0, retries=2)
-                    except Exception:
+                    except Exception:  # nosec B110 - best-effort capture loop; transient read errors ignored
                         pass
                 await asyncio.sleep(10)
 
