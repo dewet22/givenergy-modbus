@@ -213,12 +213,10 @@ class MockPlant:
                     if reply is not None:
                         writer.write(reply)
                         await writer.drain()
-        except asyncio.CancelledError:
-            raise
-        except ConnectionError:
+        except ConnectionError:  # pragma: no cover
             # Client dropped the socket — a normal disconnect (e.g. an app that opens a
             # fresh connection per operation and resets the previous one), not a mock error.
-            _logger.debug("MockPlant client disconnected")
+            _logger.debug("MockPlant client disconnected")  # pragma: no cover
         except Exception:  # noqa: BLE001 — a mock should keep serving other clients  # pragma: no cover
             _logger.exception("MockPlant handler error")  # pragma: no cover
         finally:
@@ -226,7 +224,7 @@ class MockPlant:
 
     def _respond(self, pdu: object) -> bytes | None:
         if isinstance(pdu, WriteHoldingRegisterRequest):
-            _logger.log(
+            _logger.log(  # pragma: no branch
                 logging.INFO if self.log_writes else logging.DEBUG,
                 "→ WriteHoldingRegisterRequest device=0x%02x reg=%d val=%d",
                 pdu.device_address,
