@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from givenergy_modbus.model.ems import Ems, EmsInverterStatus
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
@@ -117,6 +119,7 @@ def test_inverter_status_bitfield():
     assert ems.inverter_2_suspected_status is None  # type: ignore[attr-defined]
 
 
+@pytest.mark.timeout(15)
 def test_bitfield_decode_matches_fixture():
     """Regression for #108 — per-slot status bitfields use LSB-first layout.
 
