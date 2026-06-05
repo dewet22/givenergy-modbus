@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2026-06-05
+
+### ✨ Added
+
+- add p_pv, e_pv_day, battery_capacity_kwh to ThreePhaseInverter ([6924f63](https://github.com/dewet22/givenergy-modbus/commit/6924f63306a5505c28b15753c229fb5b07053c6f))
+
+### 🐛 Fixed
+
+- rename battery_power_cutoff → battery_reserve_soc, add set_battery_reserve_soc (#48) ([41425ce](https://github.com/dewet22/givenergy-modbus/commit/41425ce374e3dd8b88e4314e956b92d3f84e96af))
+- write-register echo routed to inverter_address; AC/HYBRID_GEN1 writes now visible after refresh() (#187) ([5ae3b66](https://github.com/dewet22/givenergy-modbus/commit/5ae3b66ba0a80930ccbfc56b6bf51d464af6639b))
+
+### 🔧 Maintenance
+
+- add .deepsource.toml with Python 3.x runtime to reduce false positives ([cbb8ba2](https://github.com/dewet22/givenergy-modbus/commit/cbb8ba27572f29e8915dd0f9d245795b403f1fee))
+- add register-doc audit tooling + hardware/firmware quirks reference ([e43b1a3](https://github.com/dewet22/givenergy-modbus/commit/e43b1a368f3709ca81d9388e227c5bcd20179568))
+- correct inverter_address_for docstring — 0x11 is not identity-only on AC/HYBRID_GEN1 ([6730b12](https://github.com/dewet22/givenergy-modbus/commit/6730b120015781ac418de8c6bfa7bedb455fda35))
+
 ## [2.1.3] - 2026-06-03
 
 ### 🐛 Fixed
