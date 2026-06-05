@@ -190,9 +190,38 @@ await client.one_shot_command(inverter.set_enable_discharge(True))
 await client.one_shot_command(inverter.set_charge_slot(1, my_timeslot))
 ```
 
-The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`; the methods listed below ("Available commands") are universally available.
+The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The base `_InverterCommands` mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`.
 
-Three-phase-only and EMS-only commands (`set_ac_charge`, `set_force_charge`/`_discharge`, `set_battery_*_limit_ac`, `set_battery_pause_mode`, `set_pause_slot_*`, `set_ems_plant`, `set_export_slot_*`) are not yet exposed via the inverter API — call them on `commands.*` directly while their model-vs-firmware applicability is resolved (see [#75](https://github.com/dewet22/givenergy-modbus/issues/75)). They will appear on model-specific mixins in later 2.x minors.
+> ⚠️ **Treat the inverter command surface as single-phase-validated.** Several inherited methods delegate to primitives with **hardcoded single-phase register numbers**, but three-phase remaps many of those registers — so on a three-phase unit they write the *wrong* register. This is pre-existing and tracked for a proper fix (model-aware command routing) in [#203](https://github.com/dewet22/givenergy-modbus/issues/203) → [#106](https://github.com/dewet22/givenergy-modbus/issues/106):
+> - `set_charge_target()` writes HR(116), but three-phase remaps `charge_target_soc` to HR(1111).
+> - `set_battery_soc_reserve()` writes HR(110), but three-phase remaps `battery_soc_reserve` to HR(1109); the three-phase reserve is `set_battery_reserve_soc()` → HR(1078).
+> - `set_mode_storage()` hardcodes the single-phase discharge slots (HR 44/45, 56/57) instead of three-phase HR(1118–1121).
+> - The enable helpers (`set_enable_charge`, …) target single-phase HR(96/59), distinct from the three-phase enables.
+>
+> The **slot setters** (`set_charge_slot` / `set_discharge_slot`) *are* model-aware — they read the instance's `slot_map` and emit the correct registers per model. The rest should be treated as single-phase until #106.
+
+Three-phase inverters additionally carry the `_ThreePhaseCommands` mixin (marker: ✦ three-phase), so `set_ac_charge`, `set_force_charge`, and `set_force_discharge` are reachable as instance methods on `ThreePhaseInverter`:
+
+```python
+if isinstance(inverter, ThreePhaseInverter):
+    await client.one_shot_command(inverter.set_force_charge(True))
+```
+
+AC-limit commands (`set_battery_*_limit_ac`) and pause-mode commands (`set_battery_pause_mode`, `set_pause_slot_*`) remain on `commands.*` only — their model-vs-firmware applicability hasn't yet been confirmed against wire data (see [#75](https://github.com/dewet22/givenergy-modbus/issues/75)).
+
+## EMS command API
+
+EMS commands target the EMS plant controller — a peer device of the inverter, not the inverter itself — so they live on the `Ems` instance returned by `plant.ems` rather than on `plant.inverter`:
+
+```python
+ems = plant.ems
+if ems is not None:  # None on non-EMS plants
+    await client.one_shot_command(ems.set_ems_plant(True))
+    await client.one_shot_command(ems.set_ems_charge_slot(1, my_timeslot))
+    await client.one_shot_command(ems.set_export_slot(1, my_timeslot))
+```
+
+EMS slots use a fixed three-slot layout at HR(2044–2071) — there's no `slot_map` parameter. EMS commands are tagged ▣ ems in the tables below.
 
 ## Available commands
 
@@ -203,70 +232,82 @@ for tests and lower-level integration.
 
 ### Stability
 
-Both surfaces are supported within the 2.x line. `inverter.set_*` is the
-recommended high-level API; `commands.*` is the primitive layer that the
-mixin delegates to. There is no plan to deprecate `commands.*` within 2.x —
+Both surfaces are supported within the 2.x line. The high-level mixin APIs
+(`inverter.set_*` on `SinglePhaseInverter` / `ThreePhaseInverter`, `ems.set_*`
+on `Ems`) are recommended; `commands.*` is the primitive layer that the
+mixins delegate to. There is no plan to deprecate `commands.*` within 2.x —
 the two are not duplicate paths but two layers of the same stack. If
 individual primitives turn out to be persistent footguns when used without an
 inverter (e.g. routing the wrong `slot_map`), they may be `@deprecated`
-case-by-case as model-specific mixins land in later 2.x minors.
+case-by-case.
+
+### Where each command lives
+
+| Surface | Composed onto | Marker in tables below |
+|---|---|---|
+| `_InverterCommands` | `SinglePhaseInverter`, `ThreePhaseInverter` | _(none — inherited base surface; **single-phase-validated**, see the ⚠️ note above)_ |
+| `_ThreePhaseCommands` | `ThreePhaseInverter` only | ✦ three-phase |
+| `_EmsCommands` | `Ems` only | ▣ ems |
+| `commands.*` only | _(not exposed as mixin method)_ | ⛔ commands-only |
+
+An unmarked row means the method is inherited from `_InverterCommands` on both inverter types — **not** that it writes correct registers on three-phase. Per the warning above, several of these are single-phase-hardcoded and remain single-phase-validated until the model-aware routing in #203 / #106.
 
 ### Charging
 
-| Function | Description |
-|---|---|
-| `set_charge_target(soc)` | Stop charging when SOC reaches `soc`% (4–100) |
-| `disable_charge_target()` | Remove SOC limit, target 100% |
-| `set_enable_charge(enabled)` | Enable or disable charging |
-| `set_battery_charge_limit(val)` | Charge power limit (0–50%) |
-| `set_battery_charge_limit_ac(val)` | AC charge power limit (1–100%) |
-| `set_shallow_charge(val)` | Set shallow charge threshold |
+| Function | Description | Surface |
+|---|---|---|
+| `set_charge_target(soc)` | Stop charging when SOC reaches `soc`% (4–100) | |
+| `disable_charge_target()` | Remove SOC limit, target 100% | |
+| `set_enable_charge(enabled)` | Enable or disable charging | |
+| `set_battery_charge_limit(val)` | Charge power limit (0–50%) | |
+| `set_battery_charge_limit_ac(val)` | AC charge power limit (1–100%) | ⛔ commands-only |
+| `set_shallow_charge(val)` | Set shallow charge threshold (deprecated — use `set_battery_soc_reserve`) | ⛔ commands-only |
 
 ### Discharging
 
-| Function | Description |
-|---|---|
-| `set_enable_discharge(enabled)` | Enable or disable discharging |
-| `set_battery_discharge_limit(val)` | Discharge power limit (0–50%) |
-| `set_battery_discharge_limit_ac(val)` | AC discharge power limit (1–100%) |
-| `set_battery_soc_reserve(val)` | Minimum SOC to maintain (4–100%) |
-| `set_battery_power_reserve(val)` | Battery power reserve (4–100%) |
+| Function | Description | Surface |
+|---|---|---|
+| `set_enable_discharge(enabled)` | Enable or disable discharging | |
+| `set_battery_discharge_limit(val)` | Discharge power limit (0–50%) | |
+| `set_battery_discharge_limit_ac(val)` | AC discharge power limit (1–100%) | ⛔ commands-only |
+| `set_battery_soc_reserve(val)` | Minimum SOC to maintain (4–100%) | |
+| `set_battery_power_reserve(val)` | Battery power reserve (4–100%) | |
 
 ### Time slots
 
-| Function | Description |
-|---|---|
-| `set_charge_slot(idx, timeslot, slot_map)` | Set charge slot `idx` (1-based) |
-| `set_charge_slot_start(idx, t, slot_map)` | Set just the start of charge slot `idx` (or `None` to clear that end) |
-| `set_charge_slot_end(idx, t, slot_map)` | Set just the end of charge slot `idx` (or `None` to clear that end) |
-| `reset_charge_slot(idx, slot_map)` | Clear charge slot `idx` |
-| `set_discharge_slot(idx, timeslot, slot_map)` | Set discharge slot `idx` (1-based) |
-| `set_discharge_slot_start(idx, t, slot_map)` | Set just the start of discharge slot `idx` (or `None` to clear that end) |
-| `set_discharge_slot_end(idx, t, slot_map)` | Set just the end of discharge slot `idx` (or `None` to clear that end) |
-| `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` |
-| `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` |
-| `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` |
-| `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` |
-| `set_export_priority(priority)` | Set surplus-power dispatch priority (`ExportPriority`: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only |
-| `set_enable_eps(enabled)` | Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only |
-| `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) |
-| `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) |
-| `set_pause_slot_start(t)` | Set just the start of the battery pause slot |
-| `set_pause_slot_end(t)` | Set just the end of the battery pause slot |
-| `set_ems_plant(enabled)` | Enable/disable EMS plant control |
-| `set_ems_charge_slot(idx, timeslot)` | Set EMS plant charge slot `idx` (1–3), or clear if `None` |
-| `set_ems_charge_slot_start(idx, t)` | Set just the start of EMS charge slot `idx` |
-| `set_ems_charge_slot_end(idx, t)` | Set just the end of EMS charge slot `idx` |
-| `set_ems_discharge_slot(idx, timeslot)` | Set EMS plant discharge slot `idx` (1–3), or clear if `None` |
-| `set_ems_discharge_slot_start(idx, t)` | Set just the start of EMS discharge slot `idx` |
-| `set_ems_discharge_slot_end(idx, t)` | Set just the end of EMS discharge slot `idx` |
-| `set_ems_charge_target_soc(idx, soc)` | EMS charge slot `idx` target SOC (0–100%) |
-| `set_ems_discharge_target_soc(idx, soc)` | EMS discharge slot `idx` target SOC (0–100%) |
-| `set_ems_export_slot(idx, timeslot)` | Set EMS plant export slot `idx` (1–3), or clear if `None` |
-| `set_ems_export_slot_start(idx, t)` | Set just the start of EMS export slot `idx` |
-| `set_ems_export_slot_end(idx, t)` | Set just the end of EMS export slot `idx` |
-| `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) |
-| `set_ems_export_power_limit(watts)` | EMS plant export power limit (watts) |
+| Function | Description | Surface |
+|---|---|---|
+| `set_charge_slot(idx, timeslot, slot_map)` | Set charge slot `idx` (1-based) | |
+| `set_charge_slot_start(idx, t, slot_map)` | Set just the start of charge slot `idx` (or `None` to clear that end) | |
+| `set_charge_slot_end(idx, t, slot_map)` | Set just the end of charge slot `idx` (or `None` to clear that end) | |
+| `reset_charge_slot(idx, slot_map)` | Clear charge slot `idx` | |
+| `set_discharge_slot(idx, timeslot, slot_map)` | Set discharge slot `idx` (1-based) | |
+| `set_discharge_slot_start(idx, t, slot_map)` | Set just the start of discharge slot `idx` (or `None` to clear that end) | |
+| `set_discharge_slot_end(idx, t, slot_map)` | Set just the end of discharge slot `idx` (or `None` to clear that end) | |
+| `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` | |
+| `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` | ▣ ems |
+| `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` | ▣ ems |
+| `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` | ▣ ems |
+| `set_export_priority(priority)` | Set surplus-power dispatch priority (`ExportPriority`: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only | |
+| `set_enable_eps(enabled)` | Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only | |
+| `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) | ⛔ commands-only |
+| `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) | ⛔ commands-only |
+| `set_pause_slot_start(t)` | Set just the start of the battery pause slot | ⛔ commands-only |
+| `set_pause_slot_end(t)` | Set just the end of the battery pause slot | ⛔ commands-only |
+| `set_ems_plant(enabled)` | Enable/disable EMS plant control | ▣ ems |
+| `set_ems_charge_slot(idx, timeslot)` | Set EMS plant charge slot `idx` (1–3), or clear if `None` | ▣ ems |
+| `set_ems_charge_slot_start(idx, t)` | Set just the start of EMS charge slot `idx` | ▣ ems |
+| `set_ems_charge_slot_end(idx, t)` | Set just the end of EMS charge slot `idx` | ▣ ems |
+| `set_ems_discharge_slot(idx, timeslot)` | Set EMS plant discharge slot `idx` (1–3), or clear if `None` | ▣ ems |
+| `set_ems_discharge_slot_start(idx, t)` | Set just the start of EMS discharge slot `idx` | ▣ ems |
+| `set_ems_discharge_slot_end(idx, t)` | Set just the end of EMS discharge slot `idx` | ▣ ems |
+| `set_ems_charge_target_soc(idx, soc)` | EMS charge slot `idx` target SOC (0–100%) | ▣ ems |
+| `set_ems_discharge_target_soc(idx, soc)` | EMS discharge slot `idx` target SOC (0–100%) | ▣ ems |
+| `set_ems_export_slot(idx, timeslot)` | Set EMS plant export slot `idx` (1–3), or clear if `None` | ▣ ems |
+| `set_ems_export_slot_start(idx, t)` | Set just the start of EMS export slot `idx` | ▣ ems |
+| `set_ems_export_slot_end(idx, t)` | Set just the end of EMS export slot `idx` | ▣ ems |
+| `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) | ▣ ems |
+| `set_ems_export_power_limit(watts)` | EMS plant export power limit (watts) | ▣ ems |
 
 EMS plant scheduling commands (`set_ems_*`) target the EMS controller's own
 plant-config registers (HR 2040-2071) and use a fixed three-slot layout, so —
@@ -288,31 +329,30 @@ family silently targeting wrong registers on another.
 
 ### Operating modes
 
-| Function | Description |
-|---|---|
-| `set_mode_dynamic()` | Dynamic/Eco mode — maximise self-consumption |
-| `set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)` | Storage/timed discharge mode |
-| `set_discharge_mode_max_power()` | Set battery to discharge at max power |
-| `set_discharge_mode_to_match_demand()` | Set battery to match load demand |
-| `set_ac_charge(enabled)` | Enable or disable AC charging (three-phase) |
-| `set_force_charge(enabled)` | Force battery charge (three-phase) |
-| `set_force_discharge(enabled)` | Force battery discharge (three-phase) |
+| Function | Description | Surface |
+|---|---|---|
+| `set_mode_dynamic()` | Dynamic/Eco mode — maximise self-consumption | |
+| `set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)` | Storage/timed discharge mode | |
+| `set_discharge_mode_max_power()` | Set battery to discharge at max power | |
+| `set_discharge_mode_to_match_demand()` | Set battery to match load demand | |
+| `set_ac_charge(enabled)` | Enable or disable AC charging | ✦ three-phase |
+| `set_force_charge(enabled)` | Force battery charge | ✦ three-phase |
+| `set_force_discharge(enabled)` | Force battery discharge | ✦ three-phase |
 
 ### Battery calibration
 
-| Function | Description |
-|---|---|
-| `set_calibrate_battery_soc(val)` | Recalibrate SOC estimation: `0` = Stop, `1` = Start (default), `3` = Charge Only |
+| Function | Description | Surface |
+|---|---|---|
+| `set_calibrate_battery_soc(val)` | Recalibrate SOC estimation: `0` = Stop, `1` = Start (default), `3` = Charge Only | |
 
 ### System
 
-| Function | Description |
-|---|---|
-| `set_active_power_rate(target)` | Max inverter output as % of rated capacity |
-| `set_system_date_time(dt)` | Set inverter clock |
-| `set_enable_rtc(enabled)` | Enable Real Time Clock (persists settings to EEPROM) |
-| `set_inverter_reboot()` | Restart the inverter |
-| `set_ems_plant(enabled)` | Enable EMS plant control |
+| Function | Description | Surface |
+|---|---|---|
+| `set_active_power_rate(target)` | Max inverter output as % of rated capacity | |
+| `set_system_date_time(dt)` | Set inverter clock | |
+| `set_enable_rtc(enabled)` | Enable Real Time Clock (persists settings to EEPROM) | |
+| `set_inverter_reboot()` | Restart the inverter | |
 
 ## Serialisation
 

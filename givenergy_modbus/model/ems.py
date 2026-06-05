@@ -5,6 +5,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict, computed_field, create_model
 
+from givenergy_modbus.client.commands import _EmsCommands
 from givenergy_modbus.model.devices import InverterSummary
 from givenergy_modbus.model.inverter import Status
 from givenergy_modbus.model.meter import MeterStatus
@@ -165,8 +166,15 @@ _EmsBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Ems(_EmsBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
-    """GivEnergy EMS plant-level data (device address 0x11)."""
+class Ems(_EmsBase, _EmsCommands, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
+    """GivEnergy EMS plant-level data (device address 0x11).
+
+    Composes the `_EmsCommands` mixin so EMS-targeted writes (`set_ems_plant`,
+    `set_ems_charge_slot`, `set_export_slot`, etc.) are exposed as instance
+    methods on the EMS object. The mixin's `WRITE_SAFE_REGISTERS` covers the
+    EMS HR block (2040, 2044–2071); the inverter-level allowlist intentionally
+    does not apply here — EMS is a peer device, not an inverter.
+    """
 
     REGISTER_GETTER: ClassVar[type[RegisterGetter]] = EmsRegisterGetter
 
