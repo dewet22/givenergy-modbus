@@ -8,6 +8,23 @@ in [`../README.md`](../README.md).
 | File | Vantage |
 |---|---|
 | `hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log` | HYBRID_GEN1 dongle, ~1 hr (1840 frames) |
+| `hybrid_gen1_arm449_0x11_poll_10min.log` | Library polling at `0x11`, ~10 min (482 frames) |
+
+### `hybrid_gen1_arm449_0x11_poll_10min.log`
+
+Recorded with the library polling the inverter at device `0x11` (inverter_address
+overridden to `0x11` for HYBRID_GEN1 during recording). Prerequisite fixture for the
+`0x11` unification cleanup tracked in
+[#189](https://github.com/dewet22/givenergy-modbus/issues/189).
+
+Banks in this capture:
+- `0x11`: HR(0, 60, 120) + IR(0, 120, 180) — inverter config and measurements
+- `0x31`: HR(0, 60, 120) + IR(0, 60, 120, 180, 240) — passive HA traffic on the bus
+- `0x30`, `0x32`–`0x37`: battery IR(60) blocks
+
+Notable difference from the passive dongle capture: HR config banks now appear under
+`0x11`, confirming the "identity-only at `0x11`" claim in the prior `inverter_address_for`
+docstring was false — the inverter serves its full register file at both addresses.
 
 ## Topology
 
