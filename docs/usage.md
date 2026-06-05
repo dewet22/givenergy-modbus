@@ -245,10 +245,12 @@ case-by-case.
 
 | Surface | Composed onto | Marker in tables below |
 |---|---|---|
-| `_InverterCommands` | `SinglePhaseInverter`, `ThreePhaseInverter` | _(none — universal)_ |
+| `_InverterCommands` | `SinglePhaseInverter`, `ThreePhaseInverter` | _(none — inherited base surface; **single-phase-validated**, see the ⚠️ note above)_ |
 | `_ThreePhaseCommands` | `ThreePhaseInverter` only | ✦ three-phase |
 | `_EmsCommands` | `Ems` only | ▣ ems |
 | `commands.*` only | _(not exposed as mixin method)_ | ⛔ commands-only |
+
+An unmarked row means the method is inherited from `_InverterCommands` on both inverter types — **not** that it writes correct registers on three-phase. Per the warning above, several of these are single-phase-hardcoded and remain single-phase-validated until the model-aware routing in #203 / #106.
 
 ### Charging
 
