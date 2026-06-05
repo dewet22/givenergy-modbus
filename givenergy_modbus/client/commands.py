@@ -714,8 +714,9 @@ class _InverterCommands:
         def slot_map(self) -> SlotMap: ...
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
-    # Excludes 318-320 (pause mode), 1112/1122/1123 (three-phase), and
-    # 2040/2062-2069 (EMS). Also excludes 313/314 (BATTERY_*_LIMIT_AC): these are
+    # Excludes 318-320 (pause mode), the native three-phase registers (1078 reserve,
+    # 1112/1122/1123 enables, 1113-1116/1118-1121 slots — added by _ThreePhaseCommands),
+    # and 2040/2062-2069 (EMS). Also excludes 313/314 (BATTERY_*_LIMIT_AC): these are
     # the *single-phase* AC charge/discharge limits, but ThreePhaseInverter remaps
     # the read-backs to HR1110/1108, so read != write on three-phase AC. A correct
     # three-phase write needs per-model command-register selection (#75); until that
@@ -930,11 +931,14 @@ class _ThreePhaseCommands:
 
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = _InverterCommands.WRITE_SAFE_REGISTERS | frozenset(
         {
+            1078,  # BATTERY_RESERVE_SOC — set_battery_reserve_soc (three-phase-only reserve)
             1112,  # AC_CHARGE_ENABLE
+            1113, 1114, 1115, 1116,  # CHARGE_SLOT_1/2 — inherited slot setters via THREE_PHASE_SLOTS
+            1118, 1119, 1120, 1121,  # DISCHARGE_SLOT_1/2 — inherited slot setters via THREE_PHASE_SLOTS
             1122,  # FORCE_DISCHARGE_ENABLE
             1123,  # FORCE_CHARGE_ENABLE
         }
-    )
+    )  # fmt: skip
 
     def set_ac_charge(self, enabled: bool) -> list[TransparentRequest]:
         """Enable or disable AC charging (three-phase only)."""

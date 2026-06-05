@@ -190,7 +190,13 @@ await client.one_shot_command(inverter.set_enable_discharge(True))
 await client.one_shot_command(inverter.set_charge_slot(1, my_timeslot))
 ```
 
-The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The base `_InverterCommands` mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`; methods carrying no mixin marker in the tables below are universally available.
+The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The base `_InverterCommands` mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`; most methods carrying no mixin marker in the tables below apply to both.
+
+> **Not yet fully model-aware.** A few inherited methods delegate to primitives with hardcoded register numbers and are *not* safe to treat as universal until per-model command routing lands ([#75](https://github.com/dewet22/givenergy-modbus/issues/75), ultimately [#106](https://github.com/dewet22/givenergy-modbus/issues/106)):
+> - `set_mode_storage()` hardcodes the **single-phase** discharge slots (HR 44/45, 56/57), so on a three-phase unit it writes the wrong register family.
+> - `set_battery_reserve_soc()` targets the **three-phase-only** HR(1078); single-phase units use `set_battery_soc_reserve()` (HR 110).
+>
+> Prefer the slot setters (`set_charge_slot` / `set_discharge_slot`), which read the instance's `slot_map` and emit the correct registers per model.
 
 Three-phase inverters additionally carry the `_ThreePhaseCommands` mixin (marker: ✦ three-phase), so `set_ac_charge`, `set_force_charge`, and `set_force_discharge` are reachable as instance methods on `ThreePhaseInverter`:
 

@@ -195,9 +195,13 @@ def test_single_phase_does_not_inherit_three_phase_commands():
 
 
 def test_three_phase_write_safe_registers_is_superset_of_base():
-    """Three-phase allowlist must contain everything the base allows plus the 1112/1122/1123 trio."""
+    """Three-phase allowlist = base plus the native three-phase registers the inherited command surface writes."""
     assert _InverterCommands.WRITE_SAFE_REGISTERS.issubset(_ThreePhaseCommands.WRITE_SAFE_REGISTERS)
-    assert {1112, 1122, 1123}.issubset(_ThreePhaseCommands.WRITE_SAFE_REGISTERS)
+    # 1078 (set_battery_reserve_soc), 1113-1116 / 1118-1121 (charge/discharge slots 1-2 via
+    # THREE_PHASE_SLOTS), 1112 / 1122 / 1123 (set_ac_charge / set_force_charge / set_force_discharge).
+    assert {1078, 1112, 1113, 1114, 1115, 1116, 1118, 1119, 1120, 1121, 1122, 1123}.issubset(
+        _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    )
     # AC-limit / pause-mode / EMS registers are still excluded — those mixins haven't landed yet.
     assert {313, 314, 318, 319, 320, 2040, 2062}.isdisjoint(_ThreePhaseCommands.WRITE_SAFE_REGISTERS)
 
@@ -316,3 +320,16 @@ def test_ems_mixin_delegates_to_underlying_primitive():
 def test_ems_command_delegates_to_primitive(method_name, args):
     """Every remaining thin `_EmsCommands` wrapper returns exactly what its module-level primitive does."""
     assert getattr(_ems(), method_name)(*args) == getattr(commands, method_name)(*args)
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    ["set_ems_charge_target_soc", "set_ems_discharge_target_soc", "set_ems_export_target_soc"],
+)
+def test_ems_target_soc_validation_holds_through_mixin(method_name):
+    """The slot-index [1-3] and SoC [0-100] bounds enforced in the primitive must survive delegation."""
+    em = _ems()
+    with pytest.raises(ValueError, match=r"\[1-3\]"):
+        getattr(em, method_name)(4, 50)  # index out of range
+    with pytest.raises(ValueError, match=r"\[0-100\]"):
+        getattr(em, method_name)(1, 150)  # SoC out of range
