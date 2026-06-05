@@ -31,12 +31,16 @@ FIXTURE_DIR = Path("tests/fixtures/captures/hybrid_2_bat_a")
 async def main(host: str, duration: float) -> None:
     # Monkey-patch before importing Client so PlantCapabilities derives 0x11.
     from givenergy_modbus.model import inverter as _inv_mod
+
     _orig = _inv_mod.inverter_address_for
+
     def _patched(model):
         from givenergy_modbus.model.inverter import Model
+
         if model in (Model.AC, Model.HYBRID_GEN1):
             return 0x11
         return _orig(model)
+
     _inv_mod.inverter_address_for = _patched
 
     from givenergy_modbus.client.client import Client
@@ -46,6 +50,7 @@ async def main(host: str, duration: float) -> None:
     FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
 
     frames: list[str] = []
+
     def sink(direction: str, data: bytes) -> None:
         ts = datetime.now(timezone.utc).isoformat()
         frames.append(f"{ts} {direction} {data.hex()}")
@@ -89,16 +94,18 @@ async def main(host: str, duration: float) -> None:
             poll_task.cancel()
             try:
                 await poll_task
-            except (asyncio.CancelledError, Exception):
+            except asyncio.CancelledError, Exception:
                 pass
     finally:
         await client.close()
 
     outpath.write_text("\n".join(frames) + "\n", encoding="utf-8")
     print(f"wrote {len(frames)} frames to {outpath}")
-    print("verify: uv run python -c \""
-          "from givenergy_modbus.testing.mock_plant import _iter_capture_frames; "
-          f"print(len(_iter_capture_frames('{outpath}')), 'frames')\"")
+    print(
+        'verify: uv run python -c "'
+        "from givenergy_modbus.testing.mock_plant import _iter_capture_frames; "
+        f"print(len(_iter_capture_frames('{outpath}')), 'frames')\""
+    )
 
 
 if __name__ == "__main__":
