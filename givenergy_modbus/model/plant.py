@@ -538,7 +538,14 @@ class Plant(GivEnergyBaseModel):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
             else:
-                self.register_caches[device_address].update({HR(pdu.register): pdu.value})
+                # Writes target the inverter and the echo comes back on the write address
+                # (0x11), but the model reads caps.inverter_address (0x31 for AC/HYBRID_GEN1,
+                # 0x11 otherwise). 0x11 and 0x31 are the same device (a facade), so route the
+                # echo to where reads land — otherwise plant.inverter won't reflect the write
+                # until the next load_config(), and refresh() (IR-only) never will. The cache
+                # may not exist yet if the write precedes the first read at inverter_address.
+                target = self.capabilities.inverter_address if self.capabilities is not None else device_address
+                self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
     def _commit_bank(self, device_address: int, incoming: dict) -> None:
         """Validate incoming register bank against bounds and commit if clean."""

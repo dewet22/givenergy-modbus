@@ -1437,6 +1437,63 @@ def test_commit_bank_unknown_device_skips_validation(plant: Plant):
     assert plant.register_caches[0x99].get(IR(5)) == 65535
 
 
+def _make_write_pdu(register: int, value: int, device_address: int = 0x11) -> WriteHoldingRegisterResponse:
+    """Build a WriteHoldingRegisterResponse with the envelope serials update() expects."""
+    pdu = WriteHoldingRegisterResponse(register=register, value=value, device_address=device_address)
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    return pdu
+
+
+@pytest.mark.parametrize(
+    ("model", "read_addr"),
+    [(Model.HYBRID_GEN1, 0x31), (Model.HYBRID, 0x11)],
+)
+def test_write_echo_routed_to_inverter_address(model: Model, read_addr: int):
+    """A write echo lands in the cache the model reads (caps.inverter_address).
+
+    Writes go out to 0x11 and the response echoes 0x11, but for AC/HYBRID_GEN1 the model
+    reads caps.inverter_address = 0x31. The echo must be routed there so plant.inverter
+    reflects the write immediately — without a load_config(), and even though refresh() is
+    IR-only. For 0x11 models this is a no-op (echo and reads already share a cache).
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(device_type=model)
+    assert plant.capabilities.inverter_address == read_addr  # guard the premise
+
+    # CHARGE_TARGET_SOC = HR(116); the response echoes the 0x11 write address.
+    plant.update(_make_write_pdu(116, 85))
+
+    assert plant.register_caches[read_addr].get(HR(116)) == 85
+    # Visible on the model with no load_config/refresh (model_dump is the mypy-clean read).
+    assert plant.inverter.model_dump()["charge_target_soc"] == 85
+
+
+def test_write_echo_not_left_at_wire_address_for_0x31_models():
+    """Regression: for HYBRID_GEN1 the echo must NOT remain at the 0x11 wire address.
+
+    Pre-fix the value landed in register_caches[0x11], which plant.inverter (reading 0x31)
+    never sees — the reported bug where a write only showed up after load_config().
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_GEN1)
+
+    plant.update(_make_write_pdu(116, 85))
+
+    assert HR(116) not in plant.register_caches.get(0x11, RegisterCache())
+    assert plant.register_caches[0x31].get(HR(116)) == 85
+
+
+def test_write_echo_without_capabilities_falls_back_to_wire_address():
+    """With no capabilities (write before detect()) the echo stays at the wire address."""
+    plant = Plant()
+    assert plant.capabilities is None
+
+    plant.update(_make_write_pdu(116, 85))
+
+    assert plant.register_caches[0x11].get(HR(116)) == 85
+
+
 def test_update_stores_0x11_under_its_true_address(plant: Plant):
     """A response at 0x11 must land in register_caches[0x11], not be rewritten to 0x32.
 
