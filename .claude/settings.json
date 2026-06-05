@@ -2,14 +2,11 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": {
-          "tool_name": "Edit|Write",
-          "file_pattern": "**/*.py"
-        },
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "uv run ruff check --fix \"$CLAUDE_TOOL_INPUT_FILE_PATH\" && uv run ruff format \"$CLAUDE_TOOL_INPUT_FILE_PATH\"",
+            "command": "case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in *.py) uv run ruff check --fix \"$CLAUDE_TOOL_INPUT_FILE_PATH\" && uv run ruff format \"$CLAUDE_TOOL_INPUT_FILE_PATH\";; esac",
             "statusMessage": "Linting and formatting..."
           }
         ]
