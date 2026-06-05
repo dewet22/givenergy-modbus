@@ -8,7 +8,9 @@ For each candidate address (0x11, 0x31, 0x32) it reads HR(0,60) (identity) and
 HR(60,60) (config — includes HR116 charge-target), several times with patient
 timeouts so contention from other clients (GivTCP/app) doesn't masquerade as a
 dead address. Reports a response rate per bank plus the DTC and charge-target
-seen, so we can tell identity-only from full-data.
+seen, so we can tell identity-only from full-data — then compares 0x11 against
+0x31 value-for-value to tell a full facade (same registers, two addresses) from
+genuinely distinct data.
 
 NO writes whatsoever — purely diagnostic.
 
@@ -64,6 +66,25 @@ async def main(host: str) -> None:
             "\nReading: an address that serves the full inverter is one where BOTH banks respond.\n"
             "Identity-only (e.g. HR(0,60) ok but HR(60,60) dead) means it's not the data address."
         )
+
+        # Facade check: does 0x11 mirror 0x31 value-for-value across the config banks just
+        # read (HR 0-119)? HR config registers are static, so direct equality is meaningful
+        # — but skip HR(35)-HR(40), the system_time RTC, which ticks between the two
+        # sequential reads and would masquerade as a data difference (as IR measurements do).
+        clock = set(range(35, 41))  # system_time: year/month/day/hour/minute/second
+        c11 = client.plant.register_caches.get(0x11, RegisterCache())
+        c31 = client.plant.register_caches.get(0x31, RegisterCache())
+        shared = [HR(r) for r in range(120) if r not in clock and HR(r) in c11 and HR(r) in c31]
+        if not shared:
+            print("\nfacade: cannot compare 0x11 vs 0x31 (one address served no config banks).")
+        else:
+            diffs = [r for r in shared if c11[r] != c31[r]]
+            if diffs:
+                print(f"\nfacade: 0x11 and 0x31 differ at {len(diffs)}/{len(shared)} HR registers — not a facade.")
+                for r in diffs[:8]:
+                    print(f"  {r}: 0x11={c11[r]} 0x31={c31[r]}")
+            else:
+                print(f"\nfacade: 0x11 mirrors 0x31 across all {len(shared)} shared HR registers — full facade.")
     finally:
         await client.close()
 
