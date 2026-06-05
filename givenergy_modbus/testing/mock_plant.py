@@ -117,10 +117,14 @@ class MockPlant:
         *,
         inverter_serial: str = _FALLBACK_SERIAL,
         adapter_serial: str = _FALLBACK_SERIAL,
+        log_writes: bool = False,
     ) -> None:
         self.devices = devices
         self.inverter_serial = inverter_serial or _FALLBACK_SERIAL
         self.adapter_serial = adapter_serial or _FALLBACK_SERIAL
+        # When True, inbound writes are logged at INFO (so app-driven write-address
+        # discovery is visible without -v); tests leave it False to stay quiet.
+        self.log_writes = log_writes
         self._server: asyncio.AbstractServer | None = None
 
     @classmethod
@@ -209,8 +213,12 @@ class MockPlant:
                     if reply is not None:
                         writer.write(reply)
                         await writer.drain()
-        except asyncio.CancelledError, ConnectionError:
+        except asyncio.CancelledError:
             raise
+        except ConnectionError:
+            # Client dropped the socket — a normal disconnect (e.g. an app that opens a
+            # fresh connection per operation and resets the previous one), not a mock error.
+            _logger.debug("MockPlant client disconnected")
         except Exception:  # noqa: BLE001 — a mock should keep serving other clients  # pragma: no cover
             _logger.exception("MockPlant handler error")  # pragma: no cover
         finally:
@@ -218,7 +226,8 @@ class MockPlant:
 
     def _respond(self, pdu: object) -> bytes | None:
         if isinstance(pdu, WriteHoldingRegisterRequest):
-            _logger.debug(
+            _logger.log(
+                logging.INFO if self.log_writes else logging.DEBUG,
                 "→ WriteHoldingRegisterRequest device=0x%02x reg=%d val=%d",
                 pdu.device_address,
                 pdu.register,
@@ -293,7 +302,12 @@ class MockPlant:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI: serve a mock plant seeded from one or more capture files."""
+    """CLI: serve a mock plant seeded from one or more capture files.
+
+    Drive the official app (or this library) against it and watch which device address
+    inbound writes target — they are logged at INFO. The serial/firmware overrides let you
+    impersonate a specific unit so the app accepts the device.
+    """
     parser = argparse.ArgumentParser(description="Serve a mock GivEnergy plant from a wire capture.")
     parser.add_argument("--capture", required=True, nargs="+", help="capture .log file(s) to seed from")
     parser.add_argument(
@@ -302,13 +316,29 @@ def main(argv: list[str] | None = None) -> int:
         help="bind host (default: 127.0.0.1; pass 0.0.0.0 to expose on the LAN for an external client)",
     )
     parser.add_argument("--port", type=int, default=8899, help="bind port (default: 8899)")
-    parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
+    parser.add_argument("--serial", default=None, help="inverter serial to advertise (default: from capture)")
+    parser.add_argument("--arm-fw", type=int, default=None, help="override ARM firmware HR(21) in every seeded device")
+    parser.add_argument("--dsp-fw", type=int, default=None, help="override DSP firmware HR(19) in every seeded device")
+    parser.add_argument("-v", "--verbose", action="store_true", help="debug logging (incl. reads)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
+    plant = plant_from_capture(*args.capture)
+    for reg, val in ((21, args.arm_fw), (19, args.dsp_fw)):  # HR(21)=ARM, HR(19)=DSP firmware version
+        if val is not None:
+            for cache in plant.register_caches.values():
+                if HR(reg) in cache:
+                    cache[HR(reg)] = val
+    mock = MockPlant(
+        plant.register_caches,
+        inverter_serial=args.serial or plant.inverter_serial_number,
+        adapter_serial=plant.data_adapter_serial_number,
+        log_writes=True,
+    )
+
     async def _run() -> None:
-        mock = MockPlant.from_capture(*args.capture)
-        await mock.start(args.host, args.port)
+        host, port = await mock.start(args.host, args.port)
+        _logger.info("serving %d devices on %s:%s — inbound writes logged at INFO", len(mock.devices), host, port)
         await mock.serve_forever()
 
     try:
