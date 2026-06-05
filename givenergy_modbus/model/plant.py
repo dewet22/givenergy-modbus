@@ -141,7 +141,7 @@ def _coerce_model(value: Any) -> Model | None:
         return value
     try:
         return Model[value]
-    except KeyError, TypeError:
+    except (KeyError, TypeError):
         pass
     try:
         return Model(str(value))
@@ -377,7 +377,7 @@ class PlantCapabilities(BaseModel):
                 return v
             try:
                 return Model[v]
-            except KeyError, TypeError:
+            except (KeyError, TypeError):
                 return Model(str(v))
 
         # `.get(k) or []` (not `.get(k, [])`) so an explicit `null` in JSON for
@@ -592,7 +592,7 @@ class Plant(GivEnergyBaseModel):
         for i in range(6):
             try:
                 battery = Battery.from_register_cache(self.register_caches[i + 0x32])
-            except KeyError, ValueError:
+            except (KeyError, ValueError):
                 # KeyError: no cache for that device yet. ValueError: an enum-typed
                 # register held a value outside the known set. Either way, treat as
                 # "not a battery" and stop probing rather than aborting the caller.

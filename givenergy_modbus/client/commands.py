@@ -3,7 +3,8 @@
 from datetime import datetime
 from datetime import time as dt_time
 from typing import TYPE_CHECKING, ClassVar
-from warnings import deprecated  # type: ignore[attr-defined]
+
+from typing_extensions import deprecated
 
 from givenergy_modbus.exceptions import PlantNotDetected
 from givenergy_modbus.model import TimeSlot
