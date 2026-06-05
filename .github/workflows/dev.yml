@@ -6,8 +6,10 @@ on:
   pull_request:
     branches: ['main', 'v[0-9]+.[0-9]+']
   schedule:
-    # Weekly cross-OS safety net (Mondays 06:30 UTC). Per-PR CI is Linux-only;
-    # this catches macOS/Windows-specific regressions without slowing every push.
+    # Weekly safety net (Mondays 06:30 UTC): the newer-Python matrix (3.12-3.14)
+    # and the cross-OS runs. Per-PR CI tests only the 3.11 floor to stay fast;
+    # this catches newer-version and macOS/Windows regressions without slowing
+    # every push.
     - cron: '30 6 * * 1'
 
   # Allows you to run this workflow manually from the Actions tab
@@ -15,8 +17,10 @@ on:
 
 jobs:
   test:
-    # Canonical per-PR check: full tox (tests + ruff + mypy + bandit + build + docs).
-    # lint/build/docs are OS-independent, so they run here only.
+    # Canonical per-PR check: the 3.11 floor + ruff + mypy + bandit + build + docs.
+    # The floor catches the common "used a too-new feature" failure; newer Python
+    # (3.12-3.14) runs weekly (see python-matrix). lint/build/docs are
+    # version-independent and run here only. Local `tox` still runs the full matrix.
     runs-on: ubuntu-latest
 
     steps:
@@ -28,12 +32,30 @@ jobs:
           enable-cache: true
           python-version: '3.14'
       - name: Build & test with tox
-        run: uv run --group test tox
+        run: uv run --group test tox -e py311,format,lint,build
       - uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           files: coverage.xml
+
+  python-matrix:
+    # Newer Python versions (3.12-3.14) — weekly schedule or manual dispatch only,
+    # never on a PR. Per-PR CI covers the 3.11 floor; this is the safety net for
+    # newer-version regressions (removed deprecations, behaviour changes).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: '3.14'
+      - name: Test with tox
+        run: uv run --group test tox -e py312,py313,py314
 
   cross-os:
     # macOS + Windows run the test env only — and only on the weekly schedule or a
