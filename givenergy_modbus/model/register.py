@@ -336,7 +336,7 @@ class RegisterGetter:
                 # decodes to None" posture as the out-of-bounds guard below (#82, #180).
                 try:
                     val = defn.post_conv(val)
-                except ValueError, TypeError:
+                except (ValueError, TypeError):
                     _logger.debug("%r is not a valid %s", val, defn.post_conv.__name__)
                     return None
             else:

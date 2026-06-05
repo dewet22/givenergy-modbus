@@ -94,7 +94,7 @@ async def main(host: str, duration: float) -> None:
             poll_task.cancel()
             try:
                 await poll_task
-            except asyncio.CancelledError, Exception:
+            except (asyncio.CancelledError, Exception):
                 pass
     finally:
         await client.close()

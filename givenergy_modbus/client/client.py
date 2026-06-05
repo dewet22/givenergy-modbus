@@ -664,7 +664,7 @@ class Client:
                             batt_addr,
                         )
                         continue
-                except KeyError, ValueError:
+                except (KeyError, ValueError):
                     continue
                 caps.lv_battery_addresses.append(batt_addr)
             _logger.info(
