@@ -8,11 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/post-v2-improvement-plan/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/">
       
       
-        <link rel="prev" href="../v2.1-roadmap/">
+        <link rel="prev" href="../register-identification/">
       
+      
+        <link rel="next" href="../contributing/">
       
       
         
@@ -23,7 +25,7 @@
     
     
       
-        <title>Post-v2.0 improvement plan - GivEnergy Modbus</title>
+        <title>Hardware & firmware quirks - GivEnergy Modbus</title>
       
     
     
@@ -76,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#post-v20-improvement-plan" class="md-skip">
+        <a href="#hardware-firmware-quirks" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Post-v2.0 improvement plan
+              Hardware & firmware quirks
             
           </span>
         </div>
@@ -390,8 +392,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -403,11 +407,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -428,7 +432,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -471,10 +475,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../hardware-firmware-quirks/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware & firmware quirks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -490,6 +519,107 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#hardware-firmware-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware &amp; firmware quirks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Register address reuse across firmware (IR180-183)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The protocol doc has no firmware→register map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writable "Set" baselines masquerading as live counters (HR4102-4103)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Units that contradict their own description (HR111/112)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc unit corrections have shipped silently mid-protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -646,10 +776,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -661,11 +789,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -686,7 +814,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -729,35 +857,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Post-v2.0 improvement plan
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../post-v2-improvement-plan/" class="md-nav__link">
         
   
   
@@ -773,162 +876,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Post-v2.0 Improvement Plan
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Existing GitHub coverage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Model-aware write policy at the Client boundary
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Dry-run write validation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Internal refresh serialization
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Fail CI on async resource warnings
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Register provenance and confidence
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Broader golden-frame fixtures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -966,22 +913,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#post-v20-improvement-plan" class="md-nav__link">
+  <a href="#hardware-firmware-quirks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Post-v2.0 Improvement Plan
+        Hardware &amp; firmware quirks
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Post-v2.0 Improvement Plan">
+    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#existing-github-coverage" class="md-nav__link">
+  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Existing GitHub coverage
+        Register address reuse across firmware (IR180-183)
       
     </span>
   </a>
@@ -989,10 +936,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1-model-aware-write-policy-at-the-client-boundary" class="md-nav__link">
+  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Model-aware write policy at the Client boundary
+        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
       
     </span>
   </a>
@@ -1000,10 +947,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-dry-run-write-validation" class="md-nav__link">
+  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Dry-run write validation
+        The protocol doc has no firmware→register map
       
     </span>
   </a>
@@ -1011,10 +958,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-internal-refresh-serialization" class="md-nav__link">
+  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Internal refresh serialization
+        Writable "Set" baselines masquerading as live counters (HR4102-4103)
       
     </span>
   </a>
@@ -1022,10 +969,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-fail-ci-on-async-resource-warnings" class="md-nav__link">
+  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Fail CI on async resource warnings
+        Units that contradict their own description (HR111/112)
       
     </span>
   </a>
@@ -1033,65 +980,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#5-register-provenance-and-confidence" class="md-nav__link">
+  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Register provenance and confidence
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-broader-golden-frame-fixtures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Broader golden-frame fixtures
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-stricter-type-checking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Stricter type checking
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-cleaner-release-artifact-checks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Cleaner release artifact checks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-documentation-warning-cleanup" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Documentation warning cleanup
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#10-public-api-compatibility-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        10. Public API compatibility tests
+        Doc unit corrections have shipped silently mid-protocol
       
     </span>
   </a>
@@ -1123,211 +1015,113 @@
   
 
 
-  <h1>Post-v2.0 improvement plan</h1>
+  <h1>Hardware & firmware quirks</h1>
 
-<h2 id="post-v20-improvement-plan">Post-v2.0 Improvement Plan<a class="headerlink" href="#post-v20-improvement-plan" title="Permanent link">&para;</a></h2>
-<p>This plan captures concrete follow-up work after the v2.0 release. The focus is
-hardware safety, protocol reliability, and maintainability rather than new user
-features.</p>
-<h3 id="existing-github-coverage">Existing GitHub coverage<a class="headerlink" href="#existing-github-coverage" title="Permanent link">&para;</a></h3>
-<p>The repository currently tracks v2.1 work with a <code>v2.1</code> issue label rather than
-a GitHub milestone. Some items below overlap existing issues:</p>
-<table>
-<thead>
-<tr>
-<th>Plan item</th>
-<th>Existing coverage</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Model-aware write policy at the Client boundary</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>, which moves commands onto inverter models so model-specific command contracts are enforceable. The extra Client-boundary rejection remains distinct.</td>
-</tr>
-<tr>
-<td>Dry-run write validation</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Internal refresh serialization</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Fail CI on async resource warnings</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Register provenance and confidence</td>
-<td>Partly covered by <a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a>, which tracks field-validation of inherited mappings. Provenance metadata remains distinct.</td>
-</tr>
-<tr>
-<td>Broader golden-frame fixtures</td>
-<td>Adjacent to closed <a href="https://github.com/dewet22/givenergy-modbus/issues/66">#66</a>, which shipped the in-cli capture mechanism, and open <a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a>, the active corruption-pattern investigation that produces sample captures as a byproduct. Committing those captures as durable, redacted test fixtures across device families remains distinct work.</td>
-</tr>
-<tr>
-<td>Stricter type checking</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Cleaner release artifact checks</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Documentation warning cleanup</td>
-<td>Not currently captured.</td>
-</tr>
-<tr>
-<td>Public API compatibility tests</td>
-<td>Not currently captured.</td>
-</tr>
-</tbody>
-</table>
-<p>The remaining v2.1-labelled issues are tracked independently of this plan:
-<a href="https://github.com/dewet22/givenergy-modbus/issues/65">#65</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/71">#71</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/72">#72</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/73">#73</a>,
-<a href="https://github.com/dewet22/givenergy-modbus/issues/74">#74</a>, and
-<a href="https://github.com/dewet22/givenergy-modbus/issues/76">#76</a>. They're
-roadmap items rather than the infrastructure focus of this document.</p>
-<h3 id="1-model-aware-write-policy-at-the-client-boundary">1. Model-aware write policy at the Client boundary<a class="headerlink" href="#1-model-aware-write-policy-at-the-client-boundary" title="Permanent link">&para;</a></h3>
-<p>Add a model-aware write policy check at the <code>Client</code> execution boundary,
-complementing the existing PDU-level enforcement.</p>
-<p>Current protection runs in <code>WriteHoldingRegisterRequest.ensure_valid_state()</code>
-(invoked from <code>encode()</code>) against the global <code>WRITE_SAFE_REGISTERS</code> allowlist —
-so it already fires at execution time, but only knows about register-level
-safety, not the detected inverter model. Model-specific command mixins define
-smaller safe-write sets, but callers can still manually construct write PDUs
-that bypass them.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>Client.one_shot_command()</code> and <code>Client.execute()</code> can reject writes that are
-  not valid for the detected inverter model.</li>
-<li>The default remains conservative when model capabilities are unknown.</li>
-<li>Tests cover direct <code>WriteHoldingRegisterRequest</code> construction, not just
-  high-level command helpers.</li>
-</ul>
-<h3 id="2-dry-run-write-validation">2. Dry-run write validation<a class="headerlink" href="#2-dry-run-write-validation" title="Permanent link">&para;</a></h3>
-<p>Add a supported way to validate write requests without sending frames to
-hardware.</p>
-<p>Target outcome:</p>
-<ul>
-<li>A caller can encode and validate request lists before transmission.</li>
-<li>Validation reports the register, value, device address, and reason for any
-  rejection.</li>
-<li>Downstream integrations can use this before enabling live writes.</li>
-</ul>
-<p>Possible API shapes:</p>
-<ul>
-<li><code>client.validate_requests(requests)</code></li>
-<li><code>client.one_shot_command(requests, dry_run=True)</code></li>
-</ul>
-<h3 id="3-internal-refresh-serialization">3. Internal refresh serialization<a class="headerlink" href="#3-internal-refresh-serialization" title="Permanent link">&para;</a></h3>
-<p>Move refresh serialization into <code>Client</code> instead of relying only on downstream
-consumers to lock around polling.</p>
-<p>Current documentation correctly says callers should avoid overlapping
-<code>refresh_plant()</code> calls. An internal <code>asyncio.Lock</code> would make accidental
-overlap safer.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>detect()</code>, <code>load_config()</code>, <code>refresh()</code>, and <code>refresh_plant()</code> cannot mutate
-  <code>plant</code> concurrently.</li>
-<li>Writes can still interleave where safe.</li>
-<li>Tests cover overlapping refresh calls and detect/refresh interaction.</li>
-</ul>
-<h3 id="4-fail-ci-on-async-resource-warnings">4. Fail CI on async resource warnings<a class="headerlink" href="#4-fail-ci-on-async-resource-warnings" title="Permanent link">&para;</a></h3>
-<p>Keep async test leaks visible by treating unawaited coroutine and unraisable
-exception warnings as failures.</p>
-<p>Target outcome:</p>
-<ul>
-<li>CI fails on <code>PytestUnraisableExceptionWarning</code>.</li>
-<li>CI fails on unawaited coroutine <code>RuntimeWarning</code>.</li>
-<li>The existing timeout test remains warning-clean.</li>
-</ul>
-<p>Suggested pytest flags:</p>
-<div class="highlight"><pre><span></span><code>pytest<span class="w"> </span>-W<span class="w"> </span>error::pytest.PytestUnraisableExceptionWarning<span class="w"> </span>-W<span class="w"> </span>error::RuntimeWarning<span class="w"> </span>tests
-</code></pre></div>
-<h3 id="5-register-provenance-and-confidence">5. Register provenance and confidence<a class="headerlink" href="#5-register-provenance-and-confidence" title="Permanent link">&para;</a></h3>
-<p>Make provisional register knowledge explicit in the model definitions.</p>
-<p>Some LUT entries come from field captures or related projects rather than
-official documentation. That is normal for this domain, but the source and
-confidence should be visible.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>RegisterDefinition</code> can optionally carry provenance metadata.</li>
-<li>Docs can distinguish verified, field-observed, and provisional registers.</li>
-<li>High-risk writes require stronger provenance before being added to safe-write
-  sets.</li>
-</ul>
-<p>Possible metadata:</p>
-<ul>
-<li><code>source="field-capture"</code></li>
-<li><code>source="GivTCP"</code></li>
-<li><code>verified=True</code></li>
-<li><code>risk="provisional"</code></li>
-</ul>
-<h3 id="6-broader-golden-frame-fixtures">6. Broader golden-frame fixtures<a class="headerlink" href="#6-broader-golden-frame-fixtures" title="Permanent link">&para;</a></h3>
-<p>Add redacted binary TX/RX fixtures for representative device families and use
-them in decoder/framer/client tests.</p>
-<p>Target fixture coverage:</p>
-<ul>
-<li>Single-phase inverter</li>
-<li>Three-phase inverter</li>
-<li>EMS</li>
-<li>Gateway</li>
-<li>HV BCU/BMU stack</li>
-<li>External meter</li>
-<li>Write response success and error cases</li>
-</ul>
-<p>Target outcome:</p>
-<ul>
-<li>Protocol changes can be checked against real frame shapes.</li>
-<li>Redaction remains guaranteed for captured serial numbers.</li>
-<li>Edge cases are represented by durable fixtures rather than only constructed
-  PDUs.</li>
-</ul>
-<h3 id="7-stricter-type-checking">7. Stricter type checking<a class="headerlink" href="#7-stricter-type-checking" title="Permanent link">&para;</a></h3>
-<p>Gradually enable <code>mypy --check-untyped-defs</code>.</p>
-<p>Current mypy output notes that several untyped function bodies are not checked.
-This is not urgent, but it is a useful way to catch mistakes in protocol and
-test helper code.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Enable <code>check_untyped_defs = true</code> after fixing the first wave of findings.</li>
-<li>Keep generated or intentionally dynamic Pydantic model code scoped with local
-  ignores where needed.</li>
-<li>Avoid weakening public types to satisfy mypy.</li>
-</ul>
-<h3 id="8-cleaner-release-artifact-checks">8. Cleaner release artifact checks<a class="headerlink" href="#8-cleaner-release-artifact-checks" title="Permanent link">&para;</a></h3>
-<p>Ensure release validation checks only freshly built artifacts.</p>
-<p>Current local <code>twine check dist/*</code> can include older files in <code>dist/</code>, which is
-harmless but noisy.</p>
-<p>Target outcome:</p>
-<ul>
-<li>Release scripts clean <code>dist/</code> before building, or check only the files built
-  in the current run.</li>
-<li>CI output shows only the version being released.</li>
-</ul>
-<h3 id="9-documentation-warning-cleanup">9. Documentation warning cleanup<a class="headerlink" href="#9-documentation-warning-cleanup" title="Permanent link">&para;</a></h3>
-<p>Fix the MkDocs warning for the relative <code>../LICENSE</code> link in <code>docs/index.md</code>.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>mkdocs build</code> emits no project-specific warnings.</li>
-<li>The license link works both in GitHub-rendered Markdown and the published
-  docs site.</li>
-</ul>
-<h3 id="10-public-api-compatibility-tests">10. Public API compatibility tests<a class="headerlink" href="#10-public-api-compatibility-tests" title="Permanent link">&para;</a></h3>
-<p>Add explicit tests for documented imports, deprecated aliases, and common
-downstream usage patterns.</p>
-<p>Target outcome:</p>
-<ul>
-<li><code>Client</code> remains importable from documented paths.</li>
-<li>Deprecated aliases keep emitting <code>DeprecationWarning</code> until intentionally
-  removed.</li>
-<li>Public command helpers remain importable and callable with documented
-  signatures.</li>
-<li>Public API changes require matching changelog updates.</li>
-</ul>
+<h2 id="hardware-firmware-quirks">Hardware &amp; firmware quirks<a class="headerlink" href="#hardware-firmware-quirks" title="Permanent link">&para;</a></h2>
+<p>A catalogue of confirmed oddities in GivEnergy's register behaviour that aren't
+obvious from the protocol document alone — address reuse across firmware, registers
+that are specified but unimplemented on older builds, units that contradict their own
+description, and similar traps. The aim is to stop these being rediscovered the hard
+way.</p>
+<p>Each entry records the <strong>symptom</strong>, the <strong>evidence</strong> it rests on, the <strong>implication</strong>
+for the library, and <strong>references</strong> (issue numbers, protocol-doc sections). Where a
+finding came from a single unit, that's stated — a quirk seen on one unit is a data
+point, not a universal truth.</p>
+<p>The authoritative protocol reference is the v4.1.6 hybrid Modbus RTU document
+(2024-10-30); a parsed inventory lives under <code>docs/reference/registers/</code>. GivEnergy is
+no longer trading, so this document set is effectively the last word and won't be
+reissued — hence the value of writing findings down here.</p>
+<blockquote>
+<p><strong>Adding an entry:</strong> lead with the symptom, cite the evidence (capture, probe, or
+doc section), and say what it means for the code. Attribute hardware-specific results
+to the unit/firmware they were proven on. Verify before generalising.</p>
+</blockquote>
+<h3 id="register-address-reuse-across-firmware-ir180-183">Register address reuse across firmware (IR180-183)<a class="headerlink" href="#register-address-reuse-across-firmware-ir180-183" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> The same input-register addresses mean different things on different
+firmware lineages.</p>
+<p><strong>Evidence.</strong> On a HYBRID_GEN1 unit, IR180/181 return battery charge/discharge lifetime
+totals (e.g. discharge 1560.4 kWh, charge 1822.8 kWh at 0.1 kWh scale) and IR182/183
+return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
+<code>wEV_Voltage_L1/L2/L3</code> + <code>wEV_current_L1</code> — EV-charger phase voltages and current
+(0.1 V / 0.1 A). A phase voltage of 1560 V is impossible, so the GEN1 reading is
+genuinely battery energy, not a misread.</p>
+<p><strong>Implication.</strong> The library's <code>alt1</code> battery-total source (<code>IR(180)</code>/<code>IR(181)</code> in
+<code>_BATTERY_ENERGY_SOURCE</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
+implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
+a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
+never inferred from live values, and should migrate to the dedicated registers below
+when a unit supports them.</p>
+<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/inverter.py</code> <code>_BATTERY_ENERGY_SOURCE</code>.</p>
+<h3 id="firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89">Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)<a class="headerlink" href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> Registers present in the protocol doc read a hard zero (or are absent) on
+older firmware.</p>
+<p><strong>Evidence.</strong> Protocol v4.1.5 (2024-10-22) added IR194-197 (dedicated battery
+charge/discharge <strong>lifetime</strong> totals, 0.1 kWh), IR198 (CT power), IR199 (system state).
+A HYBRID_GEN1 unit on ARM/DSP firmware <strong>449</strong> returns zero for the whole IR194-199
+range, while its IR180/181 totals are populated — so the device address is correct and
+the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4.13 ASCII
+firmware-version-string scheme), so this build predates several doc additions.</p>
+<p><strong>Implication.</strong> IR194-197 cannot be a <em>universal</em> battery-total source. The library's
+<code>_BATTERY_ENERGY_SOURCE</code> is keyed by static <code>Model</code>, which has no way to express
+"firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
+conditional until a unit is observed that actually populates them. Confirmed lower
+anchor: <strong>HYBRID_GEN1 @ ARM 449 → absent.</strong> No upper anchor (a unit that <em>does</em> populate
+them) has been observed yet.</p>
+<p><strong>References.</strong> v4.1.6 revision history (v4.1.5 entry), §4.1.2, §4.13; issue #184.</p>
+<h3 id="the-protocol-doc-has-no-firmwareregister-map">The protocol doc has no firmware→register map<a class="headerlink" href="#the-protocol-doc-has-no-firmwareregister-map" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> There's no way, from the doc alone, to tell which firmware build implements
+a given register.</p>
+<p><strong>Evidence.</strong> The revision history dates <em>specification</em> changes (authored by GivEnergy
+engineers) but never ties them to firmware versions. §4.13 documents the firmware
+version-string <em>format</em> (combined codes like <code>ZB_A1_01</code>), not a per-register
+availability threshold, and its release-date column is blank in v4.1.6. No register
+table carries an "available from firmware X" annotation.</p>
+<p><strong>Implication.</strong> Firmware/register correlation can only be established empirically:
+probe a register on units of known firmware and record presence/absence. Reading a
+unit's own firmware (HR21 ARM, HR19 DSP, or — where implemented — the HR84-89 strings)
+gives the anchor. Version numbers are <strong>not comparable across model families</strong> (a GEN1
+hybrid on ARM 449 and an AC-coupled unit on ARM 282 are different firmware lineages; the
+larger number is not "newer").</p>
+<p><strong>References.</strong> v4.1.6 revision history, §4.13.</p>
+<h3 id="writable-set-baselines-masquerading-as-live-counters-hr4102-4103">Writable "Set" baselines masquerading as live counters (HR4102-4103)<a class="headerlink" href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> A register holds a large, static energy-like value that never moves.</p>
+<p><strong>Evidence.</strong> HR4102/4103 read a fixed ~3,229.6 kWh (0.1 kWh scale) on a HYBRID_GEN1 AC
+unit. The v4.1.6 doc labels them "<strong>Set</strong> Battery ChgDischarge Energy Total" and marks
+them R/W — i.e. a writable seed/baseline (e.g. to preserve cumulative counts across a
+board swap), not a live accumulator. Re-probing after a charge/discharge cycle would not
+show movement.</p>
+<p><strong>Implication.</strong> Don't treat HR4102/4103 as a live battery-total source. The live
+counters are the IR/HR energy-total registers (firmware permitting).</p>
+<p><strong>References.</strong> v4.1.6 §4.1.1.</p>
+<h3 id="units-that-contradict-their-own-description-hr111112">Units that contradict their own description (HR111/112)<a class="headerlink" href="#units-that-contradict-their-own-description-hr111112" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> A register's unit column disagrees with its description, and neither maps
+cleanly onto the value range.</p>
+<p><strong>Evidence.</strong> HR111/112 (<code>bBatChgLimit</code>/<code>bBatDisLimit</code>) carry unit <code>0.5C</code> (a battery
+C-rate) in the doc's unit column, but the description reads "battery charge/discharge
+<strong>power percentage</strong>", the default is 50, and the range is 1-250 — none of which
+reconcile (50 × 0.5C = 25C is not a sane charge rate; 1-250 doesn't map to 0-100%).
+A separate, clean percentage pair exists: HR313/314 (<code>fChargePowerPercent</code>/
+<code>fDischargePowerPercent</code>, range 1-100, unit 1%), which is what the GivEnergy app surfaces
+as "Power Percentage".</p>
+<p><strong>Implication.</strong> Don't reinterpret HR111/112's scale on the doc's word — the unit field
+is unreliable here. The defensible step is bounds (1-250) plus a docstring that records
+the ambiguity; deriving watts from these via a rated-power table is unsafe (the
+<code>battery_max_power</code> DTC table is itself incomplete). A live-hardware write test is needed
+to settle the true unit.</p>
+<p><strong>References.</strong> v4.1.6 §4.1.1; issue #183.</p>
+<h3 id="doc-unit-corrections-have-shipped-silently-mid-protocol">Doc unit corrections have shipped silently mid-protocol<a class="headerlink" href="#doc-unit-corrections-have-shipped-silently-mid-protocol" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> The same register's documented unit changes between protocol revisions.</p>
+<p><strong>Evidence.</strong> The v4.1.6 revision history records, among others: IR10 inverter current
+corrected from 0.01 A to 0.1 A (v4.1.1/4.1.3); IR58 grid current split by phase count
+(single 0.01 A, three-phase 0.1 A, v4.1.3); and a batch of energy registers
+(IR6/7/11/12/17/19/21/22/… and HR4102/4103/4107-4114/4140-4142) restated as 0.1 kWh to
+match the server (v4.1.5).</p>
+<p><strong>Implication.</strong> A unit stated in any single revision may be a correction of an earlier
+error — treat the doc's unit column as a strong hint, not ground truth, and prefer
+hardware/cross-reference confirmation before changing a scale. (The library already
+scales the v4.1.5 energy registers correctly via <code>deci</code>; that batch was a doc catch-up,
+not a library bug.)</p>
+<p><strong>References.</strong> v4.1.6 revision history.</p>
 
 
 
