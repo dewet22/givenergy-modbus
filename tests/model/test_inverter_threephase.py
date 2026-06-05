@@ -219,6 +219,32 @@ def test_battery_reserve_soc_rename_and_deprecated_alias():
     assert "battery_power_cutoff" not in dumped
 
 
+def test_p_pv_sum():
+    tph = ThreePhaseInverter.from_register_cache(_cache({IR(1017): 0, IR(1018): 3000, IR(1019): 0, IR(1020): 2000}))
+    assert tph.p_pv() == pytest.approx(300.0 + 200.0)  # type: ignore[attr-defined]
+
+    tph_partial = ThreePhaseInverter.from_register_cache(_cache({IR(1017): 0, IR(1018): 3000}))
+    assert tph_partial.p_pv() is None  # type: ignore[attr-defined]
+
+
+def test_e_pv_day_uses_combined_register():
+    tph = ThreePhaseInverter.from_register_cache(_cache({IR(1412): 0, IR(1413): 450}))
+    assert tph.e_pv_day() == pytest.approx(450 * 0.1)  # type: ignore[attr-defined]
+
+    tph_empty = ThreePhaseInverter.from_register_cache(RegisterCache())
+    assert tph_empty.e_pv_day() is None  # type: ignore[attr-defined]
+
+
+def test_battery_capacity_kwh():
+    # HYBRID_3PH: system_battery_voltage = 76.8 V; 100 Ah → 7.68 kWh
+    tph = ThreePhaseInverter.from_register_cache(_cache({HR(0): 0x4001, HR(55): 100}))
+    assert tph.battery_capacity_kwh == pytest.approx(7.68)  # type: ignore[attr-defined]
+    assert "battery_capacity_kwh" in tph.model_dump()
+
+    tph_no_ah = ThreePhaseInverter.from_register_cache(_cache({HR(0): 0x4001}))
+    assert tph_no_ah.battery_capacity_kwh is None  # type: ignore[attr-defined]
+
+
 def test_three_phase_inverter_is_ac_coupled():
     """is_ac_coupled is True for the AC three-phase model, False for DC-coupled 3ph.
 

@@ -244,12 +244,13 @@ def inverter_address_for(model: Model) -> int:
     All-in-One controllers serve all their data — including the IR/HR(2040)
     rollup — at `0x11`.
 
-    The `0x31` special-case is load-bearing, not a hedge: the
-    ``hybrid_2_bat_a`` fixture (HYBRID_GEN1, ARM 449) answers identity-only at
-    `0x11` and serves its full register banks at `0x31`, so the generic `0x11`
-    default would silently lose most banks for these models. If a future model
-    turns out to be firmware-dependent, this would grow an ``arm_fw`` argument
-    and key on it like ``resolve_model()`` does (issue #119).
+    The `0x31` special-case is retained while live AC validation is pending
+    (see #189). For HYBRID_GEN1 it has been confirmed not to be load-bearing:
+    live hardware tests show `0x11` serves the full register banks (not
+    identity-only as previously stated), and value-equality between `0x11` and
+    `0x31` holds across 114 HR registers — they are the same register file at
+    two addresses. The official GivEnergy app reads and writes config at `0x11`
+    on this model, firmware-invariant across ARM 449 and 451.
     """
     return 0x31 if model in _INVERTER_ADDRESS_0X31_MODELS else 0x11
 

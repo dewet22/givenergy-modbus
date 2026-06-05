@@ -141,7 +141,7 @@ def _coerce_model(value: Any) -> Model | None:
         return value
     try:
         return Model[value]
-    except KeyError, TypeError:
+    except (KeyError, TypeError):
         pass
     try:
         return Model(str(value))
@@ -377,7 +377,7 @@ class PlantCapabilities(BaseModel):
                 return v
             try:
                 return Model[v]
-            except KeyError, TypeError:
+            except (KeyError, TypeError):
                 return Model(str(v))
 
         # `.get(k) or []` (not `.get(k, [])`) so an explicit `null` in JSON for
@@ -538,7 +538,14 @@ class Plant(GivEnergyBaseModel):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
             else:
-                self.register_caches[device_address].update({HR(pdu.register): pdu.value})
+                # Writes target the inverter and the echo comes back on the write address
+                # (0x11), but the model reads caps.inverter_address (0x31 for AC/HYBRID_GEN1,
+                # 0x11 otherwise). 0x11 and 0x31 are the same device (a facade), so route the
+                # echo to where reads land — otherwise plant.inverter won't reflect the write
+                # until the next load_config(), and refresh() (IR-only) never will. The cache
+                # may not exist yet if the write precedes the first read at inverter_address.
+                target = self.capabilities.inverter_address if self.capabilities is not None else device_address
+                self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
     def _commit_bank(self, device_address: int, incoming: dict) -> None:
         """Validate incoming register bank against bounds and commit if clean."""
@@ -585,7 +592,7 @@ class Plant(GivEnergyBaseModel):
         for i in range(6):
             try:
                 battery = Battery.from_register_cache(self.register_caches[i + 0x32])
-            except KeyError, ValueError:
+            except (KeyError, ValueError):
                 # KeyError: no cache for that device yet. ValueError: an enum-typed
                 # register held a value outside the known set. Either way, treat as
                 # "not a battery" and stop probing rather than aborting the caller.
