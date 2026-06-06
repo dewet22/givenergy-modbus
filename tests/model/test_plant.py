@@ -1710,6 +1710,35 @@ def test_block_age_none_for_never_seen_block(plant: Plant):
     assert plant.block_age(0x99, "IR", 0, 60) is None
 
 
+def test_stamp_block_normalises_naive_received_at(plant: Plant):
+    """A timezone-naive received_at is treated as UTC rather than raising TypeError (#208 Gemini)."""
+    naive = datetime(2026, 6, 6, 12, 0, 0)  # no tzinfo
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=naive)
+    # Should have been stamped at UTC; block_age at the same naive-but-equivalent UTC moment is ~0.
+    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 5, tzinfo=UTC))
+    assert age == 5.0
+
+
+def test_block_age_normalises_naive_now(plant: Plant):
+    """A timezone-naive now is treated as UTC rather than raising TypeError (#208 Gemini)."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    # Pass a naive now that is 7 seconds later; should compute without TypeError.
+    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 7))
+    assert age == 7.0
+
+
+def test_hr_bank_rejected_by_commit_is_not_stamped(plant: Plant):
+    """An incoherent HR bank must not record an ingestion timestamp."""
+    # Seed non-zero HR data, then push all-zero (Pattern B) to trigger rejection.
+    plant.update(_make_hr_pdu({0: 1, 20: 100}, base_register=0))
+    plant.update(_make_hr_pdu({0: 0, 20: 0}, base_register=0))
+    # Cache should still hold the good values; the all-zero bank was rejected.
+    from givenergy_modbus.model.register import HR
+    assert plant.register_caches[0x32][HR(0)] == 1
+    assert plant.register_caches[0x32][HR(20)] == 100
+
+
 # ---------------------------------------------------------------------------
 # All-zero bank rejection — Pattern B (#206)
 # ---------------------------------------------------------------------------
