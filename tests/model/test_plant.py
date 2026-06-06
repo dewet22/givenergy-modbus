@@ -1702,6 +1702,63 @@ def test_block_age_none_for_never_seen_block(plant: Plant):
     assert plant.block_age(0x99, "IR", 0) is None
 
 
+# ---------------------------------------------------------------------------
+# All-zero bank rejection — Pattern B (#206)
+# ---------------------------------------------------------------------------
+
+
+def test_commit_rejects_allzero_over_nonzero_inverter_bank(plant: Plant, caplog):
+    """#199: an all-zero IR(0,60) over good inverter data is rejected and logged at WARNING.
+
+    The inverter bank has no serial, so is_coherent can't catch this — the Pattern B rule must.
+    This is the genuinely-new protection (and the evidence-collection WARNING).
+    """
+    import logging
+
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32))
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32))
+    assert plant.register_caches[0x32][IR(5)] == 2367  # last-good retained, not zeroed
+    assert plant.register_caches[0x32][IR(0)] == 1
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "Pattern B" in r.message]
+    assert len(warns) == 1, "an all-zero bank rejected over good data must log once at WARNING"
+
+
+def test_commit_rejects_allzero_over_nonzero_battery_bank(plant: Plant):
+    """#147: an all-zero battery page over previously-good data is rejected (kept last-good)."""
+    # Valid serial ("BG1234G567" across IR110-114) + data, so the seed is coherent and commits.
+    seed = {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221}
+    plant.update(_make_ir_pdu(seed, device_address=0x33, base_register=60))
+    assert plant.register_caches[0x33][IR(60)] == 3221
+    plant.update(_make_ir_pdu(dict.fromkeys(seed, 0), device_address=0x33, base_register=60))
+    assert plant.register_caches[0x33][IR(60)] == 3221  # retained
+
+
+def test_commit_allows_allzero_on_first_read(plant: Plant):
+    """An all-zero bank with no prior data (absent / first read) is NOT rejected by Pattern B.
+
+    Uses an unknown device (no getter) so the Pattern B check is the only gate in play.
+    """
+    plant.update(_make_ir_pdu({60: 0, 61: 0}, device_address=0x99, base_register=60))
+    assert IR(60) in plant.register_caches[0x99]  # committed, not rejected
+
+
+def test_commit_allows_mixed_bank_with_some_nonzero(plant: Plant):
+    """A bank with any non-zero value commits normally — the all-zero gate must not catch it."""
+    plant.update(_make_ir_pdu({0: 0, 1: 5, 2: 0}, device_address=0x32))
+    assert plant.register_caches[0x32][IR(1)] == 5
+
+
+def test_allzero_rejection_preserves_staleness(plant: Plant):
+    """A rejected all-zero bank records no ingestion timestamp, so block_age keeps growing (#65/#206)."""
+    t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32), received_at=t0)
+    t1 = t0 + timedelta(seconds=30)
+    plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32), received_at=t1)  # rejected
+    # age reflects t0 (last good commit), not t1 — the rejected bank left no fresh stamp.
+    assert plant.block_age(0x32, "IR", 0, now=t0 + timedelta(seconds=45)) == 45.0
+
+
 def test_getter_for_device_meter_address(plant: Plant):
     """A bank arriving on a meter device address (0x01–0x08) must be accepted."""
     pdu = _make_ir_pdu({0: 1}, device_address=0x01)

@@ -569,6 +569,27 @@ class Plant(GivEnergyBaseModel):
         so the caller only records an ingestion timestamp (#65) for banks that actually
         landed.
         """
+        cache = self.register_caches[device_address]
+        # Pattern B (#78/#147/#199, tracked in #206): a bank that previously held non-zero data and
+        # now reads entirely zero is a block-level dropout (an empty page served during a
+        # transition), not real data — reject it and keep last-good. Contextual, to resolve the
+        # dropout-vs-absent ambiguity that made #147 hard to action: was-non-zero & now-all-zero =
+        # dropout -> reject; always-zero (absent / first read) -> fall through to the existing
+        # serial-coherence / is_valid() handling that already treats all-zero as device-absence.
+        # Staleness is free: a rejected bank records no #65 timestamp, so block_age() keeps growing.
+        if incoming and all(v == 0 for v in incoming.values()) and any(cache.get(k) for k in incoming):
+            sample = next(iter(incoming))
+            # WARNING (not debug): we have no on-wire capture of this event — surfacing it turns every
+            # deployment (and the maintainer's soak run) into an evidence collector. A silent no-op on
+            # healthy systems, since it only fires when a present device's bank drops to all-zero.
+            _logger.warning(
+                "Rejected all-zero %s bank (base %d) for device 0x%02x over non-zero cache — likely a "
+                "Pattern B block dropout (#206); keeping last-good. Please report if seen.",
+                type(sample).__name__,
+                min(r._idx for r in incoming),
+                device_address,
+            )
+            return False
         getter_cls = self._getter_for_device_address(device_address)
         if getter_cls is not None:
             if not getter_cls.is_coherent(incoming, self.register_caches[device_address]):
