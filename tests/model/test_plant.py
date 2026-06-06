@@ -1735,6 +1735,7 @@ def test_hr_bank_rejected_by_commit_is_not_stamped(plant: Plant):
     plant.update(_make_hr_pdu({0: 0, 20: 0}, base_register=0))
     # Cache should still hold the good values; the all-zero bank was rejected.
     from givenergy_modbus.model.register import HR
+
     assert plant.register_caches[0x32][HR(0)] == 1
     assert plant.register_caches[0x32][HR(20)] == 100
 
