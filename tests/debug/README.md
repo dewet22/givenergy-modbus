@@ -101,3 +101,47 @@ UNSOLICITED (no prior request)      = 262
 - `cadence` is the inter-arrival time of each unsolicited shape — low jitter and
   a tight `max` mean a consumer could lean on the stream; a large `max` (the AIO
   hits 114s) means passive-only freshness is unreliable.
+
+## `soak_skip_if_fresh.py` — live validation of IR(0,60) skip-if-fresh (#196)
+
+Drives the same poll loop a consumer (hass) would run, but with one job: validate
+that the fan-out from cloud/app peers is keeping `IR(0,60)` fresh fast enough that
+`refresh(ir0_max_age=...)` reliably skips soliciting it.
+
+Run it **alongside** your normal setup (hass / GivTCP) — those peers are what poll
+the dongle and produce the fan-out this exploits. The soak is a light extra client;
+skip-if-fresh actually reduces the net request count.
+
+### Usage
+
+```bash
+uv run python tests/debug/soak_skip_if_fresh.py \
+    --host 192.168.1.50 --interval 20 --ir0-max-age 25 --duration 3600
+```
+
+Ctrl-C or `--duration` elapsing prints a summary.
+
+### Interpreting the output
+
+```text
+tick    4 | ir0_sent=0 (SKIP) | age_before=11.2s age_after=11.2s | dt=1.43s | IR(1)=3284 | ok
+tick    5 | ir0_sent=0 (SKIP) | age_before= 9.8s age_after= 9.8s | dt=1.51s | IR(1)=3095 | ok
+tick   33 | ir0_sent=1 (SOLICIT) | age_before=25.7s age_after=—  | dt=6.01s | IR(1)=None | FAILED (...)
+```
+
+- `ir0_sent=0 (SKIP)` — the fan-out kept `IR(0,60)` fresh; no solicited read went on the wire.
+- `ir0_sent=1 (SOLICIT)` — `age_before` exceeded `--ir0-max-age`; the library fell back to
+  soliciting. Expected for brief dongle outages or long fan-out gaps.
+- `age_before` — how old the cached `IR(0,60)` was at the start of this tick. If this stays
+  comfortably under `--ir0-max-age` most ticks, the threshold is well-calibrated.
+- `IR(1)` — a raw register from the `IR(0,60)` block read straight from cache. Watch it change
+  across `SKIP` ticks to confirm the fan-out is delivering live (not stale) data.
+
+### What the summary line looks like
+
+```text
+=== summary: 283 ticks | skipped=281 (99%) solicited=2 | partials=8 failures=2 | worst age_before=29.6s ===
+```
+
+A skip rate above ~95% and a `worst age_before` close to `--ir0-max-age` (not far above it)
+confirms the fan-out is a reliable source for this device class at this threshold.
