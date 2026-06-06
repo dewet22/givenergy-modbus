@@ -539,7 +539,7 @@ class Plant(GivEnergyBaseModel):
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
-            if self._commit_bank(device_address, incoming):
+            if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
         elif isinstance(pdu, ReadInputRegistersResponse):
             if pdu.is_suspicious():
@@ -547,7 +547,7 @@ class Plant(GivEnergyBaseModel):
                 # constants. is_suspicious() logs at debug when it fires.
                 return
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
-            if self._commit_bank(device_address, incoming):
+            if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
@@ -562,12 +562,18 @@ class Plant(GivEnergyBaseModel):
                 target = self.capabilities.inverter_address if self.capabilities is not None else device_address
                 self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
-    def _commit_bank(self, device_address: int, incoming: dict) -> bool:
+    def _commit_bank(self, device_address: int, incoming: dict, register_count: int = 60) -> bool:
         """Validate incoming register bank against bounds and commit if clean.
 
         Returns True if the bank was committed to the cache, False if it was discarded —
         so the caller only records an ingestion timestamp (#65) for banks that actually
         landed.
+
+        ``register_count`` is the declared size of the PDU response (typically 60 for
+        standard IR/HR blocks). It is used by the Pattern B guard: rejection only applies
+        to full blocks (>= 60 registers), where a simultaneous all-zero read is genuinely
+        suspicious. A short read (e.g. a single power register legitimately settling to
+        zero) must not be blocked.
         """
         cache = self.register_caches[device_address]
         # Pattern B (#78/#147/#199, tracked in #206): a bank that previously held non-zero data and
@@ -577,7 +583,14 @@ class Plant(GivEnergyBaseModel):
         # dropout -> reject; always-zero (absent / first read) -> fall through to the existing
         # serial-coherence / is_valid() handling that already treats all-zero as device-absence.
         # Staleness is free: a rejected bank records no #65 timestamp, so block_age() keeps growing.
-        if incoming and all(v == 0 for v in incoming.values()) and any(cache.get(k) for k in incoming):
+        # Gated on register_count >= 60: short reads (fan-out of a single-register query returning
+        # zero) are legitimate and must not be blocked here.
+        if (
+            register_count >= 60
+            and incoming
+            and all(v == 0 for v in incoming.values())
+            and any(cache.get(k) for k in incoming)
+        ):
             sample = next(iter(incoming))
             # WARNING (not debug): we have no on-wire capture of this event — surfacing it turns every
             # deployment (and the maintainer's soak run) into an evidence collector. A silent no-op on

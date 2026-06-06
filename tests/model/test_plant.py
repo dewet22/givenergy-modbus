@@ -1767,6 +1767,19 @@ def test_allzero_rejection_preserves_staleness(plant: Plant):
     assert plant.block_age(0x32, "IR", 0, 60, now=t0 + timedelta(seconds=45)) == 45.0
 
 
+def test_commit_allows_short_read_zero_transition(plant: Plant):
+    """Pattern B must not block a short read (register_count < 60) going legitimately to zero.
+
+    A single-register fan-out of e.g. a power reading can validly go non-zero → zero (power
+    off at night) and must commit normally. Regression for Codex review on PR #208.
+    """
+    # Seed a non-zero value for a single register at device 0x32.
+    plant.update(_make_ir_pdu({5: 100}, device_address=0x32, register_count=1))
+    # A subsequent single-register read returning zero should commit, not be rejected.
+    plant.update(_make_ir_pdu({5: 0}, device_address=0x32, register_count=1))
+    assert plant.register_caches[0x32][IR(5)] == 0  # zero committed normally
+
+
 def test_getter_for_device_meter_address(plant: Plant):
     """A bank arriving on a meter device address (0x01–0x08) must be accepted."""
     pdu = _make_ir_pdu({0: 1}, device_address=0x01)

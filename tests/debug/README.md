@@ -84,7 +84,7 @@ uv run python tests/debug/unsolicited_responses.py CAPTURE.log [CAPTURE2.log ...
 
 ### Interpreting the output
 
-```
+```text
 events=727  requests(tx)=241  responses(rx)=478
 solicited (matched a prior request) = 216
 unanswered requests                 = 25
