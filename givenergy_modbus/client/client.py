@@ -803,7 +803,13 @@ class Client:
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
-    async def refresh(self, timeout: float = 2.0, retries: int = 1, retry_delay: float = 0.5) -> Plant:
+    async def refresh(
+        self,
+        timeout: float = 2.0,
+        retries: int = 1,
+        retry_delay: float = 0.5,
+        ir0_max_age: float | None = None,
+    ) -> Plant:
         """Read IR measurement blocks for all known devices.
 
         Returns the populated plant on full success. On partial/total read
@@ -814,6 +820,16 @@ class Client:
         Predbat) poll the same unit a tighter budget produces spurious timeouts even
         though the device is responsive (#132). Pass a tighter budget if you own the
         bus exclusively and want genuine failures surfaced faster.
+
+        ``ir0_max_age`` (seconds) opts in to skip-if-fresh for the IR(0,60) live block
+        (#196): GivEnergy dongles fan out the responses to whoever is polling them (the
+        cloud, the app, another client), so the network consumer often already has a
+        recent IR(0,60) in cache without us asking. When set, if IR(0,60) was committed
+        within ``ir0_max_age`` seconds it is not re-solicited this cycle, sparing the
+        (often flaky) dongle a request. Defaults to ``None`` — always solicit, the
+        historic behaviour. Scoped to IR(0,60) only for now; broaden once soak-tested.
+        Note the fan-out only exists while something else is polling the unit; on a
+        cloud-disconnected dongle the block ages out and we solicit it as normal.
         """
         caps = self.plant.capabilities
         if caps is None:
@@ -825,10 +841,17 @@ class Client:
         reqs: list[TransparentRequest] = []
         # EMS plant controllers don't expose IR(0,60) or IR(180,60) — see load_config() and #86.
         if not caps.is_ems:
-            reqs += [
-                ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter),
-                ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter),
-            ]
+            ir0_age = self.plant.block_age(inverter, "IR", 0) if ir0_max_age is not None else None
+            if ir0_max_age is not None and ir0_age is not None and ir0_age <= ir0_max_age:
+                _logger.debug(
+                    "Skipping IR(0,60) solicit for device 0x%02x — fan-out kept it fresh (%.1fs <= %.1fs)",
+                    inverter,
+                    ir0_age,
+                    ir0_max_age,
+                )
+            else:
+                reqs.append(ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter))
+            reqs.append(ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter))
         if caps.is_three_phase:
             for base in range(1000, 1414, 60):
                 reqs.append(

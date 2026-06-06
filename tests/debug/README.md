@@ -60,3 +60,44 @@ One JSON object per OOB event, one event per line:
 ```
 
 Stats are emitted to stderr at the end of the run.
+
+## `unsolicited_responses.py` — fan-out / broadcast detection for #196
+
+Quantifies the responses a dongle volunteers without being asked. It pairs each
+received `TransparentResponse` to a preceding `TransparentRequest` using the
+library's own `shape_hash` matching (the same logic the network consumer uses to
+resolve futures); responses that match no request are unsolicited — the dongle
+fanned out someone else's poll (the GE cloud, the app, another client).
+
+Built to inform #196 (Gen3 poll slowness). Finding: across every device class we
+have a capture for (AIO, AC, EMS, Gen1 hybrid) the live blocks (`IR(0,60)` etc.)
+arrive unsolicited on a ~10–32s cloud-driven cadence — so a slow *solicited*
+read is not necessarily a failure if a fan-out frame already refreshed the cache.
+The open question it's waiting to answer: does a Gen3 dongle answer solicited
+reads at all, or *only* fan out? (No Gen3 capture yet.)
+
+### Usage
+
+```bash
+uv run python tests/debug/unsolicited_responses.py CAPTURE.log [CAPTURE2.log ...]
+```
+
+### Interpreting the output
+
+```
+events=727  requests(tx)=241  responses(rx)=478
+solicited (matched a prior request) = 216
+unanswered requests                 = 25
+UNSOLICITED (no prior request)      = 262
+
+  [   52x] ReadInputRegistersResponse dev=0x31 fc=0x04 base=0 count=60  cadence: min=0.16s avg=11.46s max=22.33s
+```
+
+- A **passive** capture (no `tx` lines) trivially reports every response as
+  unsolicited — there were no requests to match. It still proves the data flows
+  without *us* asking, and the cadence figures are valid.
+- A capture containing the client's own `tx` requests is what proves fan-out
+  coexists with solicited traffic (here: 216 answered *and* 262 volunteered).
+- `cadence` is the inter-arrival time of each unsolicited shape — low jitter and
+  a tight `max` mean a consumer could lean on the stream; a large `max` (the AIO
+  hits 114s) means passive-only freshness is unreliable.

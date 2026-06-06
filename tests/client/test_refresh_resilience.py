@@ -262,3 +262,78 @@ async def test_execute_reads_reraises_cancellation():
     with patch.object(client, "execute", new_callable=AsyncMock, return_value=[asyncio.CancelledError()]):
         with pytest.raises(asyncio.CancelledError):
             await client._execute_reads([req], timeout=1.0, retries=0, retry_delay=0.0)
+
+
+# ---------------------------------------------------------------------------
+# refresh(ir0_max_age=...) skip-if-fresh for the fan-out IR(0,60) block (#196)
+# ---------------------------------------------------------------------------
+
+
+def _recording_send(recorded):
+    """A send_request_and_await_response stand-in that records each request and succeeds."""
+
+    def _side(request, *args, **kwargs):
+        recorded.append(request)
+        return SimpleNamespace(error=False, device_address=request.device_address)
+
+    return _side
+
+
+async def _refresh_recording_requests(client, **refresh_kwargs):
+    recorded: list = []
+    with patch.object(
+        client, "send_request_and_await_response", new_callable=AsyncMock, side_effect=_recording_send(recorded)
+    ):
+        await client.refresh(**refresh_kwargs)
+    return recorded
+
+
+def _ir0_requested(recorded, inverter: int) -> bool:
+    return any(getattr(r, "base_register", None) == 0 and r.device_address == inverter for r in recorded)
+
+
+async def test_refresh_skips_fresh_ir0_when_opted_in():
+    """ir0_max_age set + IR(0,60) recently ingested → not re-solicited; IR(180,60) still is."""
+    from datetime import UTC, datetime
+
+    client = _client_with_caps(Model.HYBRID)
+    inverter = client.plant.capabilities.inverter_address
+    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC)
+
+    recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
+    assert not _ir0_requested(recorded, inverter), "fresh IR(0,60) should not be solicited"
+    # The neighbouring live block is unaffected — still requested every cycle.
+    assert any(getattr(r, "base_register", None) == 180 and r.device_address == inverter for r in recorded)
+
+
+async def test_refresh_solicits_stale_ir0():
+    """ir0_max_age set but the last IR(0,60) ingest is older than the threshold → solicit it."""
+    from datetime import UTC, datetime, timedelta
+
+    client = _client_with_caps(Model.HYBRID)
+    inverter = client.plant.capabilities.inverter_address
+    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC) - timedelta(seconds=120)
+
+    recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
+    assert _ir0_requested(recorded, inverter), "stale IR(0,60) must be solicited"
+
+
+async def test_refresh_solicits_ir0_when_never_ingested():
+    """ir0_max_age set but IR(0,60) has never been seen → no timestamp → solicit it."""
+    client = _client_with_caps(Model.HYBRID)
+    inverter = client.plant.capabilities.inverter_address
+
+    recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
+    assert _ir0_requested(recorded, inverter)
+
+
+async def test_refresh_default_always_solicits_ir0():
+    """Without ir0_max_age (default), a fresh IR(0,60) is still solicited — historic behaviour."""
+    from datetime import UTC, datetime
+
+    client = _client_with_caps(Model.HYBRID)
+    inverter = client.plant.capabilities.inverter_address
+    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC)
+
+    recorded = await _refresh_recording_requests(client, timeout=0.1, retries=0)
+    assert _ir0_requested(recorded, inverter)
