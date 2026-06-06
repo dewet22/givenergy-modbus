@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -1375,10 +1375,17 @@ def test_from_actual():
 # ---------------------------------------------------------------------------
 
 
-def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadInputRegistersResponse:
+def _make_ir_pdu(
+    registers: dict[int, int],
+    device_address: int = 0x32,
+    base_register: int = 0,
+    register_count: int = 60,
+) -> ReadInputRegistersResponse:
     """Build a minimal ReadInputRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadInputRegistersResponse)
     pdu.device_address = device_address
+    pdu.base_register = base_register
+    pdu.register_count = register_count
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1387,10 +1394,17 @@ def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadI
     return pdu
 
 
-def _make_hr_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadHoldingRegistersResponse:
+def _make_hr_pdu(
+    registers: dict[int, int],
+    device_address: int = 0x32,
+    base_register: int = 0,
+    register_count: int = 60,
+) -> ReadHoldingRegistersResponse:
     """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadHoldingRegistersResponse)
     pdu.device_address = device_address
+    pdu.base_register = base_register
+    pdu.register_count = register_count
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1650,6 +1664,150 @@ def test_update_pattern_a_signature_is_recognised_and_discarded(plant: Plant):
         assert IR(reg) not in plant.register_caches[0x32], (
             f"IR({reg}) leaked into the cache despite Pattern A fingerprint"
         )
+
+
+# ---------------------------------------------------------------------------
+# Ingestion timestamps (#65) — block_age() / register_block_updated_at
+# ---------------------------------------------------------------------------
+
+
+def test_update_stamps_ingestion_timestamp_on_commit(plant: Plant):
+    """A committed IR bank records its ingestion time keyed by (device, type, base)."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x32, "IR", 0, 60)] == t
+    # block_age measured from a later 'now' is the elapsed seconds.
+    assert plant.block_age(0x32, "IR", 0, 60, now=t + timedelta(seconds=9)) == 9.0
+
+
+def test_update_stamps_hr_block_distinctly(plant: Plant):
+    """HR and IR blocks at the same base are tracked under separate keys."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_hr_pdu({20: 1}, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x32, "HR", 0, 60)] == t
+    assert (0x32, "IR", 0, 60) not in plant.register_block_updated_at
+
+
+def test_update_stamps_block_at_its_base_register(plant: Plant):
+    """The timestamp key uses the response's base_register, not a fixed 0."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({180: 1}, base_register=180), received_at=t)
+    assert plant.block_age(0x32, "IR", 180, 60, now=t) == 0.0
+    assert plant.block_age(0x32, "IR", 0, 60) is None  # a different block was never seen
+
+
+def test_discarded_bank_is_not_stamped(plant: Plant):
+    """An incoherent (discarded) bank must NOT record an ingestion time — it never landed."""
+    # All-zero battery serial at IR(110-114) → incoherent → discarded by _commit_bank.
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33, base_register=60)
+    plant.update(pdu, received_at=t)
+    assert plant.block_age(0x33, "IR", 60, 60) is None
+
+
+def test_block_age_none_for_never_seen_block(plant: Plant):
+    """block_age returns None when the block has never been committed."""
+    assert plant.block_age(0x99, "IR", 0, 60) is None
+
+
+def test_stamp_block_normalises_naive_received_at(plant: Plant):
+    """A timezone-naive received_at is treated as UTC rather than raising TypeError (#208 Gemini)."""
+    naive = datetime(2026, 6, 6, 12, 0, 0)  # no tzinfo
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=naive)
+    # Should have been stamped at UTC; block_age at the same naive-but-equivalent UTC moment is ~0.
+    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 5, tzinfo=UTC))
+    assert age == 5.0
+
+
+def test_block_age_normalises_naive_now(plant: Plant):
+    """A timezone-naive now is treated as UTC rather than raising TypeError (#208 Gemini)."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    # Pass a naive now that is 7 seconds later; should compute without TypeError.
+    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 7))
+    assert age == 7.0
+
+
+def test_hr_bank_rejected_by_commit_is_not_stamped(plant: Plant):
+    """An incoherent HR bank must not record an ingestion timestamp."""
+    # Seed non-zero HR data, then push all-zero (Pattern B) to trigger rejection.
+    plant.update(_make_hr_pdu({0: 1, 20: 100}, base_register=0))
+    plant.update(_make_hr_pdu({0: 0, 20: 0}, base_register=0))
+    # Cache should still hold the good values; the all-zero bank was rejected.
+    from givenergy_modbus.model.register import HR
+
+    assert plant.register_caches[0x32][HR(0)] == 1
+    assert plant.register_caches[0x32][HR(20)] == 100
+
+
+# ---------------------------------------------------------------------------
+# All-zero bank rejection — Pattern B (#206)
+# ---------------------------------------------------------------------------
+
+
+def test_commit_rejects_allzero_over_nonzero_inverter_bank(plant: Plant, caplog):
+    """#199: an all-zero IR(0,60) over good inverter data is rejected and logged at WARNING.
+
+    The inverter bank has no serial, so is_coherent can't catch this — the Pattern B rule must.
+    This is the genuinely-new protection (and the evidence-collection WARNING).
+    """
+    import logging
+
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32))
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32))
+    assert plant.register_caches[0x32][IR(5)] == 2367  # last-good retained, not zeroed
+    assert plant.register_caches[0x32][IR(0)] == 1
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "Pattern B" in r.message]
+    assert len(warns) == 1, "an all-zero bank rejected over good data must log once at WARNING"
+
+
+def test_commit_rejects_allzero_over_nonzero_battery_bank(plant: Plant):
+    """#147: an all-zero battery page over previously-good data is rejected (kept last-good)."""
+    # Valid serial ("BG1234G567" across IR110-114) + data, so the seed is coherent and commits.
+    seed = {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221}
+    plant.update(_make_ir_pdu(seed, device_address=0x33, base_register=60))
+    assert plant.register_caches[0x33][IR(60)] == 3221
+    plant.update(_make_ir_pdu(dict.fromkeys(seed, 0), device_address=0x33, base_register=60))
+    assert plant.register_caches[0x33][IR(60)] == 3221  # retained
+
+
+def test_commit_allows_allzero_on_first_read(plant: Plant):
+    """An all-zero bank with no prior data (absent / first read) is NOT rejected by Pattern B.
+
+    Uses an unknown device (no getter) so the Pattern B check is the only gate in play.
+    """
+    plant.update(_make_ir_pdu({60: 0, 61: 0}, device_address=0x99, base_register=60))
+    assert IR(60) in plant.register_caches[0x99]  # committed, not rejected
+
+
+def test_commit_allows_mixed_bank_with_some_nonzero(plant: Plant):
+    """A bank with any non-zero value commits normally — the all-zero gate must not catch it."""
+    plant.update(_make_ir_pdu({0: 0, 1: 5, 2: 0}, device_address=0x32))
+    assert plant.register_caches[0x32][IR(1)] == 5
+
+
+def test_allzero_rejection_preserves_staleness(plant: Plant):
+    """A rejected all-zero bank records no ingestion timestamp, so block_age keeps growing (#65/#206)."""
+    t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32), received_at=t0)
+    t1 = t0 + timedelta(seconds=30)
+    plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32), received_at=t1)  # rejected
+    # age reflects t0 (last good commit), not t1 — the rejected bank left no fresh stamp.
+    assert plant.block_age(0x32, "IR", 0, 60, now=t0 + timedelta(seconds=45)) == 45.0
+
+
+def test_commit_allows_short_read_zero_transition(plant: Plant):
+    """Pattern B must not block a short read (register_count < 60) going legitimately to zero.
+
+    A single-register fan-out of e.g. a power reading can validly go non-zero → zero (power
+    off at night) and must commit normally. Regression for Codex review on PR #208.
+    """
+    # Seed a non-zero value for a single register at device 0x32.
+    plant.update(_make_ir_pdu({5: 100}, device_address=0x32, register_count=1))
+    # A subsequent single-register read returning zero should commit, not be rejected.
+    plant.update(_make_ir_pdu({5: 0}, device_address=0x32, register_count=1))
+    assert plant.register_caches[0x32][IR(5)] == 0  # zero committed normally
 
 
 def test_getter_for_device_meter_address(plant: Plant):
