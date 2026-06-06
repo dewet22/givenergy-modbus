@@ -105,7 +105,7 @@ def analyse(paths: list[str]) -> None:
             requests += 1
             try:
                 pending[pdu.expected_response().shape_hash()].append(ts)
-            except Exception:  # noqa: BLE001 — malformed request; skip
+            except Exception:  # noqa: BLE001  # nosec B110 — malformed request; skip silently
                 pass
         elif isinstance(pdu, TransparentResponse):
             h = pdu.shape_hash()

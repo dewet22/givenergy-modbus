@@ -841,7 +841,7 @@ class Client:
         reqs: list[TransparentRequest] = []
         # EMS plant controllers don't expose IR(0,60) or IR(180,60) — see load_config() and #86.
         if not caps.is_ems:
-            ir0_age = self.plant.block_age(inverter, "IR", 0) if ir0_max_age is not None else None
+            ir0_age = self.plant.block_age(inverter, "IR", 0, 60) if ir0_max_age is not None else None
             if ir0_max_age is not None and ir0_age is not None and ir0_age <= ir0_max_age:
                 _logger.debug(
                     "Skipping IR(0,60) solicit for device 0x%02x — fan-out kept it fresh (%.1fs <= %.1fs)",

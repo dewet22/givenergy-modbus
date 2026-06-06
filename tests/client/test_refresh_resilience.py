@@ -298,7 +298,7 @@ async def test_refresh_skips_fresh_ir0_when_opted_in():
 
     client = _client_with_caps(Model.HYBRID)
     inverter = client.plant.capabilities.inverter_address
-    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC)
+    client.plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC)
 
     recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
     assert not _ir0_requested(recorded, inverter), "fresh IR(0,60) should not be solicited"
@@ -312,7 +312,7 @@ async def test_refresh_solicits_stale_ir0():
 
     client = _client_with_caps(Model.HYBRID)
     inverter = client.plant.capabilities.inverter_address
-    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC) - timedelta(seconds=120)
+    client.plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC) - timedelta(seconds=120)
 
     recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
     assert _ir0_requested(recorded, inverter), "stale IR(0,60) must be solicited"
@@ -333,7 +333,7 @@ async def test_refresh_default_always_solicits_ir0():
 
     client = _client_with_caps(Model.HYBRID)
     inverter = client.plant.capabilities.inverter_address
-    client.plant.register_block_updated_at[(inverter, "IR", 0)] = datetime.now(UTC)
+    client.plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC)
 
     recorded = await _refresh_recording_requests(client, timeout=0.1, retries=0)
     assert _ir0_requested(recorded, inverter)

@@ -469,7 +469,7 @@ class Plant(GivEnergyBaseModel):
     # solicited responses and the dongle's unsolicited fan-out. Consumers (and refresh()'s
     # skip-if-fresh path, #196) use block_age() to reason about freshness. Excluded from
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
-    register_block_updated_at: dict[tuple[int, str, int], datetime] = Field(default_factory=dict, exclude=True)
+    register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """Ensure a default register cache is always present."""
@@ -540,7 +540,7 @@ class Plant(GivEnergyBaseModel):
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             if self._commit_bank(device_address, incoming):
-                self._stamp_block(device_address, "HR", pdu.base_register, received_at)
+                self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
         elif isinstance(pdu, ReadInputRegistersResponse):
             if pdu.is_suspicious():
                 # Pattern A dongle-side substitution from #78 — known fingerprint of 16 fixed
@@ -548,7 +548,7 @@ class Plant(GivEnergyBaseModel):
                 return
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             if self._commit_bank(device_address, incoming):
-                self._stamp_block(device_address, "IR", pdu.base_register, received_at)
+                self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
@@ -612,24 +612,50 @@ class Plant(GivEnergyBaseModel):
         return True
 
     def _stamp_block(
-        self, device_address: int, reg_type: str, base_register: int, received_at: datetime | None
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+        received_at: datetime | None,
     ) -> None:
-        """Record the ingestion time of a committed register block (#65)."""
-        self.register_block_updated_at[(device_address, reg_type, base_register)] = received_at or datetime.now(UTC)
+        """Record the ingestion time of a committed register block (#65).
+
+        The key includes ``register_count`` so that a partial response (e.g. IR(0,1)) does
+        not mark a full 60-register block as fresh — skip-if-fresh (#196) specifically checks
+        for the IR(0,60) key (count=60). See Codex review on PR #208.
+        """
+        ts = received_at or datetime.now(UTC)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        self.register_block_updated_at[(device_address, reg_type, base_register, register_count)] = ts
 
     def block_age(
-        self, device_address: int, reg_type: str, base_register: int, *, now: datetime | None = None
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+        *,
+        now: datetime | None = None,
     ) -> float | None:
         """Seconds since a register block was last committed, or None if never seen.
 
-        ``reg_type`` is ``"HR"`` or ``"IR"``. Used to reason about freshness — e.g.
-        refresh()'s skip-if-fresh path for the fan-out IR(0,60) block (#196), and the
-        staleness signal that pairs with all-zero-bank rejection (#206).
+        ``reg_type`` is ``"HR"`` or ``"IR"``. ``register_count`` must match the count used
+        when the block was stamped — typically 60 for standard GivEnergy IR/HR blocks. This
+        prevents a partial response (e.g. IR(0,1)) from being mistaken for a full IR(0,60)
+        block by the skip-if-fresh logic in refresh() (#196).
+
+        Used to reason about freshness and staleness in the fan-out skip (#196) and Pattern B
+        all-zero rejection (#206).
         """
-        ts = self.register_block_updated_at.get((device_address, reg_type, base_register))
+        ts = self.register_block_updated_at.get((device_address, reg_type, base_register, register_count))
         if ts is None:
             return None
-        return ((now or datetime.now(UTC)) - ts).total_seconds()
+        effective_now = now or datetime.now(UTC)
+        if effective_now.tzinfo is None:
+            effective_now = effective_now.replace(tzinfo=UTC)
+        return (effective_now - ts).total_seconds()
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:

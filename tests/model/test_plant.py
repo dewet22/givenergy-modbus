@@ -1376,12 +1376,16 @@ def test_from_actual():
 
 
 def _make_ir_pdu(
-    registers: dict[int, int], device_address: int = 0x32, base_register: int = 0
+    registers: dict[int, int],
+    device_address: int = 0x32,
+    base_register: int = 0,
+    register_count: int = 60,
 ) -> ReadInputRegistersResponse:
     """Build a minimal ReadInputRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadInputRegistersResponse)
     pdu.device_address = device_address
     pdu.base_register = base_register
+    pdu.register_count = register_count
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1391,12 +1395,16 @@ def _make_ir_pdu(
 
 
 def _make_hr_pdu(
-    registers: dict[int, int], device_address: int = 0x32, base_register: int = 0
+    registers: dict[int, int],
+    device_address: int = 0x32,
+    base_register: int = 0,
+    register_count: int = 60,
 ) -> ReadHoldingRegistersResponse:
     """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadHoldingRegistersResponse)
     pdu.device_address = device_address
     pdu.base_register = base_register
+    pdu.register_count = register_count
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1667,25 +1675,25 @@ def test_update_stamps_ingestion_timestamp_on_commit(plant: Plant):
     """A committed IR bank records its ingestion time keyed by (device, type, base)."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
     plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
-    assert plant.register_block_updated_at[(0x32, "IR", 0)] == t
+    assert plant.register_block_updated_at[(0x32, "IR", 0, 60)] == t
     # block_age measured from a later 'now' is the elapsed seconds.
-    assert plant.block_age(0x32, "IR", 0, now=t + timedelta(seconds=9)) == 9.0
+    assert plant.block_age(0x32, "IR", 0, 60, now=t + timedelta(seconds=9)) == 9.0
 
 
 def test_update_stamps_hr_block_distinctly(plant: Plant):
     """HR and IR blocks at the same base are tracked under separate keys."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
     plant.update(_make_hr_pdu({20: 1}, base_register=0), received_at=t)
-    assert plant.register_block_updated_at[(0x32, "HR", 0)] == t
-    assert (0x32, "IR", 0) not in plant.register_block_updated_at
+    assert plant.register_block_updated_at[(0x32, "HR", 0, 60)] == t
+    assert (0x32, "IR", 0, 60) not in plant.register_block_updated_at
 
 
 def test_update_stamps_block_at_its_base_register(plant: Plant):
     """The timestamp key uses the response's base_register, not a fixed 0."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
     plant.update(_make_ir_pdu({180: 1}, base_register=180), received_at=t)
-    assert plant.block_age(0x32, "IR", 180, now=t) == 0.0
-    assert plant.block_age(0x32, "IR", 0) is None  # a different block was never seen
+    assert plant.block_age(0x32, "IR", 180, 60, now=t) == 0.0
+    assert plant.block_age(0x32, "IR", 0, 60) is None  # a different block was never seen
 
 
 def test_discarded_bank_is_not_stamped(plant: Plant):
@@ -1694,12 +1702,12 @@ def test_discarded_bank_is_not_stamped(plant: Plant):
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
     pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33, base_register=60)
     plant.update(pdu, received_at=t)
-    assert plant.block_age(0x33, "IR", 60) is None
+    assert plant.block_age(0x33, "IR", 60, 60) is None
 
 
 def test_block_age_none_for_never_seen_block(plant: Plant):
     """block_age returns None when the block has never been committed."""
-    assert plant.block_age(0x99, "IR", 0) is None
+    assert plant.block_age(0x99, "IR", 0, 60) is None
 
 
 # ---------------------------------------------------------------------------
@@ -1756,7 +1764,7 @@ def test_allzero_rejection_preserves_staleness(plant: Plant):
     t1 = t0 + timedelta(seconds=30)
     plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32), received_at=t1)  # rejected
     # age reflects t0 (last good commit), not t1 — the rejected bank left no fresh stamp.
-    assert plant.block_age(0x32, "IR", 0, now=t0 + timedelta(seconds=45)) == 45.0
+    assert plant.block_age(0x32, "IR", 0, 60, now=t0 + timedelta(seconds=45)) == 45.0
 
 
 def test_getter_for_device_meter_address(plant: Plant):
