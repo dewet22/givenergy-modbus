@@ -1,5 +1,6 @@
 import logging
 import warnings
+from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -462,6 +463,13 @@ class Plant(GivEnergyBaseModel):
     capabilities: PlantCapabilities | None = None
     inverter_serial_number: str = ""
     data_adapter_serial_number: str = ""
+    # Ingestion timestamps per committed register block, keyed by
+    # (device_address, register_type_name, base_register) → last successful commit time (#65).
+    # Maintained continuously by the network consumer's update() calls, so it captures both
+    # solicited responses and the dongle's unsolicited fan-out. Consumers (and refresh()'s
+    # skip-if-fresh path, #196) use block_age() to reason about freshness. Excluded from
+    # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
+    register_block_updated_at: dict[tuple[int, str, int], datetime] = Field(default_factory=dict, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
         """Ensure a default register cache is always present."""
@@ -494,8 +502,13 @@ class Plant(GivEnergyBaseModel):
             return BcuRegisterGetter
         return None
 
-    def update(self, pdu: ClientIncomingMessage):
-        """Update the Plant state from a PDU message."""
+    def update(self, pdu: ClientIncomingMessage, *, received_at: datetime | None = None):
+        """Update the Plant state from a PDU message.
+
+        ``received_at`` overrides the ingestion timestamp recorded for a committed
+        register block (see ``register_block_updated_at`` / #65); it defaults to the
+        current UTC time and is provided mainly for deterministic testing and replay.
+        """
         if not isinstance(pdu, TransparentResponse):
             _logger.debug(f"Ignoring non-Transparent response {pdu}")
             return
@@ -526,14 +539,16 @@ class Plant(GivEnergyBaseModel):
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
-            self._commit_bank(device_address, incoming)
+            if self._commit_bank(device_address, incoming):
+                self._stamp_block(device_address, "HR", pdu.base_register, received_at)
         elif isinstance(pdu, ReadInputRegistersResponse):
             if pdu.is_suspicious():
                 # Pattern A dongle-side substitution from #78 — known fingerprint of 16 fixed
                 # constants. is_suspicious() logs at debug when it fires.
                 return
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
-            self._commit_bank(device_address, incoming)
+            if self._commit_bank(device_address, incoming):
+                self._stamp_block(device_address, "IR", pdu.base_register, received_at)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
@@ -547,8 +562,13 @@ class Plant(GivEnergyBaseModel):
                 target = self.capabilities.inverter_address if self.capabilities is not None else device_address
                 self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
-    def _commit_bank(self, device_address: int, incoming: dict) -> None:
-        """Validate incoming register bank against bounds and commit if clean."""
+    def _commit_bank(self, device_address: int, incoming: dict) -> bool:
+        """Validate incoming register bank against bounds and commit if clean.
+
+        Returns True if the bank was committed to the cache, False if it was discarded —
+        so the caller only records an ingestion timestamp (#65) for banks that actually
+        landed.
+        """
         getter_cls = self._getter_for_device_address(device_address)
         if getter_cls is not None:
             if not getter_cls.is_coherent(incoming, self.register_caches[device_address]):
@@ -556,7 +576,7 @@ class Plant(GivEnergyBaseModel):
                 # empty slots beyond the user's actual hardware, and we see the responses
                 # go by. The discard is correct; logging at WARNING was actionable noise.
                 _logger.debug("Discarding register bank with invalid serial for device 0x%02x", device_address)
-                return
+                return False
             violations = getter_cls.validate_bank(incoming, self.register_caches[device_address])
             if violations:
                 _logger.debug(
@@ -564,10 +584,31 @@ class Plant(GivEnergyBaseModel):
                     device_address,
                     violations,
                 )
-                # TODO(enforcement): add `return` here to discard the entire bank on any violation.
-                # When that happens, also raise this back to WARNING — at that point it has
-                # user-visible consequences (a poll cycle's data is dropped).
+                # TODO(enforcement): add `return False` here to discard the entire bank on any
+                # violation. When that happens, also raise this back to WARNING — at that point
+                # it has user-visible consequences (a poll cycle's data is dropped).
         self.register_caches[device_address].update(incoming)
+        return True
+
+    def _stamp_block(
+        self, device_address: int, reg_type: str, base_register: int, received_at: datetime | None
+    ) -> None:
+        """Record the ingestion time of a committed register block (#65)."""
+        self.register_block_updated_at[(device_address, reg_type, base_register)] = received_at or datetime.now(UTC)
+
+    def block_age(
+        self, device_address: int, reg_type: str, base_register: int, *, now: datetime | None = None
+    ) -> float | None:
+        """Seconds since a register block was last committed, or None if never seen.
+
+        ``reg_type`` is ``"HR"`` or ``"IR"``. Used to reason about freshness — e.g.
+        refresh()'s skip-if-fresh path for the fan-out IR(0,60) block (#196), and the
+        staleness signal that pairs with all-zero-bank rejection (#206).
+        """
+        ts = self.register_block_updated_at.get((device_address, reg_type, base_register))
+        if ts is None:
+            return None
+        return ((now or datetime.now(UTC)) - ts).total_seconds()
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:

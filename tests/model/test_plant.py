@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -1375,10 +1375,13 @@ def test_from_actual():
 # ---------------------------------------------------------------------------
 
 
-def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadInputRegistersResponse:
+def _make_ir_pdu(
+    registers: dict[int, int], device_address: int = 0x32, base_register: int = 0
+) -> ReadInputRegistersResponse:
     """Build a minimal ReadInputRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadInputRegistersResponse)
     pdu.device_address = device_address
+    pdu.base_register = base_register
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1387,10 +1390,13 @@ def _make_ir_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadI
     return pdu
 
 
-def _make_hr_pdu(registers: dict[int, int], device_address: int = 0x32) -> ReadHoldingRegistersResponse:
+def _make_hr_pdu(
+    registers: dict[int, int], device_address: int = 0x32, base_register: int = 0
+) -> ReadHoldingRegistersResponse:
     """Build a minimal ReadHoldingRegistersResponse mock for update() tests."""
     pdu = MagicMock(spec=ReadHoldingRegistersResponse)
     pdu.device_address = device_address
+    pdu.base_register = base_register
     pdu.error = False
     pdu.inverter_serial_number = ""
     pdu.data_adapter_serial_number = ""
@@ -1650,6 +1656,50 @@ def test_update_pattern_a_signature_is_recognised_and_discarded(plant: Plant):
         assert IR(reg) not in plant.register_caches[0x32], (
             f"IR({reg}) leaked into the cache despite Pattern A fingerprint"
         )
+
+
+# ---------------------------------------------------------------------------
+# Ingestion timestamps (#65) — block_age() / register_block_updated_at
+# ---------------------------------------------------------------------------
+
+
+def test_update_stamps_ingestion_timestamp_on_commit(plant: Plant):
+    """A committed IR bank records its ingestion time keyed by (device, type, base)."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x32, "IR", 0)] == t
+    # block_age measured from a later 'now' is the elapsed seconds.
+    assert plant.block_age(0x32, "IR", 0, now=t + timedelta(seconds=9)) == 9.0
+
+
+def test_update_stamps_hr_block_distinctly(plant: Plant):
+    """HR and IR blocks at the same base are tracked under separate keys."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_hr_pdu({20: 1}, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x32, "HR", 0)] == t
+    assert (0x32, "IR", 0) not in plant.register_block_updated_at
+
+
+def test_update_stamps_block_at_its_base_register(plant: Plant):
+    """The timestamp key uses the response's base_register, not a fixed 0."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({180: 1}, base_register=180), received_at=t)
+    assert plant.block_age(0x32, "IR", 180, now=t) == 0.0
+    assert plant.block_age(0x32, "IR", 0) is None  # a different block was never seen
+
+
+def test_discarded_bank_is_not_stamped(plant: Plant):
+    """An incoherent (discarded) bank must NOT record an ingestion time — it never landed."""
+    # All-zero battery serial at IR(110-114) → incoherent → discarded by _commit_bank.
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33, base_register=60)
+    plant.update(pdu, received_at=t)
+    assert plant.block_age(0x33, "IR", 60) is None
+
+
+def test_block_age_none_for_never_seen_block(plant: Plant):
+    """block_age returns None when the block has never been committed."""
+    assert plant.block_age(0x99, "IR", 0) is None
 
 
 def test_getter_for_device_meter_address(plant: Plant):
