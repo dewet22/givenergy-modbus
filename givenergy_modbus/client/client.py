@@ -312,6 +312,12 @@ class Client:
         # ever lengthens the gap; set to 0 to disable.
         self.tx_jitter = tx_jitter
         self.framer = ClientFramer()
+        # ``plant`` is for single-owner pre-built plants only (e.g. restoring a
+        # persisted PlantCapabilities). Do NOT share one Plant across two active
+        # Clients: both call plant.update() into the same register_caches, and
+        # two devices that answer at the same Modbus address (e.g. EMS + direct
+        # inverter both at 0x11) will overwrite each other's cache. The safe
+        # multi-Client path is separate Plants + plant.add_direct_source().
         self.plant = plant if plant is not None else Plant()
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
