@@ -11,6 +11,40 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+_SERIAL_GROUPS: "list[tuple[str, int, int]] | None" = None
+
+
+def _get_serial_groups() -> "list[tuple[str, int, int]]":
+    """Return (reg_type, base, count) for every C.serial register group (built once)."""
+    global _SERIAL_GROUPS
+    if _SERIAL_GROUPS is not None:
+        return _SERIAL_GROUPS
+    from givenergy_modbus.model import battery, ems, gateway, inverter
+    from givenergy_modbus.model.register import Converter
+
+    seen: set[tuple[str, int, int]] = set()
+    groups: list[tuple[str, int, int]] = []
+    for module in (inverter, battery, ems, gateway):
+        for attr in dir(module):
+            cls = getattr(module, attr)
+            if not isinstance(cls, type):
+                continue
+            lut = getattr(cls, "REGISTER_LUT", None)
+            if not lut:
+                continue
+            for _field, defn in lut.items():
+                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
+                if pre_conv is Converter.serial and defn.registers:
+                    reg_type = type(defn.registers[0]).__name__
+                    base = defn.registers[0]._idx
+                    count = len(defn.registers)
+                    key = (reg_type, base, count)
+                    if key not in seen:
+                        seen.add(key)
+                        groups.append(key)
+    _SERIAL_GROUPS = groups
+    return _SERIAL_GROUPS
+
 
 class RegisterCache(defaultdict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
@@ -80,6 +114,39 @@ class RegisterCache(defaultdict[Register, int]):
     def to_datetime(self, y: Register, m: Register, d: Register, h: Register, min: Register, s: Register):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
         return datetime.datetime(self[y] + 2000, self.get(m, 1) or 1, self.get(d, 1) or 1, self[h], self[min], self[s])
+
+    def redact_serials(self) -> "RegisterCache":
+        """Return a copy of this cache with all known serial-number registers redacted.
+
+        Identifies every register group tagged as ``Converter.serial`` in the model
+        LUTs, decodes each group to a string, applies ``Converter.redact_serial``
+        (zeroing the trailing unit digits), and re-encodes back into register values.
+        Groups that are only partially present in the cache, or whose decoded string
+        doesn't match a known serial pattern, are left unchanged.
+
+        Produces the same ``AAYYWWA000``-style placeholders as :class:`FrameRedactor`,
+        so a redacted export is indistinguishable from a redacted capture.
+        """
+        from givenergy_modbus.model.register import Converter
+
+        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR}
+        result = RegisterCache(dict(self))
+        for reg_type, base, count in _get_serial_groups():
+            reg_cls = _reg_cls.get(reg_type)
+            if reg_cls is None:
+                continue
+            regs = [reg_cls(base + i) for i in range(count)]
+            if not all(r in self for r in regs):
+                continue
+            raw = b"".join(self[r].to_bytes(2, "big") for r in regs)
+            serial_str = raw.decode("latin1").replace("\x00", "").upper()
+            redacted = Converter.redact_serial(serial_str)
+            if redacted is None or redacted == serial_str:
+                continue
+            redacted_bytes = redacted.encode("latin1").ljust(count * 2, b"\x00")[: count * 2]
+            for i, reg in enumerate(regs):
+                result[reg] = int.from_bytes(redacted_bytes[i * 2 : i * 2 + 2], "big")
+        return result
 
     def to_timeslot(self, start: Register, end: Register) -> "TimeSlot | None":
         """Combine two registers into a time slot, or None if either is unset.

@@ -177,3 +177,81 @@ def test_to_timeslot_returns_none_for_missing_or_none_endpoint():
     assert rc.to_timeslot(HR(0), HR(1)) is None  # endpoint explicitly None
     assert rc.to_timeslot(HR(0), HR(9)) is None  # endpoint missing entirely
     assert HR(9) not in rc  # .get() must not have inserted a default 0
+
+
+# ---------------------------------------------------------------------------
+# redact_serials
+# ---------------------------------------------------------------------------
+
+
+def _encode_serial(serial: str, reg_cls, base: int) -> dict:
+    """Encode a 10-char serial string into 5 consecutive register values."""
+    padded = serial.encode("latin1").ljust(10, b"\x00")[:10]
+    return {reg_cls(base + i): int.from_bytes(padded[i * 2 : i * 2 + 2], "big") for i in range(5)}
+
+
+def test_redact_serials_battery_ir_group():
+    """Battery serial in IR(110-114) is redacted; unrelated registers are untouched."""
+    registers = _encode_serial("CE2231A123", IR, 110)
+    registers[IR(0)] = 1234  # unrelated register
+    rc = RegisterCache(registers)
+
+    result = rc.redact_serials()
+
+    expected_regs = _encode_serial("CE2231A000", IR, 110)
+    for reg, val in expected_regs.items():
+        assert result[reg] == val, f"{reg} mismatch"
+    assert result[IR(0)] == 1234  # untouched
+
+
+def test_redact_serials_inverter_hr_group():
+    """Inverter serial in HR(13-17) is redacted; battery HR serial in HR(8-12) also redacted."""
+    registers = {**_encode_serial("SA2231A456", HR, 13), **_encode_serial("BA2231A789", HR, 8)}
+    registers[HR(0)] = 42  # unrelated
+
+    result = RegisterCache(registers).redact_serials()
+
+    expected_inv = _encode_serial("SA2231A000", HR, 13)
+    expected_bat = _encode_serial("BA2231A000", HR, 8)
+    for reg, val in {**expected_inv, **expected_bat}.items():
+        assert result[reg] == val, f"{reg} mismatch"
+    assert result[HR(0)] == 42
+
+
+def test_redact_serials_is_idempotent():
+    """Redacting twice produces the same result as redacting once."""
+    rc = RegisterCache(_encode_serial("CE2231A123", IR, 110))
+    once = rc.redact_serials()
+    twice = once.redact_serials()
+    assert dict(once) == dict(twice)
+
+
+def test_redact_serials_unrecognised_shape_passes_through():
+    """A serial that doesn't match either known pattern is left unchanged."""
+    registers = _encode_serial("ZZZZZZZZZZ", IR, 110)
+    result = RegisterCache(registers).redact_serials()
+    assert dict(result) == dict(RegisterCache(registers))
+
+
+def test_redact_serials_absent_group_not_injected():
+    """A serial group absent from the cache must not appear in the output."""
+    rc = RegisterCache({IR(0): 99})
+    result = rc.redact_serials()
+    # IR(110-114) not present originally — must not appear in result
+    for i in range(5):
+        assert IR(110 + i) not in result
+
+
+def test_redact_serials_does_not_mutate_original():
+    """redact_serials() returns a new cache; the original is unmodified."""
+    original_vals = _encode_serial("CE2231A123", IR, 110)
+    rc = RegisterCache(original_vals)
+    _ = rc.redact_serials()
+    for reg, val in original_vals.items():
+        assert rc[reg] == val, f"original mutated at {reg}"
+
+
+def test_redact_serials_empty_cache():
+    """redact_serials() on an empty cache returns an empty cache."""
+    result = RegisterCache().redact_serials()
+    assert len(result) == 0
