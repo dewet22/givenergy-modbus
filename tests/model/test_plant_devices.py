@@ -173,6 +173,28 @@ def test_devices_gateway_orphan_stacks_kept_as_flat_rows():
     assert by_type.count(DeviceType.HV_STACK) == 1
 
 
+def test_devices_gateway_orphan_batteries_kept_as_flat_rows():
+    """Gateway plant with stray LV batteries: keep them as flat rows, never drop them.
+
+    Mirrors the HV-stack orphan guard — the gateway suppresses its (spurious)
+    inverter row, so there's no inverter to nest batteries under. The orphan
+    guard emits flat BATTERY rows rather than silently losing them.
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.GATEWAY,
+        inverter_address=0x11,
+        lv_battery_addresses=[0x32],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    plant.register_caches[0x32] = _battery_cache("XX1234A567")
+
+    by_type = [d.device_type for d in plant.devices]
+    assert by_type.count(DeviceType.GATEWAY) == 1
+    assert DeviceType.INVERTER not in by_type
+    assert by_type.count(DeviceType.BATTERY) == 1
+
+
 def test_devices_enumerates_meters_as_flat_rows():
     """Meters surface as top-level rows — they aren't inverter-owned (Phase 1 limitation)."""
     plant = Plant()
