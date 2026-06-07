@@ -297,6 +297,7 @@ class Client:
         connect_timeout: float = 2.0,
         tx_message_wait: float = 0.25,
         tx_jitter: float = 0.1,
+        plant: Plant | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -311,7 +312,7 @@ class Client:
         # ever lengthens the gap; set to 0 to disable.
         self.tx_jitter = tx_jitter
         self.framer = ClientFramer()
-        self.plant = Plant()
+        self.plant = plant if plant is not None else Plant()
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
