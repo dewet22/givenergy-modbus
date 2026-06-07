@@ -87,6 +87,8 @@ class RegisterMap:
     BATTERY_PAUSE_SLOT_END = 320
     SMART_LOAD_SLOT_1_START = 554  # HR 554-573: 10 start/end pairs (slot N start = 554 + (N-1)*2)
     BATTERY_RESERVE_SOC = 1078  # three-phase only; no single-phase equivalent
+    BATTERY_SOC_RESERVE_3PH = 1109  # three-phase shadow of BATTERY_SOC_RESERVE (110)
+    CHARGE_TARGET_SOC_3PH = 1111  # three-phase shadow of CHARGE_TARGET_SOC (116)
     AC_CHARGE_ENABLE = 1112
     FORCE_DISCHARGE_ENABLE = 1122
     FORCE_CHARGE_ENABLE = 1123
@@ -242,6 +244,40 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
     if not 4 <= val <= 100:
         raise ValueError(f"Battery reserve SOC ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, val)]
+
+
+def disable_charge_target_3ph() -> list[TransparentRequest]:
+    """Remove SOC limit and target 100% charging on three-phase inverters (HR 1111, shadows HR 116)."""
+    return [
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 100),
+    ]
+
+
+def set_battery_soc_reserve_3ph(val: int) -> list[TransparentRequest]:
+    """Set the minimum SOC reserve on three-phase inverters (HR 1109, shadows single-phase HR 110)."""
+    val = int(val)
+    if not 4 <= val <= 100:
+        raise ValueError(f"Minimum SOC / shallow charge ({val}) must be in [4-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE_3PH, val)]
+
+
+def set_charge_target_3ph(target_soc: int) -> list[TransparentRequest]:
+    """Set charge target SOC on three-phase inverters (HR 1111, shadows single-phase HR 116)."""
+    if not 4 <= target_soc <= 100:
+        raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
+    ret = set_ac_charge(True)
+    if target_soc == 100:
+        ret.extend(
+            [
+                WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+                WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 100),
+            ]
+        )
+    else:
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True))
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, target_soc))
+    return ret
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
@@ -653,6 +689,7 @@ def set_mode_storage(
     discharge_slot_1: TimeSlot = TimeSlot.from_repr(1600, 700),
     discharge_slot_2: TimeSlot | None = None,
     discharge_for_export: bool = False,
+    slot_map: SlotMap = SINGLE_PHASE_SLOTS,
 ) -> list[TransparentRequest]:
     """Set system to storage mode with specific discharge slots(s).
 
@@ -675,11 +712,11 @@ def set_mode_storage(
     # does when selecting Timed Discharge / Timed Export presets). Callers who
     # want a specific reserve should set it explicitly via set_battery_soc_reserve().
     ret.extend(set_enable_discharge(True))  # r59=1
-    ret.extend(set_discharge_slot(1, discharge_slot_1, SINGLE_PHASE_SLOTS))
+    ret.extend(set_discharge_slot(1, discharge_slot_1, slot_map))
     if discharge_slot_2:
-        ret.extend(set_discharge_slot(2, discharge_slot_2, SINGLE_PHASE_SLOTS))
+        ret.extend(set_discharge_slot(2, discharge_slot_2, slot_map))
     else:
-        ret.extend(reset_discharge_slot(2, SINGLE_PHASE_SLOTS))
+        ret.extend(reset_discharge_slot(2, slot_map))
     return ret
 
 
@@ -714,15 +751,15 @@ class _InverterCommands:
         def slot_map(self) -> SlotMap: ...
 
     # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
-    # Excludes 318-320 (pause mode), the native three-phase registers (1078 reserve,
-    # 1112/1122/1123 enables, 1113-1116/1118-1121 slots), and 2040/2062-2069 (EMS).
-    # Note: ThreePhaseInverter inherits this single-phase-shaped set as-is — a correct
-    # per-model allowlist is deferred to #106 (see #203). Also excludes 313/314
-    # (BATTERY_*_LIMIT_AC): these are
-    # the *single-phase* AC charge/discharge limits, but ThreePhaseInverter remaps
-    # the read-backs to HR1110/1108, so read != write on three-phase AC. A correct
-    # three-phase write needs per-model command-register selection (#75); until that
-    # lands they stay out of the universal write-safe set.
+    # Single-phase shape: contains HR(96/110/116) and single-phase slot pairs (94/95,
+    # 31/32 charge; 56/57, 44/45 discharge). ThreePhaseInverter replaces these via
+    # _ThreePhaseCommands.WRITE_SAFE_REGISTERS (defined below, overrides this per MRO).
+    # Also excludes 313/314 (BATTERY_*_LIMIT_AC): the *single-phase* AC charge/discharge
+    # limits, but ThreePhaseInverter remaps the read-backs to HR1110/1108, so read !=
+    # write on three-phase AC. A correct three-phase write needs per-model
+    # command-register selection (#75); until that lands they stay out of the
+    # universal write-safe set. Also excludes 318-320 (pause mode, firmware-gated),
+    # 1078/1109/1111-1123 (native three-phase), and 2040/2062-2069 (EMS).
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
         {
             20,  # ENABLE_CHARGE_TARGET
@@ -855,10 +892,6 @@ class _InverterCommands:
         """Set the minimum SOC reserve the battery is kept at, even in dynamic mode (4-100)."""
         return set_battery_soc_reserve(val)
 
-    def set_battery_reserve_soc(self, val: int) -> list[TransparentRequest]:
-        """Set the battery reserve SOC on three-phase inverters (HR 1078, "Battery Reserve %", 4-100)."""
-        return set_battery_reserve_soc(val)
-
     def set_battery_charge_limit(self, val: int) -> list[TransparentRequest]:
         """Set the battery charge power limit as a percentage of the rated charge power (0-50)."""
         return set_battery_charge_limit(val)
@@ -918,24 +951,57 @@ class _InverterCommands:
         discharge_for_export: bool = False,
     ) -> list[TransparentRequest]:
         """Set system to Storage mode with specific discharge slot(s)."""
-        return set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)
+        return set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export, self.slot_map)
 
 
 class _ThreePhaseCommands:
-    """Commands that only apply to three-phase inverters.
+    """Commands that apply to three-phase inverters, composed onto `ThreePhaseInverter`.
 
-    Composed onto `ThreePhaseInverter` alongside `_InverterCommands`, exposing the
-    three-phase-only AC-charge / force-charge / force-discharge enables as instance
-    methods.
+    Overrides several `_InverterCommands` methods that hardcode single-phase registers:
+    - `set_enable_charge()` → AC_CHARGE_ENABLE HR(1112) instead of HR(96)
+    - `set_battery_soc_reserve()` → HR(1109) instead of HR(110)
+    - `set_mode_dynamic()` → HR(1109) for the SOC reserve step instead of HR(110)
+    - `set_charge_target()` → HR(1112)+HR(1111) instead of HR(96)+HR(116)
+    - `set_battery_reserve_soc()` relocated here (three-phase only, HR 1078)
 
-    A per-model `WRITE_SAFE_REGISTERS` allowlist is intentionally *not* defined here.
-    The inherited `_InverterCommands` surface still delegates several methods to
-    primitives with hardcoded single-phase registers (#203), so a *correct*
-    three-phase allowlist needs the model-aware command routing tracked in #106 —
-    a half-correct one would mislead future enforcement into allowing the wrong
-    writes. Until then, write-safety is enforced only at the PDU level
-    (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
+    MRO puts `_ThreePhaseCommands` before `_InverterCommands` on `ThreePhaseInverter`,
+    so these overrides take precedence.
+
+    The `WRITE_SAFE_REGISTERS` frozenset reflects the correct three-phase register
+    addresses: single-phase slot pairs (94/95, 31/32, 56/57, 44/45) and the
+    single-phase-only scalars (96, 110, 116) are replaced by their three-phase
+    counterparts (1113-1116, 1118-1121, 1112, 1109, 1111).
     """
+
+    # Three-phase allowlist: derived from _InverterCommands.WRITE_SAFE_REGISTERS with
+    # single-phase slot pairs and scalar registers swapped out for three-phase equivalents.
+    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
+        (
+            _InverterCommands.WRITE_SAFE_REGISTERS
+            # remove single-phase slot pairs and scalars
+            - {94, 95, 31, 32}  # charge slots 1-2
+            - {56, 57, 44, 45}  # discharge slots 1-2
+            - {96, 110, 116}  # ENABLE_CHARGE, BATTERY_SOC_RESERVE, CHARGE_TARGET_SOC
+        )
+        | {
+            1078,  # BATTERY_RESERVE_SOC (three-phase only)
+            1109,  # BATTERY_SOC_RESERVE_3PH (shadows HR 110)
+            1111,  # CHARGE_TARGET_SOC_3PH (shadows HR 116)
+            1112,  # AC_CHARGE_ENABLE (three-phase; replaces ENABLE_CHARGE HR 96)
+            1113,
+            1114,  # charge slot 1 (three-phase)
+            1115,
+            1116,  # charge slot 2 (three-phase)
+            1118,
+            1119,  # discharge slot 1 (three-phase)
+            1120,
+            1121,  # discharge slot 2 (three-phase)
+            1122,  # FORCE_DISCHARGE_ENABLE
+            1123,  # FORCE_CHARGE_ENABLE
+        }
+    )
+
+    # --- three-phase-only enables --------------------------------------------
 
     def set_ac_charge(self, enabled: bool) -> list[TransparentRequest]:
         """Enable or disable AC charging (three-phase only)."""
@@ -948,6 +1014,34 @@ class _ThreePhaseCommands:
     def set_force_discharge(self, enabled: bool) -> list[TransparentRequest]:
         """Force battery discharging (three-phase only)."""
         return set_force_discharge(enabled)
+
+    # --- three-phase-only reserve --------------------------------------------
+
+    def set_battery_reserve_soc(self, val: int) -> list[TransparentRequest]:
+        """Set the battery reserve SOC on three-phase inverters (HR 1078, "Battery Reserve %", 4-100)."""
+        return set_battery_reserve_soc(val)
+
+    # --- overrides: correct register selection for three-phase ---------------
+
+    def set_enable_charge(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable battery charging (three-phase: AC_CHARGE_ENABLE HR 1112, shadows single-phase HR 96)."""
+        return set_ac_charge(enabled)
+
+    def set_battery_soc_reserve(self, val: int) -> list[TransparentRequest]:
+        """Set the minimum SOC reserve (three-phase: HR 1109, shadows single-phase HR 110)."""
+        return set_battery_soc_reserve_3ph(val)
+
+    def set_mode_dynamic(self) -> list[TransparentRequest]:
+        """Set system to Dynamic / Eco mode (three-phase: HR 1109 for SOC reserve, shadows single-phase HR 110)."""
+        return set_discharge_mode_to_match_demand() + set_battery_soc_reserve_3ph(4) + set_enable_discharge(False)
+
+    def disable_charge_target(self) -> list[TransparentRequest]:
+        """Remove SOC limit and target 100% charging (three-phase: HR 1111, shadows single-phase HR 116)."""
+        return disable_charge_target_3ph()
+
+    def set_charge_target(self, target_soc: int) -> list[TransparentRequest]:
+        """Set charge target SOC (three-phase: HR 1111 + AC_CHARGE_ENABLE, shadows single-phase HR 116)."""
+        return set_charge_target_3ph(target_soc)
 
 
 class _EmsCommands:
