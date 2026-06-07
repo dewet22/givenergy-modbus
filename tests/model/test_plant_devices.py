@@ -1,10 +1,15 @@
-"""Tests for ``Plant.devices`` — the typed-device enumeration API (#106 Phase 1).
+"""Tests for ``Plant.devices`` — typed-device enumeration with nested ownership.
 
-These verify three things in concert: correct typed enumeration, no
-mis-classification (an EMS / gateway controller must never surface as an
-inverter), and that the existing ``Plant`` accessors are untouched (the API
-is strictly additive). Plants are constructed in-memory, matching the idiom
-in ``test_devices.py`` for the ``Plant.inverters`` tests.
+#106 Phase 1 added the flat enumeration. Phase 2 nests batteries and HV stacks
+**under their owning inverter** (``inverter_row.device.batteries`` /
+``.hv_stacks``) instead of emitting them as top-level rows — batteries and stacks
+belong to an inverter, not directly to the plant. The legacy ``Plant.batteries``
+/ ``Plant.hv_stacks`` accessors are unchanged (the model layer stays additive).
+
+These verify: correct typed enumeration, no mis-classification (an EMS / gateway
+controller must never surface as an inverter), nested sub-device ownership, the
+gateway orphan guard, and that the legacy accessors still return their flat lists.
+Plants are constructed in-memory, matching the idiom in ``test_devices.py``.
 """
 
 from givenergy_modbus.model.devices import DeviceType, Inverter
@@ -27,7 +32,8 @@ def test_devices_ems_plant_enumerates_managed_inverters_and_ems_without_misclass
 
     The headline #106 fix — an EMS controller must NEVER appear as an INVERTER
     row (hass#52). Two managed slots → two INVERTER rows + exactly one EMS row,
-    and no inverter row ever wraps the Ems.
+    and no inverter row ever wraps the Ems. Blinded inverters carry no
+    sub-devices (the rollup can't see batteries).
     """
     values: dict = {IR(2040): 1, IR(2044): 2}
     _add_rollup_slot(values, 1, serial="XX1234A567", power=1800, soc=65)
@@ -50,17 +56,22 @@ def test_devices_ems_plant_enumerates_managed_inverters_and_ems_without_misclass
     assert not any(isinstance(d.device, Ems) for d in inverter_rows)
     # Blinded managed inverters have an unknown own-model (the plant model is EMS).
     assert all(d.model is None for d in inverter_rows)
+    # Blinded inverters honestly carry no sub-devices.
+    assert all(d.device.batteries == [] for d in inverter_rows)
+    assert all(d.device.hv_stacks == [] for d in inverter_rows)
 
     ems_row = next(d for d in devices if d.device_type is DeviceType.EMS)
     assert isinstance(ems_row.device, Ems)
     assert ems_row.model is Model.EMS
 
 
-def test_devices_batteries_are_typed_rows_with_serials_and_back_compat_preserved():
-    """Non-EMS plant: one INVERTER row plus a BATTERY row per pack, with serials.
+def test_devices_batteries_nest_under_their_inverter_and_back_compat_preserved():
+    """Non-EMS plant: LV batteries nest under the inverter, not as top-level rows.
 
-    The legacy ``Plant.batteries`` accessor stays untouched (same list, same
-    types) — proving the enumeration is purely additive.
+    No flat BATTERY rows are emitted; both packs ride on the single INVERTER
+    row's ``device.batteries`` with serials intact. The legacy ``Plant.batteries``
+    accessor stays untouched (same list, same serials) — the model layer is
+    additive.
     """
     plant = Plant()
     plant.capabilities = PlantCapabilities(
@@ -68,18 +79,54 @@ def test_devices_batteries_are_typed_rows_with_serials_and_back_compat_preserved
         inverter_address=0x31,
         lv_battery_addresses=[0x32, 0x33],
     )
+    plant.register_caches[0x31] = RegisterCache()
     plant.register_caches[0x32] = _battery_cache("XX1234A567")
     plant.register_caches[0x33] = _battery_cache("ZZ9876B543")
 
     devices = plant.devices
+    by_type = [d.device_type for d in devices]
 
-    assert [d.device_type for d in devices].count(DeviceType.INVERTER) == 1
-    battery_rows = [d for d in devices if d.device_type is DeviceType.BATTERY]
-    assert {d.serial_number for d in battery_rows} == {"XX1234A567", "ZZ9876B543"}
+    # Nested, not flat: exactly one INVERTER row, zero top-level BATTERY rows.
+    assert by_type.count(DeviceType.INVERTER) == 1
+    assert DeviceType.BATTERY not in by_type
 
-    # Back-compat: legacy accessor unchanged.
+    inverter_row = next(d for d in devices if d.device_type is DeviceType.INVERTER)
+    nested = inverter_row.device.batteries
+    assert len(nested) == 2
+    assert {b.serial_number for b in nested} == {"XX1234A567", "ZZ9876B543"}
+
+    # Back-compat: legacy flat accessor unchanged.
     assert len(plant.batteries) == 2
     assert {b.serial_number for b in plant.batteries} == {"XX1234A567", "ZZ9876B543"}
+
+
+def test_devices_hv_stacks_nest_under_their_inverter():
+    """HV plant (AIO): HV stacks nest under the inverter, not as top-level rows.
+
+    Mirrors LV battery nesting for the HV (BCU/BMU) topology. The inverter row's
+    ``device.hv_stacks`` carries the stack; no flat HV_STACK row is emitted; the
+    legacy ``Plant.hv_stacks`` accessor is unchanged.
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 2)],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    plant.register_caches[0x70] = RegisterCache()
+
+    devices = plant.devices
+    by_type = [d.device_type for d in devices]
+
+    assert by_type.count(DeviceType.INVERTER) == 1
+    assert DeviceType.HV_STACK not in by_type
+
+    inverter_row = next(d for d in devices if d.device_type is DeviceType.INVERTER)
+    assert len(inverter_row.device.hv_stacks) == 1
+
+    # Back-compat: legacy flat accessor unchanged.
+    assert len(plant.hv_stacks) == 1
 
 
 def test_devices_gateway_plant_emits_single_gateway_row_and_no_spurious_inverter():
@@ -102,19 +149,63 @@ def test_devices_gateway_plant_emits_single_gateway_row_and_no_spurious_inverter
     assert gw_row.model is Model.GATEWAY
 
 
-def test_devices_enumerates_meters_and_hv_stacks_with_correct_types():
-    """Meters and HV stacks surface as typed rows (serials optional this phase)."""
+def test_devices_gateway_orphan_stacks_kept_as_flat_rows():
+    """Gateway plant with a stray HV stack: keep it as a flat row, never drop it.
+
+    The gateway suppresses its (spurious) inverter row, so there's no inverter
+    to nest sub-devices under. Rather than silently lose a stack the plant did
+    decode, the orphan guard emits a flat HV_STACK row. (Proper gateway
+    partner-AIO expansion is deferred to a later phase.)
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.GATEWAY,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 2)],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    plant.register_caches[0x70] = RegisterCache()
+
+    by_type = [d.device_type for d in plant.devices]
+    assert by_type.count(DeviceType.GATEWAY) == 1
+    assert DeviceType.INVERTER not in by_type
+    # Not lost: the stray stack surfaces as a flat row.
+    assert by_type.count(DeviceType.HV_STACK) == 1
+
+
+def test_devices_gateway_orphan_batteries_kept_as_flat_rows():
+    """Gateway plant with stray LV batteries: keep them as flat rows, never drop them.
+
+    Mirrors the HV-stack orphan guard — the gateway suppresses its (spurious)
+    inverter row, so there's no inverter to nest batteries under. The orphan
+    guard emits flat BATTERY rows rather than silently losing them.
+    """
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.GATEWAY,
+        inverter_address=0x11,
+        lv_battery_addresses=[0x32],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    plant.register_caches[0x32] = _battery_cache("XX1234A567")
+
+    by_type = [d.device_type for d in plant.devices]
+    assert by_type.count(DeviceType.GATEWAY) == 1
+    assert DeviceType.INVERTER not in by_type
+    assert by_type.count(DeviceType.BATTERY) == 1
+
+
+def test_devices_enumerates_meters_as_flat_rows():
+    """Meters surface as top-level rows — they aren't inverter-owned (Phase 1 limitation)."""
     plant = Plant()
     plant.capabilities = PlantCapabilities(
         device_type=Model.HYBRID_GEN3,
         inverter_address=0x11,
         meter_addresses=[0x01],
-        bcu_stacks=[(0, 2)],
     )
     plant.register_caches[0x11] = RegisterCache()
     plant.register_caches[0x01] = RegisterCache()
-    plant.register_caches[0x70] = RegisterCache()
 
     by_type = [d.device_type for d in plant.devices]
     assert by_type.count(DeviceType.METER) == 1
-    assert by_type.count(DeviceType.HV_STACK) == 1
+    assert by_type.count(DeviceType.INVERTER) == 1
