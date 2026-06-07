@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0rc1] - 2026-06-07
+
+### ✨ Added
+
+- typed-device enumeration API — Plant.devices (#106 Phase 1) (#210) ([8fb5941](https://github.com/dewet22/givenergy-modbus/commit/8fb594141f7993c80ea1223142154766f880481b))
+- RegisterCache.redact_serials() — share-safe cache export (#212) (#214) ([b41022a](https://github.com/dewet22/givenergy-modbus/commit/b41022a5456d0677c69cb877e542f5062aa4fbc8))
+- model-aware write commands for ThreePhaseInverter (#203) (#215) ([e1ff30d](https://github.com/dewet22/givenergy-modbus/commit/e1ff30dcef3fa78617dc87003a407622b49fd022))
+
+### 🔧 Maintenance
+
+- ghbot convention, permission allowlist, and inbox hooks ([5224099](https://github.com/dewet22/givenergy-modbus/commit/5224099f4002286f6eac645b64cc9fec1f87d949))
+
 ## [2.1.5] - 2026-06-07
 
 ### ✨ Added
