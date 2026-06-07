@@ -18,6 +18,7 @@ the wider refactor sketch in the v2.1 roadmap (see ``docs/v2.1-roadmap.md``).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Literal
 
 # ``Inverter`` deliberately accepts the concrete decoders as ``Any`` because
@@ -28,6 +29,24 @@ from typing import Any, Literal
 # ``project_plant_abstraction_direction``.
 
 DataSource = Literal["direct", "ems_rollup", "merged"]
+
+
+class DeviceType(str, Enum):
+    """Generic device categories on an energy Plant graph.
+
+    ``str``-valued so members serialise to stable, JSON-safe strings and can
+    be used directly as identifiers (e.g. a Home Assistant entity-id prefix).
+    The names are deliberately generic — no manufacturer- or protocol-specific
+    nouns (``bcu``, ``aio``, ``modbus``) leak in, preserving the hoistability
+    discipline of this module.
+    """
+
+    INVERTER = "inverter"
+    EMS = "ems"
+    GATEWAY = "gateway"
+    BATTERY = "battery"
+    METER = "meter"
+    HV_STACK = "hv_stack"
 
 
 @dataclass(frozen=True)
@@ -261,3 +280,28 @@ class Inverter:
             f"data_source={self.data_source!r}, "
             f"is_blinded={self.is_blinded})"
         )
+
+
+@dataclass(frozen=True)
+class PlantDevice:
+    """One enumerated device on a Plant, tagged with its type and identity.
+
+    A thin, immutable wrapper pairing an already-decoded typed model
+    (:attr:`device`) with a generic :class:`DeviceType` discriminator and,
+    where available, a serial number and model. Consumers enumerate
+    :attr:`Plant.devices` to discover what is on a plant and read rich fields
+    through :attr:`device`.
+
+    The wrapper exists because the concrete device models share no common
+    base — the inverter facade is a plain class, batteries / meters / EMS /
+    gateway are Pydantic models, an HV stack is a dataclass — so tagging them
+    from the outside keeps the enumeration additive rather than mutating every
+    model. No Modbus wire address or :class:`RegisterCache` appears here:
+    identity is by serial, and the wire address (where relevant) stays
+    reachable on the underlying model (e.g. ``HvStack.device_address``).
+    """
+
+    device_type: DeviceType
+    device: Any
+    serial_number: str | None = None
+    model: Any | None = None

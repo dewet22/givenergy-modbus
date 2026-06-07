@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
@@ -454,6 +455,20 @@ class PlantCapabilities(BaseModel):
         return self.device_type == Model.GATEWAY
 
 
+def _validated_serial(device: Any) -> str | None:
+    """Return a device's serial number only when it validates, else None.
+
+    Devices exposing an ``is_valid()`` self-check (battery / meter / BCU) must
+    pass it — an absent device's ghost cache decodes to a junk serial we do not
+    want to surface. Devices without the check fall back to a truthy
+    ``serial_number``.
+    """
+    is_valid = getattr(device, "is_valid", None)
+    if callable(is_valid) and not is_valid():
+        return None
+    return getattr(device, "serial_number", None) or None
+
+
 class Plant(GivEnergyBaseModel):
     """Representation of a complete GivEnergy plant."""
 
@@ -781,3 +796,74 @@ class Plant(GivEnergyBaseModel):
             return None
         cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
         return select_gateway(cache)
+
+    @property
+    def devices(self) -> list[PlantDevice]:
+        """Enumerate every device on this plant as typed :class:`PlantDevice` rows.
+
+        Additive surface (#106 Phase 1): each row carries a generic
+        :class:`DeviceType` discriminator, a serial (where the device exposes a
+        valid one), the plant's model where meaningful, and the already-decoded
+        typed model in :attr:`PlantDevice.device`. Built by composing the
+        existing accessors — :attr:`inverters`, :attr:`ems`, :attr:`gateway`,
+        :attr:`batteries`, :attr:`meters`, :attr:`hv_stacks` — so the
+        EMS-rollup-vs-direct decision is honoured once and a controller (EMS or
+        gateway) can never appear as an ``INVERTER`` row.
+        """
+        caps = self.capabilities
+        model = caps.device_type if caps else None
+        # On EMS/Gateway plants the plant model is the controller's model, not an
+        # inverter model — don't let directly-decoded inverters inherit it.
+        inverter_model = model if caps and not (caps.is_ems or caps.is_gateway) else None
+        rows: list[PlantDevice] = []
+
+        # On a gateway plant the singular ``inverter`` decodes the gateway's own
+        # cache as a spurious inverter — suppress that row; the GATEWAY row below
+        # represents the device instead.
+        if not (caps and caps.is_gateway):
+            for inverter in self.inverters:
+                rows.append(
+                    PlantDevice(
+                        device_type=DeviceType.INVERTER,
+                        device=inverter,
+                        serial_number=inverter.serial_number or None,
+                        # A blinded (EMS-rollup) inverter's own model is unknown;
+                        # only a directly-decoded inverter inherits the plant model.
+                        model=None if inverter.is_blinded else inverter_model,
+                    )
+                )
+
+        if (ems := self.ems) is not None:
+            rows.append(PlantDevice(device_type=DeviceType.EMS, device=ems, model=model))
+
+        if (gateway := self.gateway) is not None:
+            rows.append(PlantDevice(device_type=DeviceType.GATEWAY, device=gateway, model=model))
+
+        for battery in self.batteries:
+            rows.append(
+                PlantDevice(
+                    device_type=DeviceType.BATTERY,
+                    device=battery,
+                    serial_number=_validated_serial(battery),
+                )
+            )
+
+        for meter in self.meters.values():
+            rows.append(
+                PlantDevice(
+                    device_type=DeviceType.METER,
+                    device=meter,
+                    serial_number=_validated_serial(meter),
+                )
+            )
+
+        for stack in self.hv_stacks:
+            rows.append(
+                PlantDevice(
+                    device_type=DeviceType.HV_STACK,
+                    device=stack,
+                    serial_number=_validated_serial(stack.bcu),
+                )
+            )
+
+        return rows
