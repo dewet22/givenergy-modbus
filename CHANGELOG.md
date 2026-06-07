@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2026-06-07
+
+### ✨ Added
+
+- support Python 3.11+ (lower floor from 3.14) ([e74786e](https://github.com/dewet22/givenergy-modbus/commit/e74786e5b0a05d6908bfb132ecc6893440b99490))
+- model-specific command mixins — _ThreePhaseCommands + _EmsCommands (#75) ([c28e063](https://github.com/dewet22/givenergy-modbus/commit/c28e0634da899fc947ce307a3a2e2adec3c2d964))
+- ingestion timestamps (#65), IR(0,60) skip-if-fresh (#196), all-zero bank rejection (#206) (#208) ([f47bd43](https://github.com/dewet22/givenergy-modbus/commit/f47bd43ea6c01bd199f72a1043444252f0bc3d37))
+
+### 🔧 Maintenance
+
+- fix PostToolUse hook matcher format in .claude/settings.json ([29d11e4](https://github.com/dewet22/givenergy-modbus/commit/29d11e44d7b48477c92475eb7f9a067913d5b023))
+- stabilise capture-replay tests under load (#188) ([786bc11](https://github.com/dewet22/givenergy-modbus/commit/786bc11c6bfff84c82d1a1f3c781f75496c54e9a))
+- add soak harness for IR(0,60) skip-if-fresh (#196) ([bb47e15](https://github.com/dewet22/givenergy-modbus/commit/bb47e1577aca63d60a4b14b3be75a348899b2f8a))
+
 ## [2.1.4] - 2026-06-05
 
 ### ✨ Added
