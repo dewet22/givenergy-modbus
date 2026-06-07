@@ -296,6 +296,29 @@ def test_three_phase_write_safe_registers_contains_three_phase_entries():
     assert RegisterMap.FORCE_CHARGE_ENABLE in wsr  # 1123
 
 
+def test_three_phase_set_battery_soc_reserve_validates():
+    """Out-of-range values must raise ValueError via the 3ph primitive."""
+    with pytest.raises(ValueError, match=r"\[4-100\]"):
+        _three_phase().set_battery_soc_reserve(0)
+
+
+def test_three_phase_set_charge_target_validates():
+    """Out-of-range charge target must raise ValueError via the 3ph primitive."""
+    with pytest.raises(ValueError, match=r"\[4-100\]"):
+        _three_phase().set_charge_target(101)
+
+
+def test_three_phase_set_charge_target_100_disables_charge_target():
+    """set_charge_target(100) on three-phase disables ENABLE_CHARGE_TARGET and writes HR(1111)=100."""
+    requests = _three_phase().set_charge_target(100)
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.ENABLE_CHARGE_TARGET in regs
+    assert regs[RegisterMap.ENABLE_CHARGE_TARGET] is False
+    assert regs.get(RegisterMap.CHARGE_TARGET_SOC_3PH) == 100
+    for r in requests:
+        r.encode()
+
+
 def test_three_phase_write_safe_registers_excludes_single_phase_entries():
     """Single-phase-only registers must be absent from the three-phase allowlist."""
     wsr = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
