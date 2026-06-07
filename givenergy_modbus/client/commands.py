@@ -246,6 +246,14 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, val)]
 
 
+def disable_charge_target_3ph() -> list[TransparentRequest]:
+    """Remove SOC limit and target 100% charging on three-phase inverters (HR 1111, shadows HR 116)."""
+    return [
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 100),
+    ]
+
+
 def set_battery_soc_reserve_3ph(val: int) -> list[TransparentRequest]:
     """Set the minimum SOC reserve on three-phase inverters (HR 1109, shadows single-phase HR 110)."""
     val = int(val)
@@ -1016,6 +1024,10 @@ class _ThreePhaseCommands:
     def set_battery_soc_reserve(self, val: int) -> list[TransparentRequest]:
         """Set the minimum SOC reserve (three-phase: HR 1109, shadows single-phase HR 110)."""
         return set_battery_soc_reserve_3ph(val)
+
+    def disable_charge_target(self) -> list[TransparentRequest]:
+        """Remove SOC limit and target 100% charging (three-phase: HR 1111, shadows single-phase HR 116)."""
+        return disable_charge_target_3ph()
 
     def set_charge_target(self, target_soc: int) -> list[TransparentRequest]:
         """Set charge target SOC (three-phase: HR 1111 + AC_CHARGE_ENABLE, shadows single-phase HR 116)."""
