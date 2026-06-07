@@ -190,17 +190,9 @@ await client.one_shot_command(inverter.set_enable_discharge(True))
 await client.one_shot_command(inverter.set_charge_slot(1, my_timeslot))
 ```
 
-The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The base `_InverterCommands` mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`.
+The inverter knows its own `slot_map`, so slot setters don't need it threaded through. The base `_InverterCommands` mixin is composed onto both `SinglePhaseInverter` and `ThreePhaseInverter`; `_ThreePhaseCommands` (also composed onto `ThreePhaseInverter`) overrides the methods where single-phase and three-phase register addresses differ.
 
-> ⚠️ **Treat the inverter command surface as single-phase-validated.** Several inherited methods delegate to primitives with **hardcoded single-phase register numbers**, but three-phase remaps many of those registers — so on a three-phase unit they write the *wrong* register. This is pre-existing and tracked for a proper fix (model-aware command routing) in [#203](https://github.com/dewet22/givenergy-modbus/issues/203) → [#106](https://github.com/dewet22/givenergy-modbus/issues/106):
-> - `set_charge_target()` writes HR(116), but three-phase remaps `charge_target_soc` to HR(1111).
-> - `set_battery_soc_reserve()` writes HR(110), but three-phase remaps `battery_soc_reserve` to HR(1109); the three-phase reserve is `set_battery_reserve_soc()` → HR(1078).
-> - `set_mode_storage()` hardcodes the single-phase discharge slots (HR 44/45, 56/57) instead of three-phase HR(1118–1121).
-> - The enable helpers (`set_enable_charge`, …) target single-phase HR(96/59), distinct from the three-phase enables.
->
-> The **slot setters** (`set_charge_slot` / `set_discharge_slot`) *are* model-aware — they read the instance's `slot_map` and emit the correct registers per model. The rest should be treated as single-phase until #106.
-
-Three-phase inverters additionally carry the `_ThreePhaseCommands` mixin (marker: ✦ three-phase), so `set_ac_charge`, `set_force_charge`, and `set_force_discharge` are reachable as instance methods on `ThreePhaseInverter`:
+Three-phase inverters additionally carry the `_ThreePhaseCommands` mixin (marker: ✦ three-phase), so `set_ac_charge`, `set_force_charge`, `set_force_discharge`, and `set_battery_reserve_soc` are reachable as instance methods on `ThreePhaseInverter` only:
 
 ```python
 if isinstance(inverter, ThreePhaseInverter):
@@ -245,12 +237,12 @@ case-by-case.
 
 | Surface | Composed onto | Marker in tables below |
 |---|---|---|
-| `_InverterCommands` | `SinglePhaseInverter`, `ThreePhaseInverter` | _(none — inherited base surface; **single-phase-validated**, see the ⚠️ note above)_ |
+| `_InverterCommands` | `SinglePhaseInverter`, `ThreePhaseInverter` | _(none — inherited base surface)_ |
 | `_ThreePhaseCommands` | `ThreePhaseInverter` only | ✦ three-phase |
 | `_EmsCommands` | `Ems` only | ▣ ems |
 | `commands.*` only | _(not exposed as mixin method)_ | ⛔ commands-only |
 
-An unmarked row means the method is inherited from `_InverterCommands` on both inverter types — **not** that it writes correct registers on three-phase. Per the warning above, several of these are single-phase-hardcoded and remain single-phase-validated until the model-aware routing in #203 / #106.
+An unmarked row means the method is available on both inverter types. On `ThreePhaseInverter`, `_ThreePhaseCommands` overrides `set_battery_soc_reserve`, `set_charge_target`, and the slot setters to use the correct three-phase registers (HR 1109, 1111, 1113–1121).
 
 ### Charging
 
@@ -338,6 +330,7 @@ family silently targeting wrong registers on another.
 | `set_ac_charge(enabled)` | Enable or disable AC charging | ✦ three-phase |
 | `set_force_charge(enabled)` | Force battery charge | ✦ three-phase |
 | `set_force_discharge(enabled)` | Force battery discharge | ✦ three-phase |
+| `set_battery_reserve_soc(val)` | Battery reserve SOC (HR 1078, "Battery Reserve %", 4–100%) | ✦ three-phase |
 
 ### Battery calibration
 

@@ -140,6 +140,7 @@ def test_inverter_reset_discharge_slot_clears_both_endpoints():
         "set_ac_charge",
         "set_force_charge",
         "set_force_discharge",
+        "set_battery_reserve_soc",  # three-phase only (HR 1078)
         # EMS commands live on _EmsCommands → Ems only.
         "set_ems_plant",
         "set_export_slot",
@@ -208,6 +209,104 @@ def test_three_phase_command_delegates_to_primitive(method_name, register):
     assert requests == [WriteHoldingRegisterRequest(register, True)]
     # Encode round-trip — catches a missing entry in pdu.write_registers.WRITE_SAFE_REGISTERS.
     requests[0].encode()
+
+
+# ---------------------------------------------------------------------------
+# #203 — three-phase model-aware routing
+# ---------------------------------------------------------------------------
+
+
+def test_three_phase_set_mode_storage_uses_three_phase_slots():
+    """set_mode_storage on a ThreePhaseInverter writes discharge slot 1 to HR(1118/1119)."""
+    inv = _three_phase()
+    slot = TimeSlot(start=dt_time(16, 0), end=dt_time(7, 0))
+    requests = inv.set_mode_storage(slot)
+    regs = {r.register: r.value for r in requests}
+    assert 1118 in regs, "three-phase discharge slot 1 start should be HR(1118)"
+    assert 1119 in regs, "three-phase discharge slot 1 end should be HR(1119)"
+    assert 56 not in regs, "single-phase HR(56) must not appear on three-phase"
+    assert 57 not in regs, "single-phase HR(57) must not appear on three-phase"
+
+
+def test_single_phase_set_mode_storage_still_uses_single_phase_slots():
+    """Regression: set_mode_storage on SinglePhaseInverter must still use HR(56/57)."""
+    inv = _single_phase()
+    slot = TimeSlot(start=dt_time(16, 0), end=dt_time(7, 0))
+    requests = inv.set_mode_storage(slot)
+    regs = {r.register: r.value for r in requests}
+    assert 56 in regs
+    assert 57 in regs
+    assert 1118 not in regs
+
+
+def test_three_phase_set_battery_soc_reserve_writes_correct_register():
+    """set_battery_soc_reserve on three-phase must write HR(1109), not HR(110)."""
+    requests = _three_phase().set_battery_soc_reserve(20)
+    assert len(requests) == 1
+    assert requests[0].register == RegisterMap.BATTERY_SOC_RESERVE_3PH
+    requests[0].encode()
+
+
+def test_single_phase_set_battery_soc_reserve_still_writes_hr110():
+    """Regression: single-phase must still write HR(110) = BATTERY_SOC_RESERVE."""
+    requests = _single_phase().set_battery_soc_reserve(20)
+    assert len(requests) == 1
+    assert requests[0].register == RegisterMap.BATTERY_SOC_RESERVE
+
+
+def test_three_phase_set_battery_reserve_soc_available():
+    """set_battery_reserve_soc (HR 1078) is reachable on three-phase."""
+    requests = _three_phase().set_battery_reserve_soc(10)
+    assert len(requests) == 1
+    assert requests[0].register == RegisterMap.BATTERY_RESERVE_SOC
+    requests[0].encode()
+
+
+def test_three_phase_set_charge_target_uses_correct_registers():
+    """set_charge_target on three-phase emits HR(1112) AC_CHARGE_ENABLE + HR(1111) charge target."""
+    requests = _three_phase().set_charge_target(80)
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.AC_CHARGE_ENABLE in regs, "three-phase must enable AC charge (HR 1112)"
+    assert RegisterMap.CHARGE_TARGET_SOC_3PH in regs, "three-phase must write charge target to HR(1111)"
+    assert regs[RegisterMap.CHARGE_TARGET_SOC_3PH] == 80
+    assert RegisterMap.CHARGE_TARGET_SOC not in regs, "single-phase HR(116) must not appear"
+    assert RegisterMap.ENABLE_CHARGE not in regs, "single-phase HR(96) must not appear"
+    for r in requests:
+        r.encode()
+
+
+def test_single_phase_set_charge_target_unchanged():
+    """Regression: single-phase set_charge_target must still use HR(96) and HR(116)."""
+    requests = _single_phase().set_charge_target(80)
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.ENABLE_CHARGE in regs
+    assert RegisterMap.CHARGE_TARGET_SOC in regs
+    assert regs[RegisterMap.CHARGE_TARGET_SOC] == 80
+    assert RegisterMap.CHARGE_TARGET_SOC_3PH not in regs
+
+
+def test_three_phase_write_safe_registers_contains_three_phase_entries():
+    """_ThreePhaseCommands.WRITE_SAFE_REGISTERS must include three-phase-specific registers."""
+    wsr = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    assert RegisterMap.CHARGE_TARGET_SOC_3PH in wsr  # 1111
+    assert RegisterMap.BATTERY_SOC_RESERVE_3PH in wsr  # 1109
+    assert RegisterMap.BATTERY_RESERVE_SOC in wsr  # 1078
+    assert RegisterMap.AC_CHARGE_ENABLE in wsr  # 1112
+    assert RegisterMap.FORCE_DISCHARGE_ENABLE in wsr  # 1122
+    assert RegisterMap.FORCE_CHARGE_ENABLE in wsr  # 1123
+
+
+def test_three_phase_write_safe_registers_excludes_single_phase_entries():
+    """Single-phase-only registers must be absent from the three-phase allowlist."""
+    wsr = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    assert RegisterMap.CHARGE_TARGET_SOC not in wsr  # 116 — replaced by 1111
+    assert RegisterMap.BATTERY_SOC_RESERVE not in wsr  # 110 — replaced by 1109
+    assert RegisterMap.ENABLE_CHARGE not in wsr  # 96 — replaced by AC_CHARGE_ENABLE
+    # single-phase slot pairs 1-2
+    assert 94 not in wsr and 95 not in wsr  # charge slot 1
+    assert 31 not in wsr and 32 not in wsr  # charge slot 2
+    assert 56 not in wsr and 57 not in wsr  # discharge slot 1
+    assert 44 not in wsr and 45 not in wsr  # discharge slot 2
 
 
 # ---------------------------------------------------------------------------
