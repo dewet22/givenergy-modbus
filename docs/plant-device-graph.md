@@ -129,7 +129,12 @@ matching serials yield `Inverter.merge()` (``data_source="merged"``); EMS-only
 slots stay blinded; orphan direct sources appear as ``data_source="direct"``
 entries. `Plant.serial_index` surfaces the reconciled view as
 `dict[str, Inverter]`. `Client(host, port, plant=p)` accepts an optional
-pre-built plant for advanced multi-Client topologies.
+pre-built plant for single-owner scenarios (e.g. restoring a persisted
+PlantCapabilities without re-running `detect()`). Do not share one `Plant`
+across two active `Client` instances — both call `plant.update()` into the same
+`register_caches`, so devices at the same Modbus address would overwrite each
+other. For multi-Client EMS + direct-inverter topologies use separate Plants
+and pass the direct caches in via `add_direct_source()`.
 
 **What's still deferred (original "Transport abstraction" intent).**
 Extract the Modbus-specific I/O behind a `Transport` interface so a plant can
