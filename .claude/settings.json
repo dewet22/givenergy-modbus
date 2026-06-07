@@ -1,5 +1,31 @@
 {
+  "permissions": {
+    "allow": [
+      "mcp__home-assistant__ha_call_read_tool",
+      "mcp__home-assistant__ha_search_entities",
+      "mcp__home-assistant__ha_search_tools",
+      "mcp__home-assistant__ha_get_entity",
+      "mcp__home-assistant__ha_get_overview",
+      "mcp__home-assistant__ha_get_state",
+      "mcp__home-assistant__ha_get_integration",
+      "mcp__home-assistant__ha_get_logs",
+      "Bash(git fetch)",
+      "Bash(git fetch *)"
+    ]
+  },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_CONFIG_DIR/scripts/guard-release-commands.sh",
+            "statusMessage": "Checking for gated release/promotion commands..."
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -8,6 +34,17 @@
             "type": "command",
             "command": "case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in *.py) uv run ruff check --fix \"$CLAUDE_TOOL_INPUT_FILE_PATH\" && uv run ruff format \"$CLAUDE_TOOL_INPUT_FILE_PATH\";; esac",
             "statusMessage": "Linting and formatting..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash $CLAUDE_CONFIG_DIR/scripts/check-inbox.sh",
+            "statusMessage": "Checking coordination inbox..."
           }
         ]
       }
