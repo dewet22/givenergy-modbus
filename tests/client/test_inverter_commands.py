@@ -347,6 +347,50 @@ def test_three_phase_write_safe_registers_excludes_single_phase_entries():
 
 
 # ---------------------------------------------------------------------------
+# set_enable_charge — three-phase routing
+# ---------------------------------------------------------------------------
+
+
+def test_three_phase_set_enable_charge_routes_to_ac_charge_enable():
+    """set_enable_charge on ThreePhaseInverter must write AC_CHARGE_ENABLE (HR 1112), not HR 96."""
+    requests = _three_phase().set_enable_charge(True)
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.AC_CHARGE_ENABLE in regs
+    assert RegisterMap.ENABLE_CHARGE not in regs, "single-phase HR(96) must not appear on three-phase"
+    for r in requests:
+        r.encode()
+
+
+def test_single_phase_set_enable_charge_unchanged():
+    """Regression: set_enable_charge on SinglePhaseInverter must still write HR(96)."""
+    requests = _single_phase().set_enable_charge(True)
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.ENABLE_CHARGE in regs
+
+
+# ---------------------------------------------------------------------------
+# set_mode_dynamic — three-phase routing
+# ---------------------------------------------------------------------------
+
+
+def test_three_phase_set_mode_dynamic_uses_three_phase_soc_reserve():
+    """set_mode_dynamic on ThreePhaseInverter must write HR(1109), not single-phase HR(110)."""
+    requests = _three_phase().set_mode_dynamic()
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.BATTERY_SOC_RESERVE_3PH in regs
+    assert RegisterMap.BATTERY_SOC_RESERVE not in regs, "single-phase HR(110) must not appear on three-phase"
+    for r in requests:
+        r.encode()
+
+
+def test_single_phase_set_mode_dynamic_unchanged():
+    """Regression: set_mode_dynamic on SinglePhaseInverter must still write HR(110)."""
+    requests = _single_phase().set_mode_dynamic()
+    regs = {r.register: r.value for r in requests}
+    assert RegisterMap.BATTERY_SOC_RESERVE in regs
+
+
+# ---------------------------------------------------------------------------
 # `_EmsCommands` mixin
 # ---------------------------------------------------------------------------
 

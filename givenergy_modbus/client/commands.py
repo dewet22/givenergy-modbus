@@ -958,7 +958,9 @@ class _ThreePhaseCommands:
     """Commands that apply to three-phase inverters, composed onto `ThreePhaseInverter`.
 
     Overrides several `_InverterCommands` methods that hardcode single-phase registers:
+    - `set_enable_charge()` → AC_CHARGE_ENABLE HR(1112) instead of HR(96)
     - `set_battery_soc_reserve()` → HR(1109) instead of HR(110)
+    - `set_mode_dynamic()` → HR(1109) for the SOC reserve step instead of HR(110)
     - `set_charge_target()` → HR(1112)+HR(1111) instead of HR(96)+HR(116)
     - `set_battery_reserve_soc()` relocated here (three-phase only, HR 1078)
 
@@ -1021,9 +1023,17 @@ class _ThreePhaseCommands:
 
     # --- overrides: correct register selection for three-phase ---------------
 
+    def set_enable_charge(self, enabled: bool) -> list[TransparentRequest]:
+        """Enable or disable battery charging (three-phase: AC_CHARGE_ENABLE HR 1112, shadows single-phase HR 96)."""
+        return set_ac_charge(enabled)
+
     def set_battery_soc_reserve(self, val: int) -> list[TransparentRequest]:
         """Set the minimum SOC reserve (three-phase: HR 1109, shadows single-phase HR 110)."""
         return set_battery_soc_reserve_3ph(val)
+
+    def set_mode_dynamic(self) -> list[TransparentRequest]:
+        """Set system to Dynamic / Eco mode (three-phase: HR 1109 for SOC reserve, shadows single-phase HR 110)."""
+        return set_discharge_mode_to_match_demand() + set_battery_soc_reserve_3ph(4) + set_enable_discharge(False)
 
     def disable_charge_target(self) -> list[TransparentRequest]:
         """Remove SOC limit and target 100% charging (three-phase: HR 1111, shadows single-phase HR 116)."""

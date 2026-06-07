@@ -242,7 +242,7 @@ case-by-case.
 | `_EmsCommands` | `Ems` only | ▣ ems |
 | `commands.*` only | _(not exposed as mixin method)_ | ⛔ commands-only |
 
-An unmarked row means the method is available on both inverter types. On `ThreePhaseInverter`, `_ThreePhaseCommands` overrides `set_battery_soc_reserve`, `set_charge_target`, `disable_charge_target`, and the slot setters to use the correct three-phase registers (HR 1109, 1111, 1113–1121).
+An unmarked row means the method is available on both inverter types. On `ThreePhaseInverter`, `_ThreePhaseCommands` overrides `set_enable_charge`, `set_battery_soc_reserve`, `set_mode_dynamic`, `set_charge_target`, `disable_charge_target`, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).
 
 ### Charging
 
