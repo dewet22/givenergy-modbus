@@ -24,7 +24,7 @@ def _inverter_cache(serial: str) -> RegisterCache:
     values: dict = {}
     # 0x2001 with arm_fw century 4 (not in gen table) → resolve_model() returns HYBRID_GEN1
     values[HR(0)] = 0x2001
-    values[HR(1)] = 0x0441
+    values[HR(21)] = 0x0441
     for i, v in _encode_serial(serial).items():
         values[HR(13 + i)] = v
     return RegisterCache(values)

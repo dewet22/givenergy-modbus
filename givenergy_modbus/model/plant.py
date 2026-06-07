@@ -820,7 +820,7 @@ class Plant(GivEnergyBaseModel):
                 raw_dtc = cache.get(HR(0))
                 if raw_dtc is None:
                     continue
-                arm_fw = cache.get(HR(1)) or 0
+                arm_fw = cache.get(HR(21)) or 0
                 model = resolve_model(raw_dtc, arm_fw)
                 inv = select_inverter(model, cache)
                 sn = getattr(inv, "serial_number", None)
