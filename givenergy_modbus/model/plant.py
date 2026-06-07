@@ -787,7 +787,11 @@ class Plant(GivEnergyBaseModel):
         """
         if self.ems is not None:
             return [UnifiedInverter.from_summary(s) for s in self.ems.managed_inverters]
-        return [UnifiedInverter.from_direct(self.inverter)]
+        # The single direct inverter owns every battery / HV stack in the plant
+        # cache (#106 Phase 2). Inject the already-decoded sub-devices so the
+        # facade can expose ownership without importing concrete Battery /
+        # HvStack types. Splitting across multiple direct inverters is Phase 3.
+        return [UnifiedInverter.from_direct(self.inverter, batteries=self.batteries, hv_stacks=self.hv_stacks)]
 
     @property
     def gateway(self) -> GatewayV1 | GatewayV2 | None:
@@ -801,14 +805,19 @@ class Plant(GivEnergyBaseModel):
     def devices(self) -> list[PlantDevice]:
         """Enumerate every device on this plant as typed :class:`PlantDevice` rows.
 
-        Additive surface (#106 Phase 1): each row carries a generic
-        :class:`DeviceType` discriminator, a serial (where the device exposes a
-        valid one), the plant's model where meaningful, and the already-decoded
-        typed model in :attr:`PlantDevice.device`. Built by composing the
-        existing accessors — :attr:`inverters`, :attr:`ems`, :attr:`gateway`,
-        :attr:`batteries`, :attr:`meters`, :attr:`hv_stacks` — so the
+        Each row carries a generic :class:`DeviceType` discriminator, a serial
+        (where the device exposes a valid one), the plant's model where
+        meaningful, and the already-decoded typed model in
+        :attr:`PlantDevice.device`. Built by composing the existing accessors —
+        :attr:`inverters`, :attr:`ems`, :attr:`gateway`, :attr:`meters` — so the
         EMS-rollup-vs-direct decision is honoured once and a controller (EMS or
         gateway) can never appear as an ``INVERTER`` row.
+
+        Batteries and HV stacks are **owned by their inverter** (#106 Phase 2):
+        they ride on the ``INVERTER`` row's ``device.batteries`` /
+        ``device.hv_stacks`` rather than as top-level rows. Meters are not
+        inverter-owned, so they stay flat rows (the Phase 1 meter-identity
+        limitation).
         """
         caps = self.capabilities
         model = caps.device_type if caps else None
@@ -820,6 +829,7 @@ class Plant(GivEnergyBaseModel):
         # On a gateway plant the singular ``inverter`` decodes the gateway's own
         # cache as a spurious inverter — suppress that row; the GATEWAY row below
         # represents the device instead.
+        inverter_emitted = False
         if not (caps and caps.is_gateway):
             for inverter in self.inverters:
                 rows.append(
@@ -832,6 +842,7 @@ class Plant(GivEnergyBaseModel):
                         model=None if inverter.is_blinded else inverter_model,
                     )
                 )
+                inverter_emitted = True
 
         if (ems := self.ems) is not None:
             rows.append(PlantDevice(device_type=DeviceType.EMS, device=ems, model=model))
@@ -839,14 +850,28 @@ class Plant(GivEnergyBaseModel):
         if (gateway := self.gateway) is not None:
             rows.append(PlantDevice(device_type=DeviceType.GATEWAY, device=gateway, model=model))
 
-        for battery in self.batteries:
-            rows.append(
-                PlantDevice(
-                    device_type=DeviceType.BATTERY,
-                    device=battery,
-                    serial_number=_validated_serial(battery),
+        # Batteries / HV stacks nest under their inverter via the injected
+        # ``inverter.batteries`` / ``.hv_stacks`` (see :attr:`inverters`). The
+        # only case with no inverter row to carry them is a gateway plant, where
+        # the inverter is suppressed — emit those as flat rows rather than drop
+        # them (orphan guard; proper partner-AIO expansion is a later phase).
+        if not inverter_emitted:
+            for battery in self.batteries:
+                rows.append(
+                    PlantDevice(
+                        device_type=DeviceType.BATTERY,
+                        device=battery,
+                        serial_number=_validated_serial(battery),
+                    )
                 )
-            )
+            for stack in self.hv_stacks:
+                rows.append(
+                    PlantDevice(
+                        device_type=DeviceType.HV_STACK,
+                        device=stack,
+                        serial_number=_validated_serial(stack.bcu),
+                    )
+                )
 
         for meter in self.meters.values():
             rows.append(
@@ -854,15 +879,6 @@ class Plant(GivEnergyBaseModel):
                     device_type=DeviceType.METER,
                     device=meter,
                     serial_number=_validated_serial(meter),
-                )
-            )
-
-        for stack in self.hv_stacks:
-            rows.append(
-                PlantDevice(
-                    device_type=DeviceType.HV_STACK,
-                    device=stack,
-                    serial_number=_validated_serial(stack.bcu),
                 )
             )
 

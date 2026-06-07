@@ -11,6 +11,60 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+_SERIAL_GROUPS: "list[tuple[str, int, int]] | None" = None
+
+# BMU serials are not in any REGISTER_LUT (Bmu.from_register_cache decodes them
+# manually at IR(114 + _BMU_STRIDE * bmu_index)).  Add groups for up to this
+# many BMUs per BCU so a BCU cache is fully redacted.  Absent groups are
+# harmlessly skipped by the all-registers-present check in redact_serials().
+_MAX_BMUS_PER_BCU = 8
+_BMU_SERIAL_BASE = 114
+_BMU_STRIDE = 120
+
+
+def _get_serial_groups() -> "list[tuple[str, int, int]]":
+    """Return (reg_type, base, count) for every C.serial register group (built once).
+
+    Covers:
+    - all groups discovered by walking the model REGISTER_LUTs (inverter/battery/
+      EMS/gateway Converter.serial fields);
+    - explicit BMU serial groups for up to ``_MAX_BMUS_PER_BCU`` modules per BCU,
+      because Bmu decodes its serial manually (no LUT entry).
+    """
+    global _SERIAL_GROUPS
+    if _SERIAL_GROUPS is not None:
+        return _SERIAL_GROUPS
+    from givenergy_modbus.model import battery, ems, gateway, inverter
+    from givenergy_modbus.model.register import Converter
+
+    seen: set[tuple[str, int, int]] = set()
+    groups: list[tuple[str, int, int]] = []
+    for module in (inverter, battery, ems, gateway):
+        for attr in dir(module):
+            cls = getattr(module, attr)
+            if not isinstance(cls, type):
+                continue
+            lut = getattr(cls, "REGISTER_LUT", None)
+            if not lut:
+                continue
+            for _field, defn in lut.items():
+                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
+                if pre_conv is Converter.serial and defn.registers:
+                    reg_type = type(defn.registers[0]).__name__
+                    base = defn.registers[0]._idx
+                    count = len(defn.registers)
+                    key = (reg_type, base, count)
+                    if key not in seen:
+                        seen.add(key)
+                        groups.append(key)
+    for i in range(_MAX_BMUS_PER_BCU):
+        key = ("IR", _BMU_SERIAL_BASE + _BMU_STRIDE * i, 5)
+        if key not in seen:
+            seen.add(key)
+            groups.append(key)
+    _SERIAL_GROUPS = groups
+    return _SERIAL_GROUPS
+
 
 class RegisterCache(defaultdict[Register, int]):
     """Holds a cache of Registers populated after querying a device."""
@@ -80,6 +134,43 @@ class RegisterCache(defaultdict[Register, int]):
     def to_datetime(self, y: Register, m: Register, d: Register, h: Register, min: Register, s: Register):
         """Combine 6 registers into a datetime, with safe defaults for zeroes."""
         return datetime.datetime(self[y] + 2000, self.get(m, 1) or 1, self.get(d, 1) or 1, self[h], self[min], self[s])
+
+    def redact_serials(self) -> "RegisterCache":
+        """Return a copy of this cache with all known serial-number registers redacted.
+
+        Identifies every register group tagged as ``Converter.serial`` in the model
+        LUTs (plus BMU serial groups, which are decoded manually), decodes each group
+        to a string, applies ``Converter.redact_serial`` (zeroing the trailing unit
+        digits), and re-encodes back into register values.
+
+        Groups that are only partially present in the cache, or whose decoded string
+        doesn't match a known serial pattern, are left unchanged.  Any register
+        whose value is not a plain integer (e.g. explicitly set to ``None``) causes
+        the group to be skipped rather than crash.
+
+        Produces the same ``AAYYWWA000``-style placeholders as :class:`FrameRedactor`,
+        so a redacted export is indistinguishable from a redacted capture.
+        """
+        from givenergy_modbus.model.register import Converter
+
+        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR}
+        result = RegisterCache(dict(self))
+        for reg_type, base, count in _get_serial_groups():
+            reg_cls = _reg_cls.get(reg_type)
+            if reg_cls is None:
+                continue
+            regs = [reg_cls(base + i) for i in range(count)]
+            if not all(isinstance(self.get(r), int) for r in regs):
+                continue
+            raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
+            serial_str = raw.decode("latin1").replace("\x00", "").upper()
+            redacted = Converter.redact_serial(serial_str)
+            if redacted is None or redacted == serial_str:
+                continue
+            redacted_bytes = redacted.encode("latin1").ljust(count * 2, b"\x00")[: count * 2]
+            for i, reg in enumerate(regs):
+                result[reg] = int.from_bytes(redacted_bytes[i * 2 : i * 2 + 2], "big")
+        return result
 
     def to_timeslot(self, start: Register, end: Register) -> "TimeSlot | None":
         """Combine two registers into a time slot, or None if either is unset.

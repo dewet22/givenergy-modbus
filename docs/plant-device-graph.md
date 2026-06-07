@@ -83,12 +83,42 @@ where meaningful, and the already-decoded typed model.
 Consumers (Home Assistant) can now enumerate typed devices to name and scope
 entities per device-type instead of assuming a single inverter.
 
-### Phase 2 — per-inverter battery ownership
+> **Superseded by Phase 2:** Phase 1 emitted batteries and HV stacks as
+> top-level `BATTERY` / `HV_STACK` rows. Phase 2 nests them under their owning
+> inverter instead (see below). The `DeviceType.BATTERY` / `HV_STACK` members
+> remain the vocabulary; `Plant.devices` now surfaces them via
+> `inverter_row.device.batteries` / `.hv_stacks`.
 
-Move batteries under their owning inverter (`Inverter.batteries`) with
-reconciliation by serial. **Breaking** for consumers that enumerate a flat
-`Plant.batteries` at setup time, so it ships behind a capability flag with a
-consumer migration. Depends on serial reconciliation maturing.
+### Phase 2 — per-inverter battery & HV-stack ownership ✅ (this increment)
+
+Batteries and HV stacks **belong to an inverter**, not directly to the plant, so
+`Plant.devices` now nests them under their owning `INVERTER` row
+(`inverter_row.device.batteries` / `.hv_stacks`) instead of emitting flat rows.
+The `Inverter` facade's `batteries` / `hv_stacks` (a `[]` stub in Phase 1) are
+populated by `Plant`, which decodes the sub-devices and injects them — keeping
+`devices.py` import-clean of concrete `Battery` / `HvStack` / `RegisterCache`
+types.
+
+- **The model layer stays additive.** `Plant.batteries` / `Plant.hv_stacks` (and
+  every other legacy accessor) are unchanged and still return their flat lists.
+  Only the `Inverter` facade gained populated sub-devices, and `Plant.devices`
+  changed its row shape.
+- **Ownership is unambiguous today.** A plant has exactly one *directly-reachable*
+  inverter, which owns every battery / stack in the plant cache. Blinded
+  (EMS-rollup) inverters honestly carry `[]` — the rollup exposes no per-battery
+  data.
+- **Orphan guard.** A gateway plant suppresses its (spurious) inverter row, so
+  there's no inverter to nest under; any stack the plant decoded there is kept as
+  a flat row rather than dropped.
+
+**What's deferred to Phase 3 (the original spec's "reconciliation by serial").**
+The spec framed this phase as breaking, behind a capability flag, *with serial
+reconciliation*. That reconciliation only bites once a plant has **multiple
+direct inverters or a merged direct+rollup view** — which needs the multi-Client
+work below. On today's single-Client plants there is nothing to reconcile, so
+this increment ships the honest additive slice and defers reconciliation to
+Phase 3. The `Plant.devices` row-shape change is breaking versus 2.1.5 but had no
+production consumer yet; it lands on the v2.2 line.
 
 ### Phase 3 — `Transport` abstraction / multi-Client
 
@@ -107,8 +137,8 @@ Reconciles with [#203](https://github.com/dewet22/givenergy-modbus/issues/203).
 
 `register_caches` stays flat; `RegisterCache` stays a Modbus detail; no
 serial-product (FC 0x16) reads are added for controller rows — EMS and Gateway
-controller rows carry `serial_number=None` until a later phase. Per-inverter
-battery ownership, multi-transport, and write-routing are Phases 2–4 above.
+controller rows carry `serial_number=None` until a later phase. Serial
+reconciliation, multi-transport, and write-routing are Phases 3–4 above.
 
 **Known Phase 1 limitation — meter identity.** `Meter` carries no `device_address`
 field; the address is the dict key in `Plant.meters` and is lost when iterating

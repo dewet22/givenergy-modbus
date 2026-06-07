@@ -185,6 +185,53 @@ def test_blinded_inverter_reports_empty_batteries():
     """
     inv = Inverter.from_summary(InverterSummary(serial_number="XX1234A567"))
     assert inv.batteries == []
+    assert inv.hv_stacks == []
+
+
+def test_direct_inverter_exposes_injected_batteries_and_hv_stacks():
+    """from_direct() surfaces the sub-devices Plant injects (#106 Phase 2).
+
+    The facade does not decode — Plant decodes batteries / HV stacks from
+    the register caches and hands them in, keeping ``devices.py`` import-clean
+    of concrete Battery / HvStack / RegisterCache types.
+    """
+
+    class FakeDirect:
+        serial_number = "ZZ9876B543"
+        status = Status.NORMAL
+
+    b1, b2, stack = object(), object(), object()
+    inv = Inverter.from_direct(FakeDirect(), batteries=[b1, b2], hv_stacks=[stack])
+
+    assert inv.batteries == [b1, b2]
+    assert inv.hv_stacks == [stack]
+
+
+def test_direct_inverter_without_injected_sub_devices_is_empty():
+    """from_direct() with no sub-devices injected reports empty lists, not None."""
+
+    class FakeDirect:
+        serial_number = "ZZ9876B543"
+        status = Status.NORMAL
+
+    inv = Inverter.from_direct(FakeDirect())
+    assert inv.batteries == []
+    assert inv.hv_stacks == []
+
+
+def test_merged_inverter_exposes_injected_sub_devices():
+    """merge() also carries injected sub-devices — direct merges keep their batteries."""
+
+    class FakeDirect:
+        serial_number = "ZZ9876B543"
+        status = Status.NORMAL
+
+    b1 = object()
+    summary = InverterSummary(serial_number="ZZ9876B543", p_inverter_out=2200)
+    inv = Inverter.merge(FakeDirect(), summary, batteries=[b1])
+
+    assert inv.batteries == [b1]
+    assert inv.hv_stacks == []
 
 
 # ---------------------------------------------------------------------------
