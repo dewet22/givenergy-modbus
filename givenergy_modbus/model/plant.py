@@ -491,7 +491,7 @@ class Plant(GivEnergyBaseModel):
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
     # Not serialised — ephemeral runtime state rebuilt by the consumer on each run.
-    _direct_source_caches: dict[int, RegisterCache] = PrivateAttr(default_factory=dict)
+    _direct_source_caches: list[RegisterCache] = PrivateAttr(default_factory=list)
 
     def model_post_init(self, __context: Any) -> None:
         """Ensure a default register cache is always present."""
@@ -778,7 +778,7 @@ class Plant(GivEnergyBaseModel):
         Client pointing at one of the EMS-managed inverters; ``inverters`` and
         ``serial_index`` will then return merged views for matching serials.
         """
-        self._direct_source_caches.update(caches)
+        self._direct_source_caches.extend(caches.values())
 
     @property
     def serial_index(self) -> dict[str, UnifiedInverter]:
@@ -816,7 +816,7 @@ class Plant(GivEnergyBaseModel):
 
             # Decode each direct-source cache into a serial → concrete-inverter map.
             direct_by_serial: dict[str, Any] = {}
-            for cache in self._direct_source_caches.values():
+            for cache in self._direct_source_caches:
                 raw_dtc = cache.get(HR(0))
                 if raw_dtc is None:
                     continue
