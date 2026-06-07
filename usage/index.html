@@ -448,6 +448,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ems-command-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMS command API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#available-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -464,6 +475,17 @@
     <span class="md-ellipsis">
       
         Stability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-each-command-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where each command lives
       
     </span>
   </a>
@@ -1116,6 +1138,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ems-command-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMS command API
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#available-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1132,6 +1165,17 @@
     <span class="md-ellipsis">
       
         Stability
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-each-command-lives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where each command lives
       
     </span>
   </a>
@@ -1491,53 +1535,115 @@ interactive command, pass <code>retry_delay=0</code>.</p>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_enable_discharge</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
 </code></pre></div>
-<p>The inverter knows its own <code>slot_map</code>, so slot setters don't need it threaded through. The mixin is composed onto both <code>SinglePhaseInverter</code> and <code>ThreePhaseInverter</code>; the methods listed below ("Available commands") are universally available.</p>
-<p>Three-phase-only and EMS-only commands (<code>set_ac_charge</code>, <code>set_force_charge</code>/<code>_discharge</code>, <code>set_battery_*_limit_ac</code>, <code>set_battery_pause_mode</code>, <code>set_pause_slot_*</code>, <code>set_ems_plant</code>, <code>set_export_slot_*</code>) are not yet exposed via the inverter API — call them on <code>commands.*</code> directly while their model-vs-firmware applicability is resolved (see <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>). They will appear on model-specific mixins in later 2.x minors.</p>
+<p>The inverter knows its own <code>slot_map</code>, so slot setters don't need it threaded through. The base <code>_InverterCommands</code> mixin is composed onto both <code>SinglePhaseInverter</code> and <code>ThreePhaseInverter</code>.</p>
+<blockquote>
+<p>⚠️ <strong>Treat the inverter command surface as single-phase-validated.</strong> Several inherited methods delegate to primitives with <strong>hardcoded single-phase register numbers</strong>, but three-phase remaps many of those registers — so on a three-phase unit they write the <em>wrong</em> register. This is pre-existing and tracked for a proper fix (model-aware command routing) in <a href="https://github.com/dewet22/givenergy-modbus/issues/203">#203</a> → <a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>:
+- <code>set_charge_target()</code> writes HR(116), but three-phase remaps <code>charge_target_soc</code> to HR(1111).
+- <code>set_battery_soc_reserve()</code> writes HR(110), but three-phase remaps <code>battery_soc_reserve</code> to HR(1109); the three-phase reserve is <code>set_battery_reserve_soc()</code> → HR(1078).
+- <code>set_mode_storage()</code> hardcodes the single-phase discharge slots (HR 44/45, 56/57) instead of three-phase HR(1118–1121).
+- The enable helpers (<code>set_enable_charge</code>, …) target single-phase HR(96/59), distinct from the three-phase enables.</p>
+<p>The <strong>slot setters</strong> (<code>set_charge_slot</code> / <code>set_discharge_slot</code>) <em>are</em> model-aware — they read the instance's <code>slot_map</code> and emit the correct registers per model. The rest should be treated as single-phase until #106.</p>
+</blockquote>
+<p>Three-phase inverters additionally carry the <code>_ThreePhaseCommands</code> mixin (marker: ✦ three-phase), so <code>set_ac_charge</code>, <code>set_force_charge</code>, and <code>set_force_discharge</code> are reachable as instance methods on <code>ThreePhaseInverter</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inverter</span><span class="p">,</span> <span class="n">ThreePhaseInverter</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_force_charge</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+</code></pre></div>
+<p>AC-limit commands (<code>set_battery_*_limit_ac</code>) and pause-mode commands (<code>set_battery_pause_mode</code>, <code>set_pause_slot_*</code>) remain on <code>commands.*</code> only — their model-vs-firmware applicability hasn't yet been confirmed against wire data (see <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>).</p>
+<h3 id="ems-command-api">EMS command API<a class="headerlink" href="#ems-command-api" title="Permanent link">&para;</a></h3>
+<p>EMS commands target the EMS plant controller — a peer device of the inverter, not the inverter itself — so they live on the <code>Ems</code> instance returned by <code>plant.ems</code> rather than on <code>plant.inverter</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">ems</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">ems</span>
+<span class="k">if</span> <span class="n">ems</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># None on non-EMS plants</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">ems</span><span class="o">.</span><span class="n">set_ems_plant</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">ems</span><span class="o">.</span><span class="n">set_ems_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">ems</span><span class="o">.</span><span class="n">set_export_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
+</code></pre></div>
+<p>EMS slots use a fixed three-slot layout at HR(2044–2071) — there's no <code>slot_map</code> parameter. EMS commands are tagged ▣ ems in the tables below.</p>
 <h3 id="available-commands">Available commands<a class="headerlink" href="#available-commands" title="Permanent link">&para;</a></h3>
 <p>All commands live in <code>givenergy_modbus.client.commands</code> and return
 <code>list[TransparentRequest]</code> for passing to <code>one_shot_command</code> or <code>execute</code>. The
 inverter API above delegates to these; using them directly remains supported
 for tests and lower-level integration.</p>
 <h4 id="stability">Stability<a class="headerlink" href="#stability" title="Permanent link">&para;</a></h4>
-<p>Both surfaces are supported within the 2.x line. <code>inverter.set_*</code> is the
-recommended high-level API; <code>commands.*</code> is the primitive layer that the
-mixin delegates to. There is no plan to deprecate <code>commands.*</code> within 2.x —
+<p>Both surfaces are supported within the 2.x line. The high-level mixin APIs
+(<code>inverter.set_*</code> on <code>SinglePhaseInverter</code> / <code>ThreePhaseInverter</code>, <code>ems.set_*</code>
+on <code>Ems</code>) are recommended; <code>commands.*</code> is the primitive layer that the
+mixins delegate to. There is no plan to deprecate <code>commands.*</code> within 2.x —
 the two are not duplicate paths but two layers of the same stack. If
 individual primitives turn out to be persistent footguns when used without an
 inverter (e.g. routing the wrong <code>slot_map</code>), they may be <code>@deprecated</code>
-case-by-case as model-specific mixins land in later 2.x minors.</p>
+case-by-case.</p>
+<h4 id="where-each-command-lives">Where each command lives<a class="headerlink" href="#where-each-command-lives" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Surface</th>
+<th>Composed onto</th>
+<th>Marker in tables below</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_InverterCommands</code></td>
+<td><code>SinglePhaseInverter</code>, <code>ThreePhaseInverter</code></td>
+<td><em>(none — inherited base surface; <strong>single-phase-validated</strong>, see the ⚠️ note above)</em></td>
+</tr>
+<tr>
+<td><code>_ThreePhaseCommands</code></td>
+<td><code>ThreePhaseInverter</code> only</td>
+<td>✦ three-phase</td>
+</tr>
+<tr>
+<td><code>_EmsCommands</code></td>
+<td><code>Ems</code> only</td>
+<td>▣ ems</td>
+</tr>
+<tr>
+<td><code>commands.*</code> only</td>
+<td><em>(not exposed as mixin method)</em></td>
+<td>⛔ commands-only</td>
+</tr>
+</tbody>
+</table>
+<p>An unmarked row means the method is inherited from <code>_InverterCommands</code> on both inverter types — <strong>not</strong> that it writes correct registers on three-phase. Per the warning above, several of these are single-phase-hardcoded and remain single-phase-validated until the model-aware routing in #203 / #106.</p>
 <h4 id="charging">Charging<a class="headerlink" href="#charging" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_charge_target(soc)</code></td>
 <td>Stop charging when SOC reaches <code>soc</code>% (4–100)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>disable_charge_target()</code></td>
 <td>Remove SOC limit, target 100%</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_enable_charge(enabled)</code></td>
 <td>Enable or disable charging</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_charge_limit(val)</code></td>
 <td>Charge power limit (0–50%)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_charge_limit_ac(val)</code></td>
 <td>AC charge power limit (1–100%)</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_shallow_charge(val)</code></td>
-<td>Set shallow charge threshold</td>
+<td>Set shallow charge threshold (deprecated — use <code>set_battery_soc_reserve</code>)</td>
+<td>⛔ commands-only</td>
 </tr>
 </tbody>
 </table>
@@ -1547,28 +1653,34 @@ case-by-case as model-specific mixins land in later 2.x minors.</p>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_enable_discharge(enabled)</code></td>
 <td>Enable or disable discharging</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_discharge_limit(val)</code></td>
 <td>Discharge power limit (0–50%)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_discharge_limit_ac(val)</code></td>
 <td>AC discharge power limit (1–100%)</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_battery_soc_reserve(val)</code></td>
 <td>Minimum SOC to maintain (4–100%)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_power_reserve(val)</code></td>
 <td>Battery power reserve (4–100%)</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1578,132 +1690,164 @@ case-by-case as model-specific mixins land in later 2.x minors.</p>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_charge_slot(idx, timeslot, slot_map)</code></td>
 <td>Set charge slot <code>idx</code> (1-based)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_charge_slot_start(idx, t, slot_map)</code></td>
 <td>Set just the start of charge slot <code>idx</code> (or <code>None</code> to clear that end)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_charge_slot_end(idx, t, slot_map)</code></td>
 <td>Set just the end of charge slot <code>idx</code> (or <code>None</code> to clear that end)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>reset_charge_slot(idx, slot_map)</code></td>
 <td>Clear charge slot <code>idx</code></td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_discharge_slot(idx, timeslot, slot_map)</code></td>
 <td>Set discharge slot <code>idx</code> (1-based)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_discharge_slot_start(idx, t, slot_map)</code></td>
 <td>Set just the start of discharge slot <code>idx</code> (or <code>None</code> to clear that end)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_discharge_slot_end(idx, t, slot_map)</code></td>
 <td>Set just the end of discharge slot <code>idx</code> (or <code>None</code> to clear that end)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>reset_discharge_slot(idx, slot_map)</code></td>
 <td>Clear discharge slot <code>idx</code></td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_export_slot(idx, slot)</code></td>
 <td>Set export slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_export_slot_start(idx, t)</code></td>
 <td>Set just the start of export slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_export_slot_end(idx, t)</code></td>
 <td>Set just the end of export slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_export_priority(priority)</code></td>
 <td>Set surplus-power dispatch priority (<code>ExportPriority</code>: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_enable_eps(enabled)</code></td>
 <td>Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_battery_pause_mode(val)</code></td>
 <td>Set pause mode (<code>BatteryPauseMode</code>: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH)</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_pause_slot(slot)</code></td>
 <td>Set battery pause time slot (or <code>None</code> to clear)</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_pause_slot_start(t)</code></td>
 <td>Set just the start of the battery pause slot</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_pause_slot_end(t)</code></td>
 <td>Set just the end of the battery pause slot</td>
+<td>⛔ commands-only</td>
 </tr>
 <tr>
 <td><code>set_ems_plant(enabled)</code></td>
 <td>Enable/disable EMS plant control</td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_charge_slot(idx, timeslot)</code></td>
 <td>Set EMS plant charge slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_charge_slot_start(idx, t)</code></td>
 <td>Set just the start of EMS charge slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_charge_slot_end(idx, t)</code></td>
 <td>Set just the end of EMS charge slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_discharge_slot(idx, timeslot)</code></td>
 <td>Set EMS plant discharge slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_discharge_slot_start(idx, t)</code></td>
 <td>Set just the start of EMS discharge slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_discharge_slot_end(idx, t)</code></td>
 <td>Set just the end of EMS discharge slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_charge_target_soc(idx, soc)</code></td>
 <td>EMS charge slot <code>idx</code> target SOC (0–100%)</td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_discharge_target_soc(idx, soc)</code></td>
 <td>EMS discharge slot <code>idx</code> target SOC (0–100%)</td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_export_slot(idx, timeslot)</code></td>
 <td>Set EMS plant export slot <code>idx</code> (1–3), or clear if <code>None</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_export_slot_start(idx, t)</code></td>
 <td>Set just the start of EMS export slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_export_slot_end(idx, t)</code></td>
 <td>Set just the end of EMS export slot <code>idx</code></td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_export_target_soc(idx, soc)</code></td>
 <td>EMS export slot <code>idx</code> target SOC (0–100%)</td>
+<td>▣ ems</td>
 </tr>
 <tr>
 <td><code>set_ems_export_power_limit(watts)</code></td>
 <td>EMS plant export power limit (watts)</td>
+<td>▣ ems</td>
 </tr>
 </tbody>
 </table>
@@ -1728,36 +1872,44 @@ family silently targeting wrong registers on another.</p>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_mode_dynamic()</code></td>
 <td>Dynamic/Eco mode — maximise self-consumption</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_mode_storage(discharge_slot_1, discharge_slot_2, discharge_for_export)</code></td>
 <td>Storage/timed discharge mode</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_discharge_mode_max_power()</code></td>
 <td>Set battery to discharge at max power</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_discharge_mode_to_match_demand()</code></td>
 <td>Set battery to match load demand</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_ac_charge(enabled)</code></td>
-<td>Enable or disable AC charging (three-phase)</td>
+<td>Enable or disable AC charging</td>
+<td>✦ three-phase</td>
 </tr>
 <tr>
 <td><code>set_force_charge(enabled)</code></td>
-<td>Force battery charge (three-phase)</td>
+<td>Force battery charge</td>
+<td>✦ three-phase</td>
 </tr>
 <tr>
 <td><code>set_force_discharge(enabled)</code></td>
-<td>Force battery discharge (three-phase)</td>
+<td>Force battery discharge</td>
+<td>✦ three-phase</td>
 </tr>
 </tbody>
 </table>
@@ -1767,12 +1919,14 @@ family silently targeting wrong registers on another.</p>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_calibrate_battery_soc(val)</code></td>
 <td>Recalibrate SOC estimation: <code>0</code> = Stop, <code>1</code> = Start (default), <code>3</code> = Charge Only</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -1782,28 +1936,29 @@ family silently targeting wrong registers on another.</p>
 <tr>
 <th>Function</th>
 <th>Description</th>
+<th>Surface</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>set_active_power_rate(target)</code></td>
 <td>Max inverter output as % of rated capacity</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_system_date_time(dt)</code></td>
 <td>Set inverter clock</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_enable_rtc(enabled)</code></td>
 <td>Enable Real Time Clock (persists settings to EEPROM)</td>
+<td></td>
 </tr>
 <tr>
 <td><code>set_inverter_reboot()</code></td>
 <td>Restart the inverter</td>
-</tr>
-<tr>
-<td><code>set_ems_plant(enabled)</code></td>
-<td>Enable EMS plant control</td>
+<td></td>
 </tr>
 </tbody>
 </table>
