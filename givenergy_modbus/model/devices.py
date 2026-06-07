@@ -283,7 +283,7 @@ class Inverter:
         inverter is blinded — the EMS rollup exposes no per-battery
         serials or SoC, so we honestly cannot see what's attached.
         """
-        return self._batteries or []
+        return list(self._batteries) if self._batteries else []
 
     @property
     def hv_stacks(self) -> list[Any]:
@@ -292,7 +292,7 @@ class Inverter:
         Populated by :class:`Plant` from this inverter's register caches.
         Empty when blinded, mirroring :attr:`batteries`.
         """
-        return self._hv_stacks or []
+        return list(self._hv_stacks) if self._hv_stacks else []
 
     # ------------------------------------------------------------------
     # Diagnostics

@@ -226,6 +226,8 @@ def test_three_phase_set_mode_storage_uses_three_phase_slots():
     assert 1119 in regs, "three-phase discharge slot 1 end should be HR(1119)"
     assert 56 not in regs, "single-phase HR(56) must not appear on three-phase"
     assert 57 not in regs, "single-phase HR(57) must not appear on three-phase"
+    for r in requests:
+        r.encode()
 
 
 def test_single_phase_set_mode_storage_still_uses_single_phase_slots():
