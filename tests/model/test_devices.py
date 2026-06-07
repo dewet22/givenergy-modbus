@@ -4,7 +4,11 @@ Phase 1 of the Plant refactor — see ``docs/v2.1-roadmap.md`` for the
 wider design these tests verify.
 """
 
-from givenergy_modbus.model.devices import Inverter, InverterSummary
+import dataclasses
+
+import pytest
+
+from givenergy_modbus.model.devices import DeviceType, Inverter, InverterSummary, PlantDevice
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.inverter import Model, Status
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
@@ -358,3 +362,59 @@ def test_plant_inverters_non_ems_returns_single_direct_inverter():
     assert inverters[0].is_blinded is False
     # The wrapped direct source is the same instance Plant.inverter returns.
     assert inverters[0].direct is not None
+
+
+# ---------------------------------------------------------------------------
+# DeviceType + PlantDevice
+# ---------------------------------------------------------------------------
+
+
+def test_device_type_members_are_generic_string_values():
+    """DeviceType is a str-enum of generic device categories — stable, JSON-safe values.
+
+    Values are leaned on as hass entity-id prefixes, so they must be plain
+    lowercase strings and must not leak manufacturer/protocol nouns (no
+    'bcu', 'aio', 'modbus').
+    """
+    assert {dt.name for dt in DeviceType} == {
+        "INVERTER",
+        "EMS",
+        "GATEWAY",
+        "BATTERY",
+        "METER",
+        "HV_STACK",
+    }
+    # str-valued: each member is usable directly as a string.
+    assert DeviceType.INVERTER == "inverter"
+    assert DeviceType.HV_STACK == "hv_stack"
+    assert isinstance(DeviceType.BATTERY, str)
+
+
+def test_plant_device_construction_and_read_through():
+    """PlantDevice tags an already-decoded model with a type, serial, and model."""
+    s = InverterSummary(serial_number="XX1234A567")
+    inv = Inverter.from_summary(s)
+    entry = PlantDevice(
+        device_type=DeviceType.INVERTER,
+        device=inv,
+        serial_number="XX1234A567",
+        model=None,
+    )
+    assert entry.device_type is DeviceType.INVERTER
+    assert entry.device is inv  # read-through to the rich model
+    assert entry.serial_number == "XX1234A567"
+    assert entry.model is None
+
+
+def test_plant_device_serial_and_model_default_to_none():
+    """serial_number and model are optional — a device with neither is valid."""
+    entry = PlantDevice(device_type=DeviceType.EMS, device=object())
+    assert entry.serial_number is None
+    assert entry.model is None
+
+
+def test_plant_device_is_frozen():
+    """PlantDevice is immutable — entries are snapshots, not mutable handles."""
+    entry = PlantDevice(device_type=DeviceType.METER, device=object())
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        entry.serial_number = "tampered"  # type: ignore[misc]

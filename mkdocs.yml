@@ -18,6 +18,7 @@ nav:
   - Planning:
       - v2.1 roadmap: v2.1-roadmap.md
       - Post-v2.0 improvement plan: post-v2-improvement-plan.md
+      - Graph-shaped Plant (#106): plant-device-graph.md
 theme:
   name: material
   language: en
