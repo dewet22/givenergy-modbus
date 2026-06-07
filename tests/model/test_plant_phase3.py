@@ -158,6 +158,25 @@ def test_plant_serial_index_reflects_merged_source():
     assert plant.serial_index["XX1234A567"].data_source == "merged"
 
 
+def test_plant_inverters_skips_direct_cache_with_no_dtc():
+    """A direct-source cache that has no HR(0) (no DTC) is silently skipped."""
+    plant = _ems_plant(["XX1234A567"])
+    plant.add_direct_source({0x31: RegisterCache({})})
+    inverters = plant.inverters
+    assert len(inverters) == 1
+    assert inverters[0].data_source == "ems_rollup"
+
+
+def test_plant_inverters_skips_direct_cache_with_no_serial():
+    """A direct-source cache that decodes to an empty serial is silently skipped."""
+    plant = _ems_plant(["XX1234A567"])
+    # DTC present but no HR(13-17) serial registers → serial decodes as empty
+    plant.add_direct_source({0x31: RegisterCache({HR(0): 0x2001, HR(1): 0x0441})})
+    inverters = plant.inverters
+    assert len(inverters) == 1
+    assert inverters[0].data_source == "ems_rollup"
+
+
 # ---------------------------------------------------------------------------
 # Client — shared-plant constructor kwarg
 # ---------------------------------------------------------------------------
