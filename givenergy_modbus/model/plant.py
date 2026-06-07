@@ -3,7 +3,7 @@ import warnings
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
@@ -18,6 +18,7 @@ from givenergy_modbus.model.inverter import (
     SinglePhaseInverter,
     SinglePhaseInverterRegisterGetter,
     inverter_address_for,
+    resolve_model,
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
@@ -486,6 +487,12 @@ class Plant(GivEnergyBaseModel):
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
+    # Direct-inverter register caches injected by add_direct_source() for multi-Client
+    # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
+    # Modbus address collision (both EMS controller and direct inverter live at 0x11).
+    # Not serialised — ephemeral runtime state rebuilt by the consumer on each run.
+    _direct_source_caches: list[RegisterCache] = PrivateAttr(default_factory=list)
+
     def model_post_init(self, __context: Any) -> None:
         """Ensure a default register cache is always present."""
         if not self.register_caches:
@@ -762,31 +769,81 @@ class Plant(GivEnergyBaseModel):
         cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
         return Ems.from_register_cache(cache)
 
+    def add_direct_source(self, caches: dict[int, RegisterCache]) -> None:
+        """Store direct-inverter register caches for serial reconciliation (#106 Phase 3).
+
+        Caches are stored separately from ``register_caches`` to avoid the Modbus
+        address collision (both the EMS controller and a directly-connected inverter
+        live at 0x11). Call this on an EMS plant after collecting data from a second
+        Client pointing at one of the EMS-managed inverters; ``inverters`` and
+        ``serial_index`` will then return merged views for matching serials.
+        """
+        self._direct_source_caches.extend(caches.values())
+
+    @property
+    def serial_index(self) -> dict[str, UnifiedInverter]:
+        """Map each known inverter serial number to its :class:`Inverter` facade.
+
+        Built from :attr:`inverters`, so the same reconciliation logic applies:
+        merged entries (direct + EMS rollup) have ``data_source="merged"``,
+        blinded EMS-only entries have ``data_source="ems_rollup"``, and direct-only
+        entries have ``data_source="direct"``.
+        """
+        return {inv.serial_number: inv for inv in self.inverters if inv.serial_number}
+
     @property
     def inverters(self) -> list[UnifiedInverter]:
         """Return one :class:`Inverter` facade per inverter in this plant.
 
-        Phase 1 of the Plant refactor — the unified surface that makes
-        EMS-managed (blinded) inverters visible without breaking the
-        existing :attr:`inverter` / :attr:`ems` accessors.
+        For an EMS plant without direct sources: yields one :class:`Inverter` per
+        non-empty managed-inverter slot in the EMS's IR(2040+) rollup
+        (``data_source="ems_rollup"``).
 
-        For an EMS plant: yields one :class:`Inverter` per non-empty
-        managed-inverter slot in the EMS's IR(2040+) rollup
-        (``data_source="ems_rollup"``). Direct register-cache inverters
-        on the same plant are not yet exposed here — that happens in
-        phase 2 once Multi-Client orchestration lands and free-standing
-        inverters can be reconciled with the EMS rollup by serial.
+        For an EMS plant with direct sources (injected via :meth:`add_direct_source`):
+        reconciles EMS summaries with direct-inverter caches by serial number.
+        Matching serials produce merged inverters (``data_source="merged"``); EMS
+        slots without a matching direct source stay blinded; direct sources whose
+        serial is not in the EMS rollup appear as orphan ``data_source="direct"``
+        entries (#106 Phase 3).
 
-        For a non-EMS plant: yields a single :class:`Inverter` wrapping
-        the existing :attr:`inverter` (``data_source="direct"``). The
-        legacy :attr:`inverter` (singular) accessor remains for
-        back-compat and continues to return the directly-decoded
-        :class:`SinglePhaseInverter` / :class:`ThreePhaseInverter`.
-
-        See ``docs/v2.1-roadmap.md`` for the wider refactor sketch.
+        For a non-EMS plant: yields a single :class:`Inverter` wrapping the existing
+        :attr:`inverter` (``data_source="direct"``). The legacy :attr:`inverter`
+        (singular) accessor remains for back-compat.
         """
         if self.ems is not None:
-            return [UnifiedInverter.from_summary(s) for s in self.ems.managed_inverters]
+            if not self._direct_source_caches:
+                return [UnifiedInverter.from_summary(s) for s in self.ems.managed_inverters]
+
+            # Decode each direct-source cache into a serial → concrete-inverter map.
+            direct_by_serial: dict[str, Any] = {}
+            for cache in self._direct_source_caches:
+                raw_dtc = cache.get(HR(0))
+                if raw_dtc is None:
+                    continue
+                arm_fw = cache.get(HR(21)) or 0
+                model = resolve_model(raw_dtc, arm_fw)
+                inv = select_inverter(model, cache)
+                sn = getattr(inv, "serial_number", None)
+                if sn:
+                    direct_by_serial[sn] = inv
+
+            result: list[UnifiedInverter] = []
+            ems_serials: set[str] = set()
+            for summary in self.ems.managed_inverters:
+                sn = summary.serial_number
+                ems_serials.add(sn)
+                if sn in direct_by_serial:
+                    result.append(UnifiedInverter.merge(direct_by_serial[sn], summary))
+                else:
+                    result.append(UnifiedInverter.from_summary(summary))
+
+            # Orphan: direct-source inverters not present in EMS rollup
+            for sn, direct_inv in direct_by_serial.items():
+                if sn not in ems_serials:
+                    result.append(UnifiedInverter.from_direct(direct_inv))
+
+            return result
+
         # The single direct inverter owns every battery / HV stack in the plant
         # cache (#106 Phase 2). Inject the already-decoded sub-devices so the
         # facade can expose ownership without importing concrete Battery /

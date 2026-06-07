@@ -120,11 +120,26 @@ this increment ships the honest additive slice and defers reconciliation to
 Phase 3. The `Plant.devices` row-shape change is breaking versus 2.1.5 but had no
 production consumer yet; it lands on the v2.2 line.
 
-### Phase 3 — `Transport` abstraction / multi-Client
+### Phase 3 — Serial reconciliation + `Plant.serial_index` ✅ shipped (v2.2)
 
+`Plant.add_direct_source(caches)` stores direct-inverter register caches
+separately (avoiding the EMS address-collision at 0x11). `Plant.inverters`
+reconciles EMS-rollup summaries with direct-source caches by serial number:
+matching serials yield `Inverter.merge()` (``data_source="merged"``); EMS-only
+slots stay blinded; orphan direct sources appear as ``data_source="direct"``
+entries. `Plant.serial_index` surfaces the reconciled view as
+`dict[str, Inverter]`. `Client(host, port, plant=p)` accepts an optional
+pre-built plant for single-owner scenarios (e.g. restoring a persisted
+PlantCapabilities without re-running `detect()`). Do not share one `Plant`
+across two active `Client` instances — both call `plant.update()` into the same
+`register_caches`, so devices at the same Modbus address would overwrite each
+other. For multi-Client EMS + direct-inverter topologies use separate Plants
+and pass the direct caches in via `add_direct_source()`.
+
+**What's still deferred (original "Transport abstraction" intent).**
 Extract the Modbus-specific I/O behind a `Transport` interface so a plant can
-span multiple connections (free-standing inverters + an EMS on one plant) and
-so non-Modbus transports can slot in later. Reconciles with
+span multiple connections without `add_direct_source` wiring, and so
+non-Modbus transports can slot in later. Reconciles with
 [#75](https://github.com/dewet22/givenergy-modbus/issues/75).
 
 ### Phase 4 — model-aware write-routing
