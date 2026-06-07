@@ -255,3 +255,26 @@ def test_redact_serials_empty_cache():
     """redact_serials() on an empty cache returns an empty cache."""
     result = RegisterCache().redact_serials()
     assert len(result) == 0
+
+
+def test_redact_serials_none_valued_register_skips_group():
+    """A group containing a register explicitly set to None is skipped, not crashed."""
+    registers = _encode_serial("CE2231A123", IR, 110)
+    registers[IR(110)] = None  # corrupt one register in the group
+    rc = RegisterCache(registers)
+    # Must not raise; the group is skipped so the None value is preserved.
+    result = rc.redact_serials()
+    assert result.get(IR(110)) is None
+
+
+def test_redact_serials_bmu_serial_redacted():
+    """BMU 0 serial in IR(114-118) is redacted (explicit group, not in REGISTER_LUT)."""
+    # BMU serial base = 114 + 120*0 = 114.
+    registers = _encode_serial("HX2231A456", IR, 114)
+    registers[IR(0)] = 7  # unrelated
+    result = RegisterCache(registers).redact_serials()
+
+    expected = _encode_serial("HX2231A000", IR, 114)
+    for reg, val in expected.items():
+        assert result[reg] == val, f"{reg} mismatch"
+    assert result[IR(0)] == 7  # untouched

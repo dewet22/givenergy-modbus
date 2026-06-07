@@ -13,9 +13,24 @@ _logger = logging.getLogger(__name__)
 
 _SERIAL_GROUPS: "list[tuple[str, int, int]] | None" = None
 
+# BMU serials are not in any REGISTER_LUT (Bmu.from_register_cache decodes them
+# manually at IR(114 + _BMU_STRIDE * bmu_index)).  Add groups for up to this
+# many BMUs per BCU so a BCU cache is fully redacted.  Absent groups are
+# harmlessly skipped by the all-registers-present check in redact_serials().
+_MAX_BMUS_PER_BCU = 8
+_BMU_SERIAL_BASE = 114
+_BMU_STRIDE = 120
+
 
 def _get_serial_groups() -> "list[tuple[str, int, int]]":
-    """Return (reg_type, base, count) for every C.serial register group (built once)."""
+    """Return (reg_type, base, count) for every C.serial register group (built once).
+
+    Covers:
+    - all groups discovered by walking the model REGISTER_LUTs (inverter/battery/
+      EMS/gateway Converter.serial fields);
+    - explicit BMU serial groups for up to ``_MAX_BMUS_PER_BCU`` modules per BCU,
+      because Bmu decodes its serial manually (no LUT entry).
+    """
     global _SERIAL_GROUPS
     if _SERIAL_GROUPS is not None:
         return _SERIAL_GROUPS
@@ -42,6 +57,11 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
                     if key not in seen:
                         seen.add(key)
                         groups.append(key)
+    for i in range(_MAX_BMUS_PER_BCU):
+        key = ("IR", _BMU_SERIAL_BASE + _BMU_STRIDE * i, 5)
+        if key not in seen:
+            seen.add(key)
+            groups.append(key)
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
@@ -119,10 +139,14 @@ class RegisterCache(defaultdict[Register, int]):
         """Return a copy of this cache with all known serial-number registers redacted.
 
         Identifies every register group tagged as ``Converter.serial`` in the model
-        LUTs, decodes each group to a string, applies ``Converter.redact_serial``
-        (zeroing the trailing unit digits), and re-encodes back into register values.
+        LUTs (plus BMU serial groups, which are decoded manually), decodes each group
+        to a string, applies ``Converter.redact_serial`` (zeroing the trailing unit
+        digits), and re-encodes back into register values.
+
         Groups that are only partially present in the cache, or whose decoded string
-        doesn't match a known serial pattern, are left unchanged.
+        doesn't match a known serial pattern, are left unchanged.  Any register
+        whose value is not a plain integer (e.g. explicitly set to ``None``) causes
+        the group to be skipped rather than crash.
 
         Produces the same ``AAYYWWA000``-style placeholders as :class:`FrameRedactor`,
         so a redacted export is indistinguishable from a redacted capture.
@@ -136,9 +160,9 @@ class RegisterCache(defaultdict[Register, int]):
             if reg_cls is None:
                 continue
             regs = [reg_cls(base + i) for i in range(count)]
-            if not all(r in self for r in regs):
+            if not all(isinstance(self.get(r), int) for r in regs):
                 continue
-            raw = b"".join(self[r].to_bytes(2, "big") for r in regs)
+            raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()
             redacted = Converter.redact_serial(serial_str)
             if redacted is None or redacted == serial_str:
