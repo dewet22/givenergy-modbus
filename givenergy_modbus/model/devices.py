@@ -104,26 +104,41 @@ class Inverter:
     concern via the underlying sources.
     """
 
-    __slots__ = ("data_source", "_direct", "_summary")
+    __slots__ = ("data_source", "_direct", "_summary", "_batteries", "_hv_stacks")
 
     def __init__(
         self,
         data_source: DataSource,
         direct: Any | None = None,
         summary: InverterSummary | None = None,
+        batteries: list[Any] | None = None,
+        hv_stacks: list[Any] | None = None,
     ) -> None:
         """Construct directly (prefer the factory methods).
 
         The constructor is permissive about which source is present so
         the class can be tested with mocks; the factories enforce the
         invariant that ``data_source`` matches the supplied sources.
+
+        ``batteries`` / ``hv_stacks`` are the inverter's sub-devices,
+        already-decoded and injected by :class:`Plant` (#106 Phase 2).
+        They're typed ``Any`` so this module stays import-clean of the
+        concrete ``Battery`` / ``HvStack`` / ``RegisterCache`` types.
         """
         self.data_source = data_source
         self._direct = direct
         self._summary = summary
+        self._batteries = batteries
+        self._hv_stacks = hv_stacks
 
     @classmethod
-    def from_direct(cls, direct: Any) -> Inverter:
+    def from_direct(
+        cls,
+        direct: Any,
+        *,
+        batteries: list[Any] | None = None,
+        hv_stacks: list[Any] | None = None,
+    ) -> Inverter:
         """Construct from a directly-reachable concrete inverter model.
 
         ``direct`` is duck-typed: anything exposing the standard inverter
@@ -134,29 +149,48 @@ class Inverter:
         only directly exposed on :class:`ThreePhaseInverter`;
         single-phase direct sources will return ``None`` for that field
         unless the rollup ``summary`` is also merged in.
+
+        ``batteries`` / ``hv_stacks`` are the sub-devices owned by this
+        inverter, injected by :class:`Plant` (#106 Phase 2).
         """
-        return cls(data_source="direct", direct=direct)
+        return cls(data_source="direct", direct=direct, batteries=batteries, hv_stacks=hv_stacks)
 
     @classmethod
     def from_summary(cls, summary: InverterSummary) -> Inverter:
         """Construct from a rollup summary (e.g. EMS-managed, no direct dongle).
 
-        The resulting inverter is "blinded": :attr:`batteries` is empty,
-        per-PV-string fields aren't available. Consumers see the same
-        interface as a directly-reachable inverter, just with fewer
-        populated fields.
+        The resulting inverter is "blinded": :attr:`batteries` and
+        :attr:`hv_stacks` are empty, per-PV-string fields aren't
+        available. Consumers see the same interface as a directly-reachable
+        inverter, just with fewer populated fields.
         """
         return cls(data_source="ems_rollup", summary=summary)
 
     @classmethod
-    def merge(cls, direct: Any, summary: InverterSummary) -> Inverter:
+    def merge(
+        cls,
+        direct: Any,
+        summary: InverterSummary,
+        *,
+        batteries: list[Any] | None = None,
+        hv_stacks: list[Any] | None = None,
+    ) -> Inverter:
         """Construct from a direct source reconciled with a rollup summary.
 
         Reconciliation is the caller's responsibility (typically matching
         on serial number at end of detect). Once merged, direct fields
         are preferred; the summary fills any gap the direct source has.
+
+        ``batteries`` / ``hv_stacks`` are the sub-devices owned by this
+        inverter, injected by :class:`Plant` (#106 Phase 2).
         """
-        return cls(data_source="merged", direct=direct, summary=summary)
+        return cls(
+            data_source="merged",
+            direct=direct,
+            summary=summary,
+            batteries=batteries,
+            hv_stacks=hv_stacks,
+        )
 
     # ------------------------------------------------------------------
     # Identity
@@ -242,17 +276,23 @@ class Inverter:
 
     @property
     def batteries(self) -> list[Any]:
-        """List of batteries attached to this inverter.
+        """List of LV battery packs owned by this inverter (#106 Phase 2).
 
-        Empty list when the inverter is blinded — we honestly do not
-        know what batteries (if any) are attached, since the EMS rollup
-        does not expose per-battery serials or SoC. Phase 2 of the Plant
-        refactor populates this from the inverter's own register cache;
-        for now phase 1 conservatively returns ``[]`` for all sources
-        because the legacy ``Plant.batteries`` accessor already serves
-        directly-reachable installs.
+        Populated by :class:`Plant`, which decodes the packs from this
+        inverter's register caches and injects them. Empty when the
+        inverter is blinded — the EMS rollup exposes no per-battery
+        serials or SoC, so we honestly cannot see what's attached.
         """
-        return []
+        return self._batteries or []
+
+    @property
+    def hv_stacks(self) -> list[Any]:
+        """List of HV battery stacks (BCU + BMUs) owned by this inverter (#106 Phase 2).
+
+        Populated by :class:`Plant` from this inverter's register caches.
+        Empty when blinded, mirroring :attr:`batteries`.
+        """
+        return self._hv_stacks or []
 
     # ------------------------------------------------------------------
     # Diagnostics
