@@ -409,6 +409,29 @@ async def test_detect_aio_skips_modules_with_no_serial():
 
 
 @pytest.mark.asyncio
+async def test_detect_aio_module_decode_error_skips_address(monkeypatch):
+    """A ValidationError during AIO module decode skips the address without crashing detect()."""
+    from givenergy_modbus.model.aio_battery import AioBatteryModule
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    _prime_cache(client, 0xA0, {IR(61): 1})
+    _prime_cache(client, 0x70, {IR(64): 1})
+    _prime_aio_module_serial(client, 0x50)
+
+    def _raise(cache, addr):
+        raise ValueError("simulated decode failure")
+
+    monkeypatch.setattr(AioBatteryModule, "from_register_cache", staticmethod(_raise))
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=True)):
+            caps = await client.detect()
+
+    assert caps.aio_battery_module_addresses == []
+
+
+@pytest.mark.asyncio
 async def test_detect_battery_decode_value_error_stops_probe(monkeypatch):
     """A battery register-decode ValueError stops the probe rather than propagating.
 

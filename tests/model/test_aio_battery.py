@@ -96,6 +96,29 @@ async def test_plant_aio_battery_modules_empty_without_caps():
 
 
 @pytest.mark.timeout(20)
+async def test_plant_aio_battery_modules_skips_on_decode_error(monkeypatch):
+    """A decode error for one module is caught; the remaining modules are still returned."""
+    from givenergy_modbus.model.aio_battery import AioBatteryModule
+
+    plant = await _aio_plant_with_caps()
+    call_count = 0
+
+    original = AioBatteryModule.from_register_cache
+
+    def _raise_on_first(cache, addr):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ValueError("simulated decode failure")
+        return original(cache, addr)
+
+    monkeypatch.setattr(AioBatteryModule, "from_register_cache", staticmethod(_raise_on_first))
+    modules = plant.aio_battery_modules
+
+    assert len(modules) == 3  # first module skipped, remaining 3 returned
+
+
+@pytest.mark.timeout(20)
 async def test_plant_devices_emits_battery_module_rows_under_inverter():
     """Plant.devices emits 4 BATTERY_MODULE rows, and they ride on the inverter facade too."""
     plant = await _aio_plant_with_caps()
