@@ -1959,7 +1959,12 @@ def test_plant_capabilities_is_ac_coupled():
 
 
 # ---------------------------------------------------------------------------
-# Frozen BMS cache detection (#91) — is_block_frozen / is_battery_frozen
+# Frozen-BMS-cache primitive (#91) — _block_content_hashes / _append_block_hash
+#
+# No public freeze predicate is exposed: replaying the real capture corpus showed
+# healthy LV batteries hold byte-identical IR(60,60) content for 23-26 consecutive
+# samples (dongle fan-out + genuinely-static telemetry), so consecutive-equality
+# alone can't distinguish a freeze. These tests pin the primitive's behaviour only.
 # ---------------------------------------------------------------------------
 
 
@@ -1981,51 +1986,52 @@ def _feed_bank(
     plant.update(pdu)
 
 
-def test_is_block_frozen_false_below_threshold(plant: Plant):
-    """Fewer than n identical banks → False (startup grace period)."""
-    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    for _ in range(4):  # n-1 = 4 < default n=5
+def test_append_block_hash_records_one_entry_per_commit(plant: Plant):
+    """Each committed bank appends exactly one hash to the block's deque."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    for _ in range(3):
         _feed_bank(plant, bank)
-    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
+    dq = plant._block_content_hashes[(0x32, "IR", 60, 60)]
+    assert len(dq) == 3
 
 
-def test_is_block_frozen_false_on_changing_data(plant: Plant):
-    """N banks committed but the last differs → False (data is live)."""
-    bank_a = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    bank_b = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x0001}
-    for _ in range(4):
-        _feed_bank(plant, bank_a)
-    _feed_bank(plant, bank_b)
-    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
-
-
-def test_is_block_frozen_true_on_n_identical_banks(plant: Plant):
-    """Exactly n consecutive identical banks → True (freeze detected)."""
+def test_append_block_hash_identical_banks_produce_equal_hashes(plant: Plant):
+    """Byte-identical consecutive banks hash equal — the substrate for freeze detection."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
     for _ in range(5):
         _feed_bank(plant, bank)
-    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is True
+    dq = plant._block_content_hashes[(0x32, "IR", 60, 60)]
+    assert len(set(dq)) == 1
 
 
-def test_is_block_frozen_resets_after_change(plant: Plant):
-    """A data change after being frozen resets the freeze signal to False."""
-    bank_frozen = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    bank_live = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x0001}
-    for _ in range(5):
-        _feed_bank(plant, bank_frozen)
-    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is True
-    _feed_bank(plant, bank_live)
-    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
+def test_append_block_hash_changed_bank_produces_distinct_hash(plant: Plant):
+    """A register change yields a distinct hash from the prior bank."""
+    bank_a = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    bank_b = {**bank_a, 60: 5678}
+    _feed_bank(plant, bank_a)
+    _feed_bank(plant, bank_b)
+    dq = plant._block_content_hashes[(0x32, "IR", 60, 60)]
+    assert dq[0] != dq[1]
 
 
-def test_is_battery_frozen_delegates_to_ir_60_60(plant: Plant):
-    """is_battery_frozen is a convenience alias for IR(60, 60)."""
+def test_append_block_hash_keyed_per_block(plant: Plant):
+    """Distinct (device, type, base, count) blocks track separate deques."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    for _ in range(5):
-        _feed_bank(plant, bank, base=60, count=60)
-    assert plant.is_battery_frozen(0x32) is True
-    # A different block (different base) is not affected.
-    assert plant.is_block_frozen(0x32, "IR", 0, 60, n=5) is False
+    _feed_bank(plant, bank, base=60, count=60)
+    _feed_bank(plant, {0: 1}, base=0, count=60)
+    assert (0x32, "IR", 60, 60) in plant._block_content_hashes
+    assert (0x32, "IR", 0, 60) in plant._block_content_hashes
+
+
+def test_discarded_bank_is_not_hashed(plant: Plant):
+    """A bank rejected by _commit_bank (Pattern B all-zero) records no hash — mirrors _stamp_block."""
+    # Seed a non-zero battery bank, then push an all-zero full block → Pattern B rejection.
+    seed = {60: 3221, 110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    _feed_bank(plant, seed)
+    assert len(plant._block_content_hashes[(0x32, "IR", 60, 60)]) == 1
+    _feed_bank(plant, dict.fromkeys(seed, 0))  # all-zero over non-zero cache → rejected
+    # Still only the one hash from the committed bank; the rejected bank added nothing.
+    assert len(plant._block_content_hashes[(0x32, "IR", 60, 60)]) == 1
 
 
 def test_hash_deque_capped_at_max_size(plant: Plant):
@@ -2038,20 +2044,3 @@ def test_hash_deque_capped_at_max_size(plant: Plant):
     key = (0x32, "IR", 60, 60)
     dq = plant._block_content_hashes[key]
     assert len(dq) == _FROZEN_HASH_DEQUE_SIZE
-
-
-def test_is_block_frozen_invalid_n_raises(plant: Plant):
-    """An n outside 1.._FROZEN_HASH_DEQUE_SIZE raises ValueError rather than silently never firing.
-
-    n > the deque cap can never be satisfied (len(dq) tops out at the cap), so a caller asking
-    for more samples than are retained would get a permanent False — a silent misconfiguration.
-    """
-    from givenergy_modbus.model.plant import _FROZEN_HASH_DEQUE_SIZE
-
-    with pytest.raises(ValueError, match="n must be between 1 and"):
-        plant.is_block_frozen(0x32, "IR", 60, 60, n=0)
-    with pytest.raises(ValueError, match="n must be between 1 and"):
-        plant.is_block_frozen(0x32, "IR", 60, 60, n=_FROZEN_HASH_DEQUE_SIZE + 1)
-    # is_battery_frozen forwards n, so the same guard applies through the convenience alias.
-    with pytest.raises(ValueError, match="n must be between 1 and"):
-        plant.is_battery_frozen(0x32, n=0)

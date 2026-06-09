@@ -36,9 +36,9 @@ from givenergy_modbus.pdu import (
 
 _logger = logging.getLogger(__name__)
 
-# Size of the rolling hash deque used for frozen-BMS-cache detection (#91).
-# Storing 10 hashes per block allows is_block_frozen() to be called with n ≤ 10
-# while keeping the per-block memory cost constant and small.
+# Size of the rolling content-hash deque retained per register block for the
+# frozen-BMS-cache primitive (#91). Bounded so the per-block memory cost stays
+# constant and small regardless of session length.
 _FROZEN_HASH_DEQUE_SIZE = 10
 
 # Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
@@ -493,11 +493,13 @@ class Plant(GivEnergyBaseModel):
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
-    # Rolling content-hash deques for frozen-BMS-cache detection (#91).  Keyed identically to
+    # Rolling content-hash deques — the frozen-BMS-cache primitive (#91). Keyed identically to
     # register_block_updated_at; each value is a bounded deque of the last
-    # _FROZEN_HASH_DEQUE_SIZE content hashes of the committed bank.  Private (not part of the
-    # model's serialised state) — ephemeral, resets on reconnect (acceptable: a fresh connection
-    # gets a fresh history, and a reconnected battery starts a new freeze-detection cycle).
+    # _FROZEN_HASH_DEQUE_SIZE content hashes of the committed bank. Private (not part of the
+    # model's serialised state) — ephemeral, resets on reconnect. No public freeze predicate is
+    # exposed yet: on the real capture corpus, healthy LV batteries hold byte-identical IR(60,60)
+    # content for 23-26 consecutive samples, so consecutive-equality alone cannot distinguish a
+    # freeze from a live-but-static BMS. See _append_block_hash() for the full rationale.
     _block_content_hashes: dict = PrivateAttr(default_factory=dict)
 
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
@@ -718,56 +720,23 @@ class Plant(GivEnergyBaseModel):
         """Append a content hash of committed to the rolling deque for this block (#91).
 
         Called from update() whenever _commit_bank() returns True, mirroring _stamp_block().
-        The hash covers the full committed dict so any register change resets the freeze counter.
+        The hash covers the full committed dict, so byte-identical consecutive banks produce
+        equal hashes and any register change produces a distinct one.
+
+        This is the freeze-detection *primitive*. A public predicate (e.g. is_battery_frozen)
+        is deliberately not exposed yet: replaying the real capture corpus showed healthy,
+        actively-polled LV batteries hold byte-identical IR(60,60) content for streaks of 23-26
+        consecutive samples (dongle fan-out re-serves the same cached frame to every TCP client,
+        and battery telemetry genuinely doesn't change every poll). Naive consecutive-equality
+        therefore can't distinguish a bootloader-mode freeze from a live-but-static BMS without a
+        discriminating signal (or a duration threshold validated against more than one freeze
+        capture). The deque is retained because it is the right substrate for that future work,
+        and #57's bounds-discard calibration ("discarded bank matches last accepted vs genuinely
+        new") consumes the same store. See #91.
         """
         key = (device_address, reg_type, base_register, register_count)
         dq = self._block_content_hashes.setdefault(key, deque(maxlen=_FROZEN_HASH_DEQUE_SIZE))
         dq.append(hash(frozenset(committed.items())))
-
-    def is_block_frozen(
-        self,
-        device_address: int,
-        reg_type: str,
-        base_register: int,
-        register_count: int,
-        *,
-        n: int = 5,
-    ) -> bool:
-        """True if the last n consecutive committed banks of this block were byte-identical (#91).
-
-        A True result indicates the device cache may be frozen — e.g. a BMS in firmware-update
-        bootloader mode that has gone quiet on RS485 while the inverter keeps serving its last
-        cached page unchanged.
-
-        Returns False until n samples have been collected (startup grace period prevents false
-        positives on the first few polls after a reconnect).
-
-        Does not auto-invalidate data; callers decide how to surface the signal (e.g. marking
-        the device unavailable in Home Assistant).
-
-        n=5 at a 30 s poll interval ≈ 2.5 min before the signal fires — long enough to avoid
-        false positives during normal idle periods, short enough to catch a firmware-update
-        freeze within the first few minutes.
-
-        n must be in 1..._FROZEN_HASH_DEQUE_SIZE: the deque only retains that many samples, so a
-        larger n could never be satisfied and would silently never detect a freeze.
-        """
-        if not 1 <= n <= _FROZEN_HASH_DEQUE_SIZE:
-            raise ValueError(f"n must be between 1 and {_FROZEN_HASH_DEQUE_SIZE}, got {n}")
-        dq = self._block_content_hashes.get((device_address, reg_type, base_register, register_count))
-        if dq is None or len(dq) < n:
-            return False
-        recent = list(dq)[-n:]
-        return all(h == recent[0] for h in recent)
-
-    def is_battery_frozen(self, device_address: int, *, n: int = 5) -> bool:
-        """Convenience: frozen-cache check for an LV battery at device_address.
-
-        Delegates to is_block_frozen for the standard battery telemetry block IR(60, 60).
-        Returns True when the last n consecutive polls returned byte-identical data,
-        indicating the BMS may be in firmware-update bootloader mode. See #91.
-        """
-        return self.is_block_frozen(device_address, "IR", 60, 60, n=n)
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
