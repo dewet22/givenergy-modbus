@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-06-09
+
+### ✨ Added
+
+- RegisterCache.redact_serials() — share-safe cache export (#212, #214) ([7ce7c66](https://github.com/dewet22/givenergy-modbus/commit/7ce7c66afedb06d5e83c038f2abfa750c9401ad0))
+
+### 🔄 Changed
+
+- ⚠️ Breaking: remove unreliable first_battery_serial_number (#191) (#218) ([f08af87](https://github.com/dewet22/givenergy-modbus/commit/f08af87d9258bdb17f28b90c2af770445af47f80))
+
+### 🔧 Maintenance
+
+- ghbot convention, permission allowlist, and inbox hooks ([9dde868](https://github.com/dewet22/givenergy-modbus/commit/9dde868285ef5c0e85ca24cf6595078b4db63537))
+- bump codecov/codecov-action from 6 to 7 (#217) ([9014003](https://github.com/dewet22/givenergy-modbus/commit/90140030eeac49e90f30c9a4071e54f780b72689))
+
 ## [2.1.5] - 2026-06-07
 
 ### ✨ Added
