@@ -11,7 +11,8 @@ direction is legible in one place.
 > flagship [#106](https://github.com/dewet22/givenergy-modbus/issues/106)
 > (graph-shaped Plant), [#75](https://github.com/dewet22/givenergy-modbus/issues/75)
 > (commands onto Inverter), [#57](https://github.com/dewet22/givenergy-modbus/issues/57)
-> (bounds enforcement) and #166 all landed. What's left is a pile of
+> (bounds *detection* — its whole-bank-discard tail is folded into Pillar C) and
+> #166 all landed. What's left is a pile of
 > register-audit and data-integrity issues plus four strategic threads that were
 > only ever discussed, never written down. This consolidates them.
 
@@ -95,7 +96,7 @@ re-deriving its own ad-hoc checks.
 | Freshness | `Plant.block_age()` (#65) | shipped |
 | Staleness / freeze | `Plant.content_unchanged_seconds()` (#91 primitive) → freeze *verdict* | primitive shipped; [verdict deferred](https://github.com/dewet22/givenergy-modbus/issues/91) |
 | Bank dropout | Pattern A/B rejection ([#78](https://github.com/dewet22/givenergy-modbus/issues/78) / [#147](https://github.com/dewet22/givenergy-modbus/issues/147)) | shipped |
-| Bounds | out-of-range bank discard (#57) | shipped |
+| Bounds | field-level out-of-range suppression + bank-level detection (#57); whole-bank discard still gated behind a `TODO(enforcement)` in `_commit_bank()` | detection shipped; discard deferred |
 | Present-but-unavailable | placeholder for transiently-absent devices ([#213](https://github.com/dewet22/givenergy-modbus/issues/213)) | open |
 | Transient zeros | home-load debounce ([#199](https://github.com/dewet22/givenergy-modbus/issues/199)) | open |
 
@@ -104,7 +105,9 @@ rollup on `PlantDevice` — so the `givenergy-hass` agent maps one signal onto H
 availability rather than stitching several together. The shape gets handed across
 via the coordination inbox once it stabilises. The #91 freeze verdict stays
 deferred until there are enough firmware-update freeze captures to set a
-threshold that doesn't fire on healthy-but-static batteries.
+threshold that doesn't fire on healthy-but-static batteries; the #57 whole-bank
+discard (flipping the `TODO(enforcement)` in `_commit_bank()` from log-only to a
+rejecting `return False`) is the other concrete unit of work this pillar carries.
 
 ### Pillar D — Generic-topology hoist (flagship, parked)
 
