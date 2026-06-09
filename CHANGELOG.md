@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0rc2] - 2026-06-09
+
+### ✨ Added
+
+- #106 Phase 3 — serial reconciliation + Plant.serial_index (#216) ([e8da546](https://github.com/dewet22/givenergy-modbus/commit/e8da5461f95428802e27d572acf7b3cec74f6e0e))
+
+### 🔄 Changed
+
+- ⚠️ Breaking: remove unreliable first_battery_serial_number (#191) (#218) ([560754f](https://github.com/dewet22/givenergy-modbus/commit/560754f7ec8ccad9a47eb81602bc612a57442586))
+
+### 🔧 Maintenance
+
+- mark Phase 4 as shipped in plant-device-graph.md ([18fa6fe](https://github.com/dewet22/givenergy-modbus/commit/18fa6fe5576871173de5d0c552786271ff6d4a09))
+- bump codecov/codecov-action from 6 to 7 (#217) ([d453cf6](https://github.com/dewet22/givenergy-modbus/commit/d453cf624320ce2e3c0c3224f1492d19b9ddd5e3))
+
 ## [2.2.0rc1] - 2026-06-07
 
 ### ✨ Added
