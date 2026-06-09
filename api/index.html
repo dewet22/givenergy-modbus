@@ -7109,14 +7109,7 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 221</span>
-<span class="normal"> 222</span>
-<span class="normal"> 223</span>
-<span class="normal"> 224</span>
-<span class="normal"> 225</span>
-<span class="normal"> 226</span>
-<span class="normal"> 227</span>
-<span class="normal"> 228</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 228</span>
 <span class="normal"> 229</span>
 <span class="normal"> 230</span>
 <span class="normal"> 231</span>
@@ -8111,7 +8104,14 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
 <span class="normal">1220</span>
 <span class="normal">1221</span>
 <span class="normal">1222</span>
-<span class="normal">1223</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span>
+<span class="normal">1227</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.</span>
 
 <span class="sd">    Holds a long-lived connection drained by a single producer/consumer task pair.</span>
@@ -9164,14 +9164,7 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1007</span>
-<span class="normal">1008</span>
-<span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span>
-<span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1014</span>
 <span class="normal">1015</span>
 <span class="normal">1016</span>
 <span class="normal">1017</span>
@@ -9202,7 +9195,14 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 <span class="normal">1042</span>
 <span class="normal">1043</span>
 <span class="normal">1044</span>
-<span class="normal">1045</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
+<span class="normal">1045</span>
+<span class="normal">1046</span>
+<span class="normal">1047</span>
+<span class="normal">1048</span>
+<span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">sink</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Direction</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
     <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span>
@@ -9267,14 +9267,7 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">359</span>
-<span class="normal">360</span>
-<span class="normal">361</span>
-<span class="normal">362</span>
-<span class="normal">363</span>
-<span class="normal">364</span>
-<span class="normal">365</span>
-<span class="normal">366</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">366</span>
 <span class="normal">367</span>
 <span class="normal">368</span>
 <span class="normal">369</span>
@@ -9293,7 +9286,14 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 <span class="normal">382</span>
 <span class="normal">383</span>
 <span class="normal">384</span>
-<span class="normal">385</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Disconnect from the remote host and clean up tasks and queues.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">connected</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_shutting_down</span> <span class="o">=</span> <span class="kc">True</span>
@@ -9351,14 +9351,7 @@ separate <code>close()</code> step, and guarantees the new background tasks see
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">332</span>
 <span class="normal">333</span>
 <span class="normal">334</span>
 <span class="normal">335</span>
@@ -9383,7 +9376,14 @@ separate <code>close()</code> step, and guarantees the new background tasks see
 <span class="normal">354</span>
 <span class="normal">355</span>
 <span class="normal">356</span>
-<span class="normal">357</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to the remote host and start background tasks.</span>
 
 <span class="sd">    Idempotent: if the client is already connected, the existing connection</span>
@@ -9458,14 +9458,7 @@ speculative probes where absence is the common case.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">530</span>
-<span class="normal">531</span>
-<span class="normal">532</span>
-<span class="normal">533</span>
-<span class="normal">534</span>
-<span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">537</span>
 <span class="normal">538</span>
 <span class="normal">539</span>
 <span class="normal">540</span>
@@ -9616,7 +9609,14 @@ speculative probes where absence is the common case.</p>
 <span class="normal">685</span>
 <span class="normal">686</span>
 <span class="normal">687</span>
-<span class="normal">688</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">detect</span><span class="p">(</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span>
+<span class="normal">694</span>
+<span class="normal">695</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">detect</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
     <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
@@ -9797,14 +9797,7 @@ speculative probes where absence is the common case.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1137</span>
-<span class="normal">1138</span>
-<span class="normal">1139</span>
-<span class="normal">1140</span>
-<span class="normal">1141</span>
-<span class="normal">1142</span>
-<span class="normal">1143</span>
-<span class="normal">1144</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1144</span>
 <span class="normal">1145</span>
 <span class="normal">1146</span>
 <span class="normal">1147</span>
@@ -9812,7 +9805,14 @@ speculative probes where absence is the common case.</p>
 <span class="normal">1149</span>
 <span class="normal">1150</span>
 <span class="normal">1151</span>
-<span class="normal">1152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+<span class="normal">1152</span>
+<span class="normal">1153</span>
+<span class="normal">1154</span>
+<span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span>
+<span class="normal">1158</span>
+<span class="normal">1159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -9856,14 +9856,7 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span>
-<span class="normal">753</span>
-<span class="normal">754</span>
-<span class="normal">755</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">755</span>
 <span class="normal">756</span>
 <span class="normal">757</span>
 <span class="normal">758</span>
@@ -9912,7 +9905,14 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 <span class="normal">801</span>
 <span class="normal">802</span>
 <span class="normal">803</span>
-<span class="normal">804</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read HR configuration blocks for the inverter.</span>
 
 <span class="sd">    Returns the populated plant on full success. On partial/total read</span>
@@ -9995,11 +9995,11 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">985</span>
-<span class="normal">986</span>
-<span class="normal">987</span>
-<span class="normal">988</span>
-<span class="normal">989</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">992</span>
+<span class="normal">993</span>
+<span class="normal">994</span>
+<span class="normal">995</span>
+<span class="normal">996</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a set of requests. Caller is responsible for connecting first.&quot;&quot;&quot;</span>
@@ -10046,14 +10046,7 @@ cloud-disconnected dongle the block ages out and we solicit it as normal.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">806</span>
-<span class="normal">807</span>
-<span class="normal">808</span>
-<span class="normal">809</span>
-<span class="normal">810</span>
-<span class="normal">811</span>
-<span class="normal">812</span>
-<span class="normal">813</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">813</span>
 <span class="normal">814</span>
 <span class="normal">815</span>
 <span class="normal">816</span>
@@ -10122,7 +10115,14 @@ cloud-disconnected dongle the block ages out and we solicit it as normal.</p>
 <span class="normal">879</span>
 <span class="normal">880</span>
 <span class="normal">881</span>
-<span class="normal">882</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span>
+<span class="normal">882</span>
+<span class="normal">883</span>
+<span class="normal">884</span>
+<span class="normal">885</span>
+<span class="normal">886</span>
+<span class="normal">887</span>
+<span class="normal">888</span>
+<span class="normal">889</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
     <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
@@ -10239,14 +10239,7 @@ an address.
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">884</span>
-<span class="normal">885</span>
-<span class="normal">886</span>
-<span class="normal">887</span>
-<span class="normal">888</span>
-<span class="normal">889</span>
-<span class="normal">890</span>
-<span class="normal">891</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">891</span>
 <span class="normal">892</span>
 <span class="normal">893</span>
 <span class="normal">894</span>
@@ -10290,7 +10283,14 @@ an address.
 <span class="normal">932</span>
 <span class="normal">933</span>
 <span class="normal">934</span>
-<span class="normal">935</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
+<span class="normal">935</span>
+<span class="normal">936</span>
+<span class="normal">937</span>
+<span class="normal">938</span>
+<span class="normal">939</span>
+<span class="normal">940</span>
+<span class="normal">941</span>
+<span class="normal">942</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">full_refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">max_batteries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -10375,14 +10375,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1154</span>
-<span class="normal">1155</span>
-<span class="normal">1156</span>
-<span class="normal">1157</span>
-<span class="normal">1158</span>
-<span class="normal">1159</span>
-<span class="normal">1160</span>
-<span class="normal">1161</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1161</span>
 <span class="normal">1162</span>
 <span class="normal">1163</span>
 <span class="normal">1164</span>
@@ -10444,7 +10437,14 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">1220</span>
 <span class="normal">1221</span>
 <span class="normal">1222</span>
-<span class="normal">1223</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span>
+<span class="normal">1227</span>
+<span class="normal">1228</span>
+<span class="normal">1229</span>
+<span class="normal">1230</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">request</span><span class="p">:</span> <span class="n">TransparentRequest</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -10544,14 +10544,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">937</span>
-<span class="normal">938</span>
-<span class="normal">939</span>
-<span class="normal">940</span>
-<span class="normal">941</span>
-<span class="normal">942</span>
-<span class="normal">943</span>
-<span class="normal">944</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">944</span>
 <span class="normal">945</span>
 <span class="normal">946</span>
 <span class="normal">947</span>
@@ -10590,7 +10583,14 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">980</span>
 <span class="normal">981</span>
 <span class="normal">982</span>
-<span class="normal">983</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
+<span class="normal">983</span>
+<span class="normal">984</span>
+<span class="normal">985</span>
+<span class="normal">986</span>
+<span class="normal">987</span>
+<span class="normal">988</span>
+<span class="normal">989</span>
+<span class="normal">990</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">refresh_period</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
@@ -10688,14 +10688,7 @@ handles the #100 WO-dongle LAN-config broadcasts.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">110</span>
 <span class="normal">111</span>
 <span class="normal">112</span>
 <span class="normal">113</span>
@@ -10803,7 +10796,14 @@ handles the #100 WO-dongle LAN-config broadcasts.</p>
 <span class="normal">215</span>
 <span class="normal">216</span>
 <span class="normal">217</span>
-<span class="normal">218</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FrameRedactor</span><span class="p">:</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FrameRedactor</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Frame-aware stateful redactor for a captured GivEnergy byte stream.</span>
 
 <span class="sd">    Replaces ``StreamRedactor``: instead of running byte-level regex over raw socket</span>
@@ -10951,10 +10951,10 @@ handles the #100 WO-dongle LAN-config broadcasts.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">feed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">feed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chunk</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Absorb raw bytes; return redacted output for any complete frames found.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span> <span class="o">+=</span> <span class="n">chunk</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process</span><span class="p">()</span>
@@ -10980,13 +10980,13 @@ handles the #100 WO-dongle LAN-config broadcasts.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Emit any remaining buffered bytes intact and reset. Call at stream end.&quot;&quot;&quot;</span>
     <span class="n">tail</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_buf</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
@@ -16779,10 +16779,7 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">747</span>
 <span class="normal">748</span>
 <span class="normal">749</span>
 <span class="normal">750</span>
@@ -16988,7 +16985,10 @@ in later 2.x minors — see #75.</p>
 <span class="normal">950</span>
 <span class="normal">951</span>
 <span class="normal">952</span>
-<span class="normal">953</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">953</span>
+<span class="normal">954</span>
+<span class="normal">955</span>
+<span class="normal">956</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -17553,11 +17553,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">770</span>
-<span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -17588,10 +17588,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">759</span>
-<span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -17617,11 +17617,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -17980,7 +17980,10 @@ unknown (DTC unread).</p>
 <span class="normal">709</span>
 <span class="normal">710</span>
 <span class="normal">711</span>
-<span class="normal">712</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">712</span>
+<span class="normal">713</span>
+<span class="normal">714</span>
+<span class="normal">715</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -17994,7 +17997,10 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;num_phases&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">((</span><span class="n">C</span><span class="o">.</span><span class="n">duint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">3</span><span class="p">)),</span>
         <span class="c1"># HR(4-6) unused</span>
         <span class="s2">&quot;enable_ammeter&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">7</span><span class="p">)),</span>
-        <span class="s2">&quot;first_battery_serial_number&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">serial</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">8</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">9</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">11</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">12</span><span class="p">)),</span>
+        <span class="c1"># HR(8-12) was first_battery_serial_number — removed (#191): GivTCP-heritage,</span>
+        <span class="c1"># unused, unverifiable; on AIO firmware it held the unit serial byte-swapped,</span>
+        <span class="c1"># not a battery serial. Still redacted in captures via an explicit serial group</span>
+        <span class="c1"># in client._build_serial_register_groups (recoverable to the real serial).</span>
         <span class="s2">&quot;serial_number&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">serial</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">13</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">14</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">15</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">17</span><span class="p">)),</span>
         <span class="s2">&quot;first_battery_bms_firmware_version&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">18</span><span class="p">)),</span>
         <span class="s2">&quot;dsp_firmware_version&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">19</span><span class="p">)),</span>
