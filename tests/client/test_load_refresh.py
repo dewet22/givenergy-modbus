@@ -269,6 +269,16 @@ async def test_refresh_bcu_stacks():
     assert _ir(60, 60, device=0x71) in reqs
 
 
+async def test_refresh_aio_battery_modules():
+    """AIO battery modules each add an IR 60+60 read at their own device address (#192)."""
+    client = _client_with_caps(Model.ALL_IN_ONE, aio_battery_module_addresses=[0x50, 0x51, 0x52, 0x53])
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    reqs = _reqs(mock_exec)
+    for addr in (0x50, 0x51, 0x52, 0x53):
+        assert _ir(60, 60, device=addr) in reqs
+
+
 async def test_refresh_plant_forwards_timeout_retries_and_retry_delay_post_detect():
     """Once capabilities is set, refresh_plant() must thread timeout/retries/retry_delay through.
 

@@ -428,6 +428,7 @@ def test_device_type_members_are_generic_string_values():
         "EMS",
         "GATEWAY",
         "BATTERY",
+        "BATTERY_MODULE",
         "METER",
         "HV_STACK",
     }

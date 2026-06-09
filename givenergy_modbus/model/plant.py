@@ -6,6 +6,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from givenergy_modbus.model import GivEnergyBaseModel
+from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
@@ -190,6 +191,9 @@ class PlantCapabilities(BaseModel):
     lv_battery_addresses: list[int] = Field(default_factory=list)
     # Each entry is (bcu_offset, num_modules) where the BCU device address is 0x70 + bcu_offset.
     bcu_stacks: list[tuple[int, int]] = Field(default_factory=list)
+    # AIO (All-in-One) per-module battery device addresses (0x50-0x53). Separate-address
+    # layout, distinct from the bcu_stacks stride model — see model/aio_battery.py (#192).
+    aio_battery_module_addresses: list[int] = Field(default_factory=list)
 
     def __init__(
         self,
@@ -198,6 +202,7 @@ class PlantCapabilities(BaseModel):
         meter_addresses: list[int] | None = None,
         lv_battery_addresses: list[int] | None = None,
         bcu_stacks: list[tuple[int, int]] | None = None,
+        aio_battery_module_addresses: list[int] | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -218,6 +223,8 @@ class PlantCapabilities(BaseModel):
             kwargs["lv_battery_addresses"] = lv_battery_addresses
         if bcu_stacks is not None:
             kwargs["bcu_stacks"] = bcu_stacks
+        if aio_battery_module_addresses is not None:
+            kwargs["aio_battery_module_addresses"] = aio_battery_module_addresses
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 
@@ -336,6 +343,7 @@ class PlantCapabilities(BaseModel):
             "meter_addresses": [f"0x{a:02x}" for a in self.meter_addresses],
             "lv_battery_addresses": [f"0x{a:02x}" for a in self.lv_battery_addresses],
             "bcu_stacks": [[offset, modules] for offset, modules in self.bcu_stacks],
+            "aio_battery_module_addresses": [f"0x{a:02x}" for a in self.aio_battery_module_addresses],
         }
 
     @classmethod
@@ -395,19 +403,22 @@ class PlantCapabilities(BaseModel):
             # payloads can put strings here, which would TypeError downstream
             # (`0x70 + offset` in detect()). Fail loud at parse time instead.
             bcu_stacks=[(int(offset), int(modules)) for offset, modules in (normalised.get("bcu_stacks") or [])],
+            aio_battery_module_addresses=[_addr(a) for a in (normalised.get("aio_battery_module_addresses") or [])],
         )
 
     def __repr__(self) -> str:
         meters = ", ".join(f"0x{a:02x}" for a in self.meter_addresses)
         batts = ", ".join(f"0x{a:02x}" for a in self.lv_battery_addresses)
         bcus = ", ".join(f"({o}, {n})" for o, n in self.bcu_stacks)
+        aio_mods = ", ".join(f"0x{a:02x}" for a in self.aio_battery_module_addresses)
         return (
             f"PlantCapabilities("
             f"device_type=Model.{self.device_type.name}, "
             f"inverter_address=0x{self.inverter_address:02x}, "
             f"meter_addresses=[{meters}], "
             f"lv_battery_addresses=[{batts}], "
-            f"bcu_stacks=[{bcus}])"
+            f"bcu_stacks=[{bcus}], "
+            f"aio_battery_module_addresses=[{aio_mods}])"
         )
 
     @property
@@ -751,6 +762,25 @@ class Plant(GivEnergyBaseModel):
         return stacks
 
     @property
+    def aio_battery_modules(self) -> list[AioBatteryModule]:
+        """Return per-module AIO battery models (#192), one per separate-address module cache.
+
+        All-in-One units expose each removable module at its own device address (0x50-0x53),
+        each carrying 24 cell voltages, temperatures, and the module's own serial. Empty for
+        non-AIO plants and until the module caches have been polled.
+        """
+        if not self.capabilities or not self.capabilities.aio_battery_module_addresses:
+            return []
+        modules = []
+        for addr in self.capabilities.aio_battery_module_addresses:
+            if addr in self.register_caches:
+                try:
+                    modules.append(AioBatteryModule.from_register_cache(self.register_caches[addr], addr))
+                except Exception:
+                    _logger.error("Failed to decode AIO battery module at 0x%02x", addr, exc_info=True)
+        return modules
+
+    @property
     def meters(self) -> dict[int, Meter]:
         """Return Meter models keyed by device address."""
         if not self.capabilities or not self.capabilities.meter_addresses:
@@ -844,11 +874,19 @@ class Plant(GivEnergyBaseModel):
 
             return result
 
-        # The single direct inverter owns every battery / HV stack in the plant
-        # cache (#106 Phase 2). Inject the already-decoded sub-devices so the
-        # facade can expose ownership without importing concrete Battery /
-        # HvStack types. Splitting across multiple direct inverters is Phase 3.
-        return [UnifiedInverter.from_direct(self.inverter, batteries=self.batteries, hv_stacks=self.hv_stacks)]
+        # The single direct inverter owns every battery / HV stack / AIO module in
+        # the plant cache (#106 Phase 2, #192). Inject the already-decoded sub-devices
+        # so the facade can expose ownership without importing concrete Battery /
+        # HvStack / AioBatteryModule types. Splitting across multiple direct inverters
+        # is Phase 3.
+        return [
+            UnifiedInverter.from_direct(
+                self.inverter,
+                batteries=self.batteries,
+                hv_stacks=self.hv_stacks,
+                battery_modules=self.aio_battery_modules,
+            )
+        ]
 
     @property
     def gateway(self) -> GatewayV1 | GatewayV2 | None:
@@ -900,6 +938,19 @@ class Plant(GivEnergyBaseModel):
                     )
                 )
                 inverter_emitted = True
+
+        # AIO per-module battery sub-devices (#192) — enumerable BATTERY_MODULE rows,
+        # owned by the inverter (also injected on its ``device.battery_modules``), keyed
+        # by the module's own HX-prefixed serial. GivTCP surfaces these as separate
+        # per-module devices; mirror that so consumers can name one HA device per module.
+        for module in self.aio_battery_modules:
+            rows.append(
+                PlantDevice(
+                    device_type=DeviceType.BATTERY_MODULE,
+                    device=module,
+                    serial_number=_validated_serial(module),
+                )
+            )
 
         if (ems := self.ems) is not None:
             rows.append(PlantDevice(device_type=DeviceType.EMS, device=ems, model=model))

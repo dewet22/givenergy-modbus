@@ -92,14 +92,57 @@ _BMU_CELLS = 24
 _BMU_STRIDE = 120
 
 
-# Build the Bmu pydantic model schema using dummy offset 0 to infer field types,
-# then instantiate with real data in from_register_cache.
-def _bmu_fields() -> dict[str, tuple[Any, None]]:
+def module_cell_temp_serial_fields() -> dict[str, tuple[Any, None]]:
+    """Pydantic field schema for a battery module's per-cell data (voltages, temps, serial).
+
+    Shared by `Bmu` (HV stride layout) and `AioBatteryModule` (AIO separate-address layout) —
+    both expose the same 24-cell voltage/temperature + serial shape.
+    """
     fields: dict[str, tuple[Any, None]] = {}
     for i in range(1, _BMU_CELLS + 1):
         fields[f"v_cell_{i:02d}"] = (float | None, None)
         fields[f"t_cell_{i:02d}"] = (float | None, None)
     fields["serial_number"] = (str | None, None)
+    return fields
+
+
+def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
+    """Decode a battery module's cells, temperatures and serial from a cache, offset by ``base``.
+
+    Reads 24 cell voltages (IR 60-83), temperatures (IR 90-113) and the module serial
+    (IR 114-118). Shared decode for both module layouts: `Bmu` passes ``base = 120 * bmu_index`` (stride
+    within one BCU cache); `AioBatteryModule` passes ``base = 0`` (one cache per module
+    device address). Voltages are milli (÷1000), temperatures deci (÷10). A missing register
+    decodes as None; an incomplete serial group yields ``serial_number = None``.
+    """
+    data: dict[str, Any] = {}
+
+    def _get(reg_idx: int) -> int | None:
+        return register_cache.get(IR(reg_idx))
+
+    for i in range(_BMU_CELLS):
+        v = _get(60 + base + i)
+        data[f"v_cell_{i + 1:02d}"] = v / 1000 if v is not None else None
+    for i in range(_BMU_CELLS):
+        t = _get(90 + base + i)
+        data[f"t_cell_{i + 1:02d}"] = t / 10 if t is not None else None
+    sn_regs = [_get(114 + base + j) for j in range(5)]
+    if None not in sn_regs:
+        data["serial_number"] = (
+            b"".join(v.to_bytes(2, "big") for v in sn_regs)  # type: ignore[union-attr]
+            .decode("latin1")
+            .replace("\x00", "")
+            .upper()
+        )
+    else:
+        data["serial_number"] = None
+    return data
+
+
+# Build the Bmu pydantic model schema using dummy offset 0 to infer field types,
+# then instantiate with real data in from_register_cache.
+def _bmu_fields() -> dict[str, tuple[Any, None]]:
+    fields = module_cell_temp_serial_fields()
     fields["bmu_index"] = (int | None, None)
     return fields
 
@@ -121,35 +164,8 @@ class Bmu(_BmuBase):  # type: ignore[misc,valid-type]
     @classmethod
     def from_register_cache(cls, register_cache, bmu_index: int = 0) -> "Bmu":
         """Construct a Bmu from a RegisterCache for the given bmu_index."""
-        base = _BMU_STRIDE * bmu_index
-        data: dict[str, Any] = {"bmu_index": bmu_index}
-
-        def _get(reg_idx: int) -> int | None:
-            return register_cache.get(IR(reg_idx))
-
-        def _milli(v: int | None) -> float | None:
-            return v / 1000 if v is not None else None
-
-        def _deci(v: int | None) -> float | None:
-            return v / 10 if v is not None else None
-
-        for i in range(_BMU_CELLS):
-            data[f"v_cell_{i + 1:02d}"] = _milli(_get(60 + base + i))
-
-        for i in range(_BMU_CELLS):
-            data[f"t_cell_{i + 1:02d}"] = _deci(_get(90 + base + i))
-
-        sn_regs = [_get(114 + base + j) for j in range(5)]
-        if None not in sn_regs:
-            data["serial_number"] = (
-                b"".join(v.to_bytes(2, "big") for v in sn_regs)  # type: ignore[union-attr]
-                .decode("latin1")
-                .replace("\x00", "")
-                .upper()
-            )
-        else:
-            data["serial_number"] = None
-
+        data = decode_cells_temps_serial(register_cache, base=_BMU_STRIDE * bmu_index)
+        data["bmu_index"] = bmu_index
         return cls.model_validate(data)
 
     def is_valid(self) -> bool:
