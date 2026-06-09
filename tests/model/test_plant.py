@@ -1191,7 +1191,6 @@ def test_from_actual():
         "enable_reversed_ct_clamp": True,
         "firmware_version": "D0.449-A0.449",
         "first_battery_bms_firmware_version": 3005,
-        "first_battery_serial_number": "BG1234G567",
         "grid_port_max_power_output": 6000,
         "meter_type": MeterType.EM115,
         "modbus_address": 0x11,

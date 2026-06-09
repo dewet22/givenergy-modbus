@@ -114,6 +114,31 @@ def test_frame_redactor_redacts_payload_inverter_serial():
     assert len(out) == len(frame)
 
 
+def test_frame_redactor_redacts_hr8_serial_register():
+    """HR(8-12) is still redacted after first_battery_serial_number was removed (#191).
+
+    The field was dropped from the LUT, but AIO firmware stores the unit serial here
+    byte-swapped (recoverable to the real serial), so HR(8-12) must stay in the
+    redaction set via an explicit group. Guards against a silent privacy regression.
+    """
+    from givenergy_modbus.pdu import ClientIncomingMessage
+
+    serial_str = "HC2114G047"  # AIO-style byte-swapped copy lives at HR(8-12)
+    serial_regs = [int.from_bytes(serial_str[i * 2 : i * 2 + 2].encode("latin1"), "big") for i in range(5)]
+    values = [0] * 60
+    values[8:13] = serial_regs
+
+    frame = _make_holding_response("ZZ0000H000", base=0, values=values)
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    pdu = ClientIncomingMessage.decode_bytes(out)
+    raw = b"".join(pdu.register_values[8 + i].to_bytes(2, "big") for i in range(5))
+    redacted_serial = raw.decode("latin1").replace("\x00", "").upper()
+    assert redacted_serial == "HC2114G000"  # date kept, unit digits zeroed
+    assert len(out) == len(frame)
+
+
 def test_frame_redactor_invalid_frame_emitted_intact():
     """An undecodable frame (bad MBAP / unknown function) is emitted intact, not dropped."""
     # Build a syntactically valid GivEnergy MBAP wrapping an unknown function code

@@ -62,6 +62,11 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
         if key not in seen:
             seen.add(key)
             groups.append(key)
+    # Legacy first_battery_serial_number registers (HR 8-12) — removed from the LUT
+    # (#191), but still redacted: AIO firmware stores the unit serial here byte-swapped
+    # (CH… → HC…), recoverable to the real serial, so it must not leak in a shared
+    # export. Appended explicitly, like the BMU serials, since no LUT Def carries it.
+    groups.append(("HR", 8, 5))
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
