@@ -205,7 +205,12 @@ def test_redact_serials_battery_ir_group():
 
 
 def test_redact_serials_inverter_hr_group():
-    """Inverter serial in HR(13-17) is redacted; battery HR serial in HR(8-12) also redacted."""
+    """Inverter serial HR(13-17) redacted; HR(8-12) also redacted via the explicit group.
+
+    HR(8-12) is the legacy first_battery_serial_number location, removed from the LUT in
+    #191 but kept in the redaction set explicitly (AIO stores the unit serial there
+    byte-swapped, recoverable). Guards against that group going missing.
+    """
     registers = {**_encode_serial("SA2231A456", HR, 13), **_encode_serial("BA2231A789", HR, 8)}
     registers[HR(0)] = 42  # unrelated
 
