@@ -1956,3 +1956,85 @@ def test_plant_capabilities_is_ac_coupled():
     assert (ac.is_ac_coupled and not ac.is_three_phase) is True
     ac3 = PlantCapabilities(device_type=Model.AC_3PH)
     assert (ac3.is_ac_coupled and not ac3.is_three_phase) is False
+
+
+# ---------------------------------------------------------------------------
+# Frozen BMS cache detection (#91) — is_block_frozen / is_battery_frozen
+# ---------------------------------------------------------------------------
+
+
+def _feed_bank(
+    plant: "Plant",
+    bank: dict[int, int],
+    *,
+    device_address: int = 0x32,
+    reg_type: str = "IR",
+    base: int = 60,
+    count: int = 60,
+) -> None:
+    """Feed one committed bank directly, bypassing PDU construction overhead."""
+    pdu: ReadInputRegistersResponse | ReadHoldingRegistersResponse
+    if reg_type == "IR":
+        pdu = _make_ir_pdu(bank, device_address=device_address, base_register=base, register_count=count)
+    else:
+        pdu = _make_hr_pdu(bank, device_address=device_address, base_register=base, register_count=count)
+    plant.update(pdu)
+
+
+def test_is_block_frozen_false_below_threshold(plant: Plant):
+    """Fewer than n identical banks → False (startup grace period)."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    for _ in range(4):  # n-1 = 4 < default n=5
+        _feed_bank(plant, bank)
+    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
+
+
+def test_is_block_frozen_false_on_changing_data(plant: Plant):
+    """N banks committed but the last differs → False (data is live)."""
+    bank_a = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    bank_b = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x0001}
+    for _ in range(4):
+        _feed_bank(plant, bank_a)
+    _feed_bank(plant, bank_b)
+    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
+
+
+def test_is_block_frozen_true_on_n_identical_banks(plant: Plant):
+    """Exactly n consecutive identical banks → True (freeze detected)."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    for _ in range(5):
+        _feed_bank(plant, bank)
+    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is True
+
+
+def test_is_block_frozen_resets_after_change(plant: Plant):
+    """A data change after being frozen resets the freeze signal to False."""
+    bank_frozen = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    bank_live = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x0001}
+    for _ in range(5):
+        _feed_bank(plant, bank_frozen)
+    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is True
+    _feed_bank(plant, bank_live)
+    assert plant.is_block_frozen(0x32, "IR", 60, 60, n=5) is False
+
+
+def test_is_battery_frozen_delegates_to_ir_60_60(plant: Plant):
+    """is_battery_frozen is a convenience alias for IR(60, 60)."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    for _ in range(5):
+        _feed_bank(plant, bank, base=60, count=60)
+    assert plant.is_battery_frozen(0x32) is True
+    # A different block (different base) is not affected.
+    assert plant.is_block_frozen(0x32, "IR", 0, 60, n=5) is False
+
+
+def test_hash_deque_capped_at_max_size(plant: Plant):
+    """The internal deque never grows beyond _FROZEN_HASH_DEQUE_SIZE."""
+    from givenergy_modbus.model.plant import _FROZEN_HASH_DEQUE_SIZE
+
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    for i in range(_FROZEN_HASH_DEQUE_SIZE * 2):
+        _feed_bank(plant, {**bank, 60: i})  # vary one register so hashes differ
+    key = (0x32, "IR", 60, 60)
+    dq = plant._block_content_hashes[key]
+    assert len(dq) == _FROZEN_HASH_DEQUE_SIZE

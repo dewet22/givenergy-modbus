@@ -1,5 +1,6 @@
 import logging
 import warnings
+from collections import deque
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
@@ -34,6 +35,11 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
+
+# Size of the rolling hash deque used for frozen-BMS-cache detection (#91).
+# Storing 10 hashes per block allows is_block_frozen() to be called with n ≤ 10
+# while keeping the per-block memory cost constant and small.
+_FROZEN_HASH_DEQUE_SIZE = 10
 
 # Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
 # Coarse families "4" (HYBRID_3PH), "6" (AC_3PH) and "8" (ALL_IN_ONE and variants)
@@ -487,6 +493,13 @@ class Plant(GivEnergyBaseModel):
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
+    # Rolling content-hash deques for frozen-BMS-cache detection (#91).  Keyed identically to
+    # register_block_updated_at; each value is a bounded deque of the last
+    # _FROZEN_HASH_DEQUE_SIZE content hashes of the committed bank.  Private (not part of the
+    # model's serialised state) — ephemeral, resets on reconnect (acceptable: a fresh connection
+    # gets a fresh history, and a reconnected battery starts a new freeze-detection cycle).
+    _block_content_hashes: dict = PrivateAttr(default_factory=dict)
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -563,6 +576,7 @@ class Plant(GivEnergyBaseModel):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
+                self._append_block_hash(device_address, "HR", pdu.base_register, pdu.register_count, incoming)
         elif isinstance(pdu, ReadInputRegistersResponse):
             if pdu.is_suspicious():
                 # Pattern A dongle-side substitution from #78 — known fingerprint of 16 fixed
@@ -571,6 +585,7 @@ class Plant(GivEnergyBaseModel):
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
+                self._append_block_hash(device_address, "IR", pdu.base_register, pdu.register_count, incoming)
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
@@ -691,6 +706,63 @@ class Plant(GivEnergyBaseModel):
         if effective_now.tzinfo is None:
             effective_now = effective_now.replace(tzinfo=UTC)
         return (effective_now - ts).total_seconds()
+
+    def _append_block_hash(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+        committed: dict,
+    ) -> None:
+        """Append a content hash of committed to the rolling deque for this block (#91).
+
+        Called from update() whenever _commit_bank() returns True, mirroring _stamp_block().
+        The hash covers the full committed dict so any register change resets the freeze counter.
+        """
+        key = (device_address, reg_type, base_register, register_count)
+        dq = self._block_content_hashes.setdefault(key, deque(maxlen=_FROZEN_HASH_DEQUE_SIZE))
+        dq.append(hash(frozenset(committed.items())))
+
+    def is_block_frozen(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+        *,
+        n: int = 5,
+    ) -> bool:
+        """True if the last n consecutive committed banks of this block were byte-identical (#91).
+
+        A True result indicates the device cache may be frozen — e.g. a BMS in firmware-update
+        bootloader mode that has gone quiet on RS485 while the inverter keeps serving its last
+        cached page unchanged.
+
+        Returns False until n samples have been collected (startup grace period prevents false
+        positives on the first few polls after a reconnect).
+
+        Does not auto-invalidate data; callers decide how to surface the signal (e.g. marking
+        the device unavailable in Home Assistant).
+
+        n=5 at a 30 s poll interval ≈ 2.5 min before the signal fires — long enough to avoid
+        false positives during normal idle periods, short enough to catch a firmware-update
+        freeze within the first few minutes.
+        """
+        dq = self._block_content_hashes.get((device_address, reg_type, base_register, register_count))
+        if dq is None or len(dq) < n:
+            return False
+        recent = list(dq)[-n:]
+        return all(h == recent[0] for h in recent)
+
+    def is_battery_frozen(self, device_address: int, *, n: int = 5) -> bool:
+        """Convenience: frozen-cache check for an LV battery at device_address.
+
+        Delegates to is_block_frozen for the standard battery telemetry block IR(60, 60).
+        Returns True when the last n consecutive polls returned byte-identical data,
+        indicating the BMS may be in firmware-update bootloader mode. See #91.
+        """
+        return self.is_block_frozen(device_address, "IR", 60, 60, n=n)
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
