@@ -487,8 +487,12 @@ class Client:
             ):
                 continue
             cache = self.plant.register_caches.get(addr)
-            if cache is None or not AioBatteryModule.from_register_cache(cache, addr).is_valid():
-                _logger.debug("detect: AIO module probe at 0x%02x responded but is_valid()=False — skipping", addr)
+            try:
+                if cache is None or not AioBatteryModule.from_register_cache(cache, addr).is_valid():
+                    _logger.debug("detect: AIO module probe at 0x%02x responded but is_valid()=False — skipping", addr)
+                    continue
+            except Exception:
+                _logger.debug("detect: AIO module probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
                 continue
             caps.aio_battery_module_addresses.append(addr)
 

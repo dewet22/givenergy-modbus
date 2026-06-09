@@ -771,11 +771,14 @@ class Plant(GivEnergyBaseModel):
         """
         if not self.capabilities or not self.capabilities.aio_battery_module_addresses:
             return []
-        return [
-            AioBatteryModule.from_register_cache(self.register_caches[addr], addr)
-            for addr in self.capabilities.aio_battery_module_addresses
-            if addr in self.register_caches
-        ]
+        modules = []
+        for addr in self.capabilities.aio_battery_module_addresses:
+            if addr in self.register_caches:
+                try:
+                    modules.append(AioBatteryModule.from_register_cache(self.register_caches[addr], addr))
+                except Exception:
+                    _logger.error("Failed to decode AIO battery module at 0x%02x", addr, exc_info=True)
+        return modules
 
     @property
     def meters(self) -> dict[int, Meter]:
@@ -945,7 +948,7 @@ class Plant(GivEnergyBaseModel):
                 PlantDevice(
                     device_type=DeviceType.BATTERY_MODULE,
                     device=module,
-                    serial_number=module.serial_number if module.is_valid() else None,  # type: ignore[attr-defined]
+                    serial_number=_validated_serial(module),
                 )
             )
 
