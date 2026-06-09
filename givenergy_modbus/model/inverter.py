@@ -411,7 +411,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "num_phases": Def((C.duint8, 1), None, HR(3)),
         # HR(4-6) unused
         "enable_ammeter": Def(C.bool, None, HR(7)),
-        "first_battery_serial_number": Def(C.serial, None, HR(8), HR(9), HR(10), HR(11), HR(12)),
+        # HR(8-12) was first_battery_serial_number — removed (#191): GivTCP-heritage,
+        # unused, unverifiable; on AIO firmware it held the unit serial byte-swapped,
+        # not a battery serial. Still redacted in captures via an explicit serial group
+        # in client._build_serial_register_groups (recoverable to the real serial).
         "serial_number": Def(C.serial, None, HR(13), HR(14), HR(15), HR(16), HR(17)),
         "first_battery_bms_firmware_version": Def(C.uint16, None, HR(18)),
         "dsp_firmware_version": Def(C.uint16, None, HR(19)),
