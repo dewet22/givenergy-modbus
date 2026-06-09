@@ -1956,3 +1956,101 @@ def test_plant_capabilities_is_ac_coupled():
     assert (ac.is_ac_coupled and not ac.is_three_phase) is True
     ac3 = PlantCapabilities(device_type=Model.AC_3PH)
     assert (ac3.is_ac_coupled and not ac3.is_three_phase) is False
+
+
+# ---------------------------------------------------------------------------
+# Content-staleness primitive (#91) — content_unchanged_seconds / _track_content_change
+#
+# Reports how long a register block's content has been byte-identical, keyed off the
+# #65 ingestion timestamps. This is the duration substrate the eventual freeze detector
+# needs — NOT a freeze verdict: replaying the real corpus showed healthy LV batteries
+# hold byte-identical IR(60,60) content for 23-26 consecutive samples (dongle fan-out +
+# genuinely-static telemetry), so a verdict needs a threshold validated against more
+# than the single freeze capture we have. content_unchanged_seconds() reports the raw
+# fact (a duration), makes no claim, and survives arbitrarily long unchanged runs.
+# ---------------------------------------------------------------------------
+
+
+def _feed_bank(
+    plant: "Plant",
+    bank: dict[int, int],
+    *,
+    device_address: int = 0x32,
+    reg_type: str = "IR",
+    base: int = 60,
+    count: int = 60,
+    received_at: datetime | None = None,
+) -> None:
+    """Feed one committed bank directly, bypassing PDU construction overhead."""
+    pdu: ReadInputRegistersResponse | ReadHoldingRegistersResponse
+    if reg_type == "IR":
+        pdu = _make_ir_pdu(bank, device_address=device_address, base_register=base, register_count=count)
+    else:
+        pdu = _make_hr_pdu(bank, device_address=device_address, base_register=base, register_count=count)
+    plant.update(pdu, received_at=received_at)
+
+
+_T0 = datetime(2026, 6, 9, 12, 0, 0, tzinfo=UTC)
+
+
+def test_content_unchanged_seconds_none_for_never_seen(plant: Plant):
+    """A block that has never committed reports None, not a spurious duration."""
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60) is None
+
+
+def test_content_unchanged_seconds_accumulates_while_identical(plant: Plant):
+    """Identical consecutive banks hold unchanged_since at the first commit, so the duration grows."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    _feed_bank(plant, bank, received_at=_T0)
+    _feed_bank(plant, bank, received_at=_T0 + timedelta(seconds=30))
+    # Measured from a later 'now', the duration is since the FIRST identical commit.
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=90)) == 90.0
+
+
+def test_content_unchanged_seconds_resets_on_change(plant: Plant):
+    """A register change resets unchanged_since to that commit's timestamp."""
+    bank_a = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    bank_b = {**bank_a, 60: 5678}
+    _feed_bank(plant, bank_a, received_at=_T0)
+    _feed_bank(plant, bank_a, received_at=_T0 + timedelta(seconds=30))
+    _feed_bank(plant, bank_b, received_at=_T0 + timedelta(seconds=60))  # content changed → reset
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=75)) == 15.0
+
+
+def test_content_unchanged_survives_run_longer_than_old_deque(plant: Plant):
+    """An unchanged run of 20 commits still reports its true origin — the fix for Codex's objection.
+
+    A bounded 10-entry hash deque would have evicted the start of the run, losing whether it
+    began seconds or an hour ago. The unchanged_since timestamp is O(1) and survives any run.
+    """
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
+    for i in range(20):  # well beyond the former 10-entry deque cap
+        _feed_bank(plant, bank, received_at=_T0 + timedelta(seconds=30 * i))
+    # Duration spans from the first commit, not just the last 10.
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=600)) == 600.0
+
+
+def test_content_unchanged_seconds_keyed_per_block(plant: Plant):
+    """Distinct (device, type, base, count) blocks track unchanged_since independently."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    _feed_bank(plant, bank, base=60, count=60, received_at=_T0)
+    _feed_bank(plant, {0: 1}, base=0, count=60, received_at=_T0 + timedelta(seconds=10))
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=10)) == 10.0
+    assert plant.content_unchanged_seconds(0x32, "IR", 0, 60, now=_T0 + timedelta(seconds=10)) == 0.0
+
+
+def test_discarded_bank_does_not_update_unchanged_since(plant: Plant):
+    """A bank rejected by _commit_bank (Pattern B all-zero) leaves unchanged_since untouched."""
+    seed = {60: 3221, 110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    _feed_bank(plant, seed, received_at=_T0)
+    _feed_bank(plant, dict.fromkeys(seed, 0), received_at=_T0 + timedelta(seconds=30))  # rejected
+    # unchanged_since still anchored at the committed bank; the rejected bank changed nothing.
+    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=30)) == 30.0
+
+
+def test_content_unchanged_seconds_normalises_naive_now(plant: Plant):
+    """A timezone-naive now is treated as UTC rather than raising TypeError (mirrors block_age)."""
+    bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
+    _feed_bank(plant, bank, received_at=_T0)
+    age = plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=datetime(2026, 6, 9, 12, 0, 7))
+    assert age == 7.0
