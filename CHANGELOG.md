@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0rc3] - 2026-06-09
+
+### ✨ Added
+
+- per-module AIO battery data as enumerable devices (#192) (#219) ([0bdeffe](https://github.com/dewet22/givenergy-modbus/commit/0bdeffe0fb1ee1217d1d311b8b8dac8830f27c16))
+- content-staleness primitive for frozen-BMS detection (#91) ([667cd0d](https://github.com/dewet22/givenergy-modbus/commit/667cd0d0f17e51e5d44c7f7bf8a67f1eb36f2b79))
+
 ## [2.2.0rc2] - 2026-06-09
 
 ### ✨ Added
