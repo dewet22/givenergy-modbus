@@ -1,5 +1,10 @@
 # Post-v2.0 Improvement Plan
 
+> **Superseded by the [Post-v2.2 unified roadmap](post-v2.2-plan.md).** Its live
+> items are folded forward there (and the shipped ones — §4, §8 — marked done);
+> this document is retained for history and for the detailed per-item outcomes
+> below.
+
 This plan captures concrete follow-up work after the v2.0 release. The focus is
 hardware safety, protocol reliability, and maintainability rather than new user
 features.
