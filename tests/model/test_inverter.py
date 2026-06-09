@@ -18,7 +18,19 @@ from givenergy_modbus.model.inverter import (
     inverter_address_for,
     resolve_model,
 )
+from givenergy_modbus.model.register import HR
 from givenergy_modbus.model.register_cache import RegisterCache
+
+
+def test_first_battery_serial_number_removed():
+    """first_battery_serial_number is gone from the model (#191).
+
+    GivTCP-heritage, unused, and unverifiable: on AIO firmware it held the unit serial
+    byte-swapped, not a battery serial. Removed outright — no field, no alias.
+    """
+    assert "first_battery_serial_number" not in SinglePhaseInverter().model_dump()
+    cache = RegisterCache({HR(8): 0x4843, HR(9): 0x3234, HR(10): 0x3134, HR(11): 0x4731, HR(12): 0x3637})
+    assert "first_battery_serial_number" not in SinglePhaseInverter.from_register_cache(cache).model_dump()
 
 
 def test_inverter():
@@ -57,7 +69,6 @@ def test_inverter():
             "enable_reversed_418_meter": None,
             "firmware_version": None,
             "first_battery_bms_firmware_version": None,
-            "first_battery_serial_number": None,
             "grid_port_max_power_output": None,
             "meter_type": None,
             "modbus_address": None,
@@ -464,7 +475,6 @@ def test_from_registers(register_cache):
         "enable_reversed_ct_clamp": True,
         "firmware_version": "D0.449-A0.449",
         "first_battery_bms_firmware_version": 3005,
-        "first_battery_serial_number": "BG1234G567",
         "grid_port_max_power_output": 6000,
         "meter_type": MeterType.EM115,
         "modbus_address": 0x11,
@@ -808,7 +818,6 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "enable_reversed_ct_clamp": True,
         "firmware_version": "D0.449-A0.449",
         "first_battery_bms_firmware_version": 3005,
-        "first_battery_serial_number": "BG1234G567",
         "grid_port_max_power_output": 6000,
         "meter_type": MeterType.EM115,
         "modbus_address": 0x11,
