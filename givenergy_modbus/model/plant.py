@@ -1,6 +1,5 @@
 import logging
 import warnings
-from collections import deque
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
@@ -35,11 +34,6 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
-
-# Size of the rolling content-hash deque retained per register block for the
-# frozen-BMS-cache primitive (#91). Bounded so the per-block memory cost stays
-# constant and small regardless of session length.
-_FROZEN_HASH_DEQUE_SIZE = 10
 
 # Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
 # Coarse families "4" (HYBRID_3PH), "6" (AC_3PH) and "8" (ALL_IN_ONE and variants)
@@ -493,14 +487,14 @@ class Plant(GivEnergyBaseModel):
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
-    # Rolling content-hash deques — the frozen-BMS-cache primitive (#91). Keyed identically to
-    # register_block_updated_at; each value is a bounded deque of the last
-    # _FROZEN_HASH_DEQUE_SIZE content hashes of the committed bank. Private (not part of the
-    # model's serialised state) — ephemeral, resets on reconnect. No public freeze predicate is
-    # exposed yet: on the real capture corpus, healthy LV batteries hold byte-identical IR(60,60)
-    # content for 23-26 consecutive samples, so consecutive-equality alone cannot distinguish a
-    # freeze from a live-but-static BMS. See _append_block_hash() for the full rationale.
-    _block_content_hashes: dict = PrivateAttr(default_factory=dict)
+    # Content-staleness tracker — the duration substrate for frozen-BMS-cache detection (#91).
+    # Keyed identically to register_block_updated_at; each value is (content_hash, unchanged_since)
+    # where unchanged_since is the ingestion time of the FIRST commit in the current
+    # byte-identical run. O(1) per block and survives arbitrarily long unchanged runs (a bounded
+    # deque of hashes could not — it evicts the run's origin). Private/ephemeral, resets on
+    # reconnect. Surfaced read-only via content_unchanged_seconds(); no freeze *verdict* is
+    # exposed — see that method for why a threshold isn't yet derivable.
+    _block_unchanged_since: dict = PrivateAttr(default_factory=dict)
 
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
@@ -578,7 +572,9 @@ class Plant(GivEnergyBaseModel):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
-                self._append_block_hash(device_address, "HR", pdu.base_register, pdu.register_count, incoming)
+                self._track_content_change(
+                    device_address, "HR", pdu.base_register, pdu.register_count, incoming, received_at
+                )
         elif isinstance(pdu, ReadInputRegistersResponse):
             if pdu.is_suspicious():
                 # Pattern A dongle-side substitution from #78 — known fingerprint of 16 fixed
@@ -587,7 +583,9 @@ class Plant(GivEnergyBaseModel):
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             if self._commit_bank(device_address, incoming, pdu.register_count):
                 self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
-                self._append_block_hash(device_address, "IR", pdu.base_register, pdu.register_count, incoming)
+                self._track_content_change(
+                    device_address, "IR", pdu.base_register, pdu.register_count, incoming, received_at
+                )
         elif isinstance(pdu, WriteHoldingRegisterResponse):
             if pdu.register == 0:
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
@@ -709,34 +707,70 @@ class Plant(GivEnergyBaseModel):
             effective_now = effective_now.replace(tzinfo=UTC)
         return (effective_now - ts).total_seconds()
 
-    def _append_block_hash(
+    def _track_content_change(
         self,
         device_address: int,
         reg_type: str,
         base_register: int,
         register_count: int,
         committed: dict,
+        received_at: datetime | None,
     ) -> None:
-        """Append a content hash of committed to the rolling deque for this block (#91).
+        """Maintain the (content_hash, unchanged_since) tracker for this block (#91).
 
         Called from update() whenever _commit_bank() returns True, mirroring _stamp_block().
-        The hash covers the full committed dict, so byte-identical consecutive banks produce
-        equal hashes and any register change produces a distinct one.
+        Hashes the full committed dict: if the hash matches the stored one the content is
+        byte-identical to the previous commit and unchanged_since is left anchored at the first
+        commit of the run; otherwise (changed content, or first sight) the hash and timestamp
+        are reset. unchanged_since therefore marks when the current content first appeared, and
+        content_unchanged_seconds() reads off how long it has held — the duration signal a freeze
+        detector needs. O(1) per block; survives unchanged runs of any length.
 
-        This is the freeze-detection *primitive*. A public predicate (e.g. is_battery_frozen)
-        is deliberately not exposed yet: replaying the real capture corpus showed healthy,
-        actively-polled LV batteries hold byte-identical IR(60,60) content for streaks of 23-26
-        consecutive samples (dongle fan-out re-serves the same cached frame to every TCP client,
-        and battery telemetry genuinely doesn't change every poll). Naive consecutive-equality
-        therefore can't distinguish a bootloader-mode freeze from a live-but-static BMS without a
-        discriminating signal (or a duration threshold validated against more than one freeze
-        capture). The deque is retained because it is the right substrate for that future work,
-        and #57's bounds-discard calibration ("discarded bank matches last accepted vs genuinely
-        new") consumes the same store. See #91.
+        This is the staleness *primitive*, not a freeze verdict: replaying the real capture
+        corpus showed healthy, actively-polled LV batteries hold byte-identical IR(60,60) content
+        for streaks of 23-26 consecutive samples (dongle fan-out re-serves the same cached frame
+        to every TCP client, and battery telemetry genuinely doesn't change every poll). A verdict
+        needs a duration threshold validated against more than the single freeze capture we have.
+        #57's bounds-discard calibration ("discarded bank matches last accepted vs genuinely new")
+        reads the stored hash too. See #91.
         """
+        ts = received_at or datetime.now(UTC)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
         key = (device_address, reg_type, base_register, register_count)
-        dq = self._block_content_hashes.setdefault(key, deque(maxlen=_FROZEN_HASH_DEQUE_SIZE))
-        dq.append(hash(frozenset(committed.items())))
+        content_hash = hash(frozenset(committed.items()))
+        prev = self._block_unchanged_since.get(key)
+        if prev is None or prev[0] != content_hash:
+            self._block_unchanged_since[key] = (content_hash, ts)
+
+    def content_unchanged_seconds(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+        *,
+        now: datetime | None = None,
+    ) -> float | None:
+        """Seconds a register block's content has been byte-identical, or None if never seen (#91).
+
+        Reports a raw duration, not a freeze verdict: a high value *may* indicate a frozen BMS
+        cache (e.g. a battery whose BMS is in firmware-update bootloader mode), but on the real
+        capture corpus healthy LV batteries also hold IR(60,60) content steady for long stretches
+        (dongle fan-out + genuinely-static telemetry). Distinguishing a freeze from a live-but-
+        static device needs a threshold validated against more freeze captures than currently
+        exist, so this method deliberately makes no claim — callers compose it with their own
+        policy. See #91.
+
+        ``reg_type`` is ``"HR"`` or ``"IR"``; ``register_count`` must match the committed block.
+        """
+        entry = self._block_unchanged_since.get((device_address, reg_type, base_register, register_count))
+        if entry is None:
+            return None
+        effective_now = now or datetime.now(UTC)
+        if effective_now.tzinfo is None:
+            effective_now = effective_now.replace(tzinfo=UTC)
+        return (effective_now - entry[1]).total_seconds()
 
     @property
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
