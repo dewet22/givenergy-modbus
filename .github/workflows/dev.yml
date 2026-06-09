@@ -33,7 +33,7 @@ jobs:
           python-version: '3.14'
       - name: Build & test with tox
         run: uv run --group test tox -e py311,format,lint,build
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
