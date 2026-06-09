@@ -142,7 +142,7 @@ span multiple connections without `add_direct_source` wiring, and so
 non-Modbus transports can slot in later. Reconciles with
 [#75](https://github.com/dewet22/givenergy-modbus/issues/75).
 
-### Phase 4 — model-aware write-routing
+### Phase 4 — model-aware write-routing ✅ shipped (v2.2)
 
 Route `set_*` write commands through the typed device so model-specific
 register differences (three-phase vs single-phase) are enforced at write time.
