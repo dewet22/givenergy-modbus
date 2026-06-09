@@ -465,21 +465,42 @@ class Client:
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
+    #: Maximum number of battery modules on a single-BCU AIO (addresses 0x50–0x53).
+    _AIO_MAX_MODULES = 4
+
     async def _detect_aio_battery_modules(
-        self, caps: PlantCapabilities, probe_timeout: float, probe_retries: int
+        self,
+        caps: PlantCapabilities,
+        prior: PlantCapabilities | None,
+        probe_timeout: float,
+        probe_retries: int,
     ) -> None:
         """Populate caps.aio_battery_module_addresses for an All-in-One (#192).
 
-        The AIO's first BCU reports its module count (IR 64); each module answers at its
-        own device address 0x50 + index with a plain IR(60-119) block. Probe each, and
-        record those that respond with a present module (a valid serial). Single-BCU AIO
-        only — multi-BCU module addressing is a future extension.
+        Hinted mode (prior is not None): probe only the previously-seen module addresses
+        so detect() stays a confirmation pass rather than a fresh sweep — consistent with
+        the meter and battery hinted contracts.
+
+        Cold mode: derive candidates from the BCU-reported module count (IR 64), bounded
+        to _AIO_MAX_MODULES (0x50–0x53) to guard against stale or corrupt register values.
+
+        Single-BCU AIO only — multi-BCU module addressing is a future extension.
         """
-        if not caps.bcu_stacks:
-            return
-        _offset, num_modules = caps.bcu_stacks[0]
-        for i in range(num_modules):
-            addr = 0x50 + i
+        if prior is not None:
+            candidates: list[int] = list(prior.aio_battery_module_addresses)
+        else:
+            if not caps.bcu_stacks:
+                return
+            _offset, num_modules = caps.bcu_stacks[0]
+            if num_modules > self._AIO_MAX_MODULES:
+                _logger.warning(
+                    "detect: BCU reports %d modules but AIO maximum is %d — clamping",
+                    num_modules,
+                    self._AIO_MAX_MODULES,
+                )
+                num_modules = self._AIO_MAX_MODULES
+            candidates = [0x50 + i for i in range(num_modules)]
+        for addr in candidates:
             if not await self._probe(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
                 timeout=probe_timeout,
@@ -655,7 +676,7 @@ class Client:
         # battery module at its own device address (0x50+), distinct from the bcu_stacks
         # stride layout, so its per-module cell/temperature/serial data is reachable.
         if caps.device_type is Model.ALL_IN_ONE and caps.bcu_stacks:
-            await self._detect_aio_battery_modules(caps, probe_timeout, probe_retries)
+            await self._detect_aio_battery_modules(caps, prior, probe_timeout, probe_retries)
             _logger.info(
                 "detect: aio_battery_modules=[%s]",
                 ", ".join(f"0x{a:02x}" for a in caps.aio_battery_module_addresses),

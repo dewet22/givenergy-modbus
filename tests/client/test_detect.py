@@ -432,6 +432,75 @@ async def test_detect_aio_module_decode_error_skips_address(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_detect_aio_hinted_probes_only_prior_addresses():
+    """Hinted detect() for AIO modules sweeps only the prior addresses, not a fresh BCU count.
+
+    If prior has [0x50, 0x51] but the BCU now reports 4 modules, the hinted pass must
+    probe only 0x50 and 0x51 — consistent with the confirm-only contract for meters and
+    batteries.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    # BCU now reports 4 modules, but prior only knew about 2.
+    _prime_cache(client, 0x70, {IR(64): 4})
+    for addr in (0x50, 0x51):
+        _prime_aio_module_serial(client, addr, serial=f"HX2414G83{addr - 0x50}")
+    # 0x52 and 0x53 are present on hardware but were not in prior.
+    for addr in (0x52, 0x53):
+        _prime_aio_module_serial(client, addr, serial=f"HX2414G83{addr - 0x50}")
+
+    prior = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 2)],
+        aio_battery_module_addresses=[0x50, 0x51],
+    )
+    probed: list[int] = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed.append(request.device_address)
+        return True
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            from givenergy_modbus.exceptions import PlantTopologyMismatch
+
+            try:
+                await client.detect(prior=prior)
+            except PlantTopologyMismatch:
+                pass  # topology changed (BCU count 2→4) — that's expected; we only care what was probed
+
+    aio_probed = [a for a in probed if 0x50 <= a <= 0x53]
+    assert aio_probed == [0x50, 0x51], f"hinted AIO sweep must not probe 0x52/0x53; got {aio_probed}"
+
+
+@pytest.mark.asyncio
+async def test_detect_aio_cold_clamps_module_count_to_max():
+    """Cold detect() clamps a corrupt/large BCU module count to _AIO_MAX_MODULES (4)."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    _prime_cache(client, 0xA0, {IR(61): 1})
+    # BCU reports 6 modules — should be clamped to 4.
+    _prime_cache(client, 0x70, {IR(64): 6})
+    for addr in range(0x50, 0x56):
+        _prime_aio_module_serial(client, addr, serial=f"HX2414G8{addr:02x}")
+
+    probed: list[int] = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed.append(request.device_address)
+        return True
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    aio_probed = [a for a in probed if 0x50 <= a <= 0x5F]
+    assert all(a <= 0x53 for a in aio_probed), f"must not probe beyond 0x53; got {aio_probed}"
+    assert len(caps.aio_battery_module_addresses) <= 4
+
+
+@pytest.mark.asyncio
 async def test_detect_battery_decode_value_error_stops_probe(monkeypatch):
     """A battery register-decode ValueError stops the probe rather than propagating.
 
