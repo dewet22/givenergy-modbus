@@ -748,7 +748,12 @@ class Plant(GivEnergyBaseModel):
         n=5 at a 30 s poll interval ≈ 2.5 min before the signal fires — long enough to avoid
         false positives during normal idle periods, short enough to catch a firmware-update
         freeze within the first few minutes.
+
+        n must be in 1..._FROZEN_HASH_DEQUE_SIZE: the deque only retains that many samples, so a
+        larger n could never be satisfied and would silently never detect a freeze.
         """
+        if not 1 <= n <= _FROZEN_HASH_DEQUE_SIZE:
+            raise ValueError(f"n must be between 1 and {_FROZEN_HASH_DEQUE_SIZE}, got {n}")
         dq = self._block_content_hashes.get((device_address, reg_type, base_register, register_count))
         if dq is None or len(dq) < n:
             return False

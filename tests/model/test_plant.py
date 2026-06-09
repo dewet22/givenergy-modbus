@@ -2038,3 +2038,20 @@ def test_hash_deque_capped_at_max_size(plant: Plant):
     key = (0x32, "IR", 60, 60)
     dq = plant._block_content_hashes[key]
     assert len(dq) == _FROZEN_HASH_DEQUE_SIZE
+
+
+def test_is_block_frozen_invalid_n_raises(plant: Plant):
+    """An n outside 1.._FROZEN_HASH_DEQUE_SIZE raises ValueError rather than silently never firing.
+
+    n > the deque cap can never be satisfied (len(dq) tops out at the cap), so a caller asking
+    for more samples than are retained would get a permanent False — a silent misconfiguration.
+    """
+    from givenergy_modbus.model.plant import _FROZEN_HASH_DEQUE_SIZE
+
+    with pytest.raises(ValueError, match="n must be between 1 and"):
+        plant.is_block_frozen(0x32, "IR", 60, 60, n=0)
+    with pytest.raises(ValueError, match="n must be between 1 and"):
+        plant.is_block_frozen(0x32, "IR", 60, 60, n=_FROZEN_HASH_DEQUE_SIZE + 1)
+    # is_battery_frozen forwards n, so the same guard applies through the convenience alias.
+    with pytest.raises(ValueError, match="n must be between 1 and"):
+        plant.is_battery_frozen(0x32, n=0)
