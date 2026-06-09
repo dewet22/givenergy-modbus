@@ -45,6 +45,7 @@ class DeviceType(str, Enum):
     EMS = "ems"
     GATEWAY = "gateway"
     BATTERY = "battery"
+    BATTERY_MODULE = "battery_module"
     METER = "meter"
     HV_STACK = "hv_stack"
 
@@ -104,7 +105,7 @@ class Inverter:
     concern via the underlying sources.
     """
 
-    __slots__ = ("data_source", "_direct", "_summary", "_batteries", "_hv_stacks")
+    __slots__ = ("data_source", "_direct", "_summary", "_batteries", "_hv_stacks", "_battery_modules")
 
     def __init__(
         self,
@@ -113,6 +114,7 @@ class Inverter:
         summary: InverterSummary | None = None,
         batteries: list[Any] | None = None,
         hv_stacks: list[Any] | None = None,
+        battery_modules: list[Any] | None = None,
     ) -> None:
         """Construct directly (prefer the factory methods).
 
@@ -130,6 +132,7 @@ class Inverter:
         self._summary = summary
         self._batteries = batteries
         self._hv_stacks = hv_stacks
+        self._battery_modules = battery_modules
 
     @classmethod
     def from_direct(
@@ -138,6 +141,7 @@ class Inverter:
         *,
         batteries: list[Any] | None = None,
         hv_stacks: list[Any] | None = None,
+        battery_modules: list[Any] | None = None,
     ) -> Inverter:
         """Construct from a directly-reachable concrete inverter model.
 
@@ -153,7 +157,13 @@ class Inverter:
         ``batteries`` / ``hv_stacks`` are the sub-devices owned by this
         inverter, injected by :class:`Plant` (#106 Phase 2).
         """
-        return cls(data_source="direct", direct=direct, batteries=batteries, hv_stacks=hv_stacks)
+        return cls(
+            data_source="direct",
+            direct=direct,
+            batteries=batteries,
+            hv_stacks=hv_stacks,
+            battery_modules=battery_modules,
+        )
 
     @classmethod
     def from_summary(cls, summary: InverterSummary) -> Inverter:
@@ -174,6 +184,7 @@ class Inverter:
         *,
         batteries: list[Any] | None = None,
         hv_stacks: list[Any] | None = None,
+        battery_modules: list[Any] | None = None,
     ) -> Inverter:
         """Construct from a direct source reconciled with a rollup summary.
 
@@ -190,6 +201,7 @@ class Inverter:
             summary=summary,
             batteries=batteries,
             hv_stacks=hv_stacks,
+            battery_modules=battery_modules,
         )
 
     # ------------------------------------------------------------------
@@ -293,6 +305,16 @@ class Inverter:
         Empty when blinded, mirroring :attr:`batteries`.
         """
         return list(self._hv_stacks) if self._hv_stacks else []
+
+    @property
+    def battery_modules(self) -> list[Any]:
+        """List of per-module battery sub-devices owned by this inverter (#192).
+
+        Populated by :class:`Plant` for All-in-One units, which expose each
+        removable battery module at its own device address (cell voltages,
+        temperatures, module serial). Empty for other models and when blinded.
+        """
+        return list(self._battery_modules) if self._battery_modules else []
 
     # ------------------------------------------------------------------
     # Diagnostics

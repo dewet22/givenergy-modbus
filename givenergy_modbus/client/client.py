@@ -18,9 +18,10 @@ from givenergy_modbus.exceptions import (
     RefreshPartiallySucceeded,
 )
 from givenergy_modbus.framer import ClientFramer, Framer
+from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.ems import EmsRegisterGetter
-from givenergy_modbus.model.inverter import resolve_model
+from givenergy_modbus.model.inverter import Model, resolve_model
 from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
@@ -464,6 +465,33 @@ class Client:
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
 
+    async def _detect_aio_battery_modules(
+        self, caps: PlantCapabilities, probe_timeout: float, probe_retries: int
+    ) -> None:
+        """Populate caps.aio_battery_module_addresses for an All-in-One (#192).
+
+        The AIO's first BCU reports its module count (IR 64); each module answers at its
+        own device address 0x50 + index with a plain IR(60-119) block. Probe each, and
+        record those that respond with a present module (a valid serial). Single-BCU AIO
+        only — multi-BCU module addressing is a future extension.
+        """
+        if not caps.bcu_stacks:
+            return
+        _offset, num_modules = caps.bcu_stacks[0]
+        for i in range(num_modules):
+            addr = 0x50 + i
+            if not await self._probe(
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
+                timeout=probe_timeout,
+                retries=probe_retries,
+            ):
+                continue
+            cache = self.plant.register_caches.get(addr)
+            if cache is None or not AioBatteryModule.from_register_cache(cache, addr).is_valid():
+                _logger.debug("detect: AIO module probe at 0x%02x responded but is_valid()=False — skipping", addr)
+                continue
+            caps.aio_battery_module_addresses.append(addr)
+
     async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
         """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
 
@@ -617,6 +645,16 @@ class Client:
             _logger.info(
                 "detect: bcu_stacks=[%s]",
                 ", ".join(f"0x{0x70 + o:02x} (x{n})" for o, n in caps.bcu_stacks),
+            )
+
+        # Step 2b — AIO per-module battery probing (#192). The All-in-One exposes each
+        # battery module at its own device address (0x50+), distinct from the bcu_stacks
+        # stride layout, so its per-module cell/temperature/serial data is reachable.
+        if caps.device_type is Model.ALL_IN_ONE and caps.bcu_stacks:
+            await self._detect_aio_battery_modules(caps, probe_timeout, probe_retries)
+            _logger.info(
+                "detect: aio_battery_modules=[%s]",
+                ", ".join(f"0x{a:02x}" for a in caps.aio_battery_module_addresses),
             )
 
         # Step 3 — meter probing. Hinted: only previously-seen addresses. Cold: full 0x01–0x08 sweep.
@@ -892,6 +930,9 @@ class Client:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
         for offset, _ in caps.bcu_stacks:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
+        # AIO per-module battery caches (#192) — each module answers at its own address.
+        for addr in caps.aio_battery_module_addresses:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 

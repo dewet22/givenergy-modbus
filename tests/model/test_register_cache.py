@@ -204,6 +204,20 @@ def test_redact_serials_battery_ir_group():
     assert result[IR(0)] == 1234  # untouched
 
 
+def test_redact_serials_aio_module_ir_114_group():
+    """AIO module serial at IR(114-118) is redacted (#192).
+
+    AIO battery modules carry their own HX serial at IR(114-118) in their own
+    device-address cache; the IR(114,5) BMU group already covers it, so a shared export
+    must zero the unit digits. Guards the per-module privacy surface.
+    """
+    registers = _encode_serial("HX2414G832", IR, 114)
+    result = RegisterCache(registers).redact_serials()
+    expected = _encode_serial("HX2414G000", IR, 114)
+    for reg, val in expected.items():
+        assert result[reg] == val, f"{reg} mismatch"
+
+
 def test_redact_serials_inverter_hr_group():
     """Inverter serial HR(13-17) redacted; HR(8-12) also redacted via the explicit group.
 

@@ -63,6 +63,18 @@ def test_plant_capabilities_round_trip_with_bcus():
     assert restored.bcu_stacks == [(0, 3), (1, 2)]
 
 
+def test_plant_capabilities_round_trip_with_aio_modules():
+    caps = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 4)],
+        aio_battery_module_addresses=[0x50, 0x51, 0x52, 0x53],
+    )
+    restored = PlantCapabilities.from_dict(caps.to_dict())
+    assert restored == caps
+    assert restored.aio_battery_module_addresses == [0x50, 0x51, 0x52, 0x53]
+
+
 def test_plant_capabilities_from_dict_accepts_v2_0_0_legacy_shape():
     """Regression: a v2.0.0-shaped payload must still parse after the v2.0.1 schema change.
 
@@ -341,6 +353,59 @@ async def test_detect_finds_lv_batteries():
             caps = await client.detect()
 
     assert caps.lv_battery_addresses == [0x32, 0x33]
+
+
+def _prime_aio_module_serial(client: Client, device_address: int, serial: str = "HX2414G832") -> None:
+    """Prime an AIO module cache with a valid module serial (IR 114-118)."""
+    regs = {IR(114 + i): int.from_bytes(serial[i * 2 : i * 2 + 2].encode("latin1"), "big") for i in range(5)}
+    _prime_cache(client, device_address, regs)
+
+
+@pytest.mark.asyncio
+async def test_detect_finds_aio_battery_modules():
+    """An AIO with a 4-module BCU records its per-module addresses at 0x50-0x53 (#192)."""
+    client = _make_client()
+    # DTC 0x8001 + fw 612 → Model.ALL_IN_ONE (HV, single-phase).
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    # BMS at 0xA0 reports 1 BCU; BCU at 0x70 reports 4 modules.
+    _prime_cache(client, 0xA0, {IR(61): 1})
+    _prime_cache(client, 0x70, {IR(64): 4})
+    for addr in (0x50, 0x51, 0x52, 0x53):
+        _prime_aio_module_serial(client, addr, serial=f"HX2414G83{addr - 0x50}")
+
+    responders = {0xA0, 0x70, 0x50, 0x51, 0x52, 0x53}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responders
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.device_type is Model.ALL_IN_ONE
+    assert caps.bcu_stacks == [(0, 4)]
+    assert caps.aio_battery_module_addresses == [0x50, 0x51, 0x52, 0x53]
+
+
+@pytest.mark.asyncio
+async def test_detect_aio_skips_modules_with_no_serial():
+    """An AIO module that responds but has no serial is not recorded (ghost guard)."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    _prime_cache(client, 0xA0, {IR(61): 1})
+    _prime_cache(client, 0x70, {IR(64): 2})
+    _prime_aio_module_serial(client, 0x50)  # 0x51 responds but has no serial primed
+
+    responders = {0xA0, 0x70, 0x50, 0x51}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responders
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.aio_battery_module_addresses == [0x50]
 
 
 @pytest.mark.asyncio
