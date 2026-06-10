@@ -38,6 +38,8 @@ jobs:
       contents: write
       # Required for PyPI trusted publishing via OIDC (no API token).
       id-token: write
+      # Required for the GITHUB_TOKEN-based docs deploy (peaceiris/actions-gh-pages).
+      pages: write
 
     steps:
       - name: Checkout
@@ -56,7 +58,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           enable-cache: true
 
@@ -118,7 +120,7 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.republish_tag == ''
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
@@ -128,7 +130,7 @@ jobs:
           prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
           skip-existing: true
 
@@ -185,10 +187,14 @@ jobs:
 
       - name: Publish documentation
         if: steps.version.outputs.prerelease != 'true' && inputs.republish_tag == ''
-        # Pinned to v4.1.0 rather than @v4 because the floating major tag still
-        # resolves to a Node 20 build of the action; v4.1.0 (2026-05-12) is the
-        # first release using Node 24. Revisit once peaceiris re-points @v4.
-        uses: peaceiris/actions-gh-pages@v4.1.0
+        # SHA-pinned to v4.1.0: the floating @v4 tag still resolves to a Node 20
+        # build; v4.1.0 (2026-05-12) is the first release on Node 24. Revisit once
+        # peaceiris re-points @v4.
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4.1.0
         with:
-          personal_token: ${{ secrets.PERSONAL_TOKEN }}
+          # GITHUB_TOKEN (+ pages: write on the job) replaces the long-lived
+          # PERSONAL_TOKEN — the action only needs contents:write to push to the
+          # gh-pages branch. If a future release regresses Pages deploy, revert to
+          # personal_token: ${{ secrets.PERSONAL_TOKEN }}.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
