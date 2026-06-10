@@ -5,9 +5,9 @@
 **Method:** four parallel security-focused reviews (network input parsing; client & write path;
 model layer & redaction; scripts/CI/supply chain), with the highest-impact claims re-verified
 directly against source before inclusion.
-**Amendments:** H1 and H3 were downgraded to Medium after independent pre-publication review
-(PR #223) challenged their premises; the corrections are recorded inline in each finding.
-Original IDs are kept stable for tracking.
+**Amendments:** after independent pre-publication review (PR #223): H1 and H3 were downgraded
+to Medium (premises corrected inline), and H2's byte-swap sub-item was narrowed from a possible
+leak to a missing test combination. Original IDs are kept stable for tracking.
 
 **Threat model:** Modbus TCP has no authentication or TLS. The remote peer (inverter, or any
 device/attacker on the LAN segment) can send arbitrary bytes. The library controls real
@@ -67,21 +67,23 @@ Severity scale: **High** = fix soon, real attacker value or undercuts a stated g
   2. **Plant-level serial fields out of scope.** `Plant.inverter_serial_number` and
      `Plant.data_adapter_serial_number` are populated from PDU headers and live outside any
      `RegisterCache`. Redacting every cache then sharing a `Plant` dump still leaks both.
-  3. **AIO byte-swapped HR(8–12) redaction is untested.** This group was explicitly added
-     because AIO firmware stores the unit serial byte-swapped (recoverable). If the
-     byte-swapped string fails both patterns in `Converter.redact_serial()`, the
-     `redacted is None or redacted == serial_str: continue` guard silently no-ops — exactly
-     the leak the group was meant to prevent. No test exercises this path with a
-     byte-swapped value.
+  3. **AIO byte-swapped HR(8–12): one path-combination untested.** *(Narrowed post-review,
+     PR #223.)* The byte-swapped value shape is verified to redact correctly on the
+     `FrameRedactor` path (`test_frame_redactor_redacts_hr8_serial_register` feeds
+     `HC2114G047` → `HC2114G000`), and the HR(8–12) group is exercised through
+     `RegisterCache.redact_serials()` with a standard serial
+     (`test_redact_serials_inverter_hr_group`). Both paths share
+     `Converter.redact_serial()`, so this is a missing test combination — byte-swapped
+     value through `redact_serials()` specifically — not a verified leak risk.
 - **Fix plan:**
   - [ ] Add `"MR": MR` to `_reg_cls` in `redact_serials()`, and either add `meter` to the
         module walk + change the meter serial to `C.serial`, or append an explicit
         `("MR", 60, 2)` group like the BMU/legacy entries.
   - [ ] Add `Plant.redact()` (redacts all caches + both string fields), or at minimum a
         prominent docstring warning on `Plant` and `redact_serials()`.
-  - [ ] Add a regression test feeding a real byte-swapped AIO serial through HR(8–12)
-        redaction and asserting the output is zeroed; fix `redact_serial()` patterns or
-        normalise byte order if it fails.
+  - [ ] Completeness: add the missing combination — a byte-swapped AIO serial through
+        `RegisterCache.redact_serials()` HR(8–12) (the `FrameRedactor` path already covers
+        this value shape).
   - [ ] Consider auto-discovering serial groups by walking all `RegisterGetter` subclasses
         instead of a hardcoded module list, so future device types can't silently miss
         coverage (same failure mode as the meter gap).
