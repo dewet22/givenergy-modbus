@@ -316,3 +316,18 @@ def test_redact_serials_byte_swapped_aio_serial_hr8():
     result = RegisterCache(registers).redact_serials()
     raw = b"".join((result[HR(8 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
     assert raw.decode("latin1").replace("\x00", "").upper() == "HC2114G000"
+
+
+def test_redact_serials_partial_group_is_blanked():
+    """A partially-present serial group has its present registers blanked, not leaked (audit H2).
+
+    A cache can hold only some registers of a known identifier location; the present fragment is
+    still sensitive. redact_serials() zeroes the present registers without injecting the absent
+    ones.
+    """
+    # Only the first two registers of the inverter serial group HR(13-17) are present.
+    registers = {HR(13): 0x5341, HR(14): 0x3231}  # "SA21" fragment
+    result = RegisterCache(registers).redact_serials()
+    assert result[HR(13)] == 0
+    assert result[HR(14)] == 0
+    assert HR(15) not in result, "absent registers must not be injected"
