@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0rc6] - 2026-06-10
+
+### ✨ Added
+
+- add unified inverter_serial accessor (#227) (#234) ([5e7bbb0](https://github.com/dewet22/givenergy-modbus/commit/5e7bbb098e122d33cf67136b1956717d3d899c8b))
+
+### 🐛 Fixed
+
+- close redact_serials() gaps — meter serial + Plant header (#224 H2) ([2433494](https://github.com/dewet22/givenergy-modbus/commit/2433494604ced97de212d0f2a43ae623ddd95c2d))
+- security-audit batch 3 — write-path assurance (#224) ([9dbdf00](https://github.com/dewet22/givenergy-modbus/commit/9dbdf002a524edf28bef7ce6b135c910e8cfd155))
+- security-audit batch 4 — adversarial-input & decode-boundary hardening (#224) (#230) ([8dc4903](https://github.com/dewet22/givenergy-modbus/commit/8dc490302efc8baba0106cf0fde6767b9c4df20c))
+
+### 🔧 Maintenance
+
+- confirm IR(42) p_load_demand includes the EPS branch (IR31) (#231) ([fd2f08c](https://github.com/dewet22/givenergy-modbus/commit/fd2f08cc9dd14d0a8b24c4bc41f7fca8523f1228))
+- shared power-flow state classification spec (draft for cli/hass sign-off) (#232) ([848d706](https://github.com/dewet22/givenergy-modbus/commit/848d70618721194bffbb2927aac9690df37c1a0d))
+- security-audit batch 5 — supply-chain hardening + inbox de-advertise (#224) (#233) ([d74d3df](https://github.com/dewet22/givenergy-modbus/commit/d74d3df2a351acd1edd400c877a668136777ec25))
+
 ## [2.2.0rc5] - 2026-06-10
 
 ### 🐛 Fixed
