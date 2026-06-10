@@ -184,13 +184,16 @@ class RegisterCache(defaultdict[Register, int]):
             if reg_cls is None:
                 continue
             regs = [reg_cls(base + i) for i in range(count)]
-            if not all(isinstance(self.get(r), int) for r in regs):
-                continue
-            # Meter product identifier (MR): a short non-GE value in a distinct register
-            # namespace that can't overlap HR/IR data — safe to blank outright.
+            # Meter product identifier (MR): a short non-GE value in a distinct register namespace
+            # that can't overlap HR/IR data — safe to fail closed. Blank whatever is present (a
+            # full or partial fragment) before the HR/IR completeness check, without injecting
+            # absent registers.
             if reg_type == "MR":
                 for reg in regs:
-                    result[reg] = 0
+                    if isinstance(self.get(reg), int):
+                        result[reg] = 0
+                continue
+            if not all(isinstance(self.get(r), int) for r in regs):
                 continue
             raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()

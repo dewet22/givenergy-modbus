@@ -348,3 +348,14 @@ def test_redact_serials_leaves_partial_group_unchanged():
     assert result[HR(13)] == 0x5341
     assert result[HR(14)] == 0x3231
     assert HR(15) not in result, "absent registers must not be injected"
+
+
+def test_redact_serials_blanks_partial_meter_identifier():
+    """A partial meter identifier is still blanked — MR is a distinct namespace with no overlap.
+
+    Unlike HR/IR (where a partial group can't be distinguished from non-serial data), MR can't
+    overlap ordinary registers, so a present fragment is always sensitive and safe to blank.
+    """
+    result = RegisterCache({MR(60): 0x4142}).redact_serials()  # "AB" fragment; MR(61) absent
+    assert result[MR(60)] == 0
+    assert MR(61) not in result, "absent MR register must not be injected"
