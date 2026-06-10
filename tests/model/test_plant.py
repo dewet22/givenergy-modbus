@@ -2121,6 +2121,22 @@ def test_inverter_serial_skips_all_zero_serial_registers():
     assert plant.inverter_serial == "CH2414G047"
 
 
+def test_inverter_serial_skips_malformed_complete_block():
+    """A complete block decoding to a malformed (non-10-char) serial falls through (#227, Codex).
+
+    An interior zero register (HR15=0x0000 → "SA12G047" after the null strip) — or spaces /
+    garbage in a restored or tampered cache — passes the not-empty check but is not a valid
+    serial, so it must not outrank a known-good envelope serial. Gated by is_valid_serial().
+    """
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    # S A 1 2 \x00 \x00 G 0 4 7 → "SA12G047" (8 chars) after the null strip
+    plant.register_caches[0x11] = RegisterCache(
+        {HR(13): 0x5341, HR(14): 0x3132, HR(15): 0x0000, HR(16): 0x4730, HR(17): 0x3437}
+    )
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047"
+
+
 def test_plant_redact_clears_header_serials_and_redacts_caches():
     """Plant.redact() redacts every cache AND the out-of-cache header serials (audit H2).
 

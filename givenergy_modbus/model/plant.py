@@ -20,7 +20,7 @@ from givenergy_modbus.model.inverter import (
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
-from givenergy_modbus.model.register import HR, IR, Converter, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, Converter, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -748,6 +748,10 @@ class Plant(GivEnergyBaseModel):
         3. the ``inverter_serial_number`` envelope field — populated at ``detect()`` and the only
            home on a persisted/bare plant carrying no register caches.
 
+        A register block is only accepted if it decodes to a valid serial (``is_valid_serial`` —
+        the same coherence gate ``_commit_bank`` ingestion uses), so a malformed/partial block in a
+        restored or tampered cache falls through to the envelope rather than outranking it.
+
         Deliberately never reads the 0x32 battery cache, so a bare or pre-detect plant can't
         surface a battery pack's serial as the inverter's. Reads via ``.get()`` so it never
         mutates the (defaultdict) caches. Once consumers move to this accessor, the envelope
@@ -766,7 +770,12 @@ class Plant(GivEnergyBaseModel):
             if any(v is None for v in raw):
                 continue  # fail closed on a partially-present serial block
             serial = Converter.serial(*cast("list[int]", raw))
-            if serial:
+            # Coherence gate (same as _commit_bank ingestion): a complete block can still
+            # decode to garbage — an interior zero register strips to a short string
+            # (SA12\x00\x00G047 -> "SA12G047"), and a persisted/tampered cache can hold spaces
+            # or other malformed data. is_valid_serial() requires a clean 10-char serial, so
+            # such a block falls through to a known-good envelope serial rather than outranking it.
+            if serial and is_valid_serial(serial):
                 return serial
         return self.inverter_serial_number
 
