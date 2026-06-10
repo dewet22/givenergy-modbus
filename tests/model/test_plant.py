@@ -2072,3 +2072,19 @@ def test_plant_redact_handles_empty_serials():
     redacted = plant.redact()
     assert redacted.inverter_serial_number == ""
     assert redacted.data_adapter_serial_number == ""
+
+
+def test_plant_redact_fails_closed_on_unrecognised_header_serial():
+    """redact() blanks an unrecognised header serial rather than leaking it (audit H2, fail-closed).
+
+    Converter.redact_serial is fail-open (returns unrecognised shapes unchanged); the share-safe
+    redact() must not pass a vendor/non-standard identifier through verbatim.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "UNKNOWN123"  # valid charset, matches no GE pattern
+    plant.data_adapter_serial_number = "ODD-SERIAL"
+
+    redacted = plant.redact()
+
+    assert redacted.inverter_serial_number == ""
+    assert redacted.data_adapter_serial_number == ""

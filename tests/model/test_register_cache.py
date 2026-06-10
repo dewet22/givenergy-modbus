@@ -231,11 +231,15 @@ def test_redact_serials_is_idempotent():
     assert dict(once) == dict(twice)
 
 
-def test_redact_serials_unrecognised_shape_passes_through():
-    """A serial that doesn't match either known pattern is left unchanged."""
-    registers = _encode_serial("ZZZZZZZZZZ", IR, 110)
+def test_redact_serials_fails_closed_on_unrecognised_serial():
+    """A known serial location holding an unrecognised format is blanked, not leaked (audit H2).
+
+    redact_serials() is the share-safe boundary, so it fails closed: a value in a C.serial
+    register group that matches neither GE pattern is zeroed rather than passed through verbatim.
+    """
+    registers = _encode_serial("ZZZZZZZZZZ", IR, 110)  # battery serial group; valid charset, no GE pattern
     result = RegisterCache(registers).redact_serials()
-    assert dict(result) == dict(RegisterCache(registers))
+    assert all(result[IR(110 + i)] == 0 for i in range(5)), "unrecognised serial must be blanked"
 
 
 def test_redact_serials_absent_group_not_injected():

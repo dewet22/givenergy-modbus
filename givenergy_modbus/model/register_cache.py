@@ -68,10 +68,13 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
     # export. Appended explicitly, like the BMU serials, since no LUT Def carries it.
     groups.append(("HR", 8, 5))
     # Meter product serial (MR 60-61, FC 0x16). The MeterProductRegisterGetter walk above
-    # doesn't reach it (meter isn't a walked module and its Def is C.string), and it's a short
-    # 2-register identifier that doesn't match the GE serial pattern — so redact_serials() blanks
-    # it rather than pattern-redacting (audit H2). Appended explicitly here.
-    groups.append(("MR", 60, 2))
+    # doesn't reach it (meter isn't a walked module and its Def is C.string), so add it
+    # explicitly. It's a short non-GE-pattern identifier; redact_serials() blanks it via the
+    # fail-closed strict redaction (audit H2). Guarded against a future auto-discovery duplicate.
+    mr_key = ("MR", 60, 2)
+    if mr_key not in seen:
+        seen.add(mr_key)
+        groups.append(mr_key)
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
@@ -177,17 +180,12 @@ class RegisterCache(defaultdict[Register, int]):
             regs = [reg_cls(base + i) for i in range(count)]
             if not all(isinstance(self.get(r), int) for r in regs):
                 continue
-            # Meter identifiers (MR) are short, non-GE-pattern values that redact_serial can't
-            # match — blank them entirely so a shared export doesn't leak the meter identity.
-            # (Zeroing an already-zero group is a no-op, so this stays idempotent.)
-            if reg_type == "MR":
-                for reg in regs:
-                    result[reg] = 0
-                continue
             raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()
-            redacted = Converter.redact_serial(serial_str)
-            if redacted is None or redacted == serial_str:
+            # Fail closed: a recognised serial is date-redacted, anything else (vendor/meter/
+            # unknown format) is blanked — a known serial location must never leak verbatim.
+            redacted = Converter.redact_serial_strict(serial_str)
+            if redacted == serial_str:
                 continue
             redacted_bytes = redacted.encode("latin1").ljust(count * 2, b"\x00")[: count * 2]
             for i, reg in enumerate(regs):
