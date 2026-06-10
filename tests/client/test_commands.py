@@ -15,13 +15,13 @@ from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 async def test_configure_charge_target():
     """Ensure we can set and disable a charge target."""
     assert commands.set_charge_target(45) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 45),
     ]
     assert commands.set_charge_target(100) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
@@ -33,29 +33,29 @@ async def test_configure_charge_target():
         commands.set_charge_target(101)
 
     assert commands.disable_charge_target() == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
 
 async def test_set_charge():
     """Ensure we can toggle charging."""
-    assert commands.set_enable_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True)]
-    assert commands.set_enable_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, False)]
+    assert commands.set_enable_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1)]
+    assert commands.set_enable_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 0)]
     with pytest.warns(DeprecationWarning):
-        assert commands.enable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True)]
+        assert commands.enable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1)]
     with pytest.warns(DeprecationWarning):
-        assert commands.disable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, False)]
+        assert commands.disable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 0)]
 
 
 async def test_set_discharge():
     """Ensure we can toggle discharging."""
-    assert commands.set_enable_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True)]
-    assert commands.set_enable_discharge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False)]
+    assert commands.set_enable_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1)]
+    assert commands.set_enable_discharge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0)]
     with pytest.warns(DeprecationWarning):
-        assert commands.enable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True)]
+        assert commands.enable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1)]
     with pytest.warns(DeprecationWarning):
-        assert commands.disable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False)]
+        assert commands.disable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0)]
 
 
 async def test_set_battery_discharge_mode():
@@ -253,7 +253,7 @@ async def test_set_mode_dynamic():
     assert commands.set_mode_dynamic() == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, 4),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0),
     ]
 
 
@@ -261,7 +261,7 @@ async def test_set_mode_storage():
     """Ensure we can set the inverter to a storage mode with discharge slots."""
     assert commands.set_mode_storage(TimeSlot.from_components(1, 2, 3, 4)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 102),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 304),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 0),
@@ -270,7 +270,7 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_components(5, 6, 7, 8), TimeSlot.from_components(9, 10, 11, 12)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 506),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 708),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 910),
@@ -279,7 +279,7 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_repr(1314, 1516), discharge_for_export=True) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 0),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 1314),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 1516),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 0),
@@ -340,8 +340,8 @@ async def test_set_active_power_rate():
 
 
 async def test_set_enable_rtc():
-    assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, True)]
-    assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, False)]
+    assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 1)]
+    assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 0)]
 
 
 async def test_set_export_priority():
@@ -359,8 +359,8 @@ async def test_set_export_priority():
 
 
 async def test_set_enable_eps():
-    assert commands.set_enable_eps(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, True)]
-    assert commands.set_enable_eps(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, False)]
+    assert commands.set_enable_eps(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 1)]
+    assert commands.set_enable_eps(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 0)]
     # HR317 must be in the lower-level PDU allowlist, or encode() raises InvalidPduState.
     commands.set_enable_eps(True)[0].encode()
 
@@ -476,21 +476,21 @@ async def test_set_pause_slot():
 
 
 async def test_set_ac_charge():
-    assert commands.set_ac_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, True)]
-    assert commands.set_ac_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, False)]
+    assert commands.set_ac_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 1)]
+    assert commands.set_ac_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 0)]
 
 
 async def test_set_force_charge():
-    assert commands.set_force_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, True)]
+    assert commands.set_force_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, 1)]
 
 
 async def test_set_force_discharge():
-    assert commands.set_force_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, True)]
+    assert commands.set_force_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, 1)]
 
 
 async def test_set_ems_plant():
-    assert commands.set_ems_plant(True) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, True)]
-    assert commands.set_ems_plant(False) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, False)]
+    assert commands.set_ems_plant(True) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 1)]
+    assert commands.set_ems_plant(False) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 0)]
 
 
 @pytest.mark.parametrize("idx", [1, 2, 3])
@@ -749,3 +749,97 @@ def test_refresh_plant_data_is_a_raising_stub():
     with pytest.warns(DeprecationWarning):
         with pytest.raises(PlantNotDetected, match="detect()"):
             commands.refresh_plant_data(True)
+
+
+@pytest.mark.parametrize(
+    "helper",
+    [
+        commands.set_battery_soc_reserve,
+        commands.set_battery_reserve_soc,
+        commands.set_battery_charge_limit,
+        commands.set_battery_discharge_limit,
+        commands.set_battery_power_reserve,
+        commands.set_active_power_rate,
+        commands.set_battery_charge_limit_ac,
+        commands.set_battery_discharge_limit_ac,
+        commands.set_ems_export_power_limit,
+    ],
+)
+def test_numeric_helpers_reject_bool(helper):
+    """Numeric command helpers reject bool before their int() coercion (audit L1).
+
+    These helpers coerce with int(value) before constructing the request, so the PDU-level
+    bool guard never sees the bool — set_active_power_rate(True) would silently write 1.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        helper(True)
+    with pytest.raises(ValueError, match="bool"):
+        helper(False)
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(
+            lambda: commands.set_charge_slot_start(True, dt_time(1, 0), SINGLE_PHASE_SLOTS), id="charge_slot_start"
+        ),
+        pytest.param(
+            lambda: commands.set_discharge_slot_end(True, dt_time(1, 0), SINGLE_PHASE_SLOTS), id="discharge_slot_end"
+        ),
+        pytest.param(lambda: commands.set_export_slot_start(True, dt_time(1, 0)), id="export_slot_start"),
+        pytest.param(lambda: commands.set_smart_load_slot_start(True, dt_time(1, 0)), id="smart_load_slot_start"),
+        pytest.param(lambda: commands.set_smart_load_slot_end(True, dt_time(1, 0)), id="smart_load_slot_end"),
+        pytest.param(lambda: commands.set_ems_charge_target_soc(True, 50), id="ems_charge_target_soc"),
+        pytest.param(lambda: commands.set_ems_discharge_target_soc(True, 50), id="ems_discharge_target_soc"),
+        pytest.param(lambda: commands.set_ems_export_target_soc(True, 50), id="ems_export_target_soc"),
+    ],
+)
+def test_slot_index_arguments_reject_bool(call):
+    """Slot/index selector arguments reject bool (audit L1 follow-up).
+
+    True == 1 passes the `1 <= idx` bounds checks and silently selects slot 1's REGISTER —
+    the same caller-error class as bool values, but worse on a write API: it picks the wrong
+    register rather than the wrong value.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        call()
+
+
+def test_numeric_arguments_reject_non_integral_and_str():
+    """_as_int-guarded arguments reject non-integral floats and strings (fail loud, audit L1).
+
+    2.9 as a slot index would silently truncate to slot 2 (wrong-register selection); "100"
+    as a value is type confusion. Integral floats (50.0) stay accepted — they're unambiguous.
+    """
+    with pytest.raises(ValueError, match="integral"):
+        commands.set_export_slot_start(2.9, dt_time(1, 0))
+    with pytest.raises(ValueError, match="integral"):
+        commands.set_battery_soc_reserve(50.5)
+    with pytest.raises(ValueError, match="number"):
+        commands.set_battery_soc_reserve("100")
+    # Integral float remains accepted and resolves identically to the int.
+    assert commands.set_battery_soc_reserve(50.0) == commands.set_battery_soc_reserve(50)
+
+
+def test_set_export_priority_rejects_bool():
+    """set_export_priority rejects bool before the enum conversion (audit L1 follow-up).
+
+    ExportPriority(True) resolves to GRID_FIRST (1) and would pass as an IntEnum — silently
+    selecting a write mode. A bool here is a caller error and must fail loudly. Valid enum
+    members (and their int values) still work.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        commands.set_export_priority(True)
+    with pytest.raises(ValueError, match="bool"):
+        commands.set_export_priority(False)
+    # Valid members / ints unaffected.
+    assert commands.set_export_priority(ExportPriority.GRID_FIRST) == [
+        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.GRID_FIRST)
+    ]
+    assert commands.set_export_priority(2) == [WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, 2)]
+
+
+def test_set_battery_pause_mode_rejects_bool():
+    """set_battery_pause_mode passes the raw value, so the PDU bool guard rejects True/False."""
+    with pytest.raises(ValueError, match="bool|unacceptable"):
+        commands.set_battery_pause_mode(True)

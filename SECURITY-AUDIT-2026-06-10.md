@@ -71,6 +71,19 @@ Severity scale: **High** = fix soon, real attacker value or undercuts a stated g
 
 ### M1 — Write responses don't verify the echoed value
 
+> **Amended 2026-06-10 (Batch 3 analysis): dropped — unattributable on this bus topology.**
+> Write-response correlation is by shape hash (`device_address` + `register`; the GE framing
+> carries no usable transaction ID), and the dongle fans out responses to **all** connected TCP
+> clients (#196, confirmed universal). Another actor's write echo for the same register (cloud,
+> app, another client) therefore resolves our future: a value mismatch usually means "caught
+> someone else's echo", not "device clamped our write", and a match can mask a real clamp — the
+> signal carries no reliable information, and a WARNING would routinely misfire during normal
+> multi-actor operation. The forged-ack scenario was already void per the amended threat model
+> (an on-path attacker forges the value *and* the unauthenticated CRC). Adding `value` to the
+> shape hash would convert every legitimate clamp into a timeout/retry storm. The cache already
+> reflects the device's echoed reality (`plant.py` routes the echo into the inverter cache);
+> **read-back-after-write is the sound consumer pattern.**
+
 - **Where:** `givenergy_modbus/pdu/write_registers.py` (`_extra_shape_hash_keys` covers
   `device_address` + `register`, not `value`); `givenergy_modbus/client/client.py`
   (`send_request_and_await_response` checks only `response.error`)
@@ -79,9 +92,8 @@ Severity scale: **High** = fix soon, real attacker value or undercuts a stated g
   is 50 when the device wrote 0. Given the hardware-safety posture, the echoed value should be
   checked.
 - **Fix plan:**
-  - [ ] Compare `response.value` to the requested value in the write path; log WARNING (or
-        raise, behind an option) on mismatch. (Including `value` in the shape hash is the
-        stricter alternative but changes response-correlation semantics — decide explicitly.)
+  - [x] ~~Compare `response.value` to the requested value in the write path~~ — dropped per the
+        amendment above; no runtime check is sound without echo attribution.
 
 ### M2 — Log injection via device-supplied strings; serials logged unredacted
 

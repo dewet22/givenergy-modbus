@@ -195,7 +195,10 @@ class WriteHoldingRegister(TransparentMessage, ABC):
         if not isinstance(register, int):
             raise ValueError(f"Register type {type(register)} is unacceptable")
         self.register = register
-        if not isinstance(value, int):
+        # bool subclasses int, so it would pass the isinstance check below and silently write
+        # 0/1 — a bool reaching a numeric register (e.g. ACTIVE_POWER_RATE) is a caller bug.
+        # Boolean command helpers pass int(enabled) explicitly (audit L1).
+        if isinstance(value, bool) or not isinstance(value, int):
             raise ValueError(f"Register value {type(value)} is unacceptable")
         self.value = value
 

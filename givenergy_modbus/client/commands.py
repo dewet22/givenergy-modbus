@@ -112,6 +112,22 @@ class RegisterMap:
     EMS_EXPORT_POWER_LIMIT = 2071
 
 
+def _as_int(val: int, name: str) -> int:
+    """Validate a numeric command argument as an integral number (audit L1).
+
+    Fails loud on the silent-coercion caller-error class: bool subclasses int (True would
+    write 1 or select slot 1's registers), a non-integral float would truncate (2.9 selecting
+    slot 2), and a string is type confusion. Integral floats (50.0) are unambiguous and
+    accepted. Numeric helpers route caller input through this instead of bare ``int(val)``.
+    """
+    if isinstance(val, bool) or not isinstance(val, int | float):
+        raise ValueError(f"{name} must be a number, not {type(val).__name__}")
+    i = int(val)
+    if i != val:
+        raise ValueError(f"{name} must be integral, got {val!r}")
+    return i
+
+
 @deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
     """Removed: built a fixed 0x32-addressed poll that timed out on non-0x32 models.
@@ -135,7 +151,7 @@ def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries:
 def disable_charge_target() -> list[TransparentRequest]:
     """Removes SOC limit and target 100% charging."""
     return [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
@@ -148,19 +164,19 @@ def set_charge_target(target_soc: int) -> list[TransparentRequest]:
     if target_soc == 100:
         ret.extend(disable_charge_target())
     else:
-        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True))
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1))
         ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc))
     return ret
 
 
 def set_enable_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1 if enabled else 0)]
 
 
 def set_enable_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1 if enabled else 0)]
 
 
 def set_inverter_reboot() -> list[TransparentRequest]:
@@ -225,7 +241,7 @@ def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
     GivTCP's independent choice for the same register — treat as the working
     assumption until a portal capture contradicts it.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Minimum SOC / shallow charge ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, val)]
@@ -238,7 +254,7 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
     Bounds [4-100]% are unconfirmed (no GivTCP cross-reference exists for this register);
     treat as the working assumption until a live three-phase capture confirms them.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Battery reserve SOC ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, val)]
@@ -246,7 +262,7 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery charge power limit as a percentage of rated charge power (0–50)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-50]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, val)]
@@ -254,7 +270,7 @@ def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery discharge power limit as a percentage of rated discharge power (0–50)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-50]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, val)]
@@ -267,7 +283,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     GivTCP's independent choice for the same register — treat as the working
     assumption until a portal capture contradicts it.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Battery power reserve ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
@@ -275,7 +291,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 def set_active_power_rate(target: int) -> list[TransparentRequest]:
     """Set the inverter's active power output as a percentage of its rated capacity."""
-    target = int(target)
+    target = _as_int(target, "target")
     if not 0 <= target <= 100:
         raise ValueError(f"Active power rate ({target}) must be in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, target)]
@@ -283,7 +299,7 @@ def set_active_power_rate(target: int) -> list[TransparentRequest]:
 
 def set_enable_rtc(enabled: bool) -> list[TransparentRequest]:
     """Enable the Real Time Clock register to persist settings to EEPROM."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 1 if enabled else 0)]
 
 
 def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
@@ -292,6 +308,10 @@ def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
     Determines where surplus energy goes: battery first, grid first, or load first.
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
+    # bool subclasses int, so ExportPriority(True) would resolve to GRID_FIRST and pass as an
+    # IntEnum — silently selecting a write mode. Reject it before the enum conversion (audit L1).
+    if isinstance(priority, bool):
+        raise ValueError(f"Export priority must be an ExportPriority, not bool (got {priority!r})")
     try:
         priority = ExportPriority(priority)
     except ValueError as e:
@@ -304,12 +324,12 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, bool(enabled))]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 1 if enabled else 0)]
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC charge power limit as a percentage."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 1 <= val <= 100:
         raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, val)]
@@ -317,7 +337,7 @@ def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
 
 def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC discharge power limit as a percentage."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 1 <= val <= 100:
         raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
@@ -347,6 +367,7 @@ def set_pause_slot(slot: TimeSlot | None) -> list[TransparentRequest]:
 
 def set_smart_load_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
     """Set the start time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    idx = _as_int(idx, "idx")
     if not (1 <= idx <= 10):
         raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
     return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2, t)
@@ -354,6 +375,7 @@ def set_smart_load_slot_start(idx: int, t: dt_time | None) -> list[TransparentRe
 
 def set_smart_load_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
     """Set the end time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    idx = _as_int(idx, "idx")
     if not (1 <= idx <= 10):
         raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
     return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2 + 1, t)
@@ -368,25 +390,26 @@ def set_smart_load_slot(idx: int, slot: "TimeSlot | None") -> list[TransparentRe
 
 def set_ac_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable AC charging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_force_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable forced battery charging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_force_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable forced battery discharging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_ems_plant(enabled: bool) -> list[TransparentRequest]:
     """Enable EMS plant control."""
-    return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 1 if enabled else 0)]
 
 
 def _export_slot_registers(idx: int) -> tuple[int, int]:
+    idx = _as_int(idx, "idx")  # True == 1 would silently select slot 1's registers
     if not 1 <= idx <= 3:
         raise ValueError(f"Export slot index ({idx}) must be in [1-3]")
     return getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START"), getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
@@ -414,7 +437,7 @@ def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]
 
 def _ems_target_soc(val: int) -> int:
     """Validate an EMS SoC target percentage (0-100)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 100:
         raise ValueError(f"EMS target SoC ({val}) must be in [0-100]")
     return val
@@ -456,6 +479,7 @@ def set_ems_discharge_slot_end(idx: int, t: dt_time | None) -> list[TransparentR
 
 def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant charge slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS charge slot index ({idx}) must be in [1-3]")
     return [
@@ -465,6 +489,7 @@ def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequ
 
 def set_ems_discharge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant discharge slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS discharge slot index ({idx}) must be in [1-3]")
     return [
@@ -496,6 +521,7 @@ def set_ems_export_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequ
 
 def set_ems_export_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant export slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS export slot index ({idx}) must be in [1-3]")
     return [
@@ -509,7 +535,7 @@ def set_ems_export_power_limit(watts: int) -> list[TransparentRequest]:
     Bounded to a 16-bit holding register (0-65535) so an out-of-range value fails
     here rather than later at PDU-encode time as InvalidPduState.
     """
-    watts = int(watts)
+    watts = _as_int(watts, "watts")
     if not 0 <= watts <= 0xFFFF:
         raise ValueError(f"EMS export power limit ({watts}) must be in [0-65535] watts")
     return [WriteHoldingRegisterRequest(RegisterMap.EMS_EXPORT_POWER_LIMIT, watts)]
@@ -521,6 +547,7 @@ def _set_slot_endpoint(hr: int, t: dt_time | None) -> list[TransparentRequest]:
 
 
 def _resolve_slot_registers(discharge: bool, idx: int, slot_map: SlotMap) -> tuple[int, int]:
+    idx = _as_int(idx, "idx")  # True == 1 would silently select slot 1's registers
     slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
     n = len(slots)
     if not 1 <= idx <= n:
