@@ -1,6 +1,7 @@
 import logging
 
 from givenergy_modbus.codec import PayloadDecoder
+from givenergy_modbus.exceptions import InvalidFrame
 from givenergy_modbus.pdu.transparent import TransparentResponse
 
 _logger = logging.getLogger(__name__)
@@ -27,6 +28,10 @@ class NullResponse(TransparentResponse):
 
     @classmethod
     def decode_transparent_function(cls, decoder: PayloadDecoder, **attrs) -> "NullResponse":
+        if decoder.remaining_bytes < 126:
+            # 62 nulls + check = 126 bytes; a shorter frame would overrun the decoder
+            # (struct.error) mid-loop. Fail the frame cleanly instead (L6).
+            raise InvalidFrame(f"Null frame too short: {decoder.remaining_bytes}b < 126b", decoder.remaining_payload)
         if decoder.remaining_bytes != 126:
             _logger.warning(
                 f"remaining bytes: {decoder.remaining_bytes}b 0x{decoder.remaining_payload.hex()} attrs: {attrs}"

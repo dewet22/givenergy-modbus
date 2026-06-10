@@ -101,8 +101,12 @@ class Framer(ABC):
     ``docs/architecture.md`` § References.
     """
 
-    _buffer: bytes = b""
     pdu_class: type[BasePDU]
+
+    def __init__(self) -> None:
+        # Per-instance receive buffer. Held as instance state (not a class-level default)
+        # so two framers never share accumulation, even transiently (L6).
+        self._buffer: bytes = b""
 
     async def decode(self, data: bytes) -> AsyncIterator[BasePDU | ExceptionBase]:
         """Receive incoming network data and attempt to decode frames into messages.
@@ -220,6 +224,7 @@ class ClientFramer(Framer):
     """Framer implementation for client-side use."""
 
     def __init__(self):
+        super().__init__()
         self.pdu_class = ClientIncomingMessage
 
 
@@ -227,4 +232,5 @@ class ServerFramer(Framer):
     """Framer implementation for server-side use."""
 
     def __init__(self):
+        super().__init__()
         self.pdu_class = ServerIncomingMessage

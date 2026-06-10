@@ -35,6 +35,38 @@ def test_from_json_skips_unknown_register_prefix():
     assert RegisterCache.from_json('{"XR(0)": 1, "ZR(2)": 3}') == {}
 
 
+def test_from_json_skips_invalid_register_value():
+    """A value that isn't a valid unsigned 16-bit int must be skipped, not propagate (audit M4).
+
+    Previously such a value stored unchecked and blew up later in int()/.to_bytes (ValueError
+    or OverflowError) deep in a consumer. Each bad entry is now dropped (with a warning), and
+    valid entries are retained — a fail-closed posture for tampered cache JSON.
+    """
+    # String value dropped, valid sibling retained.
+    assert RegisterCache.from_json('{"HR(1)": 2, "HR(2)": "evil", "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
+    # A fractional number is rejected rather than silently truncated.
+    assert RegisterCache.from_json('{"HR(1)": 1.5}') == {}
+    # Out-of-range values (negative, or above 0xffff) are rejected — they'd OverflowError later.
+    assert RegisterCache.from_json('{"HR(1)": -1, "HR(2)": 65536, "IR(3)": 5}') == {IR(3): 5}
+    # In-range integers (including the 0/0xffff bounds) still load.
+    assert RegisterCache.from_json('{"HR(0)": 0, "HR(1)": 65535}') == {HR(0): 0, HR(1): 65535}
+    # json.loads accepts the non-standard Infinity/-Infinity/NaN; int() of those raises
+    # OverflowError/ValueError — the entry must be skipped, not crash the load.
+    assert RegisterCache.from_json('{"HR(1)": Infinity, "HR(2)": -Infinity, "HR(3)": NaN, "IR(4)": 6}') == {IR(4): 6}
+    # JSON booleans are not register values — rejected, not silently stored as 1/0.
+    assert RegisterCache.from_json('{"HR(1)": true, "HR(2)": false, "IR(3)": 7}') == {IR(3): 7}
+
+
+def test_from_json_preserves_none_value():
+    """None is the codebase's 'unset' sentinel and must round-trip through JSON, not be dropped.
+
+    Dropping it would silently turn an explicit None into the defaultdict's 0 on later access.
+    """
+    rc = RegisterCache.from_json('{"HR(1)": null, "IR(3)": 4}')
+    assert rc == {HR(1): None, IR(3): 4}
+    assert rc.get(HR(1)) is None
+
+
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(json_inverter_daytime_discharging_with_solar_generation)

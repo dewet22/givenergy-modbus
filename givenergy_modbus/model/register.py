@@ -50,7 +50,12 @@ class Converter:
             # Passing 60 as minutes to TimeSlot.from_repr raises ValueError, so treat it as unset.
             if start_time == 60 or end_time == 60:
                 return None
-            return TimeSlot.from_repr(start_time, end_time)
+            try:
+                return TimeSlot.from_repr(start_time, end_time)
+            except ValueError:
+                # Any other out-of-range / corrupt value (e.g. a tampered cache) degrades to
+                # unset rather than crashing a consumer — matches the enum/lookup posture (M4).
+                return None
 
     @staticmethod
     def bool(val: int) -> "bool":
@@ -170,7 +175,12 @@ class Converter:
     def datetime(year, month, day, hour, min, sec) -> "datetime | None":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
-            return datetime(year + 2000, month, day, hour, min, sec)
+            try:
+                return datetime(year + 2000, month, day, hour, min, sec)
+            except ValueError:
+                # Device-supplied out-of-range components (month=0, hour=24, …) degrade to
+                # None rather than crashing a consumer — matches the enum/lookup posture (M4).
+                return None
         return None
 
     @staticmethod
