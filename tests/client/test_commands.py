@@ -749,3 +749,29 @@ def test_refresh_plant_data_is_a_raising_stub():
     with pytest.warns(DeprecationWarning):
         with pytest.raises(PlantNotDetected, match="detect()"):
             commands.refresh_plant_data(True)
+
+
+@pytest.mark.parametrize(
+    "helper",
+    [
+        commands.set_battery_soc_reserve,
+        commands.set_battery_reserve_soc,
+        commands.set_battery_charge_limit,
+        commands.set_battery_discharge_limit,
+        commands.set_battery_power_reserve,
+        commands.set_active_power_rate,
+        commands.set_battery_charge_limit_ac,
+        commands.set_battery_discharge_limit_ac,
+        commands.set_ems_export_power_limit,
+    ],
+)
+def test_numeric_helpers_reject_bool(helper):
+    """Numeric command helpers reject bool before their int() coercion (audit L1).
+
+    These helpers coerce with int(value) before constructing the request, so the PDU-level
+    bool guard never sees the bool — set_active_power_rate(True) would silently write 1.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        helper(True)
+    with pytest.raises(ValueError, match="bool"):
+        helper(False)

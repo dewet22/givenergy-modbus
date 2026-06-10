@@ -112,6 +112,18 @@ class RegisterMap:
     EMS_EXPORT_POWER_LIMIT = 2071
 
 
+def _as_int(val: int, name: str) -> int:
+    """Coerce a numeric command argument to int, rejecting bool (audit L1).
+
+    bool subclasses int, so a plain ``int(val)`` coercion would silently turn True/False
+    into 1/0 *before* the PDU-level bool guard can see it — e.g. ``set_active_power_rate(True)``
+    writing 1. Numeric helpers route their caller input through this instead.
+    """
+    if isinstance(val, bool):
+        raise ValueError(f"{name} must be an int, not bool")
+    return int(val)
+
+
 @deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
     """Removed: built a fixed 0x32-addressed poll that timed out on non-0x32 models.
@@ -225,7 +237,7 @@ def set_battery_soc_reserve(val: int) -> list[TransparentRequest]:
     GivTCP's independent choice for the same register — treat as the working
     assumption until a portal capture contradicts it.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Minimum SOC / shallow charge ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, val)]
@@ -238,7 +250,7 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
     Bounds [4-100]% are unconfirmed (no GivTCP cross-reference exists for this register);
     treat as the working assumption until a live three-phase capture confirms them.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Battery reserve SOC ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_RESERVE_SOC, val)]
@@ -246,7 +258,7 @@ def set_battery_reserve_soc(val: int) -> list[TransparentRequest]:
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery charge power limit as a percentage of rated charge power (0–50)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-50]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, val)]
@@ -254,7 +266,7 @@ def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery discharge power limit as a percentage of rated discharge power (0–50)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 50:
         raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-50]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, val)]
@@ -267,7 +279,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
     GivTCP's independent choice for the same register — treat as the working
     assumption until a portal capture contradicts it.
     """
-    val = int(val)
+    val = _as_int(val, "val")
     if not 4 <= val <= 100:
         raise ValueError(f"Battery power reserve ({val}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_MIN_POWER_RESERVE, val)]
@@ -275,7 +287,7 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 def set_active_power_rate(target: int) -> list[TransparentRequest]:
     """Set the inverter's active power output as a percentage of its rated capacity."""
-    target = int(target)
+    target = _as_int(target, "target")
     if not 0 <= target <= 100:
         raise ValueError(f"Active power rate ({target}) must be in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.ACTIVE_POWER_RATE, target)]
@@ -309,7 +321,7 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC charge power limit as a percentage."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 1 <= val <= 100:
         raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, val)]
@@ -317,7 +329,7 @@ def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
 
 def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC discharge power limit as a percentage."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 1 <= val <= 100:
         raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
@@ -414,7 +426,7 @@ def set_export_slot(idx: int, slot: TimeSlot | None) -> list[TransparentRequest]
 
 def _ems_target_soc(val: int) -> int:
     """Validate an EMS SoC target percentage (0-100)."""
-    val = int(val)
+    val = _as_int(val, "val")
     if not 0 <= val <= 100:
         raise ValueError(f"EMS target SoC ({val}) must be in [0-100]")
     return val
@@ -509,7 +521,7 @@ def set_ems_export_power_limit(watts: int) -> list[TransparentRequest]:
     Bounded to a 16-bit holding register (0-65535) so an out-of-range value fails
     here rather than later at PDU-encode time as InvalidPduState.
     """
-    watts = int(watts)
+    watts = _as_int(watts, "watts")
     if not 0 <= watts <= 0xFFFF:
         raise ValueError(f"EMS export power limit ({watts}) must be in [0-65535] watts")
     return [WriteHoldingRegisterRequest(RegisterMap.EMS_EXPORT_POWER_LIMIT, watts)]
