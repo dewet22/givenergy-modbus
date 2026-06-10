@@ -643,3 +643,32 @@ async def test_frame_sent_timeout_cleans_up_stale_future(monkeypatch):
         await client.send_request_and_await_response(req, timeout=1.0, retries=0)
 
     assert expected_hash not in client.expected_responses, "stale response future must be cleaned up"
+
+
+async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
+    """A timed-out call must not evict a newer same-shaped caller's response future (PR #225).
+
+    Same-shaped requests deliberately replace one another. If call A is still waiting on
+    frame_sent when call B installs its own future under the shared shape_hash, A's timeout
+    cleanup must be identity-conditional — it must not delete B's mapping.
+    """
+    from givenergy_modbus.client import client as client_mod
+
+    monkeypatch.setattr(client_mod, "_FRAME_SENT_MIN_TIMEOUT", 0.05)
+    client = Client(host="foo", port=4321, tx_message_wait=0, tx_jitter=0)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    shape_hash = req.expected_response().shape_hash()
+
+    # Call A installs its future and blocks on frame_sent (no producer running).
+    task_a = asyncio.create_task(client.send_request_and_await_response(req, timeout=1.0, retries=0))
+    await asyncio.sleep(0.01)  # let A reach the frame_sent wait
+
+    # Call B replaces the mapping under the same shape_hash.
+    b_future: asyncio.Future = asyncio.get_running_loop().create_future()
+    client.expected_responses[shape_hash] = b_future
+
+    with pytest.raises(TimeoutError):
+        await task_a  # A times out (~0.05s)
+
+    assert client.expected_responses.get(shape_hash) is b_future, "A's cleanup must not evict B's future"
+    b_future.cancel()

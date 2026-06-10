@@ -1201,6 +1201,15 @@ class Client:
 
         raw_frame = request.encode()
 
+        def _discard(fut: "Future[TransparentResponse]") -> None:
+            # Abandon a future and remove its registration — but only if it's still the one
+            # mapped under expected_shape_hash. A newer same-shaped caller may have replaced it
+            # (see existing_response_future above); evicting that newer mapping would leave the
+            # newer caller unable to receive its response.
+            fut.cancel()
+            if self.expected_responses.get(expected_shape_hash) is fut:
+                del self.expected_responses[expected_shape_hash]
+
         tries = 0
         while tries <= retries:
             response_future: Future[TransparentResponse] = asyncio.get_running_loop().create_future()
@@ -1209,6 +1218,7 @@ class Client:
             try:
                 await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0)
             except TimeoutError as exc:
+                _discard(response_future)
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
             # Safety-net wait for the producer to actually send this frame. Worst case the
             # frame sits behind a full queue, and the producer sleeps tx_message_wait + up to
@@ -1226,8 +1236,7 @@ class Client:
             except TimeoutError as exc:
                 # Producer is genuinely stuck. Drop the orphaned future so a late send can't
                 # resolve a stale request, and surface a clear error.
-                response_future.cancel()
-                self.expected_responses.pop(expected_shape_hash, None)
+                _discard(response_future)
                 raise TimeoutError("Producer task is stuck — frame not sent") from exc
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
