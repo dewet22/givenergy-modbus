@@ -361,6 +361,93 @@ def test_cmd_generate_preview_does_not_modify_file(tmp_path, monkeypatch, capsys
     assert "- shiny" in out
 
 
+def test_cmd_generate_prepends_release_notes_file(tmp_path, monkeypatch, capsys):
+    """A hand-authored docs/release-notes/v<version>.md leads the section body.
+
+    Finals after a long rc line otherwise ship a near-empty section (commits since the
+    last rc) — the 2.1.0 release body was a single bullet. The notes file carries the
+    human narrative into both CHANGELOG.md and the GitHub Release description.
+    """
+    cl_path = tmp_path / "CHANGELOG.md"
+    cl_path.write_text("# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n", encoding="utf-8")
+    notes_dir = tmp_path / "release-notes"
+    notes_dir.mkdir()
+    (notes_dir / "v1.1.0.md").write_text("The big 1.1 narrative.\n\nWith a second paragraph.\n", encoding="utf-8")
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.setattr(release, "RELEASE_NOTES_DIR", notes_dir)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("1.1.0"))
+
+    out = capsys.readouterr().out
+    assert out.startswith("The big 1.1 narrative.")
+    assert out.index("narrative") < out.index("- shiny"), "notes lead, generated entries follow"
+    written = cl_path.read_text(encoding="utf-8")
+    assert "The big 1.1 narrative." in written
+    assert written.index("## [1.1.0]") < written.index("narrative") < written.index("- shiny")
+
+
+def test_cmd_generate_preview_includes_release_notes(tmp_path, monkeypatch, capsys):
+    cl_path = tmp_path / "CHANGELOG.md"
+    original = "# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n"
+    cl_path.write_text(original, encoding="utf-8")
+    notes_dir = tmp_path / "release-notes"
+    notes_dir.mkdir()
+    (notes_dir / "v1.1.0.md").write_text("Preview narrative.\n", encoding="utf-8")
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.setattr(release, "RELEASE_NOTES_DIR", notes_dir)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("1.1.0", preview=True))
+
+    assert cl_path.read_text(encoding="utf-8") == original, "preview must not write"
+    out = capsys.readouterr().out
+    assert "Preview narrative." in out
+    assert "- shiny" in out
+
+
+def test_cmd_generate_without_notes_file_is_unchanged(tmp_path, monkeypatch, capsys):
+    """No notes file for the version → behaviour identical to before (no leading blank)."""
+    cl_path = tmp_path / "CHANGELOG.md"
+    cl_path.write_text("# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n", encoding="utf-8")
+    notes_dir = tmp_path / "release-notes"  # deliberately not created
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.setattr(release, "RELEASE_NOTES_DIR", notes_dir)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("1.1.0"))
+
+    out = capsys.readouterr().out
+    assert out.startswith(f"### {ADDED}")
+
+
+def test_cmd_generate_normalises_leading_v_in_version(tmp_path, monkeypatch, capsys):
+    """`generate v1.1.0` (tag-style, an easy manual slip) behaves exactly like `generate 1.1.0`.
+
+    Without normalisation it would look up vv1.1.0.md (silently missing the notes file)
+    and write a non-standard `## [v1.1.0]` header.
+    """
+    cl_path = tmp_path / "CHANGELOG.md"
+    cl_path.write_text("# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n", encoding="utf-8")
+    notes_dir = tmp_path / "release-notes"
+    notes_dir.mkdir()
+    (notes_dir / "v1.1.0.md").write_text("Narrative.\n", encoding="utf-8")
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.setattr(release, "RELEASE_NOTES_DIR", notes_dir)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("v1.1.0"))
+
+    written = cl_path.read_text(encoding="utf-8")
+    assert "## [1.1.0]" in written
+    assert "## [v1.1.0]" not in written
+    assert "Narrative." in written, "tag-style version must still find the notes file"
+
+
 def test_cmd_generate_empty_commit_list_warns_but_writes(tmp_path, monkeypatch, capsys):
     cl_path = tmp_path / "CHANGELOG.md"
     cl_path.write_text(
