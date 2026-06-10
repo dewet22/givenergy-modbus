@@ -106,6 +106,11 @@ _SERIAL_GROUPS: "list[tuple[str, int, int]]" = _build_serial_register_groups()
 # MBAP start marker used by the framer to locate frames within a byte stream.
 _FRAME_MARKER = bytes.fromhex("59590001")
 
+# Floor for the "producer hasn't sent our frame yet" safety-net timeout. The actual wait
+# also scales with the queue backlog (see send_request_and_await_response); this floor keeps
+# it sane when the queue is idle. Module-level so tests can shrink it.
+_FRAME_SENT_MIN_TIMEOUT = 5.0
+
 
 class FrameRedactor:
     """Frame-aware stateful redactor for a captured GivEnergy byte stream.
@@ -1205,11 +1210,25 @@ class Client:
                 await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0)
             except TimeoutError as exc:
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
-            # Fixed safety-net timeout for the producer to dequeue and send this frame. The
-            # previous `qsize() + 1` was sampled *after* put() returned, so a just-drained queue
-            # yielded a 1 s window that could expire under transient load even with a healthy
-            # producer. A timeout here only fires if the producer task is genuinely stuck.
-            await asyncio.wait_for(frame_sent, timeout=5.0)
+            # Safety-net wait for the producer to actually send this frame. Worst case the
+            # frame sits behind a full queue, and the producer sleeps tx_message_wait + up to
+            # tx_jitter (plus a drain) between sends — so scale the bound by the full queue
+            # depth, not a flat constant. The old `qsize() + 1`, sampled *after* put() returned,
+            # could undershoot to ~1 s and fail a legitimately backlogged-but-healthy producer;
+            # a flat 5 s would do the same once the queue filled (20 × ~0.35 s ≈ 7 s). The 1.5×
+            # headroom covers per-frame drain and scheduling. Only fires if the producer is stuck.
+            frame_sent_timeout = max(
+                _FRAME_SENT_MIN_TIMEOUT,
+                self.tx_queue.maxsize * (self.tx_message_wait + self.tx_jitter) * 1.5,
+            )
+            try:
+                await asyncio.wait_for(frame_sent, timeout=frame_sent_timeout)
+            except TimeoutError as exc:
+                # Producer is genuinely stuck. Drop the orphaned future so a late send can't
+                # resolve a stale request, and surface a clear error.
+                response_future.cancel()
+                self.expected_responses.pop(expected_shape_hash, None)
+                raise TimeoutError("Producer task is stuck — frame not sent") from exc
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
             except TimeoutError:

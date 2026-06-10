@@ -621,3 +621,25 @@ async def test_send_request_no_sleep_after_final_retry_exhausted():
         assert elapsed < 0.1, f"expected fast fail (~20ms), took {elapsed * 1000:.0f}ms"
     finally:
         drainer.cancel()
+
+
+async def test_frame_sent_timeout_cleans_up_stale_future(monkeypatch):
+    """A stuck producer raises a clear TimeoutError and cleans up the stale response future.
+
+    When the frame is never sent, the wait must remove the future from expected_responses so a
+    late send can't resolve a stale request. Regression for the review finding on PR #225: the
+    bare frame_sent wait left the future registered and uncancelled on timeout.
+    """
+    from givenergy_modbus.client import client as client_mod
+
+    # Shrink the floor so the stuck path fires in ~20ms; zero inter-frame delay → no backlog term.
+    monkeypatch.setattr(client_mod, "_FRAME_SENT_MIN_TIMEOUT", 0.02)
+    client = Client(host="foo", port=4321, tx_message_wait=0, tx_jitter=0)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+
+    # No producer task is running, so frame_sent is never resolved → stuck-producer path.
+    with pytest.raises(TimeoutError, match="stuck"):
+        await client.send_request_and_await_response(req, timeout=1.0, retries=0)
+
+    assert expected_hash not in client.expected_responses, "stale response future must be cleaned up"
