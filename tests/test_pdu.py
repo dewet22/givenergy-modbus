@@ -411,6 +411,16 @@ def test_decode_bytes_wraps_unexpected_decode_error_as_invalid_frame():
         ClientIncomingMessage.decode_bytes(frame)
 
 
+def test_decode_bytes_sub_header_truncation_raises_invalid_frame():
+    """A frame too short to hold the MBAP header surfaces as InvalidFrame (audit L6).
+
+    The boundary covers header parsing too, so a sub-header truncation can't leak a struct.error.
+    """
+    for short in (b"", b"\x59", b"\x59\x59\x00"):
+        with pytest.raises(InvalidFrame):
+            ClientIncomingMessage.decode_bytes(short)
+
+
 def test_is_lan_config_rejects_nonzero_padding():
     """The LAN-config discriminator requires the 6 preceding pad bytes to be zero (audit L6).
 

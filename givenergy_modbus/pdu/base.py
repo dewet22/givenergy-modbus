@@ -53,36 +53,39 @@ class BasePDU(ABC):
         """Decode raw byte frame to populated PDU instance."""
         decoder = PayloadDecoder(data)
 
-        t_id = decoder.decode_16bit_uint()
-        if t_id != 0x5959:
-            raise InvalidFrame(f"Transaction ID 0x{t_id:04x} != 0x5959", data)
-
-        p_id = decoder.decode_16bit_uint()
-        if p_id != 0x0001:
-            raise InvalidFrame(f"Protocol ID 0x{p_id:04x} != 0x0001", data)
-
-        header_len = decoder.decode_16bit_uint()
-        remaining_frame_len = decoder.remaining_bytes  # includes 2 bytes for uid and function code
-        if header_len != remaining_frame_len:
-            raise InvalidFrame(f"Header length {header_len} != remaining frame length {remaining_frame_len}", data)
-
-        u_id = decoder.decode_8bit_uint()
-        if u_id not in (0x00, 0x01):
-            raise InvalidFrame(f"Unit ID 0x{u_id:02x} != 0x00/0x01", data)
-
-        function_code = decoder.decode_8bit_uint()
-        decoder_class = cls.lookup_main_function_decoder(function_code)
-
+        # The whole decode — header parsing included — runs inside the boundary so it is
+        # complete for *every* caller (not just the framer's outer catch). A sub-header
+        # truncation (e.g. a direct `decode_bytes(b"")`) raises struct.error from the very
+        # first `decode_16bit_uint()`; that and any other unexpected decode-time error
+        # (a truncated payload, a converter ValueError) surface as InvalidFrame. The explicit
+        # InvalidFrame header checks and InvalidPduState are re-raised verbatim (L6).
         try:
+            t_id = decoder.decode_16bit_uint()
+            if t_id != 0x5959:
+                raise InvalidFrame(f"Transaction ID 0x{t_id:04x} != 0x5959", data)
+
+            p_id = decoder.decode_16bit_uint()
+            if p_id != 0x0001:
+                raise InvalidFrame(f"Protocol ID 0x{p_id:04x} != 0x0001", data)
+
+            header_len = decoder.decode_16bit_uint()
+            remaining_frame_len = decoder.remaining_bytes  # includes 2 bytes for uid and function code
+            if header_len != remaining_frame_len:
+                raise InvalidFrame(f"Header length {header_len} != remaining frame length {remaining_frame_len}", data)
+
+            u_id = decoder.decode_8bit_uint()
+            if u_id not in (0x00, 0x01):
+                raise InvalidFrame(f"Unit ID 0x{u_id:02x} != 0x00/0x01", data)
+
+            function_code = decoder.decode_8bit_uint()
+            decoder_class = cls.lookup_main_function_decoder(function_code)
+
             pdu = decoder_class.decode_main_function(decoder)
             pdu.raw_frame = data
             pdu.ensure_valid_state()
-        except InvalidPduState:
+        except (InvalidFrame, InvalidPduState):
             raise
         except Exception as e:
-            # Complete the decode boundary for every caller (not just the framer's outer
-            # catch): any unexpected decode-time error — a truncated payload's struct.error,
-            # a converter ValueError — surfaces as InvalidFrame rather than leaking out (L6).
             raise InvalidFrame(f"frame failed low-level decode: {type(e).__name__}: {e}", data)
 
         if not decoder.decoding_complete:

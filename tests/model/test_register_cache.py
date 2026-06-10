@@ -35,16 +35,21 @@ def test_from_json_skips_unknown_register_prefix():
     assert RegisterCache.from_json('{"XR(0)": 1, "ZR(2)": 3}') == {}
 
 
-def test_from_json_skips_non_integer_value():
-    """A non-integer value in tampered cache JSON must be skipped, not propagate (audit M4).
+def test_from_json_skips_invalid_register_value():
+    """A value that isn't a valid unsigned 16-bit int must be skipped, not propagate (audit M4).
 
-    Previously a string value stored unchecked and blew up later in int()/.to_bytes deep
-    in a consumer. The entry is now dropped (with a warning), keeping valid entries.
+    Previously such a value stored unchecked and blew up later in int()/.to_bytes (ValueError
+    or OverflowError) deep in a consumer. Each bad entry is now dropped (with a warning), and
+    valid entries are retained — a fail-closed posture for tampered cache JSON.
     """
     # String value dropped, valid sibling retained.
     assert RegisterCache.from_json('{"HR(1)": 2, "HR(2)": "evil", "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
-    # Integer-as-string is coerced (JSON numbers arrive as int already; this covers loose input).
-    assert RegisterCache.from_json('{"HR(1)": "7"}') == {HR(1): 7}
+    # A fractional number is rejected rather than silently truncated.
+    assert RegisterCache.from_json('{"HR(1)": 1.5}') == {}
+    # Out-of-range values (negative, or above 0xffff) are rejected — they'd OverflowError later.
+    assert RegisterCache.from_json('{"HR(1)": -1, "HR(2)": 65536, "IR(3)": 5}') == {IR(3): 5}
+    # In-range integers (including the 0/0xffff bounds) still load.
+    assert RegisterCache.from_json('{"HR(0)": 0, "HR(1)": 65535}') == {HR(0): 0, HR(1): 65535}
 
 
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):

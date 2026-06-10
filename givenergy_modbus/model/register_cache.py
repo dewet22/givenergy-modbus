@@ -114,13 +114,20 @@ class RegisterCache(defaultdict[Register, int]):
                     _logger.warning("Skipping unrecognised register key %r", k)
                     continue
                 try:
-                    ret[lookup[reg](int(idx))] = int(v)
+                    register = lookup[reg](int(idx))
+                    value = int(v)
+                    if value != v or not (0 <= value <= 0xFFFF):
+                        # Fail closed: a register is an unsigned 16-bit word. A fractional
+                        # number (silently truncated by int()) or an out-of-range value would
+                        # later raise OverflowError in to_bytes() deep in a consumer (M4).
+                        raise ValueError(f"register value {v!r} is not an unsigned 16-bit int")
+                    ret[register] = value
                 except (KeyError, ValueError, TypeError):
-                    # KeyError: unknown register prefix (e.g. a future namespace we don't
-                    # know about yet). ValueError: idx wasn't an int, or the value wasn't
-                    # coercible (a string in a tampered cache JSON). TypeError: value was a
-                    # non-scalar (list/dict). Skip the entry rather than aborting the load,
-                    # and rather than storing a value that crashes a consumer later (M4).
+                    # KeyError: unknown register prefix (e.g. a future namespace we don't know
+                    # about yet). ValueError: idx wasn't an int, or the value wasn't a coercible
+                    # in-range integer (a string / fractional / out-of-range value in a tampered
+                    # cache JSON). TypeError: value was a non-scalar (list/dict). Skip the entry
+                    # rather than aborting the load or storing a value that crashes a consumer.
                     _logger.warning("Skipping unloadable register entry %r=%r", k, v)
                     continue
             return ret
