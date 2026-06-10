@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0rc4] - 2026-06-10
+
+### 🐛 Fixed
+
+- security-audit batch 1 quick wins (#224) ([07b6b67](https://github.com/dewet22/givenergy-modbus/commit/07b6b67a636657a87d744333aad19a7c970b8979))
+
+### 🔧 Maintenance
+
+- post-v2.2 unified roadmap (#221) ([d2d7a98](https://github.com/dewet22/givenergy-modbus/commit/d2d7a98a6fc192eeb19391e27d5bb34caa3b0cda))
+- security policy + committed audit, 2026-06-10 (#223) ([4ef9d66](https://github.com/dewet22/givenergy-modbus/commit/4ef9d66f666a4dadbecada049068e8e007db84e7))
+
 ## [2.2.0rc3] - 2026-06-09
 
 ### ✨ Added
