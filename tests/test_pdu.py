@@ -43,16 +43,16 @@ def test_str():
 
     # __str__() gets defined at the main function ABC
     assert str(HeartbeatMessage(foo=3, bar=6)) == (
-        "1/HeartbeatMessage(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        "1/HeartbeatMessage(data_adapter_serial_number='AB1234G567' data_adapter_type=0)"
     )
     assert str(HeartbeatMessage(data_adapter_serial_number="xxx", data_adapter_type=33)) == (
-        "1/HeartbeatMessage(data_adapter_serial_number=xxx data_adapter_type=33)"
+        "1/HeartbeatMessage(data_adapter_serial_number='xxx' data_adapter_type=33)"
     )
     assert str(HeartbeatRequest(foo=3, bar=6)) == (
-        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        "1/HeartbeatRequest(data_adapter_serial_number='AB1234G567' data_adapter_type=0)"
     )
     assert str(HeartbeatResponse(data_adapter_serial_number="xxx", data_adapter_type=33)) == (
-        "1/HeartbeatResponse(data_adapter_serial_number=xxx data_adapter_type=33)"
+        "1/HeartbeatResponse(data_adapter_serial_number='xxx' data_adapter_type=33)"
     )
 
     assert str(TransparentMessage(foo=3, bar=6)) == "2:_/TransparentMessage(device_address=0x32)"
@@ -95,10 +95,10 @@ def test_str():
     )
 
     assert str(HeartbeatRequest(foo=1)) == (
-        "1/HeartbeatRequest(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        "1/HeartbeatRequest(data_adapter_serial_number='AB1234G567' data_adapter_type=0)"
     )
     assert str(HeartbeatResponse(foo=1)) == (
-        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=0)"
+        "1/HeartbeatResponse(data_adapter_serial_number='AB1234G567' data_adapter_type=0)"
     )
 
 
@@ -417,3 +417,48 @@ def test_write_request_crc_includes_device_address():
     at_other = WriteHoldingRegisterRequest(register=RegisterMap.ENABLE_CHARGE, value=1, device_address=0x32)
     at_other.encode()
     assert req.check != at_other.check, "device address must participate in the write CRC"
+
+
+def test_crc_mismatch_logs_at_warning(caplog):
+    """A CRC integrity-check failure on a register response is logged at WARNING (audit H1).
+
+    The check stays non-fatal — the data is still accepted (incoming inverter frames are the
+    source of truth) — but a mismatch must be visible to operators, not buried at DEBUG.
+    """
+    import logging
+
+    resp = ReadInputRegistersResponse(base_register=0, register_count=2, register_values=[1, 2])
+    resp.raw_frame = b"\x00" * 30  # >= 28 bytes; CRC over the middle won't equal the forced check
+    resp.check = 0xFFFF  # deliberately wrong
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.read_registers"):
+        resp._validate_check_code()  # must not raise — non-fatal
+
+    assert any("integrity check" in r.message.lower() for r in caplog.records), (
+        f"expected a WARNING about the integrity check, got: {[r.message for r in caplog.records]}"
+    )
+
+
+def test_null_response_warning_escapes_serial(caplog):
+    """A non-null inverter serial in a NullResponse is logged repr-escaped, not raw (audit M2).
+
+    Serials are latin-1 decoded, so any byte passes through — a control char in a spoofed
+    frame would otherwise forge or split log lines.
+    """
+    import logging
+
+    resp = NullResponse(inverter_serial_number="AB\nCDEF012")  # 10 chars including a newline
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.null"):
+        resp.ensure_valid_state()
+
+    msg = caplog.records[0].message
+    assert "\n" not in msg, f"raw control char leaked into the log line: {msg!r}"
+    assert "\\n" in msg, f"serial should be repr-escaped: {msg!r}"
+
+
+def test_heartbeat_str_escapes_serial():
+    """HeartbeatMessage.__str__ repr-escapes the device-supplied serial (audit M2)."""
+    hb = HeartbeatRequest(data_adapter_serial_number="WF\n123G045")  # 10 chars including a newline
+    s = str(hb)
+    assert "\n" not in s, f"raw control char leaked into __str__: {s!r}"
+    assert "\\n" in s, f"serial should be repr-escaped: {s!r}"

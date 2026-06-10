@@ -80,7 +80,12 @@ class RegisterCache(defaultdict[Register, int]):
         super().__init__(lambda: 0, registers)
 
     def json(self) -> str:
-        """Return JSON representation of the register cache, to mirror `from_json()`."""  # noqa: D402,D202,E501
+        """Return JSON representation of the register cache, to mirror `from_json()`.
+
+        .. warning::
+            This emits **unredacted** serial-number registers (and any other raw values).
+            For a share-safe export, redact first: ``cache.redact_serials().json()``.
+        """  # noqa: D402,D202,E501
         return json.dumps(self)
 
     @classmethod

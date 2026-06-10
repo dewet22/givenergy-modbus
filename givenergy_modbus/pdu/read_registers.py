@@ -110,8 +110,9 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         `payload[18:]`, byte-swapped) and compares to the decoded `check`. Confirmed valid
         for every frame in the real All-in-One corpus (#158: 102/102, incl. error
         responses). Deliberately **non-fatal**: incoming inverter frames are the source of
-        truth, so a mismatch is logged for diagnosis but never rejects the data. Only runs
-        when `raw_frame` is present (i.e. on decoded frames).
+        truth, so a mismatch is logged at WARNING for visibility (a corrupted/malformed frame,
+        not authenticated tampering — the CRC is unauthenticated) but never rejects the data.
+        Only runs when `raw_frame` is present (i.e. on decoded frames).
         """
         raw_frame = getattr(self, "raw_frame", None)
         if not raw_frame or len(raw_frame) < 28:
@@ -119,7 +120,11 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         computed = CrcModbus().process(raw_frame[26:-2]).final()
         expected = ((computed & 0xFF) << 8) | ((computed >> 8) & 0xFF)
         if expected != self.check:
-            _logger.debug(f"Response CRC mismatch on {self}: wire=0x{self.check:04x} computed=0x{expected:04x}")
+            _logger.warning(
+                f"Response failed CRC integrity check on {self}: "
+                f"wire=0x{self.check:04x} computed=0x{expected:04x} — data accepted (non-fatal), "
+                f"but the frame was corrupted or malformed in transit"
+            )
 
     def to_dict(self) -> dict[int, int]:
         """Return the registers as a dict of register_index:value. Accounts for base_register offsets."""

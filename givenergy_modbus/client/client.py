@@ -107,6 +107,11 @@ _SERIAL_GROUPS: "list[tuple[str, int, int]]" = _build_serial_register_groups()
 # MBAP start marker used by the framer to locate frames within a byte stream.
 _FRAME_MARKER = bytes.fromhex("59590001")
 
+# Floor for the "producer hasn't sent our frame yet" safety-net timeout. The actual wait
+# also scales with the queue backlog (see send_request_and_await_response); this floor keeps
+# it sane when the queue is idle. Module-level so tests can shrink it.
+_FRAME_SENT_MIN_TIMEOUT = 5.0
+
 
 class FrameRedactor:
     """Frame-aware stateful redactor for a captured GivEnergy byte stream.
@@ -167,6 +172,16 @@ class FrameRedactor:
             if len(self._buf) < 6:
                 break  # not enough bytes for the MBAP length field yet
             hdr_len = int.from_bytes(self._buf[4:6], "big")
+            if hdr_len > 300:
+                # A real frame's MBAP length never exceeds ~300 (60-register cap). A larger
+                # value means this marker is a false positive (random bytes that happen to
+                # match) — emit it intact as garbage and resume scanning, rather than buffering
+                # up to ~64 KB for a frame that will never complete. Mirrors framer.py's guard.
+                skip = len(_FRAME_MARKER)
+                garbage, self._buf = self._buf[:skip], self._buf[skip:]
+                _logger.debug("FrameRedactor: false marker (len=0x%04x), %db emitted intact", hdr_len, len(garbage))
+                out += garbage
+                continue
             frame_len = 6 + hdr_len
             if len(self._buf) < frame_len:
                 break  # partial frame — wait for more data
@@ -1259,6 +1274,15 @@ class Client:
 
         raw_frame = request.encode()
 
+        def _discard(fut: "Future[TransparentResponse]") -> None:
+            # Abandon a future and remove its registration — but only if it's still the one
+            # mapped under expected_shape_hash. A newer same-shaped caller may have replaced it
+            # (see existing_response_future above); evicting that newer mapping would leave the
+            # newer caller unable to receive its response.
+            fut.cancel()
+            if self.expected_responses.get(expected_shape_hash) is fut:
+                del self.expected_responses[expected_shape_hash]
+
         tries = 0
         while tries <= retries:
             response_future: Future[TransparentResponse] = asyncio.get_running_loop().create_future()
@@ -1267,10 +1291,26 @@ class Client:
             try:
                 await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0)
             except TimeoutError as exc:
+                _discard(response_future)
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
-            await asyncio.wait_for(
-                frame_sent, timeout=self.tx_queue.qsize() + 1
-            )  # this should only happen if the producer task is stuck
+            # Safety-net wait for the producer to actually send this frame. Worst case the
+            # frame sits behind a full queue, and the producer sleeps tx_message_wait + up to
+            # tx_jitter (plus a drain) between sends — so scale the bound by the full queue
+            # depth, not a flat constant. The old `qsize() + 1`, sampled *after* put() returned,
+            # could undershoot to ~1 s and fail a legitimately backlogged-but-healthy producer;
+            # a flat 5 s would do the same once the queue filled (20 × ~0.35 s ≈ 7 s). The 1.5×
+            # headroom covers per-frame drain and scheduling. Only fires if the producer is stuck.
+            frame_sent_timeout = max(
+                _FRAME_SENT_MIN_TIMEOUT,
+                self.tx_queue.maxsize * (self.tx_message_wait + self.tx_jitter) * 1.5,
+            )
+            try:
+                await asyncio.wait_for(frame_sent, timeout=frame_sent_timeout)
+            except TimeoutError as exc:
+                # Producer is genuinely stuck. Drop the orphaned future so a late send can't
+                # resolve a stale request, and surface a clear error.
+                _discard(response_future)
+                raise TimeoutError("Producer task is stuck — frame not sent") from exc
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
             except TimeoutError:
@@ -1291,6 +1331,9 @@ class Client:
             if response.error:
                 _logger.error(f"Received error response, retrying: {response}")
                 tries += 1
+                # Unlike the timeout path above, no response_future.cancel() is needed here:
+                # the future is already resolved (we just called .result()), so cancel() would
+                # be a no-op, and the next attempt overwrites expected_responses[hash] anyway.
                 if tries <= retries and retry_delay > 0:
                     await asyncio.sleep(retry_delay)
                 continue
