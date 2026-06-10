@@ -51,6 +51,10 @@ class LanConfigBroadcast(ClientIncomingMessage):
         """Return True if the remaining decoder bytes look like a LAN config broadcast."""
         return (
             len(remaining_after_serial) >= 8
+            # The 6 bytes preceding the null+comma are the zero padding of a real broadcast;
+            # requiring them avoids a crafted padding field false-positiving and dropping a
+            # valid transparent response (L6).
+            and not any(remaining_after_serial[: cls._DISC_NULL_OFFSET])
             and remaining_after_serial[cls._DISC_NULL_OFFSET] == 0x00
             and remaining_after_serial[cls._DISC_NULL_OFFSET + 1] == cls._DISC_COMMA
         )

@@ -323,6 +323,15 @@ async def test_set_system_time():
     ]
 
 
+async def test_set_system_time_rejects_pre_2000_year():
+    """A pre-2000 year must be rejected with a clear ValueError (audit L6).
+
+    Otherwise it underflows to a negative register and a confusing encode-time InvalidPduState.
+    """
+    with pytest.raises(ValueError, match="2000"):
+        commands.set_system_date_time(datetime(1999, 12, 31, 23, 59, 59))
+
+
 async def test_set_inverter_reboot():
     """Ensure set_inverter_reboot emits the correct requests."""
     assert commands.set_inverter_reboot() == [
