@@ -20,7 +20,7 @@ class HeartbeatMessage(BasePDU, ABC):
     def __str__(self) -> str:
         return (
             f"1/{self.__class__.__name__}("
-            f"data_adapter_serial_number={self.data_adapter_serial_number} "
+            f"data_adapter_serial_number={self.data_adapter_serial_number!r} "
             f"data_adapter_type={self.data_adapter_type})"
         )
 

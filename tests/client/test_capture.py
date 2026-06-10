@@ -336,3 +336,21 @@ def _aiter_wrap(items):
 
 
 from givenergy_modbus.pdu import ClientIncomingMessage  # noqa: E402 — used in test body
+
+
+def test_frame_redactor_recovers_from_oversized_length_field():
+    """A false marker whose length field exceeds 300 is emitted intact, not buffered (audit M3).
+
+    Without a cap the redactor would wait for up to ~64 KB to complete a frame that never
+    will, stalling the stream and (on flush) emitting the *unredacted* real frame behind it.
+    The fix mirrors the framer's `hdr_len > 300` guard: skip the false marker and resume.
+    """
+    real = _make_holding_response("CE2231G454")
+    bogus = bytes.fromhex("59590001") + b"\xff\xff"  # frame marker + length 0xFFFF (> 300)
+
+    r = FrameRedactor()
+    out = r.feed(bogus + real) + r.flush()
+
+    assert b"CE2231G454" not in out, "redactor must recover and still redact the real frame"
+    assert out.startswith(bogus), "the false-marker junk must pass through intact"
+    assert len(out) == len(bogus) + len(real), "no bytes lost or stalled in the buffer"
