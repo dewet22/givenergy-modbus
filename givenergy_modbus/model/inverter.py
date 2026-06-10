@@ -667,7 +667,11 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "fault_code": Def(C.uint32, (C.hex, 8), IR(39), IR(40)),
         "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
         # House load / consumption at the busbar, independently sensed — empirically NOT
-        # a derived IR(24)−IR(30) identity (residual non-zero in 68% of samples).
+        # a derived IR(24)−IR(30) identity (residual non-zero in 68% of samples, though
+        # small and centred on zero). That residual is NOT the EPS branch: across 259
+        # EPS-active samples (HYBRID 0x31 + AIO 0x11) it tracks 0, not p_backup (IR31), so
+        # IR42 already INCLUDES EPS ("of which", not additional) — consumers must not add
+        # IR(31) on top. See tests/debug/eps_in_load_demand.py.
         "p_load_demand": Def(C.uint16, None, IR(42), max=50000),
         # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
         # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
