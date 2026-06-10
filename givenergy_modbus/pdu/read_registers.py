@@ -1,5 +1,6 @@
 import logging
 from abc import ABC
+from typing import ClassVar
 
 from crccheck.crc import CrcModbus
 
@@ -72,6 +73,12 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
 class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
     """Handles all messages that respond with a range of registers."""
 
+    #: Opt-in strict CRC enforcement. Lenient by default (a mismatch is logged at WARNING and
+    #: the data accepted, preserving firmware-quirk tolerance). Set to True on the class to make
+    #: a CRC mismatch raise :class:`InvalidPduState` instead — for consumers that prefer to drop
+    #: a corrupted/malformed frame rather than ingest it (audit H1).
+    strict_crc: ClassVar[bool] = False
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.register_values: list[int] = kwargs.get("register_values", [])
@@ -103,16 +110,17 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         self._validate_check_code()
 
     def _validate_check_code(self) -> None:
-        """Log-only CRC check of a decoded response against the received bytes.
+        """CRC check of a decoded response against the received bytes.
 
         Recomputes the unified CRC (CRC16/Modbus over `raw_frame[26:-2]` — the
         device-address byte onward, mirroring `TransparentMessage._update_check_code`'s
         `payload[18:]`, byte-swapped) and compares to the decoded `check`. Confirmed valid
         for every frame in the real All-in-One corpus (#158: 102/102, incl. error
-        responses). Deliberately **non-fatal**: incoming inverter frames are the source of
-        truth, so a mismatch is logged at WARNING for visibility (a corrupted/malformed frame,
-        not authenticated tampering — the CRC is unauthenticated) but never rejects the data.
-        Only runs when `raw_frame` is present (i.e. on decoded frames).
+        responses). **Lenient by default**: incoming inverter frames are the source of truth,
+        so a mismatch is logged at WARNING for visibility (a corrupted/malformed frame, not
+        authenticated tampering — the CRC is unauthenticated) but the data is still accepted.
+        Set :attr:`strict_crc` on the class to raise :class:`InvalidPduState` on mismatch
+        instead. Only runs when `raw_frame` is present (i.e. on decoded frames).
         """
         raw_frame = getattr(self, "raw_frame", None)
         if not raw_frame or len(raw_frame) < 28:
@@ -120,6 +128,13 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         computed = CrcModbus().process(raw_frame[26:-2]).final()
         expected = ((computed & 0xFF) << 8) | ((computed >> 8) & 0xFF)
         if expected != self.check:
+            if self.strict_crc:
+                raise InvalidPduState(
+                    f"Response failed CRC integrity check: "
+                    f"wire=0x{self.check:04x} computed=0x{expected:04x} — frame corrupted or "
+                    f"malformed in transit (strict_crc enabled)",
+                    self,
+                )
             _logger.warning(
                 f"Response failed CRC integrity check on {self}: "
                 f"wire=0x{self.check:04x} computed=0x{expected:04x} — data accepted (non-fatal), "

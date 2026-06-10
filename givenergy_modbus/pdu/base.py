@@ -79,8 +79,11 @@ class BasePDU(ABC):
             pdu.ensure_valid_state()
         except InvalidPduState:
             raise
-        # except Exception as e:
-        #     raise InvalidFrame(str(e), data)
+        except Exception as e:
+            # Complete the decode boundary for every caller (not just the framer's outer
+            # catch): any unexpected decode-time error — a truncated payload's struct.error,
+            # a converter ValueError — surfaces as InvalidFrame rather than leaking out (L6).
+            raise InvalidFrame(f"frame failed low-level decode: {type(e).__name__}: {e}", data)
 
         if not decoder.decoding_complete:
             _logger.error(

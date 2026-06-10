@@ -381,6 +381,67 @@ def test_read_registers_response_caps_decode_at_60():
     assert result.register_values == list(range(60))
 
 
+def test_null_response_short_frame_raises_invalid_frame():
+    """A truncated null frame must surface as InvalidFrame, not a raw struct.error (audit L6)."""
+    decoder = PayloadDecoder(b"\x00" * 40)  # < 126 bytes: too short for 62 nulls + check
+    with pytest.raises(InvalidFrame):
+        NullResponse.decode_transparent_function(decoder)
+
+
+def test_decode_bytes_wraps_unexpected_decode_error_as_invalid_frame():
+    """An unexpected decode error surfaces as InvalidFrame for every caller (audit L6).
+
+    A decode-time error other than InvalidPduState must not leak a raw struct.error out of
+    decode_bytes (the restored broad catch). An input-register response claims 60 registers but
+    carries only 2; decoding the register block overruns the buffer inside decode_main_function.
+    """
+    body = (
+        b"DA1234G567"  # data_adapter_serial (10)
+        + (0x8A).to_bytes(8, "big")  # padding (8)
+        + b"\x32"  # device_address
+        + b"\x04"  # transparent_function_code = input registers
+        + b"SA1234G567"  # inverter_serial (10)
+        + struct.pack(">HH", 0, 60)  # base_register=0, register_count=60
+        + struct.pack(">HH", 1, 2)  # only 2 register values supplied
+        + b"\x00\x00"  # check
+    )
+    tail = b"\x01\x02" + body  # uid + main function code (transparent = 2)
+    frame = b"\x59\x59\x00\x01" + len(tail).to_bytes(2, "big") + tail
+    with pytest.raises(InvalidFrame):
+        ClientIncomingMessage.decode_bytes(frame)
+
+
+def test_is_lan_config_rejects_nonzero_padding():
+    """The LAN-config discriminator requires the 6 preceding pad bytes to be zero (audit L6).
+
+    Otherwise a crafted padding field can false-positive and drop a valid response.
+    """
+    from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
+
+    # Real shape: 6 zero bytes + 0x00 + ',' → recognised.
+    assert LanConfigBroadcast.is_lan_config(b"\x00\x00\x00\x00\x00\x00\x00,rest")
+    # A non-zero byte in the 6-byte pad prefix → not a LAN-config frame.
+    assert not LanConfigBroadcast.is_lan_config(b"\x00\x00\x2c\x00\x00\x00\x00,rest")
+
+
+def test_strict_crc_mode_raises_on_mismatch(monkeypatch):
+    """Opt-in strict CRC mode raises InvalidPduState on a mismatch (audit H1-better).
+
+    The lenient default only warns and accepts the data.
+    """
+    resp = ReadHoldingRegistersResponse(base_register=0, register_count=1, register_values=[0], check=0x0000)
+    resp.raw_frame = b"\x00" * 30  # CRC of raw_frame[26:-2] won't be 0x0000 → guaranteed mismatch
+
+    # Lenient default: warns, never raises.
+    assert ReadHoldingRegistersResponse.strict_crc is False
+    resp._validate_check_code()
+
+    # Strict: raises InvalidPduState on the same mismatch.
+    monkeypatch.setattr(ReadHoldingRegistersResponse, "strict_crc", True)
+    with pytest.raises(InvalidPduState, match="CRC"):
+        resp._validate_check_code()
+
+
 def test_request_crc_includes_device_address_matches_real_wire():
     """Request CRC must cover the device-address byte — pinned to a real GivTCP frame (#105).
 

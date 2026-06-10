@@ -654,6 +654,10 @@ def reset_discharge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[Trans
 
 def set_system_date_time(dt: datetime) -> list[TransparentRequest]:
     """Set the date & time of the inverter."""
+    if dt.year < 2000:
+        # The year register stores `year - 2000`; a pre-2000 year underflows to a negative
+        # value and a confusing encode-time InvalidPduState. Reject it clearly up front (L6).
+        raise ValueError(f"System date year ({dt.year}) must be >= 2000")
     return [
         WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_YEAR, dt.year - 2000),
         WriteHoldingRegisterRequest(RegisterMap.SYSTEM_TIME_MONTH, dt.month),

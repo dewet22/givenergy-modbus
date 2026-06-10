@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 import pytest
 
@@ -102,6 +103,21 @@ def test_converter_timeslot_sentinel():
     # raw value 60 is a hardware sentinel for "unset"; minutes=60 would raise ValueError
     assert Converter.timeslot(60, 2359) is None
     assert Converter.timeslot(0, 60) is None
+
+
+def test_converter_timeslot_degrades_on_invalid_value():
+    """Adversarial / corrupt register values must degrade to None, not raise (audit M4)."""
+    # minutes 99 / hour 25 are out of range but not the 60 sentinel — previously raised ValueError
+    assert Converter.timeslot(1099, 1200) is None
+    assert Converter.timeslot(1030, 2530) is None
+
+
+def test_converter_datetime_degrades_on_invalid_value():
+    """A device-supplied month=0 / hour=24 must degrade to None, not raise (audit M4)."""
+    assert Converter.datetime(24, 13, 1, 0, 0, 0) is None  # month 13
+    assert Converter.datetime(24, 1, 1, 24, 0, 0) is None  # hour 24
+    # a fully valid set still composes
+    assert Converter.datetime(24, 6, 10, 12, 0, 0) == datetime(2024, 6, 10, 12, 0, 0)
 
 
 def test_converter_bitfield():

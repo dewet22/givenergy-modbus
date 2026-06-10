@@ -35,6 +35,18 @@ def test_from_json_skips_unknown_register_prefix():
     assert RegisterCache.from_json('{"XR(0)": 1, "ZR(2)": 3}') == {}
 
 
+def test_from_json_skips_non_integer_value():
+    """A non-integer value in tampered cache JSON must be skipped, not propagate (audit M4).
+
+    Previously a string value stored unchecked and blew up later in int()/.to_bytes deep
+    in a consumer. The entry is now dropped (with a warning), keeping valid entries.
+    """
+    # String value dropped, valid sibling retained.
+    assert RegisterCache.from_json('{"HR(1)": 2, "HR(2)": "evil", "IR(3)": 4}') == {HR(1): 2, IR(3): 4}
+    # Integer-as-string is coerced (JSON numbers arrive as int already; this covers loose input).
+    assert RegisterCache.from_json('{"HR(1)": "7"}') == {HR(1): 7}
+
+
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(json_inverter_daytime_discharging_with_solar_generation)

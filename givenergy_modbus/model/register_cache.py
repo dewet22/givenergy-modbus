@@ -114,11 +114,14 @@ class RegisterCache(defaultdict[Register, int]):
                     _logger.warning("Skipping unrecognised register key %r", k)
                     continue
                 try:
-                    ret[lookup[reg](int(idx))] = v
-                except (KeyError, ValueError):
-                    # KeyError: unknown register prefix (e.g. a future namespace
-                    # we don't know about yet). ValueError: idx wasn't an int.
-                    # Either way, skip the entry rather than aborting the load.
+                    ret[lookup[reg](int(idx))] = int(v)
+                except (KeyError, ValueError, TypeError):
+                    # KeyError: unknown register prefix (e.g. a future namespace we don't
+                    # know about yet). ValueError: idx wasn't an int, or the value wasn't
+                    # coercible (a string in a tampered cache JSON). TypeError: value was a
+                    # non-scalar (list/dict). Skip the entry rather than aborting the load,
+                    # and rather than storing a value that crashes a consumer later (M4).
+                    _logger.warning("Skipping unloadable register entry %r=%r", k, v)
                     continue
             return ret
 

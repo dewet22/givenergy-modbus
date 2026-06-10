@@ -402,6 +402,30 @@ async def test_malformed_short_frame_yields_invalidframe_not_struct_error():
     assert "low-level decode" in str(yielded[0])
 
 
+async def test_framer_contains_unexpected_decode_exception():
+    """A leaked non-InvalidFrame exception from decode_bytes is still contained by the framer.
+
+    Defence-in-depth: the decode boundary now wraps errors as InvalidFrame itself, but the framer
+    keeps its own broad catch so the consumer can't be killed (#88 trust boundary). Exercised here
+    with a decoder that raises a raw error.
+    """
+
+    class _Boom:
+        @staticmethod
+        def decode_bytes(frame: bytes) -> BasePDU:
+            raise RuntimeError("boom")
+
+    frame_bytes = bytes.fromhex("5959000100020102") + b"x" * 10
+    framer = ClientFramer()
+    framer.pdu_class = _Boom  # type: ignore[assignment]
+    yielded = [msg async for msg in framer.decode(frame_bytes)]
+
+    assert len(yielded) == 1
+    assert isinstance(yielded[0], InvalidFrame)
+    assert "low-level decode" in str(yielded[0])
+    assert "RuntimeError" in str(yielded[0])
+
+
 async def test_headerless_garbage_bounds_buffer_growth(caplog):
     """Sustained no-marker traffic must not grow the framer buffer without bound.
 
