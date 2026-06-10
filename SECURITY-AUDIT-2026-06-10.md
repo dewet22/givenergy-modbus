@@ -5,6 +5,9 @@
 **Method:** four parallel security-focused reviews (network input parsing; client & write path;
 model layer & redaction; scripts/CI/supply chain), with the highest-impact claims re-verified
 directly against source before inclusion.
+**Amendments:** H1 and H3 were downgraded to Medium after independent pre-publication review
+(PR #223) challenged their premises; the corrections are recorded inline in each finding.
+Original IDs are kept stable for tracking.
 
 **Threat model:** Modbus TCP has no authentication or TLS. The remote peer (inverter, or any
 device/attacker on the LAN segment) can send arbitrary bytes. The library controls real
@@ -26,18 +29,25 @@ Severity scale: **High** = fix soon, real attacker value or undercuts a stated g
 
 ### H1 — CRC mismatches on register responses accepted, logged only at DEBUG
 
+> **Amended 2026-06-10 (post-review): severity downgraded to Medium.** The CRC16/Modbus is
+> unauthenticated — an on-path attacker who substitutes register values recomputes it exactly as
+> the legitimate peer does, so the check detects accidental corruption and naive splicing, not
+> competent tampering. The original tamper-visibility rationale doesn't support High; the fix
+> below stands as robustness hardening.
+
 - **Where:** `givenergy_modbus/pdu/read_registers.py:105-122` (`_validate_check_code`)
 - **Status:** verified in source
 - **Detail:** The CRC16/Modbus over the response payload is recomputed and compared to the wire
   `check` field; on mismatch it logs at `_logger.debug()` and the data is accepted. The docstring
   documents this as deliberate ("incoming inverter frames are the source of truth") — reasonable
-  for tolerating firmware quirks, but DEBUG level gives operators zero visibility if responses
-  are being tampered with. The CRC is the *only* integrity signal available on this protocol.
-- **Attack scenario:** An on-path attacker substitutes register values in a
-  `ReadHoldingRegistersResponse` (e.g. charge-enable, SOC reserve). The forged values populate
-  the plant cache silently; downstream consumers (e.g. Home Assistant) act on them.
+  for tolerating firmware quirks, but DEBUG level gives operators zero visibility into corrupted
+  or malformed frames being accepted into the cache.
+- **Scenario:** A flaky dongle, RS485 noise carried into the TCP re-encapsulation, or a buggy
+  middlebox produces responses whose payload no longer matches the check field; the data
+  populates the plant cache silently and downstream consumers (e.g. Home Assistant) act on it.
 - **Fix plan:**
-  - [ ] Minimum: raise the mismatch log to `WARNING`, with a message noting possible tampering.
+  - [ ] Minimum: raise the mismatch log to `WARNING`, with a message noting the frame failed its
+        integrity check.
   - [ ] Better: add a configurable strict mode that raises `InvalidPduState` on mismatch
         (lenient default preserves current firmware tolerance).
 
@@ -78,24 +88,34 @@ Severity scale: **High** = fix soon, real attacker value or undercuts a stated g
 
 ### H3 — `/tmp/givenergy-coordination` inbox is a prompt-injection vector (operational, not library)
 
+> **Amended 2026-06-10 (post-review): severity downgraded to Medium; premise corrected.** The
+> directory as deployed is `0755` and owned by the operating user, so *other* local users cannot
+> create or replace files inside it (the original "any local user can plant a file" claim was
+> wrong). The residual risks are narrower: (a) the **fixed well-known path** means whoever
+> creates the directory first after a reboot owns it — a pre-creation race, since `/tmp` is
+> cleared on macOS restarts; and (b) **same-UID processes** can write into it — but they can
+> equally write to `~/.local/share` or the agent's own config, so relocating the directory does
+> not mitigate that attacker model. The mitigations that actually move the needle are the
+> ownership check at creation time and treating inbox content as untrusted data.
+
 - **Where:** `AGENTS.md` coordination-inbox protocol; `.claude/settings.json` Stop hook
   (`check-inbox.sh`); live dir `/tmp/givenergy-coordination`
 - **Status:** verified protocol + dir permissions; `check-inbox.sh` contents not inspectable
   from this worktree (lives under `$CLAUDE_CONFIG_DIR`)
-- **Detail:** `/tmp` is world-writable (sticky bit only prevents deletion of others' files).
-  Any local user/process can plant `<epoch>-modbus-<slug>.md` containing adversarial
-  instructions; the protocol tells the agent to scan after every turn and decide whether to
-  "immediately act". The agent holds a `ghbot` token with repo-write and workflow-trigger
-  scope, so injected instructions have real blast radius (merge PRs, trigger releases). This
-  is the one finding where an attacker gains *agency* rather than data.
+- **Detail:** The inbox protocol tells the agent to scan after every turn and decide whether to
+  "immediately act" on file contents. The agent holds a `ghbot` token with repo-write and
+  workflow-trigger scope, so injected instructions would have real blast radius (merge PRs,
+  trigger releases). This is the one finding where an attacker would gain *agency* rather than
+  data — tempered by the corrected premise above: exploiting it requires winning the
+  directory-creation race on a rebooted machine, or code already running as the user (at which
+  point most other avenues are open too).
 - **Fix plan:**
-  - [ ] Move the inbox to a `0700` directory under `$HOME` (e.g.
-        `~/.local/share/givenergy-coordination`), updating AGENTS.md in all three sister
-        repos.
-  - [ ] If `/tmp` must stay: create the dir `0700` and have `check-inbox.sh` skip files not
-        owned by the current UID (`find -user "$(id -u)"`).
+  - [ ] Have the creating side enforce ownership/mode at creation (`mkdir -m 0700` semantics,
+        refuse to use a pre-existing dir owned by another UID), and have `check-inbox.sh` skip
+        files not owned by the current UID (`find -user "$(id -u)"`).
   - [ ] Reframe the protocol so inbox content is treated as untrusted data to summarise —
-        acting on it requires explicit user confirmation.
+        acting on it requires explicit user confirmation. This is the primary mitigation, since
+        it also covers the same-UID case relocation can't fix.
   - [ ] Verify what `check-inbox.sh` actually enforces today.
 
 ---
@@ -255,5 +275,6 @@ cancel). Old future is already done so practical risk is low; make the paths sym
    through the register-safety review process.
 4. **Robustness pass:** M4 + L6 — adversarial-input crash fixes in converters and decode
    boundary tidy-ups, with fuzz-style tests for `from_json` and converters.
-5. **Infra (no code):** M5 workflow hardening; H3 inbox relocation (coordinate across the
+5. **Infra (no code):** M5 workflow hardening; H3 inbox hardening per the amended fix plan —
+   creation-time ownership checks + treat-inbox-as-untrusted protocol (coordinate across the
    three sister repos' AGENTS.md).

@@ -37,11 +37,13 @@ addresses first.
 This library speaks Modbus TCP to GivEnergy inverters. A few properties shape
 what counts as a vulnerability:
 
-- **The protocol has no authentication or transport encryption.** Any device or
-  process on the same LAN segment can send arbitrary bytes to a listening client,
-  and an on-path attacker can substitute response contents. Parse robustness
-  against hostile input is in scope; the lack of protocol-level auth itself is a
-  property of Modbus, not a bug in this library.
+- **The protocol has no authentication or transport encryption.** The client
+  opens an outbound TCP connection to the configured inverter and never listens
+  for inbound connections — so hostile input means a compromised or malicious
+  configured peer (inverter/dongle), or an on-path attacker who can intercept or
+  spoof that connection. Parse robustness against such input is in scope; the
+  lack of protocol-level auth itself is a property of Modbus, not a bug in this
+  library.
 - **The library writes to real grid hardware.** Write-path integrity (the
   `WRITE_SAFE_REGISTERS` allowlist, bounds checks, command validation) matters as
   much as parse safety. Reports that bypass those guards are high value.
