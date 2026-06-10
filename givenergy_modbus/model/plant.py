@@ -534,17 +534,21 @@ class Plant(GivEnergyBaseModel):
             _logger.debug(f"First time encountering device address 0x{device_address:02x}")
             self.register_caches[device_address] = RegisterCache()
 
-        # Only the inverter's own responses carry the plant's identity. Battery (0x32-0x37),
-        # BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses put their *own*
-        # serial in the envelope inverter_serial_number field, so adopting it from every PDU
-        # lets whichever device is polled last clobber the real inverter serial — which merged
-        # the AIO inverter HA device into a battery module downstream (givenergy-hass#95).
-        # Gate on the inverter address (capabilities, or the canonical 0x11/0x31 before detect).
-        inv_addr = self.capabilities.inverter_address if self.capabilities is not None else None
-        is_inverter_pdu = device_address == inv_addr if inv_addr is not None else device_address in (0x11, 0x31)
-        if is_inverter_pdu:
+        # The TCP dongle's serial is identical on every response regardless of the addressed
+        # downstream device (verified across the AIO capture: meters, inverter, modules, BCU and
+        # BMS all carry the same data_adapter serial), so adopt it from any accepted PDU.
+        self.data_adapter_serial_number = pdu.data_adapter_serial_number
+
+        # inverter_serial_number, by contrast, is the *addressed device's* serial in the envelope:
+        # battery (0x32-0x37), BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses
+        # carry their own, so adopting it from every PDU let whichever device was polled last
+        # clobber the real inverter serial — merging the AIO inverter HA device into a battery
+        # module downstream (givenergy-hass#95). The inverter is canonically addressed at
+        # 0x11/0x31 (inverter_address_for never yields anything else), so gate on that set — it
+        # excludes peripherals and the legacy 0x32 (battery pack #1) a pre-#119 persisted
+        # capability may still carry until detect() self-heals.
+        if device_address in (0x11, 0x31):
             self.inverter_serial_number = pdu.inverter_serial_number
-            self.data_adapter_serial_number = pdu.data_adapter_serial_number
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}

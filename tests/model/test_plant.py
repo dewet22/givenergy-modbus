@@ -1967,27 +1967,46 @@ def test_inverter_serial_not_clobbered_by_module_pdu():
     """A module PDU's envelope serial must not overwrite the real inverter serial (hass#95).
 
     On an AIO the 0x50-0x53 battery-module responses carry their own HX… serial in the PDU
-    envelope. Adopting it would merge the inverter device into a battery module downstream.
+    envelope. Adopting it would merge the inverter device into a battery module downstream. The
+    dongle (data_adapter) serial is identical on every response, so it rides along unchanged.
     """
     plant = Plant(capabilities=PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11))
 
     inv = _make_ir_pdu({5: 2367}, device_address=0x11)
     inv.inverter_serial_number = "CH2414G047"
-    inv.data_adapter_serial_number = "WF2414G047"
+    inv.data_adapter_serial_number = "WJ2414G000"
     plant.update(inv)
     assert plant.inverter_serial_number == "CH2414G047"
-    assert plant.data_adapter_serial_number == "WF2414G047"
+    assert plant.data_adapter_serial_number == "WJ2414G000"
 
     module = _make_ir_pdu({60: 3280}, device_address=0x50)
     module.inverter_serial_number = "HX2414G047"
-    module.data_adapter_serial_number = "HX2414G047"
+    module.data_adapter_serial_number = "WJ2414G000"  # same dongle on every response
     plant.update(module)
     assert plant.inverter_serial_number == "CH2414G047", "module envelope must not clobber inverter serial"
-    assert plant.data_adapter_serial_number == "WF2414G047"
+    assert plant.data_adapter_serial_number == "WJ2414G000"
 
 
-def test_inverter_serial_bootstrap_without_capabilities():
-    """Without capabilities, only the canonical inverter addresses (0x11/0x31) set the serial."""
+def test_data_adapter_serial_adopted_from_any_device_but_inverter_serial_is_not():
+    """The dongle serial is adopted from a peripheral-only stream; the inverter serial is not.
+
+    data_adapter_serial_number identifies the TCP dongle, identical across every response
+    regardless of addressed device, so a battery/meter/BCU response must still populate it.
+    inverter_serial_number stays gated to the inverter address.
+    """
+    plant = Plant()
+
+    batt = _make_ir_pdu({60: 3221}, device_address=0x32)
+    batt.inverter_serial_number = "ZZ9999Z999"  # the battery's own envelope serial
+    batt.data_adapter_serial_number = "WJ2414G000"
+    plant.update(batt)
+
+    assert plant.data_adapter_serial_number == "WJ2414G000", "dongle serial must be adopted from any PDU"
+    assert plant.inverter_serial_number == "", "a battery PDU must not set the inverter serial"
+
+
+def test_inverter_serial_set_from_canonical_addresses():
+    """Both canonical inverter addresses (0x11 and the AC/HYBRID_GEN1 0x31 facade) set the serial."""
     plant = Plant()
 
     inv = _make_ir_pdu({5: 2367}, device_address=0x11)
@@ -1995,22 +2014,22 @@ def test_inverter_serial_bootstrap_without_capabilities():
     plant.update(inv)
     assert plant.inverter_serial_number == "CH2414G047"
 
+    facade = _make_ir_pdu({5: 2367}, device_address=0x31)
+    facade.inverter_serial_number = "SA2114G047"
+    plant.update(facade)
+    assert plant.inverter_serial_number == "SA2114G047"
+
+
+def test_inverter_serial_ignores_stale_0x32_capability():
+    """Even a stale pre-#119 capability with inverter_address=0x32 can't let a battery PDU set it.
+
+    0x32 is battery pack #1; a persisted pre-#119 capability may still carry it as the inverter
+    address until detect() self-heals. The gate is the canonical {0x11, 0x31} set, so 0x32 never
+    qualifies regardless of capabilities.
+    """
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID_GEN1, inverter_address=0x32))
+
     batt = _make_ir_pdu({60: 3221}, device_address=0x32)
     batt.inverter_serial_number = "ZZ9999Z999"
     plant.update(batt)
-    assert plant.inverter_serial_number == "CH2414G047", "a battery PDU must not set the inverter serial"
-
-
-def test_inverter_serial_respects_capabilities_inverter_address():
-    """When the inverter lives at 0x31, only 0x31 PDUs set the serial (not other devices)."""
-    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID_GEN1, inverter_address=0x31))
-
-    inv = _make_ir_pdu({5: 2367}, device_address=0x31)
-    inv.inverter_serial_number = "SA2114G047"
-    plant.update(inv)
-    assert plant.inverter_serial_number == "SA2114G047"
-
-    module = _make_ir_pdu({60: 3280}, device_address=0x50)
-    module.inverter_serial_number = "HX2414G047"
-    plant.update(module)
-    assert plant.inverter_serial_number == "SA2114G047"
+    assert plant.inverter_serial_number == "", "a stale 0x32 inverter_address must not let a battery clobber it"
