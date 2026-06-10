@@ -819,3 +819,27 @@ def test_numeric_arguments_reject_non_integral_and_str():
         commands.set_battery_soc_reserve("100")
     # Integral float remains accepted and resolves identically to the int.
     assert commands.set_battery_soc_reserve(50.0) == commands.set_battery_soc_reserve(50)
+
+
+def test_set_export_priority_rejects_bool():
+    """set_export_priority rejects bool before the enum conversion (audit L1 follow-up).
+
+    ExportPriority(True) resolves to GRID_FIRST (1) and would pass as an IntEnum — silently
+    selecting a write mode. A bool here is a caller error and must fail loudly. Valid enum
+    members (and their int values) still work.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        commands.set_export_priority(True)
+    with pytest.raises(ValueError, match="bool"):
+        commands.set_export_priority(False)
+    # Valid members / ints unaffected.
+    assert commands.set_export_priority(ExportPriority.GRID_FIRST) == [
+        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.GRID_FIRST)
+    ]
+    assert commands.set_export_priority(2) == [WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, 2)]
+
+
+def test_set_battery_pause_mode_rejects_bool():
+    """set_battery_pause_mode passes the raw value, so the PDU bool guard rejects True/False."""
+    with pytest.raises(ValueError, match="bool|unacceptable"):
+        commands.set_battery_pause_mode(True)
