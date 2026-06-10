@@ -153,6 +153,17 @@ def test_redact_serial_passthrough_and_empty():
     assert Converter.redact_serial("CE2231G000") == "CE2231G000"
 
 
+def test_redact_serial_strict_fails_closed():
+    """redact_serial_strict redacts recognised serials and blanks everything else (fail-closed)."""
+    assert Converter.redact_serial_strict("CE2231G454") == "CE2231G000"  # recognised, redacted
+    assert Converter.redact_serial_strict("EMS2522018") == "EMS2522000"  # recognised EMS form
+    assert Converter.redact_serial_strict("CE2231G000") == "CE2231G000"  # recognised, already redacted
+    assert Converter.redact_serial_strict("UNKNOWN123") == ""  # valid charset, unknown pattern → blank
+    assert Converter.redact_serial_strict("AB12") == ""  # short non-GE identifier → blank
+    assert Converter.redact_serial_strict("") == ""
+    assert Converter.redact_serial_strict(None) == ""
+
+
 def test_battery_max_power():
     from givenergy_modbus.model.inverter import _battery_max_power
 
