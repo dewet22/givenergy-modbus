@@ -1,7 +1,7 @@
 import logging
 import warnings
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
@@ -23,7 +23,7 @@ from givenergy_modbus.model.inverter import (
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
-from givenergy_modbus.model.register import HR, IR, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, Converter, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -838,6 +838,50 @@ class Plant(GivEnergyBaseModel):
             cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
             return select_inverter(self.capabilities.device_type, cache)
         return SinglePhaseInverter.from_register_cache(self.register_caches[0x32])
+
+    @property
+    def inverter_serial(self) -> str:
+        """Single authoritative inverter serial, robust across the whole plant lifecycle (#227).
+
+        Resolves the earliest-available inverter identity by trying, in order:
+
+        1. HR(13-17) in the capability-selected inverter cache (``inverter_address`` — 0x31 for
+           AC/HYBRID_GEN1, else 0x11);
+        2. HR(13-17) in the 0x11 cache — ``detect()``'s ``HR(0,60)`` identity read lands here for
+           every model, so this covers the detect→first-refresh window before 0x31 is populated;
+        3. the ``inverter_serial_number`` envelope field — populated at ``detect()`` and the only
+           home on a persisted/bare plant carrying no register caches.
+
+        A register block is only accepted if it decodes to a valid serial (``is_valid_serial`` —
+        the same coherence gate ``_commit_bank`` ingestion uses), so a malformed/partial block in a
+        restored or tampered cache falls through to the envelope rather than outranking it.
+
+        Deliberately never reads the 0x32 battery cache, so a bare or pre-detect plant can't
+        surface a battery pack's serial as the inverter's. Reads via ``.get()`` so it never
+        mutates the (defaultdict) caches. Once consumers move to this accessor, the envelope
+        field can be deprecated.
+        """
+        addresses = [0x11]
+        # Prefer the device's own register home (0x31 for AC/HYBRID_GEN1); 0x32 is the battery
+        # pack and never a valid inverter address, so a stale pre-#119 0x32 capability is ignored.
+        if self.capabilities is not None and self.capabilities.inverter_address in (0x11, 0x31):
+            addresses.insert(0, self.capabilities.inverter_address)
+        for addr in dict.fromkeys(addresses):  # de-dup, preserve order
+            cache = self.register_caches.get(addr)
+            if cache is None:
+                continue
+            raw = [cache.get(HR(n)) for n in range(13, 18)]  # .get(): never mutate the defaultdict
+            if any(v is None for v in raw):
+                continue  # fail closed on a partially-present serial block
+            serial = Converter.serial(*cast("list[int]", raw))
+            # Coherence gate (same as _commit_bank ingestion): a complete block can still
+            # decode to garbage — an interior zero register strips to a short string
+            # (SA12\x00\x00G047 -> "SA12G047"), and a persisted/tampered cache can hold spaces
+            # or other malformed data. is_valid_serial() requires a clean 10-char serial, so
+            # such a block falls through to a known-good envelope serial rather than outranking it.
+            if serial and is_valid_serial(serial):
+                return serial
+        return self.inverter_serial_number
 
     @property
     def number_batteries(self) -> int:

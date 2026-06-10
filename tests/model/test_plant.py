@@ -2133,6 +2133,93 @@ def test_inverter_serial_ignores_stale_0x32_capability():
     assert plant.inverter_serial_number == "", "a stale 0x32 inverter_address must not let a battery clobber it"
 
 
+# ---------------------------------------------------------------------------
+# Unified inverter-serial accessor: Plant.inverter_serial (#227)
+# ---------------------------------------------------------------------------
+
+
+def _serial_to_hr(serial: str, base: int = 13) -> dict[Register, int]:
+    """Encode a serial into HR(base..) registers (two ASCII bytes each), mirroring HR13-17."""
+    b = serial.encode("latin1")
+    return {HR(base + i): int.from_bytes(b[2 * i : 2 * i + 2], "big") for i in range(len(b) // 2)}
+
+
+def test_inverter_serial_reads_capability_inverter_address_cache():
+    """Plant.inverter_serial decodes HR13-17 from the capability-selected inverter cache (0x31)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.AC, inverter_address=0x31))
+    plant.register_caches[0x31] = RegisterCache(_serial_to_hr("SA2114G047"))
+    assert plant.inverter_serial == "SA2114G047"
+
+
+def test_inverter_serial_falls_back_to_0x11_in_detect_window():
+    """A 0x31 model with an empty 0x31 cache falls back to the 0x11 cache (#227).
+
+    In the detect→first-refresh window, detect()'s HR(0,60) identity read has landed HR13-17 in
+    the 0x11 cache even though 0x31 is not yet populated.
+    """
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.AC, inverter_address=0x31))
+    # 0x31 absent in this window; 0x11 populated by detect()
+    plant.register_caches[0x11] = RegisterCache(_serial_to_hr("SA2114G047"))
+    assert plant.inverter_serial == "SA2114G047"
+
+
+def test_inverter_serial_never_reads_0x32_battery_cache():
+    """A bare plant must not surface the 0x32 battery serial as the inverter's (#227)."""
+    plant = Plant()  # no capabilities; model_post_init seeds an (empty) 0x32 cache
+    plant.register_caches[0x32] = RegisterCache(_serial_to_hr("ZZ9999Z999"))
+    assert plant.inverter_serial == "", "0x32 is the battery pack, never the inverter"
+
+
+def test_inverter_serial_falls_back_to_envelope_field():
+    """The envelope serial is the final fallback when no register cache is populated (#227).
+
+    It is earliest-available at detect() and the only home on persisted/bare state.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047"
+
+
+def test_inverter_serial_prefers_registers_when_populated():
+    """A populated inverter register cache is authoritative over the envelope field (#227)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    plant.register_caches[0x11] = RegisterCache(_serial_to_hr("RG1234G567"))
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "RG1234G567"
+
+
+def test_inverter_serial_skips_partial_serial_block():
+    """A cache holding only part of HR13-17 is skipped (fail closed), not decoded partially (#227)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    plant.register_caches[0x11] = RegisterCache({HR(13): 0x4348, HR(14): 0x3234})  # only 2 of 5
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047", "a partial serial block must fall through, not decode"
+
+
+def test_inverter_serial_skips_all_zero_serial_registers():
+    """HR13-17 present but all-zero decodes to empty → fall through to the envelope, not '' (#227)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    plant.register_caches[0x11] = RegisterCache({HR(n): 0 for n in range(13, 18)})
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047"
+
+
+def test_inverter_serial_skips_malformed_complete_block():
+    """A complete block decoding to a malformed (non-10-char) serial falls through (#227, Codex).
+
+    An interior zero register (HR15=0x0000 → "SA12G047" after the null strip) — or spaces /
+    garbage in a restored or tampered cache — passes the not-empty check but is not a valid
+    serial, so it must not outrank a known-good envelope serial. Gated by is_valid_serial().
+    """
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    # S A 1 2 \x00 \x00 G 0 4 7 → "SA12G047" (8 chars) after the null strip
+    plant.register_caches[0x11] = RegisterCache(
+        {HR(13): 0x5341, HR(14): 0x3132, HR(15): 0x0000, HR(16): 0x4730, HR(17): 0x3437}
+    )
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047"
+
+
 def test_plant_redact_clears_header_serials_and_redacts_caches():
     """Plant.redact() redacts every cache AND the out-of-cache header serials (audit H2).
 
