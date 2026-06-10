@@ -12,21 +12,7 @@ This agent owns `givenergy-modbus` only. Two sibling repositories exist, each wi
 - **`givenergy-hass`** — the Home Assistant custom component to control a local plant
 - **`givenergy-cli`** — a command-line interface to perform common interactive tasks
 
-When a change in this component requires corresponding work in a sister repo, communicate via the **shared coordination inbox** at `/tmp/givenergy-coordination/`.
-
-### Coordination inbox protocol
-
-- **Shared directory:** `/tmp/givenergy-coordination`
-- **Filename format:** `<unix-epoch>-<recipient>-<description>.md`
-  - `recipient` is one of `cli`, `modbus`, or `hass`
-  - `description` is a brief slug, optionally referencing an issue (e.g. `mock-pdu-logging-#42`)
-  - Example: `1780409632-modbus-mock-pdu-logging.md`
-- **Writing a message:** create a new file; never mutate an existing one
-- **Replying:** create a new file with the current epoch, the original sender as addressee, and a description prefixed with `re-`. Only reply if actionable, save on pleasantries.
-- **Content:** describe the expected outcome at the API boundary — not how to implement it; include enough context to act without this conversation's history. It does not need to be overly verbose since agents share a lot of common knowledge across  these repos.
-- **Scanning:** after every turn, scan the inbox for new files through the stop hook and script defined in `.claude/settings.json`; make a decision whether to immediately act on the message, park it for when the current work winds up, or handing off to a subagent. Check with the user if any uncertainty.
-
-The old `.claude/handoffs/` and bare `/tmp` locations are superseded by this inbox.
+When a change in this component requires corresponding work in a sister repo, file a GitHub issue on that repo describing the API-boundary outcome the change depends on (durable contract). Ephemeral in-flight coordination between the maintainer's local agents is handled out-of-band via their agent config, not through this repo.
 
 ## GitHub identity — bot vs your voice
 
