@@ -775,3 +775,47 @@ def test_numeric_helpers_reject_bool(helper):
         helper(True)
     with pytest.raises(ValueError, match="bool"):
         helper(False)
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(
+            lambda: commands.set_charge_slot_start(True, dt_time(1, 0), SINGLE_PHASE_SLOTS), id="charge_slot_start"
+        ),
+        pytest.param(
+            lambda: commands.set_discharge_slot_end(True, dt_time(1, 0), SINGLE_PHASE_SLOTS), id="discharge_slot_end"
+        ),
+        pytest.param(lambda: commands.set_export_slot_start(True, dt_time(1, 0)), id="export_slot_start"),
+        pytest.param(lambda: commands.set_smart_load_slot_start(True, dt_time(1, 0)), id="smart_load_slot_start"),
+        pytest.param(lambda: commands.set_smart_load_slot_end(True, dt_time(1, 0)), id="smart_load_slot_end"),
+        pytest.param(lambda: commands.set_ems_charge_target_soc(True, 50), id="ems_charge_target_soc"),
+        pytest.param(lambda: commands.set_ems_discharge_target_soc(True, 50), id="ems_discharge_target_soc"),
+        pytest.param(lambda: commands.set_ems_export_target_soc(True, 50), id="ems_export_target_soc"),
+    ],
+)
+def test_slot_index_arguments_reject_bool(call):
+    """Slot/index selector arguments reject bool (audit L1 follow-up).
+
+    True == 1 passes the `1 <= idx` bounds checks and silently selects slot 1's REGISTER —
+    the same caller-error class as bool values, but worse on a write API: it picks the wrong
+    register rather than the wrong value.
+    """
+    with pytest.raises(ValueError, match="bool"):
+        call()
+
+
+def test_numeric_arguments_reject_non_integral_and_str():
+    """_as_int-guarded arguments reject non-integral floats and strings (fail loud, audit L1).
+
+    2.9 as a slot index would silently truncate to slot 2 (wrong-register selection); "100"
+    as a value is type confusion. Integral floats (50.0) stay accepted — they're unambiguous.
+    """
+    with pytest.raises(ValueError, match="integral"):
+        commands.set_export_slot_start(2.9, dt_time(1, 0))
+    with pytest.raises(ValueError, match="integral"):
+        commands.set_battery_soc_reserve(50.5)
+    with pytest.raises(ValueError, match="number"):
+        commands.set_battery_soc_reserve("100")
+    # Integral float remains accepted and resolves identically to the int.
+    assert commands.set_battery_soc_reserve(50.0) == commands.set_battery_soc_reserve(50)

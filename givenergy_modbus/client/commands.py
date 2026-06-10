@@ -113,15 +113,19 @@ class RegisterMap:
 
 
 def _as_int(val: int, name: str) -> int:
-    """Coerce a numeric command argument to int, rejecting bool (audit L1).
+    """Validate a numeric command argument as an integral number (audit L1).
 
-    bool subclasses int, so a plain ``int(val)`` coercion would silently turn True/False
-    into 1/0 *before* the PDU-level bool guard can see it — e.g. ``set_active_power_rate(True)``
-    writing 1. Numeric helpers route their caller input through this instead.
+    Fails loud on the silent-coercion caller-error class: bool subclasses int (True would
+    write 1 or select slot 1's registers), a non-integral float would truncate (2.9 selecting
+    slot 2), and a string is type confusion. Integral floats (50.0) are unambiguous and
+    accepted. Numeric helpers route caller input through this instead of bare ``int(val)``.
     """
-    if isinstance(val, bool):
-        raise ValueError(f"{name} must be an int, not bool")
-    return int(val)
+    if isinstance(val, bool) or not isinstance(val, int | float):
+        raise ValueError(f"{name} must be a number, not {type(val).__name__}")
+    i = int(val)
+    if i != val:
+        raise ValueError(f"{name} must be integral, got {val!r}")
+    return i
 
 
 @deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
@@ -359,6 +363,7 @@ def set_pause_slot(slot: TimeSlot | None) -> list[TransparentRequest]:
 
 def set_smart_load_slot_start(idx: int, t: dt_time | None) -> list[TransparentRequest]:
     """Set the start time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    idx = _as_int(idx, "idx")
     if not (1 <= idx <= 10):
         raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
     return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2, t)
@@ -366,6 +371,7 @@ def set_smart_load_slot_start(idx: int, t: dt_time | None) -> list[TransparentRe
 
 def set_smart_load_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequest]:
     """Set the end time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None."""
+    idx = _as_int(idx, "idx")
     if not (1 <= idx <= 10):
         raise ValueError(f"Smart Load slot index must be 1–10 (got {idx})")
     return _set_slot_endpoint(RegisterMap.SMART_LOAD_SLOT_1_START + (idx - 1) * 2 + 1, t)
@@ -399,6 +405,7 @@ def set_ems_plant(enabled: bool) -> list[TransparentRequest]:
 
 
 def _export_slot_registers(idx: int) -> tuple[int, int]:
+    idx = _as_int(idx, "idx")  # True == 1 would silently select slot 1's registers
     if not 1 <= idx <= 3:
         raise ValueError(f"Export slot index ({idx}) must be in [1-3]")
     return getattr(RegisterMap, f"EXPORT_SLOT_{idx}_START"), getattr(RegisterMap, f"EXPORT_SLOT_{idx}_END")
@@ -468,6 +475,7 @@ def set_ems_discharge_slot_end(idx: int, t: dt_time | None) -> list[TransparentR
 
 def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant charge slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS charge slot index ({idx}) must be in [1-3]")
     return [
@@ -477,6 +485,7 @@ def set_ems_charge_target_soc(idx: int, target_soc: int) -> list[TransparentRequ
 
 def set_ems_discharge_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant discharge slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS discharge slot index ({idx}) must be in [1-3]")
     return [
@@ -508,6 +517,7 @@ def set_ems_export_slot_end(idx: int, t: dt_time | None) -> list[TransparentRequ
 
 def set_ems_export_target_soc(idx: int, target_soc: int) -> list[TransparentRequest]:
     """Set the SoC target (0-100%) for EMS plant export slot idx (1-3)."""
+    idx = _as_int(idx, "idx")
     if not 1 <= idx <= 3:
         raise ValueError(f"EMS export slot index ({idx}) must be in [1-3]")
     return [
@@ -533,6 +543,7 @@ def _set_slot_endpoint(hr: int, t: dt_time | None) -> list[TransparentRequest]:
 
 
 def _resolve_slot_registers(discharge: bool, idx: int, slot_map: SlotMap) -> tuple[int, int]:
+    idx = _as_int(idx, "idx")  # True == 1 would silently select slot 1's registers
     slots = slot_map.discharge_slots if discharge else slot_map.charge_slots
     n = len(slots)
     if not 1 <= idx <= n:
