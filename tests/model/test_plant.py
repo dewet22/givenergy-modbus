@@ -1956,3 +1956,61 @@ def test_plant_capabilities_is_ac_coupled():
     assert (ac.is_ac_coupled and not ac.is_three_phase) is True
     ac3 = PlantCapabilities(device_type=Model.AC_3PH)
     assert (ac3.is_ac_coupled and not ac3.is_three_phase) is False
+
+
+# ---------------------------------------------------------------------------
+# Inverter-serial identity: only the inverter's own PDU sets it (givenergy-hass#95)
+# ---------------------------------------------------------------------------
+
+
+def test_inverter_serial_not_clobbered_by_module_pdu():
+    """A module PDU's envelope serial must not overwrite the real inverter serial (hass#95).
+
+    On an AIO the 0x50-0x53 battery-module responses carry their own HX… serial in the PDU
+    envelope. Adopting it would merge the inverter device into a battery module downstream.
+    """
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11))
+
+    inv = _make_ir_pdu({5: 2367}, device_address=0x11)
+    inv.inverter_serial_number = "CH2414G047"
+    inv.data_adapter_serial_number = "WF2414G047"
+    plant.update(inv)
+    assert plant.inverter_serial_number == "CH2414G047"
+    assert plant.data_adapter_serial_number == "WF2414G047"
+
+    module = _make_ir_pdu({60: 3280}, device_address=0x50)
+    module.inverter_serial_number = "HX2414G047"
+    module.data_adapter_serial_number = "HX2414G047"
+    plant.update(module)
+    assert plant.inverter_serial_number == "CH2414G047", "module envelope must not clobber inverter serial"
+    assert plant.data_adapter_serial_number == "WF2414G047"
+
+
+def test_inverter_serial_bootstrap_without_capabilities():
+    """Without capabilities, only the canonical inverter addresses (0x11/0x31) set the serial."""
+    plant = Plant()
+
+    inv = _make_ir_pdu({5: 2367}, device_address=0x11)
+    inv.inverter_serial_number = "CH2414G047"
+    plant.update(inv)
+    assert plant.inverter_serial_number == "CH2414G047"
+
+    batt = _make_ir_pdu({60: 3221}, device_address=0x32)
+    batt.inverter_serial_number = "ZZ9999Z999"
+    plant.update(batt)
+    assert plant.inverter_serial_number == "CH2414G047", "a battery PDU must not set the inverter serial"
+
+
+def test_inverter_serial_respects_capabilities_inverter_address():
+    """When the inverter lives at 0x31, only 0x31 PDUs set the serial (not other devices)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID_GEN1, inverter_address=0x31))
+
+    inv = _make_ir_pdu({5: 2367}, device_address=0x31)
+    inv.inverter_serial_number = "SA2114G047"
+    plant.update(inv)
+    assert plant.inverter_serial_number == "SA2114G047"
+
+    module = _make_ir_pdu({60: 3280}, device_address=0x50)
+    module.inverter_serial_number = "HX2414G047"
+    plant.update(module)
+    assert plant.inverter_serial_number == "SA2114G047"
