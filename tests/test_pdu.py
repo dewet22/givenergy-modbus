@@ -421,6 +421,15 @@ def test_decode_bytes_sub_header_truncation_raises_invalid_frame():
             ClientIncomingMessage.decode_bytes(short)
 
 
+def test_decode_bytes_rejects_bad_protocol_and_unit_id():
+    """The protocol-ID and unit-ID header checks reject malformed frames as InvalidFrame."""
+    with pytest.raises(InvalidFrame, match="Protocol ID"):
+        ClientIncomingMessage.decode_bytes(b"\x59\x59\x00\x02")
+    # 5959 0001 <len=0002> <uid=ff> <fc=02>: header_len matches, but unit id 0xff is invalid.
+    with pytest.raises(InvalidFrame, match="Unit ID"):
+        ClientIncomingMessage.decode_bytes(b"\x59\x59\x00\x01\x00\x02\xff\x02")
+
+
 def test_is_lan_config_rejects_nonzero_padding():
     """The LAN-config discriminator requires the 6 preceding pad bytes to be zero (audit L6).
 
