@@ -461,16 +461,14 @@ class Plant(GivEnergyBaseModel):
 
     register_caches: dict[int, RegisterCache] = {}
     capabilities: PlantCapabilities | None = None
-    # DEPRECATED (#227): the envelope-derived inverter serial duplicates the
-    # register-authoritative ``Plant.inverter.serial_number`` (HR13-17). Retained for
-    # backward compatibility; consumers should migrate to ``inverter.serial_number``. A
-    # runtime DeprecationWarning + removal will follow once consumers have migrated.
-    inverter_serial_number: str = Field(
-        default="",
-        description="DEPRECATED (#227): prefer Plant.inverter.serial_number (register-authoritative).",
-    )
-    # NOT deprecated: the TCP dongle's serial has no register source — the frame envelope is the
-    # only place it appears — so this remains the canonical accessor for the dongle identity.
+    # The inverter serial from the response envelope, adopted only from the inverter's own
+    # responses (see update()). This is the earliest-available inverter identity — populated at
+    # detect() from the 0x11 read — and stays correct across the plant lifecycle, unlike
+    # ``Plant.inverter.serial_number`` which is empty in the detect→first-refresh window for
+    # AC/HYBRID_GEN1 (reads 0x31, not populated by detect) and reads the 0x32 battery cache on a
+    # bare plant. A single unified accessor is tracked in #227. The dongle serial below has no
+    # register source — the envelope is its only home.
+    inverter_serial_number: str = ""
     data_adapter_serial_number: str = ""
     # Ingestion timestamps per committed register block, keyed by
     # (device_address, register_type_name, base_register) → last successful commit time (#65).
