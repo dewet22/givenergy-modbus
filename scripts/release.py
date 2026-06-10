@@ -13,6 +13,14 @@ from pathlib import Path
 
 CHANGELOG = Path(__file__).parent.parent / "CHANGELOG.md"
 
+# Optional hand-authored narrative per release: docs/release-notes/v<version>.md.
+# When present, `generate` leads the section with it — finals after a long rc line
+# otherwise ship a near-empty body (commits since the last rc only; the 2.1.0
+# release description was a single bullet while all the substance sat in rc
+# sections). The file carries the human story into both CHANGELOG.md and the
+# GitHub Release description without making either hand-maintained.
+RELEASE_NOTES_DIR = Path(__file__).parent.parent / "docs" / "release-notes"
+
 _SECTION_ORDER: list[str] = [
     "✨ Added",
     "🔄 Changed",
@@ -321,6 +329,12 @@ def cmd_generate(args) -> None:
     sections = _classify_commits(commits)
     body = _render_body(sections)
     today = date.today().isoformat()
+
+    notes_file = RELEASE_NOTES_DIR / f"v{args.version}.md"
+    if notes_file.is_file():
+        notes = notes_file.read_text(encoding="utf-8").strip()
+        if notes:
+            body = f"{notes}\n\n{body}" if body else f"{notes}\n"
 
     if args.preview:
         print(f"## [{args.version}] - {today}\n")
