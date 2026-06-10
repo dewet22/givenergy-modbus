@@ -50,6 +50,11 @@ def test_from_json_skips_invalid_register_value():
     assert RegisterCache.from_json('{"HR(1)": -1, "HR(2)": 65536, "IR(3)": 5}') == {IR(3): 5}
     # In-range integers (including the 0/0xffff bounds) still load.
     assert RegisterCache.from_json('{"HR(0)": 0, "HR(1)": 65535}') == {HR(0): 0, HR(1): 65535}
+    # json.loads accepts the non-standard Infinity/-Infinity/NaN; int() of those raises
+    # OverflowError/ValueError — the entry must be skipped, not crash the load.
+    assert RegisterCache.from_json('{"HR(1)": Infinity, "HR(2)": -Infinity, "HR(3)": NaN, "IR(4)": 6}') == {IR(4): 6}
+    # JSON booleans are not register values — rejected, not silently stored as 1/0.
+    assert RegisterCache.from_json('{"HR(1)": true, "HR(2)": false, "IR(3)": 7}') == {IR(3): 7}
 
 
 def test_from_json_preserves_none_value():

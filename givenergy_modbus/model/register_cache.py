@@ -119,6 +119,10 @@ class RegisterCache(defaultdict[Register, int]):
                         # None is the codebase's legitimate "unset" sentinel (e.g. a missing
                         # slot endpoint); preserve it so it round-trips through JSON.
                         value = None
+                    elif isinstance(v, bool):
+                        # bool is an int subclass, so 1 == True would slip past the range check;
+                        # reject JSON true/false rather than silently storing it as 1/0 (M4).
+                        raise ValueError(f"register value {v!r} is a bool, not an integer")
                     else:
                         value = int(v)
                         if value != v or not (0 <= value <= 0xFFFF):
@@ -127,12 +131,13 @@ class RegisterCache(defaultdict[Register, int]):
                             # would later raise OverflowError in to_bytes() in a consumer (M4).
                             raise ValueError(f"register value {v!r} is not an unsigned 16-bit int")
                     ret[register] = value
-                except (KeyError, ValueError, TypeError):
+                except (KeyError, ValueError, TypeError, OverflowError):
                     # KeyError: unknown register prefix (e.g. a future namespace we don't know
                     # about yet). ValueError: idx wasn't an int, or the value wasn't a coercible
-                    # in-range integer (a string / fractional / out-of-range value in a tampered
-                    # cache JSON). TypeError: value was a non-scalar (list/dict). Skip the entry
-                    # rather than aborting the load or storing a value that crashes a consumer.
+                    # in-range integer (a string / bool / fractional / out-of-range value in a
+                    # tampered cache JSON). TypeError: value was a non-scalar (list/dict).
+                    # OverflowError: int(float("inf")) from a non-standard JSON Infinity. Skip the
+                    # entry rather than aborting the load or storing a value that crashes a consumer.
                     _logger.warning("Skipping unloadable register entry %r=%r", k, v)
                     continue
             return ret
