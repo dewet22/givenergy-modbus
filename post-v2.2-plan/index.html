@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/post-v2.2-plan/">
       
       
-        <link rel="prev" href="../register-identification/">
+        <link rel="prev" href="../release-notes/v2.0/">
       
       
-        <link rel="next" href="../contributing/">
+        <link rel="next" href="../v2.1-roadmap/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Hardware & firmware quirks - GivEnergy Modbus</title>
+        <title>Post-v2.2 unified roadmap - GivEnergy Modbus</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hardware-firmware-quirks" class="md-skip">
+        <a href="#post-v22-unified-roadmap" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Hardware & firmware quirks
+              Post-v2.2 unified roadmap
             
           </span>
         </div>
@@ -392,10 +392,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -407,11 +405,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -432,7 +430,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -475,35 +473,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Hardware & firmware quirks
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../hardware-firmware-quirks/" class="md-nav__link">
         
   
   
@@ -519,107 +492,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hardware &amp; firmware quirks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Register address reuse across firmware (IR180-183)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The protocol doc has no firmware→register map
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Units that contradict their own description (HR111/112)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Doc unit corrections have shipped silently mid-protocol
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -776,8 +648,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -795,11 +669,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -820,7 +694,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -835,10 +709,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../post-v2.2-plan/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-v2.2 unified roadmap
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -854,6 +753,157 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#post-v22-unified-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Post-v2.2 unified roadmap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#166-all-landed-whats-left-is-a-pile-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        166 all landed. What's left is a pile of
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="166 all landed. What&#39;s left is a pile of">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-shaped-these-priorities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What shaped these priorities
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-four-pillars" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The four pillars
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The four pillars">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pillar-a-provable-write-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pillar A — Provable write safety
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pillar-b-register-provenance-and-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pillar B — Register provenance and confidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pillar-c-unified-data-trust-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pillar C — Unified data-trust layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pillar-d-generic-topology-hoist-flagship-parked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pillar D — Generic-topology hoist (flagship, parked)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#foundations-carry-forward-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foundations (carry-forward infrastructure)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardware-gated-backlog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardware-gated backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sequencing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sequencing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1003,22 +1053,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
+  <a href="#post-v22-unified-roadmap" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware &amp; firmware quirks
+        Post-v2.2 unified roadmap
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#166-all-landed-whats-left-is-a-pile-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        166 all landed. What's left is a pile of
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="166 all landed. What&#39;s left is a pile of">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
+  <a href="#what-shaped-these-priorities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Register address reuse across firmware (IR180-183)
+        What shaped these priorities
       
     </span>
   </a>
@@ -1026,10 +1087,22 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
+  <a href="#the-four-pillars" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
+        The four pillars
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The four pillars">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pillar-a-provable-write-safety" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pillar A — Provable write safety
       
     </span>
   </a>
@@ -1037,10 +1110,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
+  <a href="#pillar-b-register-provenance-and-confidence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The protocol doc has no firmware→register map
+        Pillar B — Register provenance and confidence
       
     </span>
   </a>
@@ -1048,10 +1121,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
+  <a href="#pillar-c-unified-data-trust-layer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
+        Pillar C — Unified data-trust layer
       
     </span>
   </a>
@@ -1059,10 +1132,26 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
+  <a href="#pillar-d-generic-topology-hoist-flagship-parked" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Units that contradict their own description (HR111/112)
+        Pillar D — Generic-topology hoist (flagship, parked)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#foundations-carry-forward-infrastructure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Foundations (carry-forward infrastructure)
       
     </span>
   </a>
@@ -1070,10 +1159,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
+  <a href="#hardware-gated-backlog" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Doc unit corrections have shipped silently mid-protocol
+        Hardware-gated backlog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sequencing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sequencing
       
     </span>
   </a>
@@ -1105,113 +1205,230 @@
   
 
 
-  <h1>Hardware & firmware quirks</h1>
+  <h1>Post-v2.2 unified roadmap</h1>
 
-<h2 id="hardware-firmware-quirks">Hardware &amp; firmware quirks<a class="headerlink" href="#hardware-firmware-quirks" title="Permanent link">&para;</a></h2>
-<p>A catalogue of confirmed oddities in GivEnergy's register behaviour that aren't
-obvious from the protocol document alone — address reuse across firmware, registers
-that are specified but unimplemented on older builds, units that contradict their own
-description, and similar traps. The aim is to stop these being rediscovered the hard
-way.</p>
-<p>Each entry records the <strong>symptom</strong>, the <strong>evidence</strong> it rests on, the <strong>implication</strong>
-for the library, and <strong>references</strong> (issue numbers, protocol-doc sections). Where a
-finding came from a single unit, that's stated — a quirk seen on one unit is a data
-point, not a universal truth.</p>
-<p>The authoritative protocol reference is the v4.1.6 hybrid Modbus RTU document
-(2024-10-30); a parsed inventory lives under <code>docs/reference/registers/</code>. GivEnergy is
-no longer trading, so this document set is effectively the last word and won't be
-reissued — hence the value of writing findings down here.</p>
+<h2 id="post-v22-unified-roadmap">Post-v2.2 unified roadmap<a class="headerlink" href="#post-v22-unified-roadmap" title="Permanent link">&para;</a></h2>
+<p>A working document. Expected to change as consumers (<code>givenergy-hass</code>,
+<code>givenergy-cli</code>) report back and as contributors send hardware captures. It
+supersedes the <a href="../post-v2-improvement-plan/">Post-v2.0 improvement plan</a> —
+folding that document's still-live items forward and marking the shipped ones —
+and brings the scattered open-issue backlog under a small set of pillars so the
+direction is legible in one place.</p>
 <blockquote>
-<p><strong>Adding an entry:</strong> lead with the symptom, cite the evidence (capture, probe, or
-doc section), and say what it means for the code. Attribute hardware-specific results
-to the unit/firmware they were proven on. Verify before generalising.</p>
+<p><strong>Why now.</strong> The v2.1/v2.2 <em>structural</em> roadmap is largely cleared: the
+flagship <a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>
+(graph-shaped Plant), <a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>
+(commands onto Inverter), <a href="https://github.com/dewet22/givenergy-modbus/issues/57">#57</a>
+(bounds <em>detection</em> — its whole-bank-discard tail is folded into Pillar C) and</p>
+<h2 id="166-all-landed-whats-left-is-a-pile-of">166 all landed. What's left is a pile of<a class="headerlink" href="#166-all-landed-whats-left-is-a-pile-of" title="Permanent link">&para;</a></h2>
+<p>register-audit and data-integrity issues plus four strategic threads that were
+only ever discussed, never written down. This consolidates them.</p>
 </blockquote>
-<h3 id="register-address-reuse-across-firmware-ir180-183">Register address reuse across firmware (IR180-183)<a class="headerlink" href="#register-address-reuse-across-firmware-ir180-183" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same input-register addresses mean different things on different
-firmware lineages.</p>
-<p><strong>Evidence.</strong> On a HYBRID_GEN1 unit, IR180/181 return battery charge/discharge lifetime
-totals (e.g. discharge 1560.4 kWh, charge 1822.8 kWh at 0.1 kWh scale) and IR182/183
-return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
-<code>wEV_Voltage_L1/L2/L3</code> + <code>wEV_current_L1</code> — EV-charger phase voltages and current
-(0.1 V / 0.1 A). A phase voltage of 1560 V is impossible, so the GEN1 reading is
-genuinely battery energy, not a misread.</p>
-<p><strong>Implication.</strong> The library's <code>alt1</code> battery-total source (<code>IR(180)</code>/<code>IR(181)</code> in
-<code>_BATTERY_ENERGY_SOURCE</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
-implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
-a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
-never inferred from live values, and should migrate to the dedicated registers below
-when a unit supports them.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/inverter.py</code> <code>_BATTERY_ENERGY_SOURCE</code>.</p>
-<h3 id="firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89">Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)<a class="headerlink" href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> Registers present in the protocol doc read a hard zero (or are absent) on
-older firmware.</p>
-<p><strong>Evidence.</strong> Protocol v4.1.5 (2024-10-22) added IR194-197 (dedicated battery
-charge/discharge <strong>lifetime</strong> totals, 0.1 kWh), IR198 (CT power), IR199 (system state).
-A HYBRID_GEN1 unit on ARM/DSP firmware <strong>449</strong> returns zero for the whole IR194-199
-range, while its IR180/181 totals are populated — so the device address is correct and
-the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4.13 ASCII
-firmware-version-string scheme), so this build predates several doc additions.</p>
-<p><strong>Implication.</strong> IR194-197 cannot be a <em>universal</em> battery-total source. The library's
-<code>_BATTERY_ENERGY_SOURCE</code> is keyed by static <code>Model</code>, which has no way to express
-"firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
-conditional until a unit is observed that actually populates them. Confirmed lower
-anchor: <strong>HYBRID_GEN1 @ ARM 449 → absent.</strong> No upper anchor (a unit that <em>does</em> populate
-them) has been observed yet.</p>
-<p><strong>References.</strong> v4.1.6 revision history (v4.1.5 entry), §4.1.2, §4.13; issue #184.</p>
-<h3 id="the-protocol-doc-has-no-firmwareregister-map">The protocol doc has no firmware→register map<a class="headerlink" href="#the-protocol-doc-has-no-firmwareregister-map" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> There's no way, from the doc alone, to tell which firmware build implements
-a given register.</p>
-<p><strong>Evidence.</strong> The revision history dates <em>specification</em> changes (authored by GivEnergy
-engineers) but never ties them to firmware versions. §4.13 documents the firmware
-version-string <em>format</em> (combined codes like <code>ZB_A1_01</code>), not a per-register
-availability threshold, and its release-date column is blank in v4.1.6. No register
-table carries an "available from firmware X" annotation.</p>
-<p><strong>Implication.</strong> Firmware/register correlation can only be established empirically:
-probe a register on units of known firmware and record presence/absence. Reading a
-unit's own firmware (HR21 ARM, HR19 DSP, or — where implemented — the HR84-89 strings)
-gives the anchor. Version numbers are <strong>not comparable across model families</strong> (a GEN1
-hybrid on ARM 449 and an AC-coupled unit on ARM 282 are different firmware lineages; the
-larger number is not "newer").</p>
-<p><strong>References.</strong> v4.1.6 revision history, §4.13.</p>
-<h3 id="writable-set-baselines-masquerading-as-live-counters-hr4102-4103">Writable "Set" baselines masquerading as live counters (HR4102-4103)<a class="headerlink" href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register holds a large, static energy-like value that never moves.</p>
-<p><strong>Evidence.</strong> HR4102/4103 read a fixed ~3,229.6 kWh (0.1 kWh scale) on a HYBRID_GEN1 AC
-unit. The v4.1.6 doc labels them "<strong>Set</strong> Battery ChgDischarge Energy Total" and marks
-them R/W — i.e. a writable seed/baseline (e.g. to preserve cumulative counts across a
-board swap), not a live accumulator. Re-probing after a charge/discharge cycle would not
-show movement.</p>
-<p><strong>Implication.</strong> Don't treat HR4102/4103 as a live battery-total source. The live
-counters are the IR/HR energy-total registers (firmware permitting).</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1.</p>
-<h3 id="units-that-contradict-their-own-description-hr111112">Units that contradict their own description (HR111/112)<a class="headerlink" href="#units-that-contradict-their-own-description-hr111112" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register's unit column disagrees with its description, and neither maps
-cleanly onto the value range.</p>
-<p><strong>Evidence.</strong> HR111/112 (<code>bBatChgLimit</code>/<code>bBatDisLimit</code>) carry unit <code>0.5C</code> (a battery
-C-rate) in the doc's unit column, but the description reads "battery charge/discharge
-<strong>power percentage</strong>", the default is 50, and the range is 1-250 — none of which
-reconcile (50 × 0.5C = 25C is not a sane charge rate; 1-250 doesn't map to 0-100%).
-A separate, clean percentage pair exists: HR313/314 (<code>fChargePowerPercent</code>/
-<code>fDischargePowerPercent</code>, range 1-100, unit 1%), which is what the GivEnergy app surfaces
-as "Power Percentage".</p>
-<p><strong>Implication.</strong> Don't reinterpret HR111/112's scale on the doc's word — the unit field
-is unreliable here. The defensible step is bounds (1-250) plus a docstring that records
-the ambiguity; deriving watts from these via a rated-power table is unsafe (the
-<code>battery_max_power</code> DTC table is itself incomplete). A live-hardware write test is needed
-to settle the true unit.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1; issue #183.</p>
-<h3 id="doc-unit-corrections-have-shipped-silently-mid-protocol">Doc unit corrections have shipped silently mid-protocol<a class="headerlink" href="#doc-unit-corrections-have-shipped-silently-mid-protocol" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same register's documented unit changes between protocol revisions.</p>
-<p><strong>Evidence.</strong> The v4.1.6 revision history records, among others: IR10 inverter current
-corrected from 0.01 A to 0.1 A (v4.1.1/4.1.3); IR58 grid current split by phase count
-(single 0.01 A, three-phase 0.1 A, v4.1.3); and a batch of energy registers
-(IR6/7/11/12/17/19/21/22/… and HR4102/4103/4107-4114/4140-4142) restated as 0.1 kWh to
-match the server (v4.1.5).</p>
-<p><strong>Implication.</strong> A unit stated in any single revision may be a correction of an earlier
-error — treat the doc's unit column as a strong hint, not ground truth, and prefer
-hardware/cross-reference confirmation before changing a scale. (The library already
-scales the v4.1.5 energy registers correctly via <code>deci</code>; that batch was a doc catch-up,
-not a library bug.)</p>
-<p><strong>References.</strong> v4.1.6 revision history.</p>
+<h3 id="what-shaped-these-priorities">What shaped these priorities<a class="headerlink" href="#what-shaped-these-priorities" title="Permanent link">&para;</a></h3>
+<p>GivEnergy has gone bust. There will be no further official protocol
+documentation and no new firmware, and there is no warranty path if a bad write
+bricks an inverter. Three consequences run through everything below:</p>
+<ul>
+<li><strong>The register map is provisional in perpetuity.</strong> Much of it is inherited
+  from forks and field captures and can never be reconciled against an
+  authoritative spec. Honesty about confidence has to be built in, not implied.</li>
+<li><strong>Writes carry real risk with no safety net.</strong> Hardening the write path is
+  worth more, not less, than it was when there was a vendor to fall back on.</li>
+<li><strong>Hardware-dependent work is throttled by data, not by code.</strong> Anything that
+  needs a capture from a device family the maintainer doesn't own advances only
+  when a contributor sends one.</li>
+</ul>
+<p>This is therefore a <strong>theme-priority document, not a dated plan</strong>. The pillars
+are ordered by value and by their interlocks; the hardware-gated work floats.</p>
+<h3 id="the-four-pillars">The four pillars<a class="headerlink" href="#the-four-pillars" title="Permanent link">&para;</a></h3>
+<h4 id="pillar-a-provable-write-safety">Pillar A — Provable write safety<a class="headerlink" href="#pillar-a-provable-write-safety" title="Permanent link">&para;</a></h4>
+<p><em>Carries forward <a href="../post-v2-improvement-plan/">post-v2 §1 and §2</a>.</em> The
+highest-value hardening left: writes hit real inverters, and the only protection
+today is register-level.</p>
+<ul>
+<li><strong>Model-aware write policy at the <code>Client</code> boundary.</strong> <code>Client.one_shot_command()</code>
+  / <code>execute()</code> should reject writes that aren't valid for the <em>detected</em> inverter
+  model, complementing the global <code>WRITE_SAFE_REGISTERS</code> allowlist enforced in
+  <code>pdu/write_registers.py::ensure_valid_state()</code>. A caller can still hand-build a
+  write PDU that bypasses the model-specific command mixins; this closes that gap.
+  Conservative default when capabilities are unknown. Tests must cover direct
+  <code>WriteHoldingRegisterRequest</code> construction, not just the high-level helpers.</li>
+<li><strong>Dry-run validation.</strong> A supported way to encode and validate a request list
+  without transmitting — <code>client.validate_requests(...)</code> or
+  <code>one_shot_command(..., dry_run=True)</code> — reporting register, value, device
+  address and rejection reason. Lets downstream integrations check before
+  enabling live writes.</li>
+<li><strong>Interlock:</strong> high-risk writes gate on register provenance (Pillar B).</li>
+</ul>
+<h4 id="pillar-b-register-provenance-and-confidence">Pillar B — Register provenance and confidence<a class="headerlink" href="#pillar-b-register-provenance-and-confidence" title="Permanent link">&para;</a></h4>
+<p><em>Carries forward <a href="../post-v2-improvement-plan/">post-v2 §5</a>; the umbrella over the
+register-audit backlog.</em> Because the map will never be officially documented,
+source and confidence should be first-class in the model rather than implicit in
+a comment.</p>
+<ul>
+<li>Optional provenance metadata on the <code>Def</code> class (<code>model/register.py</code>) — e.g.
+  <code>source</code> (verified / field-observed / GivTCP / fork) and a <code>risk</code> flag. No
+  field carries this today.</li>
+<li>Docs can then distinguish verified, field-observed and provisional registers.</li>
+<li>A register must clear a provenance bar before joining a safe-write set — the
+  concrete feed into Pillar A.</li>
+</ul>
+<p>This pillar is what turns the audit backlog from a scatter of "to investigate"
+issues into one coherent effort:
+<a href="https://github.com/dewet22/givenergy-modbus/issues/48">#48</a> (field-validate
+inherited mappings),
+<a href="https://github.com/dewet22/givenergy-modbus/issues/182">#182</a>,
+<a href="https://github.com/dewet22/givenergy-modbus/issues/183">#183</a>,
+<a href="https://github.com/dewet22/givenergy-modbus/issues/184">#184</a>,
+<a href="https://github.com/dewet22/givenergy-modbus/issues/185">#185</a> (scale/unit
+corrections),
+<a href="https://github.com/dewet22/givenergy-modbus/issues/200">#200</a> (BMS fault
+bitfield) and
+<a href="https://github.com/dewet22/givenergy-modbus/issues/209">#209</a> (power-factor
+formula).</p>
+<h4 id="pillar-c-unified-data-trust-layer">Pillar C — Unified data-trust layer<a class="headerlink" href="#pillar-c-unified-data-trust-layer" title="Permanent link">&para;</a></h4>
+<p><em>New synthesis.</em> The principle is "never silently serve untrustworthy data".
+Several signals already exist in isolation; the work is to consolidate them into
+one per-device health surface that consumers act on, instead of every consumer
+re-deriving its own ad-hoc checks.</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Mechanism</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Freshness</td>
+<td><code>Plant.block_age()</code> (#65)</td>
+<td>shipped</td>
+</tr>
+<tr>
+<td>Staleness / freeze</td>
+<td><code>Plant.content_unchanged_seconds()</code> (#91 primitive) → freeze <em>verdict</em></td>
+<td>primitive shipped; <a href="https://github.com/dewet22/givenergy-modbus/issues/91">verdict deferred</a></td>
+</tr>
+<tr>
+<td>Bank dropout</td>
+<td>Pattern A/B rejection (<a href="https://github.com/dewet22/givenergy-modbus/issues/78">#78</a> / <a href="https://github.com/dewet22/givenergy-modbus/issues/147">#147</a>)</td>
+<td>shipped</td>
+</tr>
+<tr>
+<td>Bounds</td>
+<td>field-level out-of-range suppression + bank-level detection (#57); whole-bank discard still gated behind a <code>TODO(enforcement)</code> in <code>_commit_bank()</code></td>
+<td>detection shipped; discard deferred</td>
+</tr>
+<tr>
+<td>Present-but-unavailable</td>
+<td>placeholder for transiently-absent devices (<a href="https://github.com/dewet22/givenergy-modbus/issues/213">#213</a>)</td>
+<td>open</td>
+</tr>
+<tr>
+<td>Transient zeros</td>
+<td>home-load debounce (<a href="https://github.com/dewet22/givenergy-modbus/issues/199">#199</a>)</td>
+<td>open</td>
+</tr>
+</tbody>
+</table>
+<p>The target is a single consumer-facing surface — e.g. a <code>health</code>/availability
+rollup on <code>PlantDevice</code> — so the <code>givenergy-hass</code> agent maps one signal onto HA
+availability rather than stitching several together. The shape gets handed across
+via the coordination inbox once it stabilises. The #91 freeze verdict stays
+deferred until there are enough firmware-update freeze captures to set a
+threshold that doesn't fire on healthy-but-static batteries; the #57 whole-bank
+discard (flipping the <code>TODO(enforcement)</code> in <code>_commit_bank()</code> from log-only to a
+rejecting <code>return False</code>) is the other concrete unit of work this pillar carries.</p>
+<h4 id="pillar-d-generic-topology-hoist-flagship-parked">Pillar D — Generic-topology hoist (flagship, parked)<a class="headerlink" href="#pillar-d-generic-topology-hoist-flagship-parked" title="Permanent link">&para;</a></h4>
+<p><em>Realises the long-stated direction — and deliberately isn't actioned yet.</em> The
+<code>Plant</code> / <code>Device</code> / <code>Transport</code> graph is already a
+<a href="../plant-device-graph/#design-discipline-kept-hoist-ready">generic energy-topology abstraction</a>:
+manufacturer- and protocol-agnostic, with no concrete GivEnergy or Modbus types
+leaking into the generic shapes. The big move is extracting those shapes into a
+base package so the library becomes a coordination layer above a single vendor
+(myenergi, Tesla, …) over multiple transports (Modbus, HTTP, MQTT).</p>
+<p>The discipline is to <strong>stay hoist-ready, not to hoist speculatively</strong>. Extracting
+a base package before a real second-manufacturer or second-protocol case exists
+would be abstraction for its own sake — exactly the trap the graph work was
+careful to avoid. So this is the 3.0 horizon, triggered by a concrete second
+case. Near-term, the only standing rule is regression-grade: keep <code>GivEnergy*</code> /
+Modbus concretes out of the generic layer.</p>
+<h3 id="foundations-carry-forward-infrastructure">Foundations (carry-forward infrastructure)<a class="headerlink" href="#foundations-carry-forward-infrastructure" title="Permanent link">&para;</a></h3>
+<p>The remaining <a href="../post-v2-improvement-plan/">post-v2.0 plan</a> items that aren't a
+pillar in their own right:</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§3 internal refresh serialization (<code>asyncio.Lock</code> around detect/load_config/refresh)</td>
+<td>not started</td>
+</tr>
+<tr>
+<td>§6 broaden golden-frame fixtures (have EMS, single-phase hybrid, AIO; need three-phase, gateway, write success/error)</td>
+<td>partial</td>
+</tr>
+<tr>
+<td>§7 mypy <code>check_untyped_defs</code></td>
+<td>partial — production on; <code>tests.*</code> deferred (58 findings)</td>
+</tr>
+<tr>
+<td>§10 public API compatibility tests</td>
+<td>partial — <code>test_deprecation_aliases.py</code> covers aliases; documented imports + command-helper signatures untested</td>
+</tr>
+<tr>
+<td>§4 fail CI on async resource warnings</td>
+<td><strong>done</strong> (<code>pyproject.toml</code> filterwarnings)</td>
+</tr>
+<tr>
+<td>§8 cleaner release artifact checks</td>
+<td><strong>done</strong> (ephemeral per-run <code>dist</code>)</td>
+</tr>
+<tr>
+<td>§9 docs <code>../LICENSE</code> warning</td>
+<td>moot — no such link remains</td>
+</tr>
+</tbody>
+</table>
+<p>Adjacent protocol-citizen work, tracked independently:
+<a href="https://github.com/dewet22/givenergy-modbus/issues/207">#207</a> (self-tuning
+skip-if-fresh), <a href="https://github.com/dewet22/givenergy-modbus/issues/198">#198</a>
+(heartbeat-ACK dropout investigation),
+<a href="https://github.com/dewet22/givenergy-modbus/issues/205">#205</a> (signed
+directional power sensors).</p>
+<h3 id="hardware-gated-backlog">Hardware-gated backlog<a class="headerlink" href="#hardware-gated-backlog" title="Permanent link">&para;</a></h3>
+<p>Throttled by capture availability rather than engineering time — listed so the
+gating is explicit, not scheduled:
+<a href="https://github.com/dewet22/givenergy-modbus/issues/193">#193</a> (Gen-1 gateway),
+<a href="https://github.com/dewet22/givenergy-modbus/issues/169">#169</a> /
+<a href="https://github.com/dewet22/givenergy-modbus/issues/189">#189</a> (inverter
+addressing), <a href="https://github.com/dewet22/givenergy-modbus/issues/114">#114</a> /
+<a href="https://github.com/dewet22/givenergy-modbus/issues/115">#115</a> (undecoded
+function codes), <a href="https://github.com/dewet22/givenergy-modbus/issues/141">#141</a>
+(three-phase grid-power nodes),
+<a href="https://github.com/dewet22/givenergy-modbus/issues/186">#186</a> (HR4600
+relocation), <a href="https://github.com/dewet22/givenergy-modbus/issues/197">#197</a>
+(ACBC field-evidence tracking).</p>
+<h3 id="sequencing">Sequencing<a class="headerlink" href="#sequencing" title="Permanent link">&para;</a></h3>
+<p>Priority order, not dates — and the hardware-gated items float across all of it
+as captures arrive.</p>
+<ul>
+<li><strong>2.2.0 final</strong> — ship the current rc line. No hard blockers remain; the #91
+  freeze verdict is deferred, not blocking.</li>
+<li><strong>2.3.x</strong> — Pillar A (write safety) and Foundations §3.</li>
+<li><strong>2.4.x</strong> — Pillar B (provenance) feeding Pillar C (data-trust consolidation),
+  with Foundations §6/§7/§10 alongside.</li>
+<li><strong>3.0</strong> — Pillar D, only once a second vendor or transport makes the extraction
+  real.</li>
+</ul>
+<p>The one firm constraint is the interlock order: provenance lands before
+provenance-gated writes, and the individual trust signals exist before the
+unified health surface that aggregates them.</p>
 
 
 

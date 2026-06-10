@@ -8,13 +8,11 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/flow-state-spec/">
       
       
-        <link rel="prev" href="../register-identification/">
+        <link rel="prev" href="../plant-device-graph/">
       
-      
-        <link rel="next" href="../contributing/">
       
       
         
@@ -25,7 +23,7 @@
     
     
       
-        <title>Hardware & firmware quirks - GivEnergy Modbus</title>
+        <title>Power-flow state (shared spec) - GivEnergy Modbus</title>
       
     
     
@@ -78,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hardware-firmware-quirks" class="md-skip">
+        <a href="#power-flow-state-shared-classification-spec" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Hardware & firmware quirks
+              Power-flow state (shared spec)
             
           </span>
         </div>
@@ -392,10 +390,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -407,11 +403,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -432,7 +428,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -475,35 +471,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Hardware & firmware quirks
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../hardware-firmware-quirks/" class="md-nav__link">
         
   
   
@@ -519,107 +490,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hardware &amp; firmware quirks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Register address reuse across firmware (IR180-183)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The protocol doc has no firmware→register map
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Units that contradict their own description (HR111/112)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Doc unit corrections have shipped silently mid-protocol
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -776,8 +646,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -795,11 +667,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -820,7 +692,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -947,10 +819,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../flow-state-spec/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power-flow state (shared spec)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -966,6 +863,118 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#power-flow-state-shared-classification-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power-flow state — shared classification spec
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Power-flow state — shared classification spec">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this exists
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inputs-and-sign-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inputs and sign conventions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#canonical-stateless-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Canonical stateless output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-each-frontend-collapses-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How each frontend collapses it
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#planned-implementation-sketch-not-built-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned implementation (sketch — not built yet)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolved-decisions-cli-hass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolved decisions (cli + hass)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1003,22 +1012,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
+  <a href="#power-flow-state-shared-classification-spec" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware &amp; firmware quirks
+        Power-flow state — shared classification spec
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
+    <nav class="md-nav" aria-label="Power-flow state — shared classification spec">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
+  <a href="#why-this-exists" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Register address reuse across firmware (IR180-183)
+        Why this exists
       
     </span>
   </a>
@@ -1026,10 +1035,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
+  <a href="#inputs-and-sign-conventions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
+        Inputs and sign conventions
       
     </span>
   </a>
@@ -1037,10 +1046,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
+  <a href="#canonical-stateless-output" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The protocol doc has no firmware→register map
+        Canonical stateless output
       
     </span>
   </a>
@@ -1048,10 +1057,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
+  <a href="#how-each-frontend-collapses-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
+        How each frontend collapses it
       
     </span>
   </a>
@@ -1059,10 +1068,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
+  <a href="#planned-implementation-sketch-not-built-yet" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Units that contradict their own description (HR111/112)
+        Planned implementation (sketch — not built yet)
       
     </span>
   </a>
@@ -1070,10 +1079,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
+  <a href="#resolved-decisions-cli-hass" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Doc unit corrections have shipped silently mid-protocol
+        Resolved decisions (cli + hass)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
       
     </span>
   </a>
@@ -1105,113 +1125,223 @@
   
 
 
-  <h1>Hardware & firmware quirks</h1>
+  <h1>Power-flow state (shared spec)</h1>
 
-<h2 id="hardware-firmware-quirks">Hardware &amp; firmware quirks<a class="headerlink" href="#hardware-firmware-quirks" title="Permanent link">&para;</a></h2>
-<p>A catalogue of confirmed oddities in GivEnergy's register behaviour that aren't
-obvious from the protocol document alone — address reuse across firmware, registers
-that are specified but unimplemented on older builds, units that contradict their own
-description, and similar traps. The aim is to stop these being rediscovered the hard
-way.</p>
-<p>Each entry records the <strong>symptom</strong>, the <strong>evidence</strong> it rests on, the <strong>implication</strong>
-for the library, and <strong>references</strong> (issue numbers, protocol-doc sections). Where a
-finding came from a single unit, that's stated — a quirk seen on one unit is a data
-point, not a universal truth.</p>
-<p>The authoritative protocol reference is the v4.1.6 hybrid Modbus RTU document
-(2024-10-30); a parsed inventory lives under <code>docs/reference/registers/</code>. GivEnergy is
-no longer trading, so this document set is effectively the last word and won't be
-reissued — hence the value of writing findings down here.</p>
-<blockquote>
-<p><strong>Adding an entry:</strong> lead with the symptom, cite the evidence (capture, probe, or
-doc section), and say what it means for the code. Attribute hardware-specific results
-to the unit/firmware they were proven on. Verify before generalising.</p>
-</blockquote>
-<h3 id="register-address-reuse-across-firmware-ir180-183">Register address reuse across firmware (IR180-183)<a class="headerlink" href="#register-address-reuse-across-firmware-ir180-183" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same input-register addresses mean different things on different
-firmware lineages.</p>
-<p><strong>Evidence.</strong> On a HYBRID_GEN1 unit, IR180/181 return battery charge/discharge lifetime
-totals (e.g. discharge 1560.4 kWh, charge 1822.8 kWh at 0.1 kWh scale) and IR182/183
-return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
-<code>wEV_Voltage_L1/L2/L3</code> + <code>wEV_current_L1</code> — EV-charger phase voltages and current
-(0.1 V / 0.1 A). A phase voltage of 1560 V is impossible, so the GEN1 reading is
-genuinely battery energy, not a misread.</p>
-<p><strong>Implication.</strong> The library's <code>alt1</code> battery-total source (<code>IR(180)</code>/<code>IR(181)</code> in
-<code>_BATTERY_ENERGY_SOURCE</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
-implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
-a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
-never inferred from live values, and should migrate to the dedicated registers below
-when a unit supports them.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/inverter.py</code> <code>_BATTERY_ENERGY_SOURCE</code>.</p>
-<h3 id="firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89">Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)<a class="headerlink" href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> Registers present in the protocol doc read a hard zero (or are absent) on
-older firmware.</p>
-<p><strong>Evidence.</strong> Protocol v4.1.5 (2024-10-22) added IR194-197 (dedicated battery
-charge/discharge <strong>lifetime</strong> totals, 0.1 kWh), IR198 (CT power), IR199 (system state).
-A HYBRID_GEN1 unit on ARM/DSP firmware <strong>449</strong> returns zero for the whole IR194-199
-range, while its IR180/181 totals are populated — so the device address is correct and
-the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4.13 ASCII
-firmware-version-string scheme), so this build predates several doc additions.</p>
-<p><strong>Implication.</strong> IR194-197 cannot be a <em>universal</em> battery-total source. The library's
-<code>_BATTERY_ENERGY_SOURCE</code> is keyed by static <code>Model</code>, which has no way to express
-"firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
-conditional until a unit is observed that actually populates them. Confirmed lower
-anchor: <strong>HYBRID_GEN1 @ ARM 449 → absent.</strong> No upper anchor (a unit that <em>does</em> populate
-them) has been observed yet.</p>
-<p><strong>References.</strong> v4.1.6 revision history (v4.1.5 entry), §4.1.2, §4.13; issue #184.</p>
-<h3 id="the-protocol-doc-has-no-firmwareregister-map">The protocol doc has no firmware→register map<a class="headerlink" href="#the-protocol-doc-has-no-firmwareregister-map" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> There's no way, from the doc alone, to tell which firmware build implements
-a given register.</p>
-<p><strong>Evidence.</strong> The revision history dates <em>specification</em> changes (authored by GivEnergy
-engineers) but never ties them to firmware versions. §4.13 documents the firmware
-version-string <em>format</em> (combined codes like <code>ZB_A1_01</code>), not a per-register
-availability threshold, and its release-date column is blank in v4.1.6. No register
-table carries an "available from firmware X" annotation.</p>
-<p><strong>Implication.</strong> Firmware/register correlation can only be established empirically:
-probe a register on units of known firmware and record presence/absence. Reading a
-unit's own firmware (HR21 ARM, HR19 DSP, or — where implemented — the HR84-89 strings)
-gives the anchor. Version numbers are <strong>not comparable across model families</strong> (a GEN1
-hybrid on ARM 449 and an AC-coupled unit on ARM 282 are different firmware lineages; the
-larger number is not "newer").</p>
-<p><strong>References.</strong> v4.1.6 revision history, §4.13.</p>
-<h3 id="writable-set-baselines-masquerading-as-live-counters-hr4102-4103">Writable "Set" baselines masquerading as live counters (HR4102-4103)<a class="headerlink" href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register holds a large, static energy-like value that never moves.</p>
-<p><strong>Evidence.</strong> HR4102/4103 read a fixed ~3,229.6 kWh (0.1 kWh scale) on a HYBRID_GEN1 AC
-unit. The v4.1.6 doc labels them "<strong>Set</strong> Battery ChgDischarge Energy Total" and marks
-them R/W — i.e. a writable seed/baseline (e.g. to preserve cumulative counts across a
-board swap), not a live accumulator. Re-probing after a charge/discharge cycle would not
-show movement.</p>
-<p><strong>Implication.</strong> Don't treat HR4102/4103 as a live battery-total source. The live
-counters are the IR/HR energy-total registers (firmware permitting).</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1.</p>
-<h3 id="units-that-contradict-their-own-description-hr111112">Units that contradict their own description (HR111/112)<a class="headerlink" href="#units-that-contradict-their-own-description-hr111112" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register's unit column disagrees with its description, and neither maps
-cleanly onto the value range.</p>
-<p><strong>Evidence.</strong> HR111/112 (<code>bBatChgLimit</code>/<code>bBatDisLimit</code>) carry unit <code>0.5C</code> (a battery
-C-rate) in the doc's unit column, but the description reads "battery charge/discharge
-<strong>power percentage</strong>", the default is 50, and the range is 1-250 — none of which
-reconcile (50 × 0.5C = 25C is not a sane charge rate; 1-250 doesn't map to 0-100%).
-A separate, clean percentage pair exists: HR313/314 (<code>fChargePowerPercent</code>/
-<code>fDischargePowerPercent</code>, range 1-100, unit 1%), which is what the GivEnergy app surfaces
-as "Power Percentage".</p>
-<p><strong>Implication.</strong> Don't reinterpret HR111/112's scale on the doc's word — the unit field
-is unreliable here. The defensible step is bounds (1-250) plus a docstring that records
-the ambiguity; deriving watts from these via a rated-power table is unsafe (the
-<code>battery_max_power</code> DTC table is itself incomplete). A live-hardware write test is needed
-to settle the true unit.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1; issue #183.</p>
-<h3 id="doc-unit-corrections-have-shipped-silently-mid-protocol">Doc unit corrections have shipped silently mid-protocol<a class="headerlink" href="#doc-unit-corrections-have-shipped-silently-mid-protocol" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same register's documented unit changes between protocol revisions.</p>
-<p><strong>Evidence.</strong> The v4.1.6 revision history records, among others: IR10 inverter current
-corrected from 0.01 A to 0.1 A (v4.1.1/4.1.3); IR58 grid current split by phase count
-(single 0.01 A, three-phase 0.1 A, v4.1.3); and a batch of energy registers
-(IR6/7/11/12/17/19/21/22/… and HR4102/4103/4107-4114/4140-4142) restated as 0.1 kWh to
-match the server (v4.1.5).</p>
-<p><strong>Implication.</strong> A unit stated in any single revision may be a correction of an earlier
-error — treat the doc's unit column as a strong hint, not ground truth, and prefer
-hardware/cross-reference confirmation before changing a scale. (The library already
-scales the v4.1.5 energy registers correctly via <code>deci</code>; that batch was a doc catch-up,
-not a library bug.)</p>
-<p><strong>References.</strong> v4.1.6 revision history.</p>
+<h2 id="power-flow-state-shared-classification-spec">Power-flow state — shared classification spec<a class="headerlink" href="#power-flow-state-shared-classification-spec" title="Permanent link">&para;</a></h2>
+<p>Status: <strong>cli + hass signed off; ready to implement</strong>. No implementation yet — this
+pins the semantics so the eventual <code>givenergy_modbus.model.flows</code> primitive, the cli
+TUI, and the hass dashboard all classify instantaneous power flow the same way. Both
+frontends have confirmed the decisions below; the enum member names settle the agreed
+naming. hass will also call <code>headline(decompose(...))</code> coordinator-side to back a
+translated flow-state enum sensor, so the headline member names are user-facing there.</p>
+<h3 id="why-this-exists">Why this exists<a class="headerlink" href="#why-this-exists" title="Permanent link">&para;</a></h3>
+<p>Two frontends already classify "what is the system doing right now" from the same
+three power readings, and they do it differently:</p>
+<ul>
+<li><strong>givenergy-cli</strong> (<code>givenergy_cli/glance.py::flow_status</code>): one mutually-exclusive
+  headline — 8 states, grid-over-battery precedence, stateless, 50 W idle threshold.</li>
+<li><strong>givenergy-hass</strong> (<code>givenergy-glance</code> custom element, <code>feat/dashboard-glance-mode</code>):
+  five <em>independent</em> flow booleans composed into ~13 natural-language sentences, with
+  stateful Schmitt-trigger hysteresis (200 W on / 80 W off). It is JavaScript and
+  cannot import a Python library.</li>
+</ul>
+<p>Because hass is JS, the convergence is a <strong>shared specification with a Python
+reference implementation</strong> (used directly by the cli; mirrored in JS by hass), not a
+shared import. A single <code>FlowState</code> enum would serve only the cli — it cannot express
+hass's simultaneous "exporting <em>and</em> charging" composites. So the canonical primitive
+is the <strong>stateless decomposition</strong> below; each frontend collapses it to its own
+headline, and hysteresis stays a frontend concern.</p>
+<h3 id="inputs-and-sign-conventions">Inputs and sign conventions<a class="headerlink" href="#inputs-and-sign-conventions" title="Permanent link">&para;</a></h3>
+<p>All three readings come straight off the inverter registers (single-phase shown;
+three-phase exposes the same concepts):</p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Register</th>
+<th>Sign convention</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pv</code></td>
+<td>IR(18)+IR(20) <code>p_pv1</code>+<code>p_pv2</code></td>
+<td>≥ 0 (generation)</td>
+</tr>
+<tr>
+<td><code>grid</code></td>
+<td>IR(30) <code>p_grid_out</code> (external CT)</td>
+<td><strong>+ = export, − = import</strong></td>
+</tr>
+<tr>
+<td><code>battery</code></td>
+<td>IR(52) <code>p_battery</code></td>
+<td><strong>+ = discharge, − = charge</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>load</code> (IR(42) <code>p_load_demand</code>) is not an input to the decomposition — it is derived
+from the incoming edges so the displayed home figure equals the sum of the rendered
+flows (avoids drift between the independent load sensor and the source sensors). Note
+IR(42) already <strong>includes</strong> the EPS branch IR(31) — consumers must not add EPS on top
+(see the IR(42) Def docstring and <code>tests/debug/eps_in_load_demand.py</code>).</p>
+<p><strong>Units:</strong> the primitive takes <strong>kW</strong> floats (both frontends display kW; hass converts
+its W readings at the boundary). The idle threshold is a kW argument (<code>idle=0.05</code>).</p>
+<h3 id="canonical-stateless-output">Canonical stateless output<a class="headerlink" href="#canonical-stateless-output" title="Permanent link">&para;</a></h3>
+<p><code>decompose(pv, grid, battery, *, idle=0.05)</code> returns, for one instant:</p>
+<p><strong>Flow facts</strong> (booleans, each <code>magnitude &gt; idle</code>):
+<code>solar_on</code>, <code>exporting</code>, <code>importing</code>, <code>charging</code>, <code>discharging</code>.</p>
+<p><strong>Per-edge magnitudes</strong> (kW ≥ 0), with <strong>solar as the priority source</strong>. This refines
+hass's greedy allocation: every edge is capped by <code>min(remaining source, remaining
+sink)</code> so no edge can exceed the power measured on <em>either</em> side, and the slack between
+the independently-sensed sources and sinks is surfaced as an explicit residual rather
+than absorbed into an edge (these are separate sensors; small drift is expected and
+must not be allowed to invent power):</p>
+<div class="highlight"><pre><span></span><code>batt_charge    = max(0, -battery)      grid_import = max(0, -grid)
+batt_discharge = max(0,  battery)      grid_export = max(0,  grid)
+solar_gen      = max(0,  pv)
+
+# Allocate sources to the MEASURED sinks (battery charge, grid export), each edge
+# capped by min(remaining source, remaining sink). Solar serves first; battery and
+# grid backfill. Every term is &gt;= 0 and &lt;= the measured value on both sides.
+solar_to_batt = min(solar_gen, batt_charge)
+grid_to_batt  = min(grid_import, batt_charge - solar_to_batt)
+solar_to_grid = min(solar_gen - solar_to_batt, grid_export)
+batt_to_grid  = min(batt_discharge, grid_export - solar_to_grid)
+
+# Home is the DERIVED sink: each source&#39;s remainder after the measured sinks.
+solar_to_home = solar_gen      - solar_to_batt - solar_to_grid
+batt_to_home  = batt_discharge - batt_to_grid
+grid_to_home  = grid_import    - grid_to_batt
+home          = solar_to_home + batt_to_home + grid_to_home
+
+# Drift: a measured sink no source could cover (sensors disagree). Surfaced, never
+# folded into an edge. |residual| above ~0.1 kW (100 W) is the agreed &quot;sensors
+# disagree&quot; flag; multi-sensor skew runs tens of watts, so 100 W clears noise.
+residual_charge = batt_charge - solar_to_batt - grid_to_batt
+residual_export = grid_export - solar_to_grid - batt_to_grid
+</code></pre></div>
+<p>This output is <strong>stateless and unfiltered</strong> — no hysteresis, no idle smoothing beyond
+the boolean threshold. Frontends layer their own smoothing on top (e.g. hass folds a
+sub-100 W residual into the dominant edge for display tidiness; that's a presentation
+choice, not part of the core).</p>
+<h3 id="how-each-frontend-collapses-it">How each frontend collapses it<a class="headerlink" href="#how-each-frontend-collapses-it" title="Permanent link">&para;</a></h3>
+<p><strong>cli — single headline (<code>FlowState</code>), grid &gt; battery &gt; solar precedence:</strong></p>
+<p>The source-split states (<code>EXPORTING_SOLAR</code> vs <code>EXPORTING_BATTERY</code>, <code>CHARGING_FROM_SOLAR</code>
+vs <code>CHARGING</code>) are decided by the dominant <em>edge</em>, not merely by whether solar is present
+— otherwise a trickle of solar would mislabel a battery-led export. Ties go to solar.
+(The member names use "solar" throughout, matching the <code>solar_to_*</code> edges, rather than
+mixing in "pv".)</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>grid_export &gt; idle</code> and <code>solar_to_grid &gt;= batt_to_grid</code></td>
+<td>EXPORTING_SOLAR</td>
+</tr>
+<tr>
+<td><code>grid_export &gt; idle</code> and <code>solar_to_grid &lt;  batt_to_grid</code></td>
+<td>EXPORTING_BATTERY</td>
+</tr>
+<tr>
+<td><code>grid_import &gt; idle</code></td>
+<td>IMPORTING</td>
+</tr>
+<tr>
+<td><code>batt_discharge &gt; idle</code></td>
+<td>DISCHARGING</td>
+</tr>
+<tr>
+<td><code>batt_charge &gt; idle</code> and <code>solar_to_batt &gt;= grid_to_batt</code></td>
+<td>CHARGING_FROM_SOLAR</td>
+</tr>
+<tr>
+<td><code>batt_charge &gt; idle</code></td>
+<td>CHARGING</td>
+</tr>
+<tr>
+<td><code>solar_gen &gt; idle</code></td>
+<td>SOLAR_COVERING_HOUSE</td>
+</tr>
+<tr>
+<td>otherwise</td>
+<td>IDLE</td>
+</tr>
+</tbody>
+</table>
+<p><strong>hass — composite sentence</strong> from the boolean combination (e.g. <code>solar_on &amp;
+exporting &amp; charging</code> → "Solar covering the house and charging the battery, exporting
+the surplus"). hass keeps its <strong>Schmitt-trigger hysteresis</strong> (enter at 200 W, leave at
+80 W, with prior-state memory) by feeding the smoothed booleans — this is a frontend
+concern and deliberately <strong>not</strong> in the stateless core. hass also uses the per-edge
+magnitudes directly to drive its animated SVG.</p>
+<h3 id="planned-implementation-sketch-not-built-yet">Planned implementation (sketch — not built yet)<a class="headerlink" href="#planned-implementation-sketch-not-built-yet" title="Permanent link">&para;</a></h3>
+<p><code>givenergy_modbus/model/flows.py</code>, following the model-package idioms (module-level
+pure functions like <code>resolve_model</code>; <code>StrEnum</code>/<code>IntEnum</code> per <code>model/inverter.py</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrEnum</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">FlowState</span><span class="p">(</span><span class="n">StrEnum</span><span class="p">):</span>
+    <span class="n">EXPORTING_SOLAR</span> <span class="o">=</span> <span class="s2">&quot;exporting_solar&quot;</span>
+    <span class="n">EXPORTING_BATTERY</span> <span class="o">=</span> <span class="s2">&quot;exporting_battery&quot;</span>
+    <span class="n">IMPORTING</span> <span class="o">=</span> <span class="s2">&quot;importing&quot;</span>
+    <span class="n">DISCHARGING</span> <span class="o">=</span> <span class="s2">&quot;discharging&quot;</span>
+    <span class="n">CHARGING_FROM_SOLAR</span> <span class="o">=</span> <span class="s2">&quot;charging_from_solar&quot;</span>
+    <span class="n">CHARGING</span> <span class="o">=</span> <span class="s2">&quot;charging&quot;</span>
+    <span class="n">SOLAR_COVERING_HOUSE</span> <span class="o">=</span> <span class="s2">&quot;solar_covering_house&quot;</span>
+    <span class="n">IDLE</span> <span class="o">=</span> <span class="s2">&quot;idle&quot;</span>
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FlowDecomposition</span><span class="p">:</span>
+    <span class="n">solar_on</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">exporting</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">importing</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">charging</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">discharging</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">solar_to_home</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">solar_to_grid</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">solar_to_batt</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">grid_to_home</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">grid_to_batt</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">batt_to_home</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">batt_to_grid</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">home</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">residual_charge</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">residual_export</span><span class="p">:</span> <span class="nb">float</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">decompose</span><span class="p">(</span><span class="n">pv</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">grid</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">battery</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">idle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlowDecomposition</span><span class="p">:</span> <span class="o">...</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">headline</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">FlowDecomposition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlowState</span><span class="p">:</span> <span class="o">...</span>   <span class="c1"># the cli collapse above</span>
+</code></pre></div>
+<p>The cli swaps its local <code>flow_status</code> for <code>headline(decompose(...))</code> plus its own
+display strings; hass mirrors <code>decompose</code> + the headline table in JS and keeps its
+hysteresis and sentence composition.</p>
+<h3 id="resolved-decisions-cli-hass">Resolved decisions (cli + hass)<a class="headerlink" href="#resolved-decisions-cli-hass" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Units — kW.</strong> The core takes kW; hass converts its W readings at the boundary.</li>
+<li><strong>Edge set — the seven edges, no EPS edge.</strong> EPS is already inside IR(42) <code>home</code>
+   (the inclusion finding below), so a distinct EPS edge would re-introduce a
+   double-count. A frontend that wants to <em>show</em> EPS does so as a sub-figure, not an edge.</li>
+<li><strong>Residual — surfaced, tolerance 0.1 kW (100 W).</strong> <code>residual_charge</code> /
+   <code>residual_export</code> are surfaced raw and never attributed to an edge; |residual| above
+   0.1 kW is the shared "sensors disagree" flag. Folding a sub-tolerance residual into
+   the dominant edge is a frontend display choice (hass does; the core does not).</li>
+<li><strong>Hysteresis — frontend-side.</strong> The core is stateless; cli smooths via its snapshot
+   history, hass via its 200/80 W Schmitt. No shared hysteresis helper.</li>
+<li><strong>Headline state set — the 8 states, source-split by edge.</strong> Matches the cli TUI 1:1;
+   hass also consumes <code>headline(decompose(...))</code> coordinator-side for a flow-state enum
+   sensor, so the member names are user-facing on both sides.</li>
+</ol>
+<h3 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h3>
+<ul>
+<li>cli reference: <code>givenergy_cli/glance.py::flow_status</code></li>
+<li>hass reference: <code>givenergy-glance</code> element, <code>feat/dashboard-glance-mode</code> branch of givenergy-hass</li>
+<li>EPS-in-load finding: IR(42) Def docstring + <code>tests/debug/eps_in_load_demand.py</code></li>
+</ul>
 
 
 

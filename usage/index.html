@@ -932,6 +932,12 @@
       
         
       
+        
+      
+        
+      
+        
+      
     
     
     
@@ -979,6 +985,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../post-v2.2-plan/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Post-v2.2 unified roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../v2.1-roadmap/" class="md-nav__link">
         
   
@@ -1015,6 +1049,62 @@
     
   
     Post-v2.0 improvement plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plant-device-graph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph-shaped Plant (#106)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flow-state-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power-flow state (shared spec)
   
 
     
@@ -1535,16 +1625,8 @@ interactive command, pass <code>retry_delay=0</code>.</p>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_enable_discharge</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
 </code></pre></div>
-<p>The inverter knows its own <code>slot_map</code>, so slot setters don't need it threaded through. The base <code>_InverterCommands</code> mixin is composed onto both <code>SinglePhaseInverter</code> and <code>ThreePhaseInverter</code>.</p>
-<blockquote>
-<p>⚠️ <strong>Treat the inverter command surface as single-phase-validated.</strong> Several inherited methods delegate to primitives with <strong>hardcoded single-phase register numbers</strong>, but three-phase remaps many of those registers — so on a three-phase unit they write the <em>wrong</em> register. This is pre-existing and tracked for a proper fix (model-aware command routing) in <a href="https://github.com/dewet22/givenergy-modbus/issues/203">#203</a> → <a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>:
-- <code>set_charge_target()</code> writes HR(116), but three-phase remaps <code>charge_target_soc</code> to HR(1111).
-- <code>set_battery_soc_reserve()</code> writes HR(110), but three-phase remaps <code>battery_soc_reserve</code> to HR(1109); the three-phase reserve is <code>set_battery_reserve_soc()</code> → HR(1078).
-- <code>set_mode_storage()</code> hardcodes the single-phase discharge slots (HR 44/45, 56/57) instead of three-phase HR(1118–1121).
-- The enable helpers (<code>set_enable_charge</code>, …) target single-phase HR(96/59), distinct from the three-phase enables.</p>
-<p>The <strong>slot setters</strong> (<code>set_charge_slot</code> / <code>set_discharge_slot</code>) <em>are</em> model-aware — they read the instance's <code>slot_map</code> and emit the correct registers per model. The rest should be treated as single-phase until #106.</p>
-</blockquote>
-<p>Three-phase inverters additionally carry the <code>_ThreePhaseCommands</code> mixin (marker: ✦ three-phase), so <code>set_ac_charge</code>, <code>set_force_charge</code>, and <code>set_force_discharge</code> are reachable as instance methods on <code>ThreePhaseInverter</code>:</p>
+<p>The inverter knows its own <code>slot_map</code>, so slot setters don't need it threaded through. The base <code>_InverterCommands</code> mixin is composed onto both <code>SinglePhaseInverter</code> and <code>ThreePhaseInverter</code>; <code>_ThreePhaseCommands</code> (also composed onto <code>ThreePhaseInverter</code>) overrides the methods where single-phase and three-phase register addresses differ.</p>
+<p>Three-phase inverters additionally carry the <code>_ThreePhaseCommands</code> mixin (marker: ✦ three-phase), so <code>set_ac_charge</code>, <code>set_force_charge</code>, <code>set_force_discharge</code>, and <code>set_battery_reserve_soc</code> are reachable as instance methods on <code>ThreePhaseInverter</code> only:</p>
 <div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inverter</span><span class="p">,</span> <span class="n">ThreePhaseInverter</span><span class="p">):</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_force_charge</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
 </code></pre></div>
@@ -1585,7 +1667,7 @@ case-by-case.</p>
 <tr>
 <td><code>_InverterCommands</code></td>
 <td><code>SinglePhaseInverter</code>, <code>ThreePhaseInverter</code></td>
-<td><em>(none — inherited base surface; <strong>single-phase-validated</strong>, see the ⚠️ note above)</em></td>
+<td><em>(none — inherited base surface)</em></td>
 </tr>
 <tr>
 <td><code>_ThreePhaseCommands</code></td>
@@ -1604,7 +1686,7 @@ case-by-case.</p>
 </tr>
 </tbody>
 </table>
-<p>An unmarked row means the method is inherited from <code>_InverterCommands</code> on both inverter types — <strong>not</strong> that it writes correct registers on three-phase. Per the warning above, several of these are single-phase-hardcoded and remain single-phase-validated until the model-aware routing in #203 / #106.</p>
+<p>An unmarked row means the method is available on both inverter types. On <code>ThreePhaseInverter</code>, <code>_ThreePhaseCommands</code> overrides <code>set_enable_charge</code>, <code>set_battery_soc_reserve</code>, <code>set_mode_dynamic</code>, <code>set_charge_target</code>, <code>disable_charge_target</code>, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).</p>
 <h4 id="charging">Charging<a class="headerlink" href="#charging" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -1909,6 +1991,11 @@ family silently targeting wrong registers on another.</p>
 <tr>
 <td><code>set_force_discharge(enabled)</code></td>
 <td>Force battery discharge</td>
+<td>✦ three-phase</td>
+</tr>
+<tr>
+<td><code>set_battery_reserve_soc(val)</code></td>
+<td>Battery reserve SOC (HR 1078, "Battery Reserve %", 4–100%)</td>
 <td>✦ three-phase</td>
 </tr>
 </tbody>

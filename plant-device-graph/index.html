@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/plant-device-graph/">
       
       
-        <link rel="prev" href="../register-identification/">
+        <link rel="prev" href="../post-v2-improvement-plan/">
       
       
-        <link rel="next" href="../contributing/">
+        <link rel="next" href="../flow-state-spec/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Hardware & firmware quirks - GivEnergy Modbus</title>
+        <title>Graph-shaped Plant (#106) - GivEnergy Modbus</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hardware-firmware-quirks" class="md-skip">
+        <a href="#graph-shaped-plant-abstraction-106" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Hardware & firmware quirks
+              Graph-shaped Plant (#106)
             
           </span>
         </div>
@@ -392,10 +392,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -407,11 +405,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
@@ -432,7 +430,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -475,35 +473,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Hardware & firmware quirks
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../hardware-firmware-quirks/" class="md-nav__link">
         
   
   
@@ -519,107 +492,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hardware &amp; firmware quirks
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Register address reuse across firmware (IR180-183)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The protocol doc has no firmware→register map
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Units that contradict their own description (HR111/112)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Doc unit corrections have shipped silently mid-protocol
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -776,8 +648,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -795,11 +669,11 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -820,7 +694,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -919,10 +793,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../plant-device-graph/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph-shaped Plant (#106)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -938,6 +837,152 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#graph-shaped-plant-abstraction-106" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph-shaped Plant abstraction (#106)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Graph-shaped Plant abstraction (#106)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Target architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#design-discipline-kept-hoist-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design discipline — kept hoist-ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phased-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phased rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phased rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-typed-device-enumeration-api-this-increment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — typed-device enumeration API ✅ (this increment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-per-inverter-battery-hv-stack-ownership-this-increment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2 — per-inverter battery &amp; HV-stack ownership ✅ (this increment)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-serial-reconciliation-plantserial_index-shipped-v22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — Serial reconciliation + Plant.serial_index ✅ shipped (v2.2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-model-aware-write-routing-shipped-v22" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4 — model-aware write-routing ✅ shipped (v2.2)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#out-of-scope-deliberately-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Out of scope (deliberately deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1003,22 +1048,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#hardware-firmware-quirks" class="md-nav__link">
+  <a href="#graph-shaped-plant-abstraction-106" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware &amp; firmware quirks
+        Graph-shaped Plant abstraction (#106)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Hardware &amp; firmware quirks">
+    <nav class="md-nav" aria-label="Graph-shaped Plant abstraction (#106)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#register-address-reuse-across-firmware-ir180-183" class="md-nav__link">
+  <a href="#the-problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Register address reuse across firmware (IR180-183)
+        The problem
       
     </span>
   </a>
@@ -1026,10 +1071,50 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" class="md-nav__link">
+  <a href="#target-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
+        Target architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Target architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#design-discipline-kept-hoist-ready" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design discipline — kept hoist-ready
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phased-rollout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phased rollout
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phased rollout">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-typed-device-enumeration-api-this-increment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — typed-device enumeration API ✅ (this increment)
       
     </span>
   </a>
@@ -1037,10 +1122,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#the-protocol-doc-has-no-firmwareregister-map" class="md-nav__link">
+  <a href="#phase-2-per-inverter-battery-hv-stack-ownership-this-increment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The protocol doc has no firmware→register map
+        Phase 2 — per-inverter battery &amp; HV-stack ownership ✅ (this increment)
       
     </span>
   </a>
@@ -1048,10 +1133,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" class="md-nav__link">
+  <a href="#phase-3-serial-reconciliation-plantserial_index-shipped-v22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Writable "Set" baselines masquerading as live counters (HR4102-4103)
+        Phase 3 — Serial reconciliation + Plant.serial_index ✅ shipped (v2.2)
       
     </span>
   </a>
@@ -1059,21 +1144,26 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#units-that-contradict-their-own-description-hr111112" class="md-nav__link">
+  <a href="#phase-4-model-aware-write-routing-shipped-v22" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Units that contradict their own description (HR111/112)
+        Phase 4 — model-aware write-routing ✅ shipped (v2.2)
       
     </span>
   </a>
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
           <li class="md-nav__item">
-  <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
+  <a href="#out-of-scope-deliberately-deferred" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Doc unit corrections have shipped silently mid-protocol
+        Out of scope (deliberately deferred)
       
     </span>
   </a>
@@ -1105,113 +1195,153 @@
   
 
 
-  <h1>Hardware & firmware quirks</h1>
+  <h1>Graph-shaped Plant (#106)</h1>
 
-<h2 id="hardware-firmware-quirks">Hardware &amp; firmware quirks<a class="headerlink" href="#hardware-firmware-quirks" title="Permanent link">&para;</a></h2>
-<p>A catalogue of confirmed oddities in GivEnergy's register behaviour that aren't
-obvious from the protocol document alone — address reuse across firmware, registers
-that are specified but unimplemented on older builds, units that contradict their own
-description, and similar traps. The aim is to stop these being rediscovered the hard
-way.</p>
-<p>Each entry records the <strong>symptom</strong>, the <strong>evidence</strong> it rests on, the <strong>implication</strong>
-for the library, and <strong>references</strong> (issue numbers, protocol-doc sections). Where a
-finding came from a single unit, that's stated — a quirk seen on one unit is a data
-point, not a universal truth.</p>
-<p>The authoritative protocol reference is the v4.1.6 hybrid Modbus RTU document
-(2024-10-30); a parsed inventory lives under <code>docs/reference/registers/</code>. GivEnergy is
-no longer trading, so this document set is effectively the last word and won't be
-reissued — hence the value of writing findings down here.</p>
+<h2 id="graph-shaped-plant-abstraction-106">Graph-shaped Plant abstraction (#106)<a class="headerlink" href="#graph-shaped-plant-abstraction-106" title="Permanent link">&para;</a></h2>
+<p>Tracking design for the <code>Plant</code> model refactor. This is a living document —
+phases land independently and the integration keeps working throughout.
+See <a href="https://github.com/dewet22/givenergy-modbus/issues/106">#106</a>.</p>
+<h3 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h3>
+<p><code>Plant</code> currently models the world as <em>one inverter with peripherals hanging
+off it</em>:</p>
+<ul>
+<li>a flat <code>register_caches: dict[int, RegisterCache]</code> keyed by Modbus address,</li>
+<li>a single scalar <code>PlantCapabilities</code> (one <code>inverter_address</code>, global
+  <code>meter_addresses</code> / <code>lv_battery_addresses</code> / <code>bcu_stacks</code> lists),</li>
+<li>a 1:1 <code>Client</code> ↔ <code>Plant</code> relationship.</li>
+</ul>
+<p>Real installs break this shape:</p>
+<ul>
+<li>an <strong>EMS plant controller is a peer</strong> of the inverters it manages, not their
+  parent — yet <code>Plant.inverter</code> (singular) decodes the controller <em>as</em> an
+  inverter (<a href="https://github.com/dewet22/givenergy-hass/issues/52">hass#52</a>);</li>
+<li>a <strong>Gateway</strong> aggregates partner AIOs and CT meters of its own;</li>
+<li><strong>batteries belong to their parent inverter</strong>, not directly to the plant;</li>
+<li>some devices have their own communication path (separate dongles), some are
+  "blinded" (visible only through a controller's rollup);</li>
+<li>direct-data and rollup views of the same inverter need <strong>reconciliation by
+  serial number</strong>.</li>
+</ul>
+<h3 id="target-architecture">Target architecture<a class="headerlink" href="#target-architecture" title="Permanent link">&para;</a></h3>
+<p>A graph: <code>Plant</code> → <code>Device</code> subclasses → <code>Transport</code> (abstract I/O), with a
+<code>serial_index</code> for cross-device reconciliation.</p>
+<div class="highlight"><pre><span></span><code>Plant
+ ├─ serial_index: {serial → Device}
+ ├─ Inverter (direct | blinded | merged)
+ │    └─ Battery, Battery, …            (owned by their inverter)
+ ├─ Ems            (peer controller, manages N inverters)
+ ├─ Gateway        (aggregator, owns partner AIOs + CT meters)
+ └─ Meter, HvStack, …
+        ↓ each reachable via
+      Transport (abstract: ModbusTcpTransport today; HTTP/MQTT/… later)
+</code></pre></div>
+<h4 id="design-discipline-kept-hoist-ready">Design discipline — kept hoist-ready<a class="headerlink" href="#design-discipline-kept-hoist-ready" title="Permanent link">&para;</a></h4>
+<p>The <code>Plant</code> / <code>Device</code> / <code>Transport</code> metaphor is a <strong>generic energy-topology
+abstraction</strong> — not GivEnergy-specific, not Modbus-specific. The same shape
+describes a mixed-vendor install (heat pump + Powerwall + Zappi + GivEnergy
+inverter). We keep it hoistable so a future extraction is a code-org refactor,
+not a redesign:</p>
+<ol>
+<li>no concrete GivEnergy or Modbus types leak into the generic shapes
+   (<code>givenergy_modbus/model/devices.py</code> stays import-clean);</li>
+<li>generic names (<code>Inverter</code>, <code>DeviceType</code>) — the GE-specific concretes get a
+   <code>GivEnergy…</code> prefix only on extraction;</li>
+<li><code>Transport</code> is abstract; Modbus TCP is one concrete implementation;</li>
+<li><code>RegisterCache</code> is a Modbus implementation detail, never on the generic
+   surface;</li>
+<li>identity is by <strong>serial</strong>, not wire address.</li>
+</ol>
+<h3 id="phased-rollout">Phased rollout<a class="headerlink" href="#phased-rollout" title="Permanent link">&para;</a></h3>
+<p>Each phase merges independently and keeps the integration working.</p>
+<h4 id="phase-1-typed-device-enumeration-api-this-increment">Phase 1 — typed-device enumeration API ✅ (this increment)<a class="headerlink" href="#phase-1-typed-device-enumeration-api-this-increment" title="Permanent link">&para;</a></h4>
+<p>A strictly <strong>additive, non-breaking</strong> read surface: <code>Plant.devices</code> returns a
+list of <code>PlantDevice</code> rows, each tagged with a generic <code>DeviceType</code>
+discriminator (<code>INVERTER</code> / <code>EMS</code> / <code>GATEWAY</code> / <code>BATTERY</code> / <code>METER</code> /
+<code>HV_STACK</code>), a serial (where the device exposes a valid one), the plant model
+where meaningful, and the already-decoded typed model.</p>
+<ul>
+<li>Composes the existing accessors (<code>inverters</code>, <code>ems</code>, <code>gateway</code>, <code>batteries</code>,
+  <code>meters</code>, <code>hv_stacks</code>) — the EMS-rollup-vs-direct decision (from the #98
+  <code>UnifiedInverter</code> facade) is honoured once, so an <strong>EMS or Gateway controller
+  can never appear as an <code>INVERTER</code> row</strong>.</li>
+<li>Gateway plants suppress the spurious direct-inverter row (the singular
+  <code>Plant.inverter</code> decodes the gateway's own cache as an inverter).</li>
+<li>Every existing <code>Plant</code> accessor is untouched.</li>
+</ul>
+<p>Consumers (Home Assistant) can now enumerate typed devices to name and scope
+entities per device-type instead of assuming a single inverter.</p>
 <blockquote>
-<p><strong>Adding an entry:</strong> lead with the symptom, cite the evidence (capture, probe, or
-doc section), and say what it means for the code. Attribute hardware-specific results
-to the unit/firmware they were proven on. Verify before generalising.</p>
+<p><strong>Superseded by Phase 2:</strong> Phase 1 emitted batteries and HV stacks as
+top-level <code>BATTERY</code> / <code>HV_STACK</code> rows. Phase 2 nests them under their owning
+inverter instead (see below). The <code>DeviceType.BATTERY</code> / <code>HV_STACK</code> members
+remain the vocabulary; <code>Plant.devices</code> now surfaces them via
+<code>inverter_row.device.batteries</code> / <code>.hv_stacks</code>.</p>
 </blockquote>
-<h3 id="register-address-reuse-across-firmware-ir180-183">Register address reuse across firmware (IR180-183)<a class="headerlink" href="#register-address-reuse-across-firmware-ir180-183" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same input-register addresses mean different things on different
-firmware lineages.</p>
-<p><strong>Evidence.</strong> On a HYBRID_GEN1 unit, IR180/181 return battery charge/discharge lifetime
-totals (e.g. discharge 1560.4 kWh, charge 1822.8 kWh at 0.1 kWh scale) and IR182/183
-return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
-<code>wEV_Voltage_L1/L2/L3</code> + <code>wEV_current_L1</code> — EV-charger phase voltages and current
-(0.1 V / 0.1 A). A phase voltage of 1560 V is impossible, so the GEN1 reading is
-genuinely battery energy, not a misread.</p>
-<p><strong>Implication.</strong> The library's <code>alt1</code> battery-total source (<code>IR(180)</code>/<code>IR(181)</code> in
-<code>_BATTERY_ENERGY_SOURCE</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
-implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
-a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
-never inferred from live values, and should migrate to the dedicated registers below
-when a unit supports them.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/inverter.py</code> <code>_BATTERY_ENERGY_SOURCE</code>.</p>
-<h3 id="firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89">Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)<a class="headerlink" href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> Registers present in the protocol doc read a hard zero (or are absent) on
-older firmware.</p>
-<p><strong>Evidence.</strong> Protocol v4.1.5 (2024-10-22) added IR194-197 (dedicated battery
-charge/discharge <strong>lifetime</strong> totals, 0.1 kWh), IR198 (CT power), IR199 (system state).
-A HYBRID_GEN1 unit on ARM/DSP firmware <strong>449</strong> returns zero for the whole IR194-199
-range, while its IR180/181 totals are populated — so the device address is correct and
-the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4.13 ASCII
-firmware-version-string scheme), so this build predates several doc additions.</p>
-<p><strong>Implication.</strong> IR194-197 cannot be a <em>universal</em> battery-total source. The library's
-<code>_BATTERY_ENERGY_SOURCE</code> is keyed by static <code>Model</code>, which has no way to express
-"firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
-conditional until a unit is observed that actually populates them. Confirmed lower
-anchor: <strong>HYBRID_GEN1 @ ARM 449 → absent.</strong> No upper anchor (a unit that <em>does</em> populate
-them) has been observed yet.</p>
-<p><strong>References.</strong> v4.1.6 revision history (v4.1.5 entry), §4.1.2, §4.13; issue #184.</p>
-<h3 id="the-protocol-doc-has-no-firmwareregister-map">The protocol doc has no firmware→register map<a class="headerlink" href="#the-protocol-doc-has-no-firmwareregister-map" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> There's no way, from the doc alone, to tell which firmware build implements
-a given register.</p>
-<p><strong>Evidence.</strong> The revision history dates <em>specification</em> changes (authored by GivEnergy
-engineers) but never ties them to firmware versions. §4.13 documents the firmware
-version-string <em>format</em> (combined codes like <code>ZB_A1_01</code>), not a per-register
-availability threshold, and its release-date column is blank in v4.1.6. No register
-table carries an "available from firmware X" annotation.</p>
-<p><strong>Implication.</strong> Firmware/register correlation can only be established empirically:
-probe a register on units of known firmware and record presence/absence. Reading a
-unit's own firmware (HR21 ARM, HR19 DSP, or — where implemented — the HR84-89 strings)
-gives the anchor. Version numbers are <strong>not comparable across model families</strong> (a GEN1
-hybrid on ARM 449 and an AC-coupled unit on ARM 282 are different firmware lineages; the
-larger number is not "newer").</p>
-<p><strong>References.</strong> v4.1.6 revision history, §4.13.</p>
-<h3 id="writable-set-baselines-masquerading-as-live-counters-hr4102-4103">Writable "Set" baselines masquerading as live counters (HR4102-4103)<a class="headerlink" href="#writable-set-baselines-masquerading-as-live-counters-hr4102-4103" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register holds a large, static energy-like value that never moves.</p>
-<p><strong>Evidence.</strong> HR4102/4103 read a fixed ~3,229.6 kWh (0.1 kWh scale) on a HYBRID_GEN1 AC
-unit. The v4.1.6 doc labels them "<strong>Set</strong> Battery ChgDischarge Energy Total" and marks
-them R/W — i.e. a writable seed/baseline (e.g. to preserve cumulative counts across a
-board swap), not a live accumulator. Re-probing after a charge/discharge cycle would not
-show movement.</p>
-<p><strong>Implication.</strong> Don't treat HR4102/4103 as a live battery-total source. The live
-counters are the IR/HR energy-total registers (firmware permitting).</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1.</p>
-<h3 id="units-that-contradict-their-own-description-hr111112">Units that contradict their own description (HR111/112)<a class="headerlink" href="#units-that-contradict-their-own-description-hr111112" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> A register's unit column disagrees with its description, and neither maps
-cleanly onto the value range.</p>
-<p><strong>Evidence.</strong> HR111/112 (<code>bBatChgLimit</code>/<code>bBatDisLimit</code>) carry unit <code>0.5C</code> (a battery
-C-rate) in the doc's unit column, but the description reads "battery charge/discharge
-<strong>power percentage</strong>", the default is 50, and the range is 1-250 — none of which
-reconcile (50 × 0.5C = 25C is not a sane charge rate; 1-250 doesn't map to 0-100%).
-A separate, clean percentage pair exists: HR313/314 (<code>fChargePowerPercent</code>/
-<code>fDischargePowerPercent</code>, range 1-100, unit 1%), which is what the GivEnergy app surfaces
-as "Power Percentage".</p>
-<p><strong>Implication.</strong> Don't reinterpret HR111/112's scale on the doc's word — the unit field
-is unreliable here. The defensible step is bounds (1-250) plus a docstring that records
-the ambiguity; deriving watts from these via a rated-power table is unsafe (the
-<code>battery_max_power</code> DTC table is itself incomplete). A live-hardware write test is needed
-to settle the true unit.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.1; issue #183.</p>
-<h3 id="doc-unit-corrections-have-shipped-silently-mid-protocol">Doc unit corrections have shipped silently mid-protocol<a class="headerlink" href="#doc-unit-corrections-have-shipped-silently-mid-protocol" title="Permanent link">&para;</a></h3>
-<p><strong>Symptom.</strong> The same register's documented unit changes between protocol revisions.</p>
-<p><strong>Evidence.</strong> The v4.1.6 revision history records, among others: IR10 inverter current
-corrected from 0.01 A to 0.1 A (v4.1.1/4.1.3); IR58 grid current split by phase count
-(single 0.01 A, three-phase 0.1 A, v4.1.3); and a batch of energy registers
-(IR6/7/11/12/17/19/21/22/… and HR4102/4103/4107-4114/4140-4142) restated as 0.1 kWh to
-match the server (v4.1.5).</p>
-<p><strong>Implication.</strong> A unit stated in any single revision may be a correction of an earlier
-error — treat the doc's unit column as a strong hint, not ground truth, and prefer
-hardware/cross-reference confirmation before changing a scale. (The library already
-scales the v4.1.5 energy registers correctly via <code>deci</code>; that batch was a doc catch-up,
-not a library bug.)</p>
-<p><strong>References.</strong> v4.1.6 revision history.</p>
+<h4 id="phase-2-per-inverter-battery-hv-stack-ownership-this-increment">Phase 2 — per-inverter battery &amp; HV-stack ownership ✅ (this increment)<a class="headerlink" href="#phase-2-per-inverter-battery-hv-stack-ownership-this-increment" title="Permanent link">&para;</a></h4>
+<p>Batteries and HV stacks <strong>belong to an inverter</strong>, not directly to the plant, so
+<code>Plant.devices</code> now nests them under their owning <code>INVERTER</code> row
+(<code>inverter_row.device.batteries</code> / <code>.hv_stacks</code>) instead of emitting flat rows.
+The <code>Inverter</code> facade's <code>batteries</code> / <code>hv_stacks</code> (a <code>[]</code> stub in Phase 1) are
+populated by <code>Plant</code>, which decodes the sub-devices and injects them — keeping
+<code>devices.py</code> import-clean of concrete <code>Battery</code> / <code>HvStack</code> / <code>RegisterCache</code>
+types.</p>
+<ul>
+<li><strong>The model layer stays additive.</strong> <code>Plant.batteries</code> / <code>Plant.hv_stacks</code> (and
+  every other legacy accessor) are unchanged and still return their flat lists.
+  Only the <code>Inverter</code> facade gained populated sub-devices, and <code>Plant.devices</code>
+  changed its row shape.</li>
+<li><strong>Ownership is unambiguous today.</strong> A plant has exactly one <em>directly-reachable</em>
+  inverter, which owns every battery / stack in the plant cache. Blinded
+  (EMS-rollup) inverters honestly carry <code>[]</code> — the rollup exposes no per-battery
+  data.</li>
+<li><strong>Orphan guard.</strong> A gateway plant suppresses its (spurious) inverter row, so
+  there's no inverter to nest under; any stack the plant decoded there is kept as
+  a flat row rather than dropped.</li>
+</ul>
+<p><strong>What's deferred to Phase 3 (the original spec's "reconciliation by serial").</strong>
+The spec framed this phase as breaking, behind a capability flag, <em>with serial
+reconciliation</em>. That reconciliation only bites once a plant has <strong>multiple
+direct inverters or a merged direct+rollup view</strong> — which needs the multi-Client
+work below. On today's single-Client plants there is nothing to reconcile, so
+this increment ships the honest additive slice and defers reconciliation to
+Phase 3. The <code>Plant.devices</code> row-shape change is breaking versus 2.1.5 but had no
+production consumer yet; it lands on the v2.2 line.</p>
+<h4 id="phase-3-serial-reconciliation-plantserial_index-shipped-v22">Phase 3 — Serial reconciliation + <code>Plant.serial_index</code> ✅ shipped (v2.2)<a class="headerlink" href="#phase-3-serial-reconciliation-plantserial_index-shipped-v22" title="Permanent link">&para;</a></h4>
+<p><code>Plant.add_direct_source(caches)</code> stores direct-inverter register caches
+separately (avoiding the EMS address-collision at 0x11). <code>Plant.inverters</code>
+reconciles EMS-rollup summaries with direct-source caches by serial number:
+matching serials yield <code>Inverter.merge()</code> (<code>data_source="merged"</code>); EMS-only
+slots stay blinded; orphan direct sources appear as <code>data_source="direct"</code>
+entries. <code>Plant.serial_index</code> surfaces the reconciled view as
+<code>dict[str, Inverter]</code>. <code>Client(host, port, plant=p)</code> accepts an optional
+pre-built plant for single-owner scenarios (e.g. restoring a persisted
+PlantCapabilities without re-running <code>detect()</code>). Do not share one <code>Plant</code>
+across two active <code>Client</code> instances — both call <code>plant.update()</code> into the same
+<code>register_caches</code>, so devices at the same Modbus address would overwrite each
+other. For multi-Client EMS + direct-inverter topologies use separate Plants
+and pass the direct caches in via <code>add_direct_source()</code>.</p>
+<p><strong>What's still deferred (original "Transport abstraction" intent).</strong>
+Extract the Modbus-specific I/O behind a <code>Transport</code> interface so a plant can
+span multiple connections without <code>add_direct_source</code> wiring, and so
+non-Modbus transports can slot in later. Reconciles with
+<a href="https://github.com/dewet22/givenergy-modbus/issues/75">#75</a>.</p>
+<h4 id="phase-4-model-aware-write-routing-shipped-v22">Phase 4 — model-aware write-routing ✅ shipped (v2.2)<a class="headerlink" href="#phase-4-model-aware-write-routing-shipped-v22" title="Permanent link">&para;</a></h4>
+<p>Route <code>set_*</code> write commands through the typed device so model-specific
+register differences (three-phase vs single-phase) are enforced at write time.
+Reconciles with <a href="https://github.com/dewet22/givenergy-modbus/issues/203">#203</a>.</p>
+<h3 id="out-of-scope-deliberately-deferred">Out of scope (deliberately deferred)<a class="headerlink" href="#out-of-scope-deliberately-deferred" title="Permanent link">&para;</a></h3>
+<p><code>register_caches</code> stays flat; <code>RegisterCache</code> stays a Modbus detail; no
+serial-product (FC 0x16) reads are added for controller rows — EMS and Gateway
+controller rows carry <code>serial_number=None</code> until a later phase. Serial
+reconciliation, multi-transport, and write-routing are Phases 3–4 above.</p>
+<p><strong>Known Phase 1 limitation — meter identity.</strong> <code>Meter</code> carries no <code>device_address</code>
+field; the address is the dict key in <code>Plant.meters</code> and is lost when iterating
+<code>.values()</code>. MR(60-61) serials are absent on all known hardware, so two meter rows
+both have <code>serial_number=None</code> and are indistinguishable via <code>Plant.devices</code>.
+Consumers needing to distinguish meters by address should use <code>Plant.meters</code>
+(keyed by address) directly for now. Stable per-device identity for address-only
+devices will be addressed in Phase 2/3 when the transport abstraction makes the
+address a typed transport detail rather than a leaked Modbus integer.</p>
 
 
 

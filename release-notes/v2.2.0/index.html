@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/release-notes/v2.1/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/release-notes/v2.2.0/">
       
       
       
@@ -21,7 +21,7 @@
     
     
       
-        <title>V2.1 - GivEnergy Modbus</title>
+        <title>V2.2.0 - GivEnergy Modbus</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#givenergy-modbus-v21-ecosystem-release-notes" class="md-skip">
+        <a href="#highlights" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              V2.1
+              V2.2.0
             
           </span>
         </div>
@@ -871,185 +871,57 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#givenergy-modbus-v21-ecosystem-release-notes" class="md-nav__link">
+  <a href="#highlights" class="md-nav__link">
     <span class="md-ellipsis">
       
-        givenergy-modbus v2.1 — ecosystem release notes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="givenergy-modbus v2.1 — ecosystem release notes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tldr-what-actually-changed-for-my-plant" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TL;DR — what actually changed for my plant?
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="TL;DR — what actually changed for my plant?">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#givenergy-hass-11-the-native-home-assistant-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        givenergy-hass 1.1, the native Home Assistant integration
+        Highlights
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#givenergy-cli-14-the-command-line-swiss-army-knife" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
     <span class="md-ellipsis">
       
-        givenergy-cli 1.4, the command-line Swiss army knife
+        Security
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#whats-new-in-more-detail" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#breaking-changes-migration-from-21" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What's new, in more detail
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="What&#39;s new, in more detail">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ems-plant-controller-support" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EMS plant controller support
+        Breaking changes &amp; migration from 2.1
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#device-addressing-model-derived" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#home-assistant" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Device addressing, model-derived
+        Home Assistant
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#a-real-partial-failure-contract" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#givenergy-cli" class="md-nav__link">
     <span class="md-ellipsis">
       
-        A real partial-failure contract
+        givenergy-cli
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#crc-integrity-end-to-end" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CRC integrity, end to end
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#testing-infrastructure-that-doubles-as-a-discovery-tool" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Testing infrastructure that doubles as a discovery tool
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#register-map-corrected-against-the-app" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Register map, corrected against the app
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#all-in-one-single-phase-fix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        All-in-One single-phase fix
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#211-patch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2.1.1 patch
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#migrating-from-v20" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Migrating from v2.0
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#whats-coming-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What's coming next
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1073,162 +945,86 @@
   
 
 
-  <h1>V2.1</h1>
+  <h1>V2.2.0</h1>
 
-<h2 id="givenergy-modbus-v21-ecosystem-release-notes">givenergy-modbus v2.1 — ecosystem release notes<a class="headerlink" href="#givenergy-modbus-v21-ecosystem-release-notes" title="Permanent link">&para;</a></h2>
-<p>v2.0 was the reunion — pulling the fork's protocol and device-model work back into a
-maintained line. v2.1 is what happened once real plants started feeding data back in.
-Almost everything here was driven by an actual reported topology rather than a planning
-doc: an EMS-managed multi-inverter site that the flat model couldn't represent, an
-All-in-One that was being mis-detected as three-phase, a CRC that had never been
-validated on the response side. The release is less "new features" and more "the
-library now matches what the hardware actually does, with the evidence to back it".</p>
-<h3 id="tldr-what-actually-changed-for-my-plant">TL;DR — what actually changed for my plant?<a class="headerlink" href="#tldr-what-actually-changed-for-my-plant" title="Permanent link">&para;</a></h3>
-<p><strong>If you have an EMS-managed plant</strong> (a GivEnergy EMS controller coordinating two or
-more inverters — common in larger or commercial installations), this is the first release
-where that topology works properly. The library can now detect it, poll it without
-timing out, and write charge / discharge / export schedules to it.</p>
-<p><strong>If you have a residential All-in-One</strong>, it was being misidentified as a three-phase
-unit, which caused most readings (SoC, voltages, firmware version, charge slots) to show
-as zero or null. That's fixed.</p>
-<p><strong>Energy readings are more accurate .</strong> Two values that were historically mislabeled have
-been corrected: "load today" (IR35) was actually AC-charge-today, and "inverter output
-today" (IR44) was actually PV-generation-today. Both are renamed in the library. A new
-"consumption today" value is now derived the same way the GivEnergy app calculates it
-— useful if your integration was computing it manually or relying on the wrong register.</p>
-<p><strong>More controls are accessible.</strong> Smart-load scheduling slots, inverter parallel mode,
-and a handful of other registers that weren't in the safe-write list now are, confirmed
-against the GivEnergy app's own register map.</p>
-<p>The communication layer also got some quiet fixes — response checksums are now validated
-end-to-end, and the All-in-One protocol quirk that was causing it to ignore requests
-entirely is resolved. These won't change any numbers you see, but they reduce the chance
-of silent data corruption passing unnoticed.</p>
-<p>The related and dependent tools in this ecosystem have been updated as well:</p>
-<h4 id="givenergy-hass-11-the-native-home-assistant-integration">givenergy-hass 1.1, the native Home Assistant integration<a class="headerlink" href="#givenergy-hass-11-the-native-home-assistant-integration" title="Permanent link">&para;</a></h4>
-<p>v1.1 is the release where the integration grows from a solid hybrid-inverter tool into one that covers most of the GivEnergy fleet. Riding the move onto the givenergy-modbus 2.1 library, it brings first-class support for EMS/Flexi plants — the controller now gets its own device and a tailored dashboard, with charge, discharge and export slot scheduling and per-slot SoC targets exposed as proper entities — along with AC-coupled inverters and All-in-One units (export priority, EPS, and AC battery limits, correctly gated to the hardware that actually has them), and Smart Load slot scheduling.</p>
-<p>Just as importantly, it's the release where imperfect hardware stops toppling the integration: a partial poll now loads what it can and marks only the failed reads unavailable rather than failing the whole setup and looping; a slow-responding battery no longer drops out of the detected topology; and the plant's shape persists across restarts. Rounding it out are sensors rendered at their true register precision, a cross-pack Battery Health dashboard with a bundled cell-voltage heatmap, and a documented path — catalogue plus script — for carrying your long-term statistics across from GivTCP. Upgrading from 1.0.x takes nothing by hand; entities and devices appear on the first poll after the update.</p>
-<h4 id="givenergy-cli-14-the-command-line-swiss-army-knife">givenergy-cli 1.4, the command-line Swiss army knife<a class="headerlink" href="#givenergy-cli-14-the-command-line-swiss-army-knife" title="Permanent link">&para;</a></h4>
-<p>The CLI grows from a three-command viewer into a proper debugging toolkit. The headline additions are <code>probe</code>, for issuing raw register reads against arbitrary register blocks and devices (handy for poking at undocumented blocks, and it takes hex or decimal addresses interchangeably), and <code>mock-server</code>, which replays a previously-recorded wire capture as a faithful in-memory inverter so you can drive other clients without needing the actual hardware — fidelity I've validated by pointing the official GivEnergy Android app at it.</p>
-<p>Under the hood, the givenergy-modbus 2.1 line brings a more honest failure model: a partly-failed poll reports exactly which reads dropped rather than collapsing into a generic timeout. Rounding it out are the usual housekeeping touches — proper PyPI project links and a reworked README documenting the full command set.</p>
-<h3 id="whats-new-in-more-detail">What's new, in more detail<a class="headerlink" href="#whats-new-in-more-detail" title="Permanent link">&para;</a></h3>
-<h4 id="ems-plant-controller-support">EMS plant controller support<a class="headerlink" href="#ems-plant-controller-support" title="Permanent link">&para;</a></h4>
-<p>The headline. The flat "one inverter per connection" model couldn't represent an
-EMS-managed plant (a controller coordinating multiple inverters, meters and batteries),
-so a whole strand of v2.1 went into making EMS a first-class topology:</p>
+<p>2.2 reshapes how a system is modelled and hardens the library end to end. The
+headline is the graph-shaped Plant (#106): instead of a flat model interrogated
+through scattered <code>is_*</code>/<code>has_*</code> predicates, a Plant now enumerates its hardware
+as typed devices — inverter, batteries, EMS, gateway, AIO battery modules — each
+addressable in its own right. The same release line absorbed a full security
+audit and a series of device-identity fixes, so serial numbers are now reliable
+across the whole detect→refresh lifecycle.</p>
+<h4 id="highlights">Highlights<a class="headerlink" href="#highlights" title="Permanent link">&para;</a></h4>
 <ul>
-<li>EMS-aware polling — the controller doesn't expose the inverter-style register banks,
-  so detection skips them instead of timing out every cycle, and reads the EMS rollup
-  at IR(2040) to sanity-check the plant.</li>
-<li>EMS plant-level writes — charge / discharge / export slots, per-slot SoC targets, and
-  the export power limit, via dedicated <code>set_ems_*</code> commands.</li>
-<li>A unified <code>Inverter</code> facade so an EMS-managed plant still resolves a sensible inverter
-  view for consumers built around the single-inverter shape.</li>
+<li><strong>Typed-device enumeration — <code>Plant.devices</code></strong> (#106): walk a system's hardware
+  as typed devices rather than reading raw register caches or model predicates.</li>
+<li><strong>Reliable device identity</strong>: serial reconciliation via <code>Plant.serial_index</code>
+  (#106), a single authoritative <code>Plant.inverter_serial</code> accessor that stays
+  correct from first detect through every refresh (#227), and a fix for
+  peripheral responses clobbering the inverter serial (givenergy-hass#95).</li>
+<li><strong>Per-module AIO battery data</strong> exposed as enumerable devices (#192).</li>
+<li><strong>Share-safe diagnostics</strong>: <code>RegisterCache.redact_serials()</code> and <code>Plant.redact()</code>
+  produce exports with serial numbers redacted, for attaching to issues (#212).</li>
+<li><strong>Model-aware write commands</strong> for three-phase inverters and EMS plants
+  (#75, #203): model-specific command mixins route writes to the correct
+  registers for the hardware, with write safety enforced by the global
+  allowlist at the PDU layer. Per-model allowlists are laid out as groundwork
+  but not yet enforced.</li>
+<li><strong>Frozen-BMS detection</strong> via a content-staleness primitive, so consumers can
+  tell live data from a stuck cache (#91).</li>
 </ul>
-<p>A caveat I'd rather state plainly: the EMS write path has had a register-safety review,
-round-trips through the mock, was exercised against the GivEnergy app's own protocol,
-and matches the registers the cloud dongle writes in captured traffic — but it has not
-yet been confirmed against live EMS hardware by writing through this library. The write
-path is the same <code>WriteHoldingRegister</code> at 0x11 that the inverter writes already use on
-real hardware, so I'm reasonably confident, but "reasonably confident" is not "verified".</p>
-<h4 id="device-addressing-model-derived">Device addressing, model-derived<a class="headerlink" href="#device-addressing-model-derived" title="Permanent link">&para;</a></h4>
-<p>0x11 is the inverter's canonical address, not the 0x32 the older code assumed. The
-blanket address rewrite is gone; addressing is now derived from the detected model
-(0x31 for AC / HYBRID_GEN1, 0x11 elsewhere). This was live-validated on HYBRID_GEN1
-hardware before it shipped.</p>
-<h4 id="a-real-partial-failure-contract">A real partial-failure contract<a class="headerlink" href="#a-real-partial-failure-contract" title="Permanent link">&para;</a></h4>
-<p><code>refresh()</code> and <code>load_config()</code> now raise <code>RefreshPartiallySucceeded</code> /
-<code>RefreshFailed</code> instead of silently returning a half-populated plant. <code>refresh_plant()</code>
-and <code>watch_plant()</code> are deprecated in favour of calling <code>detect()</code> once and then driving
-your own loop over <code>load_config()</code> / <code>refresh()</code> — which is what the deprecation warning
-points you at. They'll be removed in 3.0.</p>
-<h4 id="crc-integrity-end-to-end">CRC integrity, end to end<a class="headerlink" href="#crc-integrity-end-to-end" title="Permanent link">&para;</a></h4>
-<p>Two pre-existing defects got fixed. The request CRC wasn't including the device-address
-byte (surfaced while debugging an All-in-One that wouldn't answer at all). The response
-CRC was never validated — the check was a stub. Both now run through one shared
-<code>_update_check_code</code> over the same byte span, so request and response can't drift apart
-again. The redactor that protects captured wire data was reworked to be frame-aware
-(decode → redact by field → re-encode with a correct CRC) rather than a byte-level
-regex, and the undocumented plaintext LAN-config broadcast the dongle emits every few
-minutes is now decoded as a first-class frame so it redacts properly too.</p>
-<h4 id="testing-infrastructure-that-doubles-as-a-discovery-tool">Testing infrastructure that doubles as a discovery tool<a class="headerlink" href="#testing-infrastructure-that-doubles-as-a-discovery-tool" title="Permanent link">&para;</a></h4>
+<h4 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h4>
+<p>This release carries the library's share of a coordinated security audit that
+swept all three GivEnergy repositories — the modbus library, the Home Assistant
+integration, and the CLI — conducted end-to-end by Anthropic's Mythos/Fable
+model, with every finding either fixed or closed with documented analysis
+(#223, #224). On the library side it delivered: a published <code>SECURITY.md</code> and
+threat model, fail-closed serial redaction, write-path input validation (bools
+and non-integral values are rejected before they reach a register), hardening
+of the decode layer against malformed frames and tampered cache files, an
+opt-in strict CRC mode (<code>ReadRegistersResponse.strict_crc</code>), and a hardened CI
+supply chain (actions pinned to commit SHAs, least-privilege workflow
+permissions).</p>
+<h4 id="breaking-changes-migration-from-21">Breaking changes &amp; migration from 2.1<a class="headerlink" href="#breaking-changes-migration-from-21" title="Permanent link">&para;</a></h4>
 <ul>
-<li><code>givenergy_modbus.testing.MockPlant</code> — a faithful in-memory mock that seeds per-device
-  register state from a committed capture and synthesises correct-CRC responses to any
-  read. It's good enough that the real GivEnergy Android app connects to it and believes
-  it's talking to an inverter, which is what makes the next item possible.</li>
-<li>Register cross-correlation helpers (<code>sentinel_devices</code>, <code>identify</code>) — with GivEnergy
-  gone, there's no register documentation. So instead: seed the mock with sentinel
-  values, point the app at it, read the displayed values off the app's screens, and
-  invert the conversion to recover which register backs each label. The method and a
-  worked procedure are in <code>docs/register-identification.md</code>. This is how the writable
-  register surface below was confirmed.</li>
+<li><code>first_battery_serial_number</code> has been removed (#191) — it was unreliable on
+  real hardware. Use the typed-device enumeration or <code>Plant.serial_index</code>.</li>
+<li>For inverter identity, prefer the new <code>Plant.inverter_serial</code>;
+  <code>Plant.inverter_serial_number</code> remains but is now a fallback surface and a
+  candidate for deprecation in a future release.</li>
+<li>Topology checks built on flat predicates or raw register caches keep working,
+  but the typed-device API is the supported path going forward — new device
+  types will appear there first.</li>
 </ul>
-<h4 id="register-map-corrected-against-the-app">Register map, corrected against the app<a class="headerlink" href="#register-map-corrected-against-the-app" title="Permanent link">&para;</a></h4>
-<p>The GivEnergy app's "Direct Control" screen turned out to enumerate every user-writable
-register with its name — effectively the documentation that no longer exists elsewhere.
-Cross-referenced against it (and against GivTCP for corroboration), v2.1:</p>
-<ul>
-<li>expands <code>WRITE_SAFE_REGISTERS</code> with the app-confirmed writable set;</li>
-<li>renames <code>HR(199)</code> from <code>enable_standard_self_consumption_logic</code> (an inherited guess
-  that GivTCP shared) to <code>enable_inverter_parallel_mode</code>, the app's actual name, keeping
-  the old name working as a deprecated alias;</li>
-<li>adds the Smart Load scheduling slots (<code>smart_load_slot_1..10</code>, HR 554–573) with decode
-  and write helpers.</li>
-</ul>
-<h4 id="all-in-one-single-phase-fix">All-in-One single-phase fix<a class="headerlink" href="#all-in-one-single-phase-fix" title="Permanent link">&para;</a></h4>
-<p>A residential All-in-One was being treated as three-phase: polled for a per-phase
-register bank it doesn't have, and decoded with a layout that zeroed ~30 of its real
-fields. It's HV but single-phase; removing it from the three-phase sets fixed both the
-polling and the decode. Confirmed against a real AIO packet capture and the owner.</p>
-<h4 id="211-patch">2.1.1 patch<a class="headerlink" href="#211-patch" title="Permanent link">&para;</a></h4>
-<p>Two decode corrections, both confirmed via the cross-correlation tooling above:</p>
-<p><strong>EMS per-slot inverter status (#108).</strong> The per-slot inverter status field in the EMS
-rollup (<code>IR(2045)</code>, 4×3-bit) was passing raw codes through the inverter <code>Status</code> enum,
-whose values don't match this field's encoding — a present, idle inverter (code 2) was
-reading "WARNING". The fix surfaces the raw 3-bit code as a hex string (the house idiom
-for uninterpreted values; see <code>device_type_code</code>, <code>fault_code</code>) and adds a
-<code>inverter_N_suspected_status</code> field with the two verified interpretations:
-<code>0=ABSENT</code>, <code>2=ONLINE</code>. Use <code>inverter_count</code> for reliable presence; the suspected-status
-field is advisory.</p>
-<p><strong><code>e_load_day</code> mislabel (#174).</strong> <code>IR(35)</code> was documented in GivTCP as house-load-today
-but sentinel cross-correlation proved it is AC-charge-today. Renamed to <code>e_ac_charge_today</code>
-with no deprecated alias (the old name was actively wrong). Similarly, <code>IR(44)</code>
-(<code>e_inverter_out_day</code>) is PV-generation-today, renamed to <code>e_pv_generation_today</code> with a
-deprecated <code>@property</code> alias for one release. A computed <code>e_consumption_today</code> field is
-added to <code>SinglePhaseInverter</code> using the GE-app formula:</p>
-<div class="highlight"><pre><span></span><code>e_consumption_today = e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
-</code></pre></div>
-<p>This matches what the app calls "Consumption today": consumption is derived, not metered,
-on single-phase units. Three-phase has a native <code>e_load_today</code> register and is unaffected.</p>
-<h3 id="migrating-from-v20">Migrating from v2.0<a class="headerlink" href="#migrating-from-v20" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong><code>HR(199)</code> field rename.</strong> <code>enable_standard_self_consumption_logic</code> →
-  <code>enable_inverter_parallel_mode</code>. The old name still resolves via a deprecated property
-  (with a <code>DeprecationWarning</code>) but no longer appears in <code>model_dump()</code>. If you build
-  entities by iterating the dump, switch to the new name; if you read the attribute
-  directly, it keeps working for now.</li>
-<li><strong><code>IR(35)</code> field rename (2.1.1).</strong> <code>e_load_day</code> is gone — no alias, it was
-  actively wrong. Switch to <code>e_ac_charge_today</code>. Any code that iterated <code>model_dump()</code>
-  and expected <code>e_load_day</code> will simply no longer see it.</li>
-<li><strong><code>IR(44)</code> field rename (2.1.1).</strong> <code>e_inverter_out_day</code> →
-  <code>e_pv_generation_today</code>. The old attribute still resolves with a <code>DeprecationWarning</code>
-  for one release (both inverter classes), pointing at <code>e_pv_today</code> on three-phase units.</li>
-<li><strong>New field: <code>e_consumption_today</code> (2.1.1).</strong> Appears in <code>model_dump()</code> on
-  <code>SinglePhaseInverter</code> only. Returns <code>None</code> when any input register is absent.</li>
-<li><strong>Refresh API.</strong> <code>refresh_plant()</code> / <code>watch_plant()</code> are deprecated; move to
-  <code>detect()</code> + your own <code>load_config()</code> / <code>refresh()</code> loop, handling
-  <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</code>.</li>
-<li><strong>Additive, no action needed:</strong> the <code>smart_load_slot_*</code> fields and the expanded
-  writable register set.</li>
-</ul>
-<h3 id="whats-coming-next">What's coming next<a class="headerlink" href="#whats-coming-next" title="Permanent link">&para;</a></h3>
-<p>v2.2 is open as the active line. The big one is #106 — a graph-shaped, typed-device
-Plant model (inverter / EMS / gateway / battery / meter as first-class devices rather
-than everything resolved through the inverter lens). It's the architectural shift that
-the EMS, gateway and three-phase symptoms all point at, and it's large enough that it
-gates a hass entity-naming migration, so it's the v2.2 flagship rather than something
-squeezed into a patch. Alongside it: the per-model write-safety enforcement (#75), and
-continued register-map verification (#48) now that there's a tool for it.</p>
+<h4 id="home-assistant">Home Assistant<a class="headerlink" href="#home-assistant" title="Permanent link">&para;</a></h4>
+<p>The Home Assistant integration
+(<a href="https://github.com/dewet22/givenergy-hass">givenergy-hass</a>) ships its 1.2.0
+line on 2.2, and it is the most visible beneficiary of the typed device model.
+All-in-One systems now surface each removable battery module as its own HA
+device — parented to the inverter, identified by the module's serial, with its
+24 per-cell voltages and temperatures as diagnostic sensors — so the
+cell-balance heatmap and pack-health views work at module granularity,
+validated end-to-end on a real four-module unit. The 2.2 identity fixes also
+resolve a long-standing All-in-One collision where the inverter device could
+merge into one of its own battery modules.</p>
+<p>Beyond the device model, 1.2.0 adds always-positive Grid Power Import/Export
+sensors that suit the Energy Dashboard's two-sensor grid option directly,
+hardens debug-capture access behind admin tokens and single-capture signed
+links (following a security review of the integration that found no
+exploitable vulnerabilities), and inherits the library's rejection of the
+dongle's transient all-zero register blocks — last-good values are kept rather
+than zeros reaching your sensors. There's no migration on upgrade; AIO owners
+who ran an early 1.2.0 pre-release should remove and re-add the integration
+once to clear stale entities.</p>
+<h4 id="givenergy-cli">givenergy-cli<a class="headerlink" href="#givenergy-cli" title="Permanent link">&para;</a></h4>
+<p>The CLI (<a href="https://github.com/dewet22/givenergy-cli">givenergy-cli</a>) tracks 2.2
+in its 1.5 line: the TUI gains Glance/Flow/Analyst views mirroring the Home
+Assistant dashboards, warm starts become near-instant by caching the detected
+topology, and a new Controls view sends inverter writes — the CLI's first step
+beyond read-only, gated behind an explicit <code>--allow-writes</code> flag. Diagnostic
+exports are share-safe by default, with serial numbers redacted. Nothing
+changes for users beyond a normal upgrade — the graph-shaped Plant and the
+register renames were absorbed inside the CLI.</p>
 
 
 
