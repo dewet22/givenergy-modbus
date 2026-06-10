@@ -15,6 +15,11 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+# Least privilege: this workflow only reads the repo (tests + Codecov upload via
+# CODECOV_TOKEN); it never writes contents, issues, or PRs.
+permissions:
+  contents: read
+
 jobs:
   test:
     # Canonical per-PR check: the 3.11 floor + ruff + mypy + bandit + build + docs.
@@ -27,13 +32,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           enable-cache: true
           python-version: '3.14'
       - name: Build & test with tox
         run: uv run --group test tox -e py311,format,lint,build
-      - uses: codecov/codecov-action@v7
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f  # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
@@ -50,7 +55,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           enable-cache: true
           python-version: '3.14'
@@ -72,7 +77,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Set up uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7.6.0
         with:
           enable-cache: true
           python-version: '3.14'
