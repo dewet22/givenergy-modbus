@@ -283,3 +283,32 @@ def test_redact_serials_bmu_serial_redacted():
     for reg, val in expected.items():
         assert result[reg] == val, f"{reg} mismatch"
     assert result[IR(0)] == 7  # untouched
+
+
+def test_redact_serials_meter_mr_group():
+    """The meter product serial (MR 60-61) is blanked in a share-safe export (audit H2).
+
+    The meter identifier is a short 2-register value that doesn't match the GE serial pattern,
+    so it can't be pattern-redacted — redact_serials() zeroes it instead, so a shared export
+    doesn't leak the meter identity.
+    """
+    val = "AB12".encode("latin1")  # 4-char meter identifier across MR(60-61)
+    registers = {MR(60): int.from_bytes(val[0:2], "big"), MR(61): int.from_bytes(val[2:4], "big")}
+
+    result = RegisterCache(registers).redact_serials()
+
+    assert result[MR(60)] == 0
+    assert result[MR(61)] == 0
+
+
+def test_redact_serials_byte_swapped_aio_serial_hr8():
+    """A byte-swapped AIO serial at HR(8-12) is redacted via RegisterCache.redact_serials() (audit H2).
+
+    AIO firmware stores the unit serial byte-swapped (CH… → HC…) at HR(8-12); HC2114G047 matches
+    the standard pattern, so it must redact to HC2114G000. Closes the coverage gap vs the
+    FrameRedactor path (already covered in test_capture.py).
+    """
+    registers = _encode_serial("HC2114G047", HR, 8)
+    result = RegisterCache(registers).redact_serials()
+    raw = b"".join((result[HR(8 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert raw.decode("latin1").replace("\x00", "").upper() == "HC2114G000"

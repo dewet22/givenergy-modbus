@@ -509,6 +509,24 @@ class Plant(GivEnergyBaseModel):
             return BcuRegisterGetter
         return None
 
+    def redact(self) -> "Plant":
+        """Return a share-safe copy: every register cache redacted and the header serials cleared.
+
+        ``redact_serials()`` only covers the register caches; ``inverter_serial_number`` and
+        ``data_adapter_serial_number`` live on the Plant itself (populated from the PDU envelope),
+        so a dumped Plant still leaks both unless they're redacted here too. The original is left
+        untouched (#212/#214 share-safe-export guarantee).
+        """
+        from givenergy_modbus.model.register import Converter
+
+        return self.model_copy(
+            update={
+                "register_caches": {addr: cache.redact_serials() for addr, cache in self.register_caches.items()},
+                "inverter_serial_number": Converter.redact_serial(self.inverter_serial_number) or "",
+                "data_adapter_serial_number": Converter.redact_serial(self.data_adapter_serial_number) or "",
+            }
+        )
+
     def update(self, pdu: ClientIncomingMessage, *, received_at: datetime | None = None):
         """Update the Plant state from a PDU message.
 

@@ -67,6 +67,11 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
     # (CH… → HC…), recoverable to the real serial, so it must not leak in a shared
     # export. Appended explicitly, like the BMU serials, since no LUT Def carries it.
     groups.append(("HR", 8, 5))
+    # Meter product serial (MR 60-61, FC 0x16). The MeterProductRegisterGetter walk above
+    # doesn't reach it (meter isn't a walked module and its Def is C.string), and it's a short
+    # 2-register identifier that doesn't match the GE serial pattern — so redact_serials() blanks
+    # it rather than pattern-redacting (audit H2). Appended explicitly here.
+    groups.append(("MR", 60, 2))
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
@@ -163,7 +168,7 @@ class RegisterCache(defaultdict[Register, int]):
         """
         from givenergy_modbus.model.register import Converter
 
-        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR}
+        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR, "MR": MR}
         result = RegisterCache(dict(self))
         for reg_type, base, count in _get_serial_groups():
             reg_cls = _reg_cls.get(reg_type)
@@ -171,6 +176,13 @@ class RegisterCache(defaultdict[Register, int]):
                 continue
             regs = [reg_cls(base + i) for i in range(count)]
             if not all(isinstance(self.get(r), int) for r in regs):
+                continue
+            # Meter identifiers (MR) are short, non-GE-pattern values that redact_serial can't
+            # match — blank them entirely so a shared export doesn't leak the meter identity.
+            # (Zeroing an already-zero group is a no-op, so this stays idempotent.)
+            if reg_type == "MR":
+                for reg in regs:
+                    result[reg] = 0
                 continue
             raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()
