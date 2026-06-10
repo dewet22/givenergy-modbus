@@ -298,7 +298,7 @@ _server_messages: PduTestCases = [
         None,
     ),
     (
-        "1/HeartbeatResponse(data_adapter_serial_number=AB1234G567 data_adapter_type=32)",
+        "1/HeartbeatResponse(data_adapter_serial_number='AB1234G567' data_adapter_type=32)",
         HeartbeatResponse,
         {
             "data_adapter_serial_number": "AB1234G567",
@@ -527,7 +527,7 @@ _client_messages: PduTestCases = [
         None,
     ),
     (
-        "1/HeartbeatRequest(data_adapter_serial_number=WF1234G567 data_adapter_type=1)",
+        "1/HeartbeatRequest(data_adapter_serial_number='WF1234G567' data_adapter_type=1)",
         HeartbeatRequest,
         {"data_adapter_serial_number": "WF1234G567", "data_adapter_type": 1},
         _mbap_header(1, 0x0D),

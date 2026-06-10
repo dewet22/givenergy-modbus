@@ -166,6 +166,16 @@ class FrameRedactor:
             if len(self._buf) < 6:
                 break  # not enough bytes for the MBAP length field yet
             hdr_len = int.from_bytes(self._buf[4:6], "big")
+            if hdr_len > 300:
+                # A real frame's MBAP length never exceeds ~300 (60-register cap). A larger
+                # value means this marker is a false positive (random bytes that happen to
+                # match) — emit it intact as garbage and resume scanning, rather than buffering
+                # up to ~64 KB for a frame that will never complete. Mirrors framer.py's guard.
+                skip = len(_FRAME_MARKER)
+                garbage, self._buf = self._buf[:skip], self._buf[skip:]
+                _logger.debug("FrameRedactor: false marker (len=0x%04x), %db emitted intact", hdr_len, len(garbage))
+                out += garbage
+                continue
             frame_len = 6 + hdr_len
             if len(self._buf) < frame_len:
                 break  # partial frame — wait for more data
@@ -1195,9 +1205,11 @@ class Client:
                 await asyncio.wait_for(self.tx_queue.put((raw_frame, frame_sent, response_future)), timeout=5.0)
             except TimeoutError as exc:
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
-            await asyncio.wait_for(
-                frame_sent, timeout=self.tx_queue.qsize() + 1
-            )  # this should only happen if the producer task is stuck
+            # Fixed safety-net timeout for the producer to dequeue and send this frame. The
+            # previous `qsize() + 1` was sampled *after* put() returned, so a just-drained queue
+            # yielded a 1 s window that could expire under transient load even with a healthy
+            # producer. A timeout here only fires if the producer task is genuinely stuck.
+            await asyncio.wait_for(frame_sent, timeout=5.0)
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
             except TimeoutError:
@@ -1218,6 +1230,9 @@ class Client:
             if response.error:
                 _logger.error(f"Received error response, retrying: {response}")
                 tries += 1
+                # Unlike the timeout path above, no response_future.cancel() is needed here:
+                # the future is already resolved (we just called .result()), so cancel() would
+                # be a no-op, and the next attempt overwrites expected_responses[hash] anyway.
                 if tries <= retries and retry_delay > 0:
                     await asyncio.sleep(retry_delay)
                 continue
