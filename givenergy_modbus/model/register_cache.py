@@ -115,12 +115,17 @@ class RegisterCache(defaultdict[Register, int]):
                     continue
                 try:
                     register = lookup[reg](int(idx))
-                    value = int(v)
-                    if value != v or not (0 <= value <= 0xFFFF):
-                        # Fail closed: a register is an unsigned 16-bit word. A fractional
-                        # number (silently truncated by int()) or an out-of-range value would
-                        # later raise OverflowError in to_bytes() deep in a consumer (M4).
-                        raise ValueError(f"register value {v!r} is not an unsigned 16-bit int")
+                    if v is None:
+                        # None is the codebase's legitimate "unset" sentinel (e.g. a missing
+                        # slot endpoint); preserve it so it round-trips through JSON.
+                        value = None
+                    else:
+                        value = int(v)
+                        if value != v or not (0 <= value <= 0xFFFF):
+                            # Fail closed: a register is an unsigned 16-bit word. A fractional
+                            # number (silently truncated by int()) or an out-of-range value
+                            # would later raise OverflowError in to_bytes() in a consumer (M4).
+                            raise ValueError(f"register value {v!r} is not an unsigned 16-bit int")
                     ret[register] = value
                 except (KeyError, ValueError, TypeError):
                     # KeyError: unknown register prefix (e.g. a future namespace we don't know

@@ -52,6 +52,16 @@ def test_from_json_skips_invalid_register_value():
     assert RegisterCache.from_json('{"HR(0)": 0, "HR(1)": 65535}') == {HR(0): 0, HR(1): 65535}
 
 
+def test_from_json_preserves_none_value():
+    """None is the codebase's 'unset' sentinel and must round-trip through JSON, not be dropped.
+
+    Dropping it would silently turn an explicit None into the defaultdict's 0 on later access.
+    """
+    rc = RegisterCache.from_json('{"HR(1)": null, "IR(3)": 4}')
+    assert rc == {HR(1): None, IR(3): 4}
+    assert rc.get(HR(1)) is None
+
+
 def test_to_from_json_actual_data(json_inverter_daytime_discharging_with_solar_generation):
     """Ensure we can unserialize a RegisterCache to and from JSON."""
     rc = RegisterCache.from_json(json_inverter_daytime_discharging_with_solar_generation)
