@@ -81,15 +81,15 @@ def test_mixin_classvar_does_not_leak_into_model_dump():
 def test_inverter_set_charge_target_emits_correct_writes():
     inv = _single_phase()
     assert inv.set_charge_target(80) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 80),
     ]
 
 
 def test_inverter_set_enable_charge_emits_single_write():
     assert _single_phase().set_enable_charge(False) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 0),
     ]
 
 
@@ -178,7 +178,7 @@ def test_inverter_set_export_priority_emits_correct_write():
 
 def test_inverter_set_enable_eps_emits_correct_write():
     assert _single_phase().set_enable_eps(True) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 1),
     ]
 
 
@@ -206,7 +206,7 @@ def test_single_phase_does_not_inherit_three_phase_commands():
 def test_three_phase_command_delegates_to_primitive(method_name, register):
     inv = _three_phase()
     requests = getattr(inv, method_name)(True)
-    assert requests == [WriteHoldingRegisterRequest(register, True)]
+    assert requests == [WriteHoldingRegisterRequest(register, 1)]
     # Encode round-trip — catches a missing entry in pdu.write_registers.WRITE_SAFE_REGISTERS.
     requests[0].encode()
 
@@ -303,7 +303,7 @@ def test_three_phase_disable_charge_target_uses_correct_register():
     requests = _three_phase().disable_charge_target()
     regs = {r.register: r.value for r in requests}
     assert RegisterMap.ENABLE_CHARGE_TARGET in regs
-    assert regs[RegisterMap.ENABLE_CHARGE_TARGET] is False
+    assert regs[RegisterMap.ENABLE_CHARGE_TARGET] == 0
     assert regs.get(RegisterMap.CHARGE_TARGET_SOC_3PH) == 100
     assert RegisterMap.CHARGE_TARGET_SOC not in regs, "single-phase HR(116) must not appear"
     for r in requests:
@@ -327,7 +327,7 @@ def test_three_phase_set_charge_target_100_disables_charge_target():
     requests = _three_phase().set_charge_target(100)
     regs = {r.register: r.value for r in requests}
     assert RegisterMap.ENABLE_CHARGE_TARGET in regs
-    assert regs[RegisterMap.ENABLE_CHARGE_TARGET] is False
+    assert regs[RegisterMap.ENABLE_CHARGE_TARGET] == 0
     assert regs.get(RegisterMap.CHARGE_TARGET_SOC_3PH) == 100
     for r in requests:
         r.encode()
@@ -410,7 +410,7 @@ def test_single_phase_does_not_inherit_ems_commands():
 
 def test_ems_set_ems_plant_emits_correct_write():
     requests = _ems().set_ems_plant(True)
-    assert requests == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, True)]
+    assert requests == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 1)]
     # Encode round-trip — catches a missing entry in pdu.write_registers.WRITE_SAFE_REGISTERS.
     requests[0].encode()
 
@@ -494,3 +494,17 @@ def test_ems_target_soc_validation_holds_through_mixin(method_name):
         getattr(em, method_name)(4, 50)  # index out of range
     with pytest.raises(ValueError, match=r"\[0-100\]"):
         getattr(em, method_name)(1, 150)  # SoC out of range
+
+
+def test_mixin_write_safe_registers_is_subset_of_pdu_set():
+    """The mixin's documentation-level set must never contain a register the PDU layer rejects.
+
+    The PDU-level WRITE_SAFE_REGISTERS is the enforced allowlist; the mixin set is the
+    documented universally-applicable subset (per-model allowlists deferred to #106/#203).
+    Lagging additions are by design; an entry the PDU layer would reject is drift (audit L2).
+    """
+    from givenergy_modbus.client.commands import _InverterCommands
+    from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS as PDU_SET
+
+    rogue = _InverterCommands.WRITE_SAFE_REGISTERS - PDU_SET
+    assert not rogue, f"mixin WRITE_SAFE_REGISTERS contains registers the PDU layer rejects: {sorted(rogue)}"

@@ -462,3 +462,19 @@ def test_heartbeat_str_escapes_serial():
     s = str(hb)
     assert "\n" not in s, f"raw control char leaked into __str__: {s!r}"
     assert "\\n" in s, f"serial should be repr-escaped: {s!r}"
+
+
+def test_write_request_rejects_bool_value():
+    """A bool write value is rejected, not silently coerced to 0/1 (audit L1).
+
+    bool subclasses int, so isinstance(value, int) alone accepts True/False — a bool reaching
+    a numeric register (e.g. ACTIVE_POWER_RATE) is almost certainly a caller bug. Boolean
+    command helpers pass int(enabled) explicitly.
+    """
+    with pytest.raises(ValueError, match="unacceptable"):
+        WriteHoldingRegisterRequest(register=20, value=True)
+    with pytest.raises(ValueError, match="unacceptable"):
+        WriteHoldingRegisterRequest(register=20, value=False)
+    # Plain ints still accepted.
+    assert WriteHoldingRegisterRequest(register=20, value=1).value == 1
+    assert WriteHoldingRegisterRequest(register=20, value=0).value == 0
