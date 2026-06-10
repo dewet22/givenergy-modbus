@@ -325,6 +325,11 @@ def cmd_generate(args) -> None:
     header) to stdout — the release workflow captures stdout as the GitHub Release
     description. With `--preview`, only prints; does not modify the file.
     """
+    # Accept tag-style input (`generate v2.2.0`) — an easy slip when copying from a git
+    # tag. Normalising keeps the `## [2.2.0]` header standard and the notes-file lookup
+    # (v<version>.md) from silently missing on a doubled prefix.
+    args.version = args.version.removeprefix("v")
+
     commits = _git_commits_since_last_tag()
     sections = _classify_commits(commits)
     body = _render_body(sections)

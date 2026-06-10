@@ -424,6 +424,30 @@ def test_cmd_generate_without_notes_file_is_unchanged(tmp_path, monkeypatch, cap
     assert out.startswith(f"### {ADDED}")
 
 
+def test_cmd_generate_normalises_leading_v_in_version(tmp_path, monkeypatch, capsys):
+    """`generate v1.1.0` (tag-style, an easy manual slip) behaves exactly like `generate 1.1.0`.
+
+    Without normalisation it would look up vv1.1.0.md (silently missing the notes file)
+    and write a non-standard `## [v1.1.0]` header.
+    """
+    cl_path = tmp_path / "CHANGELOG.md"
+    cl_path.write_text("# Changelog\n\n## [1.0.0] - 2026-01-01\n\n### ✨ Added\n\n- initial\n", encoding="utf-8")
+    notes_dir = tmp_path / "release-notes"
+    notes_dir.mkdir()
+    (notes_dir / "v1.1.0.md").write_text("Narrative.\n", encoding="utf-8")
+    monkeypatch.setattr(release, "CHANGELOG", cl_path)
+    monkeypatch.setattr(release, "RELEASE_NOTES_DIR", notes_dir)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+
+    with patch.object(release, "_git_commits_since_last_tag", return_value=[("aaaa", "feat: shiny")]):
+        release.cmd_generate(_generate_args("v1.1.0"))
+
+    written = cl_path.read_text(encoding="utf-8")
+    assert "## [1.1.0]" in written
+    assert "## [v1.1.0]" not in written
+    assert "Narrative." in written, "tag-style version must still find the notes file"
+
+
 def test_cmd_generate_empty_commit_list_warns_but_writes(tmp_path, monkeypatch, capsys):
     cl_path = tmp_path / "CHANGELOG.md"
     cl_path.write_text(
