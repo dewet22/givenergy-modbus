@@ -2105,6 +2105,22 @@ def test_inverter_serial_prefers_registers_when_populated():
     assert plant.inverter_serial == "RG1234G567"
 
 
+def test_inverter_serial_skips_partial_serial_block():
+    """A cache holding only part of HR13-17 is skipped (fail closed), not decoded partially (#227)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    plant.register_caches[0x11] = RegisterCache({HR(13): 0x4348, HR(14): 0x3234})  # only 2 of 5
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047", "a partial serial block must fall through, not decode"
+
+
+def test_inverter_serial_skips_all_zero_serial_registers():
+    """HR13-17 present but all-zero decodes to empty → fall through to the envelope, not '' (#227)."""
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, inverter_address=0x11))
+    plant.register_caches[0x11] = RegisterCache({HR(n): 0 for n in range(13, 18)})
+    plant.inverter_serial_number = "CH2414G047"
+    assert plant.inverter_serial == "CH2414G047"
+
+
 def test_plant_redact_clears_header_serials_and_redacts_caches():
     """Plant.redact() redacts every cache AND the out-of-cache header serials (audit H2).
 
