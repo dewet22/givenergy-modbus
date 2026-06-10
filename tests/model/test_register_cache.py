@@ -245,11 +245,34 @@ def test_redact_serials_is_idempotent():
     assert dict(once) == dict(twice)
 
 
-def test_redact_serials_unrecognised_shape_passes_through():
-    """A serial that doesn't match either known pattern is left unchanged."""
+def test_redact_serials_leaves_unrecognised_shape_unchanged():
+    """A value in an HR/IR serial group that matches no GE pattern is left unchanged (fail-open).
+
+    Serial groups are applied without device-type context and overlap (BMU groups overlap LV
+    battery data), so a non-matching value can't be distinguished from non-serial data — blanking
+    it would destroy legitimate data. The fail-closed guarantee lives at the header-serial and MR
+    boundaries instead. See redact_serials() docstring.
+    """
     registers = _encode_serial("ZZZZZZZZZZ", IR, 110)
     result = RegisterCache(registers).redact_serials()
     assert dict(result) == dict(RegisterCache(registers))
+
+
+def test_redact_serials_preserves_overlapping_non_serial_data():
+    """A full LV battery bank redacts the serial but preserves overlapping non-serial data.
+
+    Regression for the overlap found in review: the globally-applied BMU serial group IR(114-118)
+    overlaps the LV battery serial (IR114) and real data (IR115 = usb_device_inserted). Redacting
+    must zero only the battery serial's unit digits and leave IR(115) intact.
+    """
+    registers = _encode_serial("CE2231A123", IR, 110)  # battery serial IR(110-114)
+    registers[IR(115)] = 8  # usb_device_inserted — legitimate non-serial data
+
+    result = RegisterCache(registers).redact_serials()
+
+    redacted_serial = b"".join((result[IR(110 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert redacted_serial.decode("latin1").replace("\x00", "").upper() == "CE2231A000"
+    assert result[IR(115)] == 8, "overlapping non-serial data must be preserved"
 
 
 def test_redact_serials_absent_group_not_injected():
@@ -297,3 +320,56 @@ def test_redact_serials_bmu_serial_redacted():
     for reg, val in expected.items():
         assert result[reg] == val, f"{reg} mismatch"
     assert result[IR(0)] == 7  # untouched
+
+
+def test_redact_serials_meter_mr_group():
+    """The meter product serial (MR 60-61) is blanked in a share-safe export (audit H2).
+
+    The meter identifier is a short 2-register value that doesn't match the GE serial pattern,
+    so it can't be pattern-redacted — redact_serials() zeroes it instead, so a shared export
+    doesn't leak the meter identity.
+    """
+    val = "AB12".encode("latin1")  # 4-char meter identifier across MR(60-61)
+    registers = {MR(60): int.from_bytes(val[0:2], "big"), MR(61): int.from_bytes(val[2:4], "big")}
+
+    result = RegisterCache(registers).redact_serials()
+
+    assert result[MR(60)] == 0
+    assert result[MR(61)] == 0
+
+
+def test_redact_serials_byte_swapped_aio_serial_hr8():
+    """A byte-swapped AIO serial at HR(8-12) is redacted via RegisterCache.redact_serials() (audit H2).
+
+    AIO firmware stores the unit serial byte-swapped (CH… → HC…) at HR(8-12); HC2114G047 matches
+    the standard pattern, so it must redact to HC2114G000. Closes the coverage gap vs the
+    FrameRedactor path (already covered in test_capture.py).
+    """
+    registers = _encode_serial("HC2114G047", HR, 8)
+    result = RegisterCache(registers).redact_serials()
+    raw = b"".join((result[HR(8 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert raw.decode("latin1").replace("\x00", "").upper() == "HC2114G000"
+
+
+def test_redact_serials_leaves_partial_group_unchanged():
+    """A partially-present serial group is left unchanged and no absent registers are injected.
+
+    Without all registers the group can't be decoded; like the unrecognised-shape case, the cache
+    redaction fails open here to avoid destroying data it can't positively identify as a serial.
+    """
+    registers = {HR(13): 0x5341, HR(14): 0x3231}  # "SA21" fragment of the inverter serial group
+    result = RegisterCache(registers).redact_serials()
+    assert result[HR(13)] == 0x5341
+    assert result[HR(14)] == 0x3231
+    assert HR(15) not in result, "absent registers must not be injected"
+
+
+def test_redact_serials_blanks_partial_meter_identifier():
+    """A partial meter identifier is still blanked — MR is a distinct namespace with no overlap.
+
+    Unlike HR/IR (where a partial group can't be distinguished from non-serial data), MR can't
+    overlap ordinary registers, so a present fragment is always sensitive and safe to blank.
+    """
+    result = RegisterCache({MR(60): 0x4142}).redact_serials()  # "AB" fragment; MR(61) absent
+    assert result[MR(60)] == 0
+    assert MR(61) not in result, "absent MR register must not be injected"
