@@ -68,6 +68,21 @@ def test_instantiation():
     }
 
 
+def test_fresh_plants_do_not_share_cache_state():
+    """Two fresh Plants get independent register_caches (security audit #224, batch 2).
+
+    The 0x32 seed in model_post_init is per-instance and deliberate (legacy
+    bare-plant contract); what matters is that instances never share state.
+    """
+    p1, p2 = Plant(), Plant()
+    assert p1.register_caches is not p2.register_caches
+    assert p1.register_caches[0x32] is not p2.register_caches[0x32]
+    p1.register_caches[0x32].update({HR(0): 1})
+    p1.register_caches[0x99] = RegisterCache()
+    assert p2.register_caches == {0x32: {}}
+    assert Plant.model_fields["register_caches"].default == {}  # class default never polluted
+
+
 def test_plant(
     plant: Plant,
     register_cache_inverter_daytime_discharging_with_solar_generation,

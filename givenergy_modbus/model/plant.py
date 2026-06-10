@@ -479,7 +479,16 @@ class Plant(GivEnergyBaseModel):
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
     def model_post_init(self, __context: Any) -> None:
-        """Ensure a default register cache is always present."""
+        """Seed the legacy 0x32 register cache on an otherwise-empty plant.
+
+        Deliberate, pre-pydantic-v2 behaviour (originally in ``__init__``): without
+        ``capabilities`` the inverter cache lives at 0x32, and the bare
+        ``Plant.inverter`` fallback indexes ``register_caches[0x32]`` directly — it
+        would KeyError without this seed. Per-instance and benign: it runs after
+        Pydantic copies the field default, so fresh Plants never share cache state
+        and the class-level default stays ``{}`` (checked during the 2026-06
+        security audit, #224 batch 2). Removal is deferred to the #106 Plant reorg.
+        """
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
 
