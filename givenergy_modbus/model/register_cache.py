@@ -157,13 +157,20 @@ class RegisterCache(defaultdict[Register, int]):
         """Return a copy of this cache with all known serial-number registers redacted.
 
         Identifies every register group tagged as ``Converter.serial`` in the model
-        LUTs (plus BMU serial groups, which are decoded manually), decodes each group
-        to a string, and **fails closed** (the share-safe-export boundary, #212/#214): a
-        recognised serial is date-redacted (prefix + manufacture date kept, unit digits
-        zeroed); anything else — an unrecognised format, or a *partially* present group
-        that can't be fully decoded — has its present registers blanked, so no fragment
-        of a known identifier ever leaks. A fully-absent group is left untouched (no
-        absent registers are injected).
+        LUTs (plus BMU serial groups, which are decoded manually), decodes each fully-
+        present group, and date-redacts values that match a known GE serial pattern
+        (prefix + manufacture date kept, unit digits zeroed).
+
+        **Fails open for HR/IR groups by necessity.** Serial groups are applied without
+        device-type context and overlap: the BMU serial groups (e.g. IR(114-118)) are
+        real serials only on HV BMU stacks, but on an LV battery those addresses hold the
+        battery serial's last register (IR114) and ordinary data (IR115 = usb_device_inserted).
+        With no way to tell a non-GE serial from non-serial data, anything that doesn't
+        match a serial pattern is left **unchanged** — blanking it would destroy legitimate
+        data and corrupt overlapping serials. The share-safe-export guarantee (#212/#214)
+        is enforced fail-closed where it is unambiguous: the inverter/dongle header serials
+        (:meth:`Plant.redact`) and the meter product identifier (MR, a distinct register
+        namespace, blanked below).
 
         Produces the same ``AAYYWWA000``-style placeholders as :class:`FrameRedactor`,
         so a redacted export is indistinguishable from a redacted capture.
@@ -172,39 +179,27 @@ class RegisterCache(defaultdict[Register, int]):
 
         _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR, "MR": MR}
         result = RegisterCache(dict(self))
-        covered: set[Register] = set()  # registers owned by a fully-present (properly redacted) group
-        partial_fragments: list[Register] = []
-        # First pass — redact every fully-present group. Serial groups can overlap (e.g. the LV
-        # battery serial IR(110-114) and BMU#0 serial IR(114-118) share IR(114)), so record which
-        # registers a full group owns before deciding what to blank.
         for reg_type, base, count in _get_serial_groups():
             reg_cls = _reg_cls.get(reg_type)
             if reg_cls is None:
                 continue
             regs = [reg_cls(base + i) for i in range(count)]
-            present = [r for r in regs if isinstance(self.get(r), int)]
-            if not present:
-                continue  # group entirely absent — nothing to redact, don't inject registers
-            if len(present) < count:
-                partial_fragments.extend(present)  # handled in the second pass
+            if not all(isinstance(self.get(r), int) for r in regs):
+                continue
+            # Meter product identifier (MR): a short non-GE value in a distinct register
+            # namespace that can't overlap HR/IR data — safe to blank outright.
+            if reg_type == "MR":
+                for reg in regs:
+                    result[reg] = 0
                 continue
             raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()
-            covered.update(regs)
-            # Fail closed: a recognised serial is date-redacted, anything else (vendor/meter/
-            # unknown format) is blanked — a known serial location must never leak verbatim.
-            redacted = Converter.redact_serial_strict(serial_str)
-            if redacted == serial_str:
-                continue
+            redacted = Converter.redact_serial(serial_str)
+            if redacted is None or redacted == serial_str:
+                continue  # not a recognised serial — leave unchanged (may be non-serial data)
             redacted_bytes = redacted.encode("latin1").ljust(count * 2, b"\x00")[: count * 2]
             for i, reg in enumerate(regs):
                 result[reg] = int.from_bytes(redacted_bytes[i * 2 : i * 2 + 2], "big")
-        # Second pass — a partially-present group can't be decoded, but each present register is a
-        # fragment of a known identifier. Fail closed by blanking it, unless a fully-present group
-        # already owns (and redacted) that register.
-        for reg in partial_fragments:
-            if reg not in covered:
-                result[reg] = 0
         return result
 
     def to_timeslot(self, start: Register, end: Register) -> "TimeSlot | None":

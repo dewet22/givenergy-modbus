@@ -231,15 +231,34 @@ def test_redact_serials_is_idempotent():
     assert dict(once) == dict(twice)
 
 
-def test_redact_serials_fails_closed_on_unrecognised_serial():
-    """A known serial location holding an unrecognised format is blanked, not leaked (audit H2).
+def test_redact_serials_leaves_unrecognised_shape_unchanged():
+    """A value in an HR/IR serial group that matches no GE pattern is left unchanged (fail-open).
 
-    redact_serials() is the share-safe boundary, so it fails closed: a value in a C.serial
-    register group that matches neither GE pattern is zeroed rather than passed through verbatim.
+    Serial groups are applied without device-type context and overlap (BMU groups overlap LV
+    battery data), so a non-matching value can't be distinguished from non-serial data — blanking
+    it would destroy legitimate data. The fail-closed guarantee lives at the header-serial and MR
+    boundaries instead. See redact_serials() docstring.
     """
-    registers = _encode_serial("ZZZZZZZZZZ", IR, 110)  # battery serial group; valid charset, no GE pattern
+    registers = _encode_serial("ZZZZZZZZZZ", IR, 110)
     result = RegisterCache(registers).redact_serials()
-    assert all(result[IR(110 + i)] == 0 for i in range(5)), "unrecognised serial must be blanked"
+    assert dict(result) == dict(RegisterCache(registers))
+
+
+def test_redact_serials_preserves_overlapping_non_serial_data():
+    """A full LV battery bank redacts the serial but preserves overlapping non-serial data.
+
+    Regression for the overlap found in review: the globally-applied BMU serial group IR(114-118)
+    overlaps the LV battery serial (IR114) and real data (IR115 = usb_device_inserted). Redacting
+    must zero only the battery serial's unit digits and leave IR(115) intact.
+    """
+    registers = _encode_serial("CE2231A123", IR, 110)  # battery serial IR(110-114)
+    registers[IR(115)] = 8  # usb_device_inserted — legitimate non-serial data
+
+    result = RegisterCache(registers).redact_serials()
+
+    redacted_serial = b"".join((result[IR(110 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert redacted_serial.decode("latin1").replace("\x00", "").upper() == "CE2231A000"
+    assert result[IR(115)] == 8, "overlapping non-serial data must be preserved"
 
 
 def test_redact_serials_absent_group_not_injected():
@@ -318,16 +337,14 @@ def test_redact_serials_byte_swapped_aio_serial_hr8():
     assert raw.decode("latin1").replace("\x00", "").upper() == "HC2114G000"
 
 
-def test_redact_serials_partial_group_is_blanked():
-    """A partially-present serial group has its present registers blanked, not leaked (audit H2).
+def test_redact_serials_leaves_partial_group_unchanged():
+    """A partially-present serial group is left unchanged and no absent registers are injected.
 
-    A cache can hold only some registers of a known identifier location; the present fragment is
-    still sensitive. redact_serials() zeroes the present registers without injecting the absent
-    ones.
+    Without all registers the group can't be decoded; like the unrecognised-shape case, the cache
+    redaction fails open here to avoid destroying data it can't positively identify as a serial.
     """
-    # Only the first two registers of the inverter serial group HR(13-17) are present.
-    registers = {HR(13): 0x5341, HR(14): 0x3231}  # "SA21" fragment
+    registers = {HR(13): 0x5341, HR(14): 0x3231}  # "SA21" fragment of the inverter serial group
     result = RegisterCache(registers).redact_serials()
-    assert result[HR(13)] == 0
-    assert result[HR(14)] == 0
+    assert result[HR(13)] == 0x5341
+    assert result[HR(14)] == 0x3231
     assert HR(15) not in result, "absent registers must not be injected"
