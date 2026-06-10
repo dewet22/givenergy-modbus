@@ -461,6 +461,13 @@ class Plant(GivEnergyBaseModel):
 
     register_caches: dict[int, RegisterCache] = {}
     capabilities: PlantCapabilities | None = None
+    # The inverter serial from the response envelope, adopted only from the inverter's own
+    # responses (see update()). This is the earliest-available inverter identity — populated at
+    # detect() from the 0x11 read — and stays correct across the plant lifecycle, unlike
+    # ``Plant.inverter.serial_number`` which is empty in the detect→first-refresh window for
+    # AC/HYBRID_GEN1 (reads 0x31, not populated by detect) and reads the 0x32 battery cache on a
+    # bare plant. A single unified accessor is tracked in #227. The dongle serial below has no
+    # register source — the envelope is its only home.
     inverter_serial_number: str = ""
     data_adapter_serial_number: str = ""
     # Ingestion timestamps per committed register block, keyed by
@@ -534,8 +541,21 @@ class Plant(GivEnergyBaseModel):
             _logger.debug(f"First time encountering device address 0x{device_address:02x}")
             self.register_caches[device_address] = RegisterCache()
 
-        self.inverter_serial_number = pdu.inverter_serial_number
+        # The TCP dongle's serial is identical on every response regardless of the addressed
+        # downstream device (verified across the AIO capture: meters, inverter, modules, BCU and
+        # BMS all carry the same data_adapter serial), so adopt it from any accepted PDU.
         self.data_adapter_serial_number = pdu.data_adapter_serial_number
+
+        # inverter_serial_number, by contrast, is the *addressed device's* serial in the envelope:
+        # battery (0x32-0x37), BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses
+        # carry their own, so adopting it from every PDU let whichever device was polled last
+        # clobber the real inverter serial — merging the AIO inverter HA device into a battery
+        # module downstream (givenergy-hass#95). The inverter is canonically addressed at
+        # 0x11/0x31 (inverter_address_for never yields anything else), so gate on that set — it
+        # excludes peripherals and the legacy 0x32 (battery pack #1) a pre-#119 persisted
+        # capability may still carry until detect() self-heals.
+        if device_address in (0x11, 0x31):
+            self.inverter_serial_number = pdu.inverter_serial_number
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
