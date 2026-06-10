@@ -105,6 +105,25 @@ class Converter:
         return s
 
     @staticmethod
+    def redact_serial_strict(s: str | None) -> str:
+        """Fail-closed serial redaction for share-safe exports.
+
+        Behaves like :meth:`redact_serial` for recognised GE serials (keep the prefix +
+        manufacture date, zero the unit digits), but **blanks** anything that isn't a recognised
+        serial. ``redact_serial`` is fail-open — it returns an unrecognised shape unchanged — which
+        would leak a vendor-specific or non-standard identifier verbatim through a share-safe
+        export. This blanks those. Returns "" for empty/unrecognised input.
+        """
+        if not s:
+            return ""
+        redacted = Converter.redact_serial(s)
+        if redacted and redacted != s:
+            return redacted  # recognised and not yet redacted → date-preserving redaction
+        if _SERIAL_PATTERN.fullmatch(s) or _EMS_SERIAL_PATTERN.fullmatch(s):
+            return s  # recognised but already redacted → unchanged
+        return ""  # unrecognised identifier in a serial location → fail closed
+
+    @staticmethod
     def fstr(val, fmt) -> str | None:
         """Render a value using a format string."""
         if val is not None:

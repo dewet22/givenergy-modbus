@@ -2033,3 +2033,58 @@ def test_inverter_serial_ignores_stale_0x32_capability():
     batt.inverter_serial_number = "ZZ9999Z999"
     plant.update(batt)
     assert plant.inverter_serial_number == "", "a stale 0x32 inverter_address must not let a battery clobber it"
+
+
+def test_plant_redact_clears_header_serials_and_redacts_caches():
+    """Plant.redact() redacts every cache AND the out-of-cache header serials (audit H2).
+
+    inverter_serial_number / data_adapter_serial_number live on the Plant, not in any cache, so
+    redacting caches alone still leaks them in a shared dump. redact() returns a copy with both
+    the caches and the header serials redacted, leaving the original untouched.
+    """
+
+    def _enc(serial, base):
+        padded = serial.encode("latin1").ljust(10, b"\x00")[:10]
+        return {HR(base + i): int.from_bytes(padded[i * 2 : i * 2 + 2], "big") for i in range(5)}
+
+    plant = Plant()
+    plant.inverter_serial_number = "CH2414G047"
+    plant.data_adapter_serial_number = "WF2414G047"
+    plant.register_caches[0x11] = RegisterCache(_enc("SA2114G123", 13))  # inverter serial HR(13-17)
+
+    redacted = plant.redact()
+
+    assert redacted.inverter_serial_number == "CH2414G000"
+    assert redacted.data_adapter_serial_number == "WF2414G000"
+    raw = b"".join((redacted.register_caches[0x11][HR(13 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert raw.decode("latin1").replace("\x00", "").upper() == "SA2114G000"
+    # original untouched
+    assert plant.inverter_serial_number == "CH2414G047"
+    orig = b"".join((plant.register_caches[0x11][HR(13 + i)] & 0xFFFF).to_bytes(2, "big") for i in range(5))
+    assert orig.decode("latin1").replace("\x00", "").upper() == "SA2114G123"
+
+
+def test_plant_redact_handles_empty_serials():
+    """redact() with empty header serials returns empty, not an error (audit H2 — the `or ''` path)."""
+    plant = Plant()
+    plant.inverter_serial_number = ""
+    plant.data_adapter_serial_number = ""
+    redacted = plant.redact()
+    assert redacted.inverter_serial_number == ""
+    assert redacted.data_adapter_serial_number == ""
+
+
+def test_plant_redact_fails_closed_on_unrecognised_header_serial():
+    """redact() blanks an unrecognised header serial rather than leaking it (audit H2, fail-closed).
+
+    Converter.redact_serial is fail-open (returns unrecognised shapes unchanged); the share-safe
+    redact() must not pass a vendor/non-standard identifier through verbatim.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "UNKNOWN123"  # valid charset, matches no GE pattern
+    plant.data_adapter_serial_number = "ODD-SERIAL"
+
+    redacted = plant.redact()
+
+    assert redacted.inverter_serial_number == ""
+    assert redacted.data_adapter_serial_number == ""

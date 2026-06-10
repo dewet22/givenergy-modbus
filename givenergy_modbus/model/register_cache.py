@@ -67,6 +67,14 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
     # (CH… → HC…), recoverable to the real serial, so it must not leak in a shared
     # export. Appended explicitly, like the BMU serials, since no LUT Def carries it.
     groups.append(("HR", 8, 5))
+    # Meter product serial (MR 60-61, FC 0x16). The MeterProductRegisterGetter walk above
+    # doesn't reach it (meter isn't a walked module and its Def is C.string), so add it
+    # explicitly. It's a short non-GE-pattern identifier; redact_serials() blanks it via the
+    # fail-closed strict redaction (audit H2). Guarded against a future auto-discovery duplicate.
+    mr_key = ("MR", 60, 2)
+    if mr_key not in seen:
+        seen.add(mr_key)
+        groups.append(mr_key)
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
@@ -149,34 +157,49 @@ class RegisterCache(defaultdict[Register, int]):
         """Return a copy of this cache with all known serial-number registers redacted.
 
         Identifies every register group tagged as ``Converter.serial`` in the model
-        LUTs (plus BMU serial groups, which are decoded manually), decodes each group
-        to a string, applies ``Converter.redact_serial`` (zeroing the trailing unit
-        digits), and re-encodes back into register values.
+        LUTs (plus BMU serial groups, which are decoded manually), decodes each fully-
+        present group, and date-redacts values that match a known GE serial pattern
+        (prefix + manufacture date kept, unit digits zeroed).
 
-        Groups that are only partially present in the cache, or whose decoded string
-        doesn't match a known serial pattern, are left unchanged.  Any register
-        whose value is not a plain integer (e.g. explicitly set to ``None``) causes
-        the group to be skipped rather than crash.
+        **Fails open for HR/IR groups by necessity.** Serial groups are applied without
+        device-type context and overlap: the BMU serial groups (e.g. IR(114-118)) are
+        real serials only on HV BMU stacks, but on an LV battery those addresses hold the
+        battery serial's last register (IR114) and ordinary data (IR115 = usb_device_inserted).
+        With no way to tell a non-GE serial from non-serial data, anything that doesn't
+        match a serial pattern is left **unchanged** — blanking it would destroy legitimate
+        data and corrupt overlapping serials. The share-safe-export guarantee (#212/#214)
+        is enforced fail-closed where it is unambiguous: the inverter/dongle header serials
+        (:meth:`Plant.redact`) and the meter product identifier (MR, a distinct register
+        namespace, blanked below).
 
         Produces the same ``AAYYWWA000``-style placeholders as :class:`FrameRedactor`,
         so a redacted export is indistinguishable from a redacted capture.
         """
         from givenergy_modbus.model.register import Converter
 
-        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR}
+        _reg_cls: dict[str, type[Register]] = {"HR": HR, "IR": IR, "MR": MR}
         result = RegisterCache(dict(self))
         for reg_type, base, count in _get_serial_groups():
             reg_cls = _reg_cls.get(reg_type)
             if reg_cls is None:
                 continue
             regs = [reg_cls(base + i) for i in range(count)]
+            # Meter product identifier (MR): a short non-GE value in a distinct register namespace
+            # that can't overlap HR/IR data — safe to fail closed. Blank whatever is present (a
+            # full or partial fragment) before the HR/IR completeness check, without injecting
+            # absent registers.
+            if reg_type == "MR":
+                for reg in regs:
+                    if isinstance(self.get(reg), int):
+                        result[reg] = 0
+                continue
             if not all(isinstance(self.get(r), int) for r in regs):
                 continue
             raw = b"".join((self[r] & 0xFFFF).to_bytes(2, "big") for r in regs)
             serial_str = raw.decode("latin1").replace("\x00", "").upper()
             redacted = Converter.redact_serial(serial_str)
             if redacted is None or redacted == serial_str:
-                continue
+                continue  # not a recognised serial — leave unchanged (may be non-serial data)
             redacted_bytes = redacted.encode("latin1").ljust(count * 2, b"\x00")[: count * 2]
             for i, reg in enumerate(regs):
                 result[reg] = int.from_bytes(redacted_bytes[i * 2 : i * 2 + 2], "big")
