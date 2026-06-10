@@ -135,7 +135,7 @@ def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries:
 def disable_charge_target() -> list[TransparentRequest]:
     """Removes SOC limit and target 100% charging."""
     return [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
@@ -148,19 +148,19 @@ def set_charge_target(target_soc: int) -> list[TransparentRequest]:
     if target_soc == 100:
         ret.extend(disable_charge_target())
     else:
-        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True))
+        ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1))
         ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc))
     return ret
 
 
 def set_enable_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to charge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1 if enabled else 0)]
 
 
 def set_enable_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable the battery to discharge, depending on the mode and slots set."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1 if enabled else 0)]
 
 
 def set_inverter_reboot() -> list[TransparentRequest]:
@@ -283,7 +283,7 @@ def set_active_power_rate(target: int) -> list[TransparentRequest]:
 
 def set_enable_rtc(enabled: bool) -> list[TransparentRequest]:
     """Enable the Real Time Clock register to persist settings to EEPROM."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 1 if enabled else 0)]
 
 
 def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
@@ -304,7 +304,7 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, bool(enabled))]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 1 if enabled else 0)]
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
@@ -368,22 +368,22 @@ def set_smart_load_slot(idx: int, slot: "TimeSlot | None") -> list[TransparentRe
 
 def set_ac_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable AC charging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_force_charge(enabled: bool) -> list[TransparentRequest]:
     """Enable forced battery charging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_force_discharge(enabled: bool) -> list[TransparentRequest]:
     """Enable forced battery discharging on three-phase inverters."""
-    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, 1 if enabled else 0)]
 
 
 def set_ems_plant(enabled: bool) -> list[TransparentRequest]:
     """Enable EMS plant control."""
-    return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, enabled)]
+    return [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 1 if enabled else 0)]
 
 
 def _export_slot_registers(idx: int) -> tuple[int, int]:

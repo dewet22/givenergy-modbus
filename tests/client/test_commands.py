@@ -15,13 +15,13 @@ from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 async def test_configure_charge_target():
     """Ensure we can set and disable a charge target."""
     assert commands.set_charge_target(45) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 45),
     ]
     assert commands.set_charge_target(100) == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
@@ -33,29 +33,29 @@ async def test_configure_charge_target():
         commands.set_charge_target(101)
 
     assert commands.disable_charge_target() == [
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
 
 async def test_set_charge():
     """Ensure we can toggle charging."""
-    assert commands.set_enable_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True)]
-    assert commands.set_enable_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, False)]
+    assert commands.set_enable_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1)]
+    assert commands.set_enable_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 0)]
     with pytest.warns(DeprecationWarning):
-        assert commands.enable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, True)]
+        assert commands.enable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1)]
     with pytest.warns(DeprecationWarning):
-        assert commands.disable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, False)]
+        assert commands.disable_charge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 0)]
 
 
 async def test_set_discharge():
     """Ensure we can toggle discharging."""
-    assert commands.set_enable_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True)]
-    assert commands.set_enable_discharge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False)]
+    assert commands.set_enable_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1)]
+    assert commands.set_enable_discharge(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0)]
     with pytest.warns(DeprecationWarning):
-        assert commands.enable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True)]
+        assert commands.enable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1)]
     with pytest.warns(DeprecationWarning):
-        assert commands.disable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False)]
+        assert commands.disable_discharge() == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0)]
 
 
 async def test_set_battery_discharge_mode():
@@ -253,7 +253,7 @@ async def test_set_mode_dynamic():
     assert commands.set_mode_dynamic() == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE, 4),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, False),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 0),
     ]
 
 
@@ -261,7 +261,7 @@ async def test_set_mode_storage():
     """Ensure we can set the inverter to a storage mode with discharge slots."""
     assert commands.set_mode_storage(TimeSlot.from_components(1, 2, 3, 4)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 102),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 304),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 0),
@@ -270,7 +270,7 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_components(5, 6, 7, 8), TimeSlot.from_components(9, 10, 11, 12)) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 1),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 506),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 708),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 910),
@@ -279,7 +279,7 @@ async def test_set_mode_storage():
 
     assert commands.set_mode_storage(TimeSlot.from_repr(1314, 1516), discharge_for_export=True) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_POWER_MODE, 0),
-        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, True),
+        WriteHoldingRegisterRequest(RegisterMap.ENABLE_DISCHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_START, 1314),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_1_END, 1516),
         WriteHoldingRegisterRequest(RegisterMap.DISCHARGE_SLOT_2_START, 0),
@@ -340,8 +340,8 @@ async def test_set_active_power_rate():
 
 
 async def test_set_enable_rtc():
-    assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, True)]
-    assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, False)]
+    assert commands.set_enable_rtc(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 1)]
+    assert commands.set_enable_rtc(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_RTC, 0)]
 
 
 async def test_set_export_priority():
@@ -359,8 +359,8 @@ async def test_set_export_priority():
 
 
 async def test_set_enable_eps():
-    assert commands.set_enable_eps(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, True)]
-    assert commands.set_enable_eps(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, False)]
+    assert commands.set_enable_eps(True) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 1)]
+    assert commands.set_enable_eps(False) == [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EPS, 0)]
     # HR317 must be in the lower-level PDU allowlist, or encode() raises InvalidPduState.
     commands.set_enable_eps(True)[0].encode()
 
@@ -476,21 +476,21 @@ async def test_set_pause_slot():
 
 
 async def test_set_ac_charge():
-    assert commands.set_ac_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, True)]
-    assert commands.set_ac_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, False)]
+    assert commands.set_ac_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 1)]
+    assert commands.set_ac_charge(False) == [WriteHoldingRegisterRequest(RegisterMap.AC_CHARGE_ENABLE, 0)]
 
 
 async def test_set_force_charge():
-    assert commands.set_force_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, True)]
+    assert commands.set_force_charge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_CHARGE_ENABLE, 1)]
 
 
 async def test_set_force_discharge():
-    assert commands.set_force_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, True)]
+    assert commands.set_force_discharge(True) == [WriteHoldingRegisterRequest(RegisterMap.FORCE_DISCHARGE_ENABLE, 1)]
 
 
 async def test_set_ems_plant():
-    assert commands.set_ems_plant(True) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, True)]
-    assert commands.set_ems_plant(False) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, False)]
+    assert commands.set_ems_plant(True) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 1)]
+    assert commands.set_ems_plant(False) == [WriteHoldingRegisterRequest(RegisterMap.EMS_PLANT_ENABLE, 0)]
 
 
 @pytest.mark.parametrize("idx", [1, 2, 3])
