@@ -98,6 +98,32 @@ async def test_ems_plant_classifies_and_decodes_topology():
 
 
 @pytest.mark.timeout(20)
+async def test_ems_meter_pf_and_apparent_power_decode():
+    """Meter pf_*/p_apparent_* decode pinned to real capture values (#246).
+
+    The displacement-PF identity cosφ = P/√(P² + Q²) settles all three scales on
+    this capture: PF is signed int16 ×1e-4 (meter 0x03: raw 9998 → +0.9998 with
+    Q=11 var giving cosφ = 0.9998 exactly; meter 0x01: raw 64670 → −0.0866),
+    apparent power is deci-scaled (S = 575.2 VA ≥ √(P²+Q²) = 567.1; at 1 VA the
+    cross-check collapses), and reactive stays at 1 var (at 0.1 var the identity
+    breaks on both meters).
+    """
+    plant = await _replay("ems_2_inv_3_bat_a/ems_arm1036_30min.log")
+    caps = _classify(plant)
+    caps.meter_addresses = [0x01, 0x03]
+
+    m1, m3 = plant.meters[0x01], plant.meters[0x03]
+    assert m3.pf_total == 0.9998
+    assert m3.p_active_total == 567
+    assert m3.p_apparent_total == 575.2
+    assert m3.p_reactive_total == 11
+    assert m1.pf_total == -0.0866
+    assert m1.p_active_total == -47
+    assert m1.p_apparent_total == 713.2
+    assert m1.p_reactive_total == -564
+
+
+@pytest.mark.timeout(20)
 async def test_aio_classifies_as_hv_all_in_one():
     """All-in-One: 0x8001/fw612 → Model.ALL_IN_ONE @ 0x11, HV BCU stack separately addressed."""
     plant = await _replay("aio_a/aio_arm612_5min.log")
