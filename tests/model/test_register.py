@@ -632,3 +632,25 @@ def test_model_precision_of_across_models():
     assert Battery.precision_of("soc") == 0  # uint16
     assert Battery.precision_of("v_out") == 3  # uint32 -> milli
     assert Battery.precision_of("serial_number") is None  # string
+
+
+def test_register_public_index_and_reg_type():
+    """Register.index / Register.reg_type are the public forms of _idx / _type (#247)."""
+    assert HR(13).index == 13
+    assert HR(13).reg_type == "HR"
+    assert IR(95).index == 95
+    assert IR(95).reg_type == "IR"
+    from givenergy_modbus.model.register import MR
+
+    assert MR(60).index == 60
+    assert MR(60).reg_type == "MR"
+
+
+def test_registers_of_mirrors_lut():
+    """RegisterGetter.registers_of() returns the backing registers in wire order (#247)."""
+    from givenergy_modbus.model.inverter import SinglePhaseInverterRegisterGetter as G
+
+    regs = G.registers_of("serial_number")
+    assert [(r.reg_type, r.index) for r in regs] == [("HR", 13), ("HR", 14), ("HR", 15), ("HR", 16), ("HR", 17)]
+    # Unknown / computed attributes yield an empty tuple, so callers can iterate unconditionally.
+    assert G.registers_of("no_such_attribute") == ()

@@ -23,7 +23,7 @@ from givenergy_modbus.model.inverter import (
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
-from givenergy_modbus.model.register import HR, IR, Converter, RegisterGetter, is_valid_serial
+from givenergy_modbus.model.register import HR, IR, Converter, Register, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -759,6 +759,33 @@ class Plant(GivEnergyBaseModel):
         if effective_now.tzinfo is None:
             effective_now = effective_now.replace(tzinfo=UTC)
         return (effective_now - ts).total_seconds()
+
+    def register_age(
+        self,
+        device_address: int,
+        register: Register,
+        *,
+        now: datetime | None = None,
+    ) -> float | None:
+        """Seconds since the freshest stamped block *containing* ``register`` was committed (#247).
+
+        Unlike ``block_age()``, the caller doesn't need to know block boundaries or the
+        stamped count — every stamped window for the device whose [base, base+count) span
+        covers the register is considered, and the freshest wins. None if no stamped
+        window covers it. Pair with ``RegisterGetter.registers_of()`` to reason about a
+        model attribute's freshness.
+        """
+        effective_now = now or datetime.now(UTC)
+        if effective_now.tzinfo is None:
+            effective_now = effective_now.replace(tzinfo=UTC)
+        best: datetime | None = None
+        for (dev, reg_type, base, count), ts in self.register_block_updated_at.items():
+            if dev == device_address and reg_type == register.reg_type and base <= register.index < base + count:
+                if best is None or ts > best:
+                    best = ts
+        if best is None:
+            return None
+        return (effective_now - best).total_seconds()
 
     def _track_content_change(
         self,
