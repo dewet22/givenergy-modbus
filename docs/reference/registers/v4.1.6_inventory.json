@@ -9661,11 +9661,16 @@
   "report": {
     "HR": {
       "doc_count": 496,
-      "code_count": 325,
+      "code_count": 320,
       "in_doc_not_code": [
         4,
         5,
         6,
+        8,
+        9,
+        10,
+        11,
+        12,
         63,
         79,
         84,
@@ -10039,11 +10044,6 @@
         2,
         3,
         7,
-        8,
-        9,
-        10,
-        11,
-        12,
         13,
         14,
         15,
@@ -11133,6 +11133,20 @@
         "factor_off": 2.0
       },
       {
+        "reg": "IR1068",
+        "doc_name": "PF",
+        "doc_unit": "0.001",
+        "doc_scale": 0.001,
+        "code_attrs": [
+          "inverter_3ph.power_factor"
+        ],
+        "code_convs": [
+          "int16"
+        ],
+        "code_scale": 1.0,
+        "factor_off": 1000.0
+      },
+      {
         "reg": "IR1083",
         "doc_name": "MeterActivePower_R",
         "doc_unit": "1W",
@@ -11232,6 +11246,281 @@
         "factor_off": 10.0
       }
     ],
+    "device_sections": {
+      "meter": {
+        "section_prefix": "4.2.1",
+        "getter": "meter",
+        "doc_count": 25,
+        "code_count": 29,
+        "in_doc_not_code": [],
+        "in_code_not_doc": [
+          64,
+          65,
+          66,
+          67
+        ],
+        "scale_mismatches": [
+          {
+            "addr": 80,
+            "doc_name": "PowerFator_L1",
+            "doc_unit": "0.01",
+            "doc_scale": 0.01,
+            "code_convs": [
+              "milli"
+            ],
+            "code_scale": 0.001
+          },
+          {
+            "addr": 81,
+            "doc_name": "PowerFator_L2",
+            "doc_unit": "0.01",
+            "doc_scale": 0.01,
+            "code_convs": [
+              "milli"
+            ],
+            "code_scale": 0.001
+          },
+          {
+            "addr": 82,
+            "doc_name": "PowerFator_L3",
+            "doc_unit": "0.01",
+            "doc_scale": 0.01,
+            "code_convs": [
+              "milli"
+            ],
+            "code_scale": 0.001
+          },
+          {
+            "addr": 83,
+            "doc_name": "PowerFator_Total",
+            "doc_unit": "0.01",
+            "doc_scale": 0.01,
+            "code_convs": [
+              "milli"
+            ],
+            "code_scale": 0.001
+          }
+        ]
+      },
+      "meter_product": {
+        "section_prefix": "4.2.2",
+        "getter": "meter_product",
+        "doc_count": 8,
+        "code_count": 9,
+        "in_doc_not_code": [],
+        "in_code_not_doc": [
+          61,
+          63
+        ],
+        "scale_mismatches": []
+      },
+      "lv_bcu": {
+        "section_prefix": "4.4.1.1",
+        "getter": null,
+        "doc_count": 4,
+        "code_count": 0,
+        "in_doc_not_code": [
+          {
+            "addr": 60,
+            "name": "udwBmsStatus1",
+            "rw": "R",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "addr": 61,
+            "name": "udwBmsStatus2",
+            "rw": "R",
+            "value": "",
+            "unit": ""
+          },
+          {
+            "addr": 62,
+            "name": "RequestChgCurr",
+            "rw": "R",
+            "value": "",
+            "unit": "1A"
+          },
+          {
+            "addr": 63,
+            "name": "RequestDisChgCurr",
+            "rw": "R",
+            "value": "",
+            "unit": "1A"
+          }
+        ],
+        "in_code_not_doc": [],
+        "scale_mismatches": []
+      },
+      "battery": {
+        "section_prefix": "4.4.1.2",
+        "getter": "battery",
+        "doc_count": 54,
+        "code_count": 50,
+        "in_doc_not_code": [
+          {
+            "addr": 105,
+            "name": "Battery discharge energy total",
+            "rw": "R",
+            "value": "unsigned",
+            "unit": "0.1kwh"
+          },
+          {
+            "addr": 106,
+            "name": "Battery charge energy total",
+            "rw": "R",
+            "value": "unsigned",
+            "unit": "0.1kwh"
+          },
+          {
+            "addr": 107,
+            "name": "Force_DisChg_Flag",
+            "rw": "R",
+            "value": "",
+            "unit": ""
+          }
+        ],
+        "in_code_not_doc": [
+          111,
+          112,
+          113,
+          114
+        ],
+        "scale_mismatches": [
+          {
+            "addr": 84,
+            "doc_name": "Full_Capacity_H",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 85,
+            "doc_name": "Full_Capacity_L",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 86,
+            "doc_name": "Design_Capacity_H",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 87,
+            "doc_name": "Design_Capacity_L",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 88,
+            "doc_name": "Remain_Capacity_H",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 89,
+            "doc_name": "Remain_Capacity_L",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 101,
+            "doc_name": "Design_Capacity_H",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          },
+          {
+            "addr": 102,
+            "doc_name": "Design_Capacity_L",
+            "doc_unit": "0.1mAh",
+            "doc_scale": 0.0001,
+            "code_convs": [
+              "centi",
+              "uint32"
+            ],
+            "code_scale": 0.01
+          }
+        ]
+      },
+      "hv_bcu": {
+        "section_prefix": "4.4.2.1",
+        "getter": "hv_bcu",
+        "doc_count": 5,
+        "code_count": 38,
+        "in_doc_not_code": [],
+        "in_code_not_doc": [
+          65,
+          67,
+          68,
+          70,
+          73,
+          74,
+          76,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          102,
+          103,
+          104,
+          105
+        ],
+        "scale_mismatches": []
+      }
+    },
     "write_safe": {
       "write_safe_count": 139,
       "doc_writable_hr_count": 367,

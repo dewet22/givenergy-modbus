@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 from dataclasses import asdict, dataclass, field
@@ -201,8 +202,13 @@ class CodeRegister:
     getters: set[str] = field(default_factory=set)
 
 
-def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int]]:
-    """Collect every register the library maps + the WRITE_SAFE address set."""
+def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int], dict[str, dict[int, set[str]]]]:
+    """Collect every register the library maps + the WRITE_SAFE address set.
+
+    Also returns a per-getter view (getter name -> register index -> converter
+    names) so device sections can be diffed against just their own getter,
+    without inverter mappings at the same index muddying the comparison.
+    """
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from givenergy_modbus.model.battery import BatteryRegisterGetter
     from givenergy_modbus.model.ems import EmsRegisterGetter
@@ -233,6 +239,7 @@ def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int]]:
         return getattr(c, "__name__", str(c))
 
     out: dict[tuple[str, int], CodeRegister] = {}
+    by_getter: dict[str, dict[int, set[str]]] = {gname: {} for gname in getters}
     for gname, g in getters.items():
         for attr, defn in g.REGISTER_LUT.items():
             for reg in defn.registers:
@@ -240,21 +247,35 @@ def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int]]:
                 cr = out.setdefault(key, CodeRegister(reg._type, reg._idx))
                 cr.attrs.append(f"{gname}.{attr}")
                 cr.getters.add(gname)
+                convs = by_getter[gname].setdefault(reg._idx, set())
                 for c in (defn.pre_conv, defn.post_conv):
                     n = conv_name(c)
                     if n:
                         cr.converters.add(n)
-    return out, set(WRITE_SAFE_REGISTERS)
+                        convs.add(n)
+    return out, set(WRITE_SAFE_REGISTERS), by_getter
 
 
 # --- Diff ------------------------------------------------------------------
 
 # Map doc section prefixes to the register type they describe + the code getter
-# bucket they should diff against. Only the inverter HR/IR sections are diffed
-# by address here; other device sections are reported as inventory only.
+# bucket they should diff against. The inverter HR/IR sections are diffed
+# globally by address; the device sections below are each diffed against just
+# their own getter (battery IRs share the IR number space with inverter IRs,
+# so a global diff would mask gaps — IR(95) Im_Avg hid this way, see #238).
 SECTION_TYPE = {
     "4.1.1": "HR",
     "4.1.2": "IR",
+}
+
+# Doc section prefix -> (report label, getter name or None when the library
+# has no model for that device at all).
+DEVICE_SECTIONS = {
+    "4.2.1": ("meter", "meter"),
+    "4.2.2": ("meter_product", "meter_product"),
+    "4.4.1.1": ("lv_bcu", None),
+    "4.4.1.2": ("battery", "battery"),
+    "4.4.2.1": ("hv_bcu", "hv_bcu"),
 }
 
 # Code converters → the decimal scale they imply (multiplier applied to raw).
@@ -269,15 +290,17 @@ _CONV_SCALE = {
 }
 
 
-def _doc_scale(unit: str) -> float | None:
-    """Infer the decimal scale a doc unit string implies (e.g. '0.1V' -> 0.1).
-
-    Returns 1.0 for a plain unit (V, A, W, %, Hz), None when no numeric scale
-    can be read (ASCII/hex/enum/blank) so the caller can skip the comparison.
-    """
-    u = re.sub(r"[\[\]]|\{\.mark\}|\\", "", unit).strip().lower()
+def _doc_scale_single(u: str) -> float | None:
+    """Scale of one cleaned, lower-cased doc unit token (e.g. '0.1v' -> 0.1)."""
     if not u or u in {"hex", "ascii", "-"}:
         return None
+    # Milli-prefixed electrical units (mV/mA/mAh) measure in thousandths of the
+    # base unit the code models (V/A/Ah), so fold the prefix into the scale.
+    # Deliberately NOT generalised: 'min'/'ms' must keep their existing scale-1
+    # reading so the #185 inverter-section baseline is undisturbed.
+    m = re.match(r"^(\d*\.?\d+)?\s*(mv|mah|ma)\b", u)
+    if m:
+        return (float(m.group(1)) if m.group(1) else 1.0) * 0.001
     m = re.match(r"^(\d*\.?\d+)\s*[a-z%]", u)
     if m:
         try:
@@ -290,7 +313,30 @@ def _doc_scale(unit: str) -> float | None:
         return float(m.group(1))
     if re.match(r"^[a-z%]", u):  # plain unit, scale 1
         return 1.0
+    # A bare numeric unit ("0.01" on the meter power-factor rows) is its scale —
+    # but only a power of ten reads as one; "101" on HR46 is a version, not a scale.
+    if re.match(r"^\d*\.?\d+$", u):
+        f = float(u)
+        if f > 0 and abs(round(math.log10(f)) - math.log10(f)) < 1e-9:
+            return f
     return None
+
+
+def _doc_scales(unit: str) -> set[float] | None:
+    """All plausible scales of a doc unit string.
+
+    Usually a single value, but meter rows give model-dependent alternatives
+    ('0.1A/0.01A', '100W/1W') — a slash splits into alternatives only when
+    every part is digit-leading, so rate units like '0.1% Pn/min' stay whole.
+    """
+    u = re.sub(r"[\[\]]|\{\.mark\}|\\", "", unit).strip().lower()
+    if "/" in u:
+        parts = [p.strip() for p in u.split("/")]
+        if all(re.match(r"^\d", p) for p in parts):
+            scales = {s for p in parts if (s := _doc_scale_single(p)) is not None}
+            return scales or None
+    s = _doc_scale_single(u)
+    return {s} if s is not None else None
 
 
 def _code_scale(convs: set[str]) -> float | None:
@@ -342,7 +388,7 @@ def main() -> int:
     args = ap.parse_args()
 
     doc_regs = parse_doc(args.doc)
-    code_regs, write_safe = introspect_code()
+    code_regs, write_safe, by_getter = introspect_code()
 
     # Build doc HR/IR address sets from the inverter sections.
     doc_by_type: dict[str, dict[int, DocRegister]] = {"HR": {}, "IR": {}}
@@ -371,22 +417,65 @@ def main() -> int:
         for addr in sorted(doc_set & code_set):
             dr = doc_by_type[rtype][addr]
             cr = code_by_type[rtype][addr]
-            ds = _doc_scale(dr.unit)
+            ds = _doc_scales(dr.unit)
             cs = _code_scale(cr.converters)
-            if ds is not None and cs is not None and abs(ds - cs) > 1e-9:
+            if ds is not None and cs is not None and all(abs(d - cs) > 1e-9 for d in ds):
+                d0 = min(ds)
                 scale_mismatches.append(
                     {
                         "reg": f"{rtype}{addr}",
                         "doc_name": dr.name,
                         "doc_unit": dr.unit,
-                        "doc_scale": ds,
+                        "doc_scale": d0 if len(ds) == 1 else sorted(ds),
                         "code_attrs": cr.attrs,
                         "code_convs": sorted(cr.converters),
                         "code_scale": cs,
-                        "factor_off": round(cs / ds, 4) if ds else None,
+                        "factor_off": round(cs / d0, 4) if d0 else None,
                     }
                 )
     report["scale_mismatches"] = scale_mismatches
+
+    # Device-section diffs: each non-inverter doc section against its own getter.
+    device_sections: dict[str, dict] = {}
+    for prefix, (label, gname) in DEVICE_SECTIONS.items():
+        doc_rows: dict[int, DocRegister] = {}
+        for r in doc_regs:
+            if r.section.startswith(prefix) and r.addr is not None:
+                doc_rows.setdefault(r.addr, r)
+        code_addrs = by_getter.get(gname, {}) if gname else {}
+        doc_set, code_set = set(doc_rows), set(code_addrs)
+        missing = []
+        for addr in sorted(doc_set - code_set):
+            dr = doc_rows[addr]
+            if dr.name.strip().lower() in {"not used", "reserved", ""}:
+                continue
+            missing.append({"addr": addr, "name": dr.name, "rw": dr.rw, "value": dr.value, "unit": dr.unit})
+        sec_mismatches = []
+        for addr in sorted(doc_set & code_set):
+            dr = doc_rows[addr]
+            ds = _doc_scales(dr.unit)
+            cs = _code_scale(code_addrs[addr])
+            if ds is not None and cs is not None and all(abs(d - cs) > 1e-9 for d in ds):
+                sec_mismatches.append(
+                    {
+                        "addr": addr,
+                        "doc_name": dr.name,
+                        "doc_unit": dr.unit,
+                        "doc_scale": min(ds) if len(ds) == 1 else sorted(ds),
+                        "code_convs": sorted(code_addrs[addr]),
+                        "code_scale": cs,
+                    }
+                )
+        device_sections[label] = {
+            "section_prefix": prefix,
+            "getter": gname,
+            "doc_count": len(doc_set),
+            "code_count": len(code_set),
+            "in_doc_not_code": missing,
+            "in_code_not_doc": sorted(code_set - doc_set),
+            "scale_mismatches": sec_mismatches,
+        }
+    report["device_sections"] = device_sections
 
     # Writable-set check: doc-writable HR vs WRITE_SAFE.
     doc_writable_hr = {a for a, r in doc_by_type["HR"].items() if r.writable}
