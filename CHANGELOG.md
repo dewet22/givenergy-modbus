@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-06-11
+
+2.3.0 is a register-correctness and addressing release, shaped by field
+evidence rather than the roadmap's planned theme — the write-safety pillar
+moves to 2.4.x. Two behaviour changes lead it, both capture-proven.
+
+### Highlights
+
+- **Inverter addressing unified on `0x11`** (#189): the `0x31` read-alias for
+  AC and HYBRID_GEN1 is retired. Live validation on both families showed
+  `0x11` serves the full register file — the old "identity-only" claim was an
+  artefact of passive dongle captures — and it is where the official app
+  reads and writes. Capabilities persisted with the old `0x31` keep working
+  (the hardware facade still answers there) and self-heal to `0x11` on the
+  next `detect()`; no consumer action needed.
+- **Meter power-factor decode fixed** (#246): `pf_*` (IR 80–83) was decoded
+  as unsigned milli, producing impossible values like 9.998; the correct
+  encoding is signed int16 ×1e-4 in the EE [−1, +1] convention. Apparent
+  power gains its deci scaling (0.1 VA, unsigned), and reactive power is
+  confirmed correct at 1 var — all three scales settled against capture
+  evidence via the displacement-PF identity, and pinned by a golden-master
+  test so they can't silently regress.
+- **Migration guide for fork consumers**
+  ([docs/migrating-from-the-async-fork.md](../migrating-from-the-async-fork.md), #244):
+  the import map, polling-lifecycle change, command mapping and attribute
+  rename table for moving from the community `givenergy_modbus_async` fork to
+  this library — written for GivTCP's port, useful to any fork descendant.
+- **Per-register provenance accessors** (#248): public access to a field's
+  backing registers and their per-register freshness — early groundwork for
+  the provenance pillar.
+- **`i_battery`** — signed per-pack battery current (IR 95, #239) — plus an
+  audit extension that diffs device sections against their getters, closing
+  the blind spot that had hidden it (#240).
+- **Redaction hardening** (#245): identifier registers are auto-discovered
+  across all model modules, so a future device type can't silently miss
+  share-safe redaction coverage.
+
+### ✨ Added
+
+- map IR(95) Im_Avg as i_battery — signed per-pack current (#239) ([cc494d1](https://github.com/dewet22/givenergy-modbus/commit/cc494d1c829307b3426119e4a9e735e0cdf8eb83))
+- diff device sections against their getters — close the IR95 blind spot (#240) ([d8dd183](https://github.com/dewet22/givenergy-modbus/commit/d8dd183233d102e8d2986449715d64b394b74fe5))
+- auto-discover identifier registers for redaction across all model modules (#245) ([61a0a09](https://github.com/dewet22/givenergy-modbus/commit/61a0a09dc64f466a11f0f6593b3653848cfc8781))
+- public accessors for a field's backing registers + per-register freshness (#248) ([106f4be](https://github.com/dewet22/givenergy-modbus/commit/106f4beca08bed86af03553f1d152b2f5d0e8313))
+- retire 0x31 read-alias — inverter addressing unified on 0x11 (#249) ([5bada9a](https://github.com/dewet22/givenergy-modbus/commit/5bada9a60341c786270513ff3141eb31ad03e5ea))
+
+### 🐛 Fixed
+
+- pf_* decode as signed int16 ×1e-4; p_apparent_* deci-scaled (#250) ([b02b57a](https://github.com/dewet22/givenergy-modbus/commit/b02b57a8897e627e50e77b53584c4bd67f201aaf))
+
+### 🔧 Maintenance
+
+- add migration guide for givenergy_modbus_async fork consumers (#244) ([a4c970d](https://github.com/dewet22/givenergy-modbus/commit/a4c970dd1495b2227bf39daa107ab503cebc2518))
+- release notes + roadmap sequencing for 2.3.0 ([2b6b622](https://github.com/dewet22/givenergy-modbus/commit/2b6b62290cd1989ebdc7d9823d6bf9032f534927))
+
 ## [2.2.0] - 2026-06-10
 
 2.2 reshapes how a system is modelled and hardens the library end to end. The
