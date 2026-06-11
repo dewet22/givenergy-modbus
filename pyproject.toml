@@ -205,4 +205,6 @@ commands =
 
 [tool.codespell]
 ignore-words-list = "astroid"
-skip = "./.*,./uv.lock"
+# The register inventory carries verbatim doc register names, typos and all
+# ("Freqency", "ModelL") — they're facts about the doc, not our prose.
+skip = "./.*,./uv.lock,*/reference/registers/*.json,./docs/reference/registers/*.json"

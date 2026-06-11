@@ -118,6 +118,24 @@ to settle the true unit.
 
 **References.** v4.1.6 §4.1.1; issue #183.
 
+## LV BMU capacity unit is wrong in the doc (IR84-89, IR101-102)
+
+**Symptom.** The doc's unit column disagrees with values observed on real hardware by
+two orders of magnitude.
+
+**Evidence.** The v4.1.6 LV BMU table (§4.4.1.2) gives `0.1mAh` for the battery
+capacity register pairs (`Full_Capacity` IR84/85, `Design_Capacity` IR86/87 and
+IR101/102, `Remain_Capacity` IR88/89). Real captures decode sanely at 0.01 Ah
+(`centi`): raw 19097 → 190.97 Ah, right for a nominal 9.5 kWh / 51 V pack. At the
+doc's 0.1 mAh the same raw value would be 1.9 Ah — two orders of magnitude off any
+plausible pack.
+
+**Implication.** Keep the library's `centi`/Ah decode; don't "fix" it to match the doc.
+The audit script's `device_sections` report will keep flagging these rows — that's the
+flag working as intended, recording a known doc error rather than a code bug.
+
+**References.** v4.1.6 §4.4.1.2; issue #48.
+
 ## Doc unit corrections have shipped silently mid-protocol
 
 **Symptom.** The same register's documented unit changes between protocol revisions.
