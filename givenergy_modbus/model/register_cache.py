@@ -23,23 +23,30 @@ _BMU_STRIDE = 120
 
 
 def _get_serial_groups() -> "list[tuple[str, int, int]]":
-    """Return (reg_type, base, count) for every C.serial register group (built once).
+    """Return (reg_type, base, count) for every identifier register group (built once).
 
     Covers:
-    - all groups discovered by walking the model REGISTER_LUTs (inverter/battery/
-      EMS/gateway Converter.serial fields);
+    - all groups discovered by walking the REGISTER_LUTs of *every* module in the
+      ``givenergy_modbus.model`` package (#235) — any Def whose pre-converter is
+      ``Converter.serial`` or that is marked ``identifier=True`` (the meter product
+      serial is a ``C.string``, the #228/H2 gap). A new device module is picked up
+      automatically; an import failure propagates rather than silently skipping;
     - explicit BMU serial groups for up to ``_MAX_BMUS_PER_BCU`` modules per BCU,
       because Bmu decodes its serial manually (no LUT entry).
     """
     global _SERIAL_GROUPS
     if _SERIAL_GROUPS is not None:
         return _SERIAL_GROUPS
-    from givenergy_modbus.model import battery, ems, gateway, inverter
+    import importlib
+    import pkgutil
+
+    import givenergy_modbus.model as model_pkg
     from givenergy_modbus.model.register import Converter
 
     seen: set[tuple[str, int, int]] = set()
     groups: list[tuple[str, int, int]] = []
-    for module in (inverter, battery, ems, gateway):
+    for mod_info in pkgutil.iter_modules(model_pkg.__path__):
+        module = importlib.import_module(f"{model_pkg.__name__}.{mod_info.name}")
         for attr in dir(module):
             cls = getattr(module, attr)
             if not isinstance(cls, type):
@@ -49,7 +56,7 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
                 continue
             for _field, defn in lut.items():
                 pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
-                if pre_conv is Converter.serial and defn.registers:
+                if (pre_conv is Converter.serial or defn.identifier) and defn.registers:
                     reg_type = type(defn.registers[0]).__name__
                     base = defn.registers[0]._idx
                     count = len(defn.registers)
@@ -67,14 +74,6 @@ def _get_serial_groups() -> "list[tuple[str, int, int]]":
     # (CH… → HC…), recoverable to the real serial, so it must not leak in a shared
     # export. Appended explicitly, like the BMU serials, since no LUT Def carries it.
     groups.append(("HR", 8, 5))
-    # Meter product serial (MR 60-61, FC 0x16). The MeterProductRegisterGetter walk above
-    # doesn't reach it (meter isn't a walked module and its Def is C.string), so add it
-    # explicitly. It's a short non-GE-pattern identifier; redact_serials() blanks it via the
-    # fail-closed strict redaction (audit H2). Guarded against a future auto-discovery duplicate.
-    mr_key = ("MR", 60, 2)
-    if mr_key not in seen:
-        seen.add(mr_key)
-        groups.append(mr_key)
     _SERIAL_GROUPS = groups
     return _SERIAL_GROUPS
 
