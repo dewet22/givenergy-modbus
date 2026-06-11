@@ -2274,3 +2274,71 @@ def test_plant_redact_fails_closed_on_unrecognised_header_serial():
 
     assert redacted.inverter_serial_number == ""
     assert redacted.data_adapter_serial_number == ""
+
+
+def test_register_age_finds_containing_window(plant: Plant):
+    """register_age() resolves the freshest stamped window containing the register (#247).
+
+    Consumers shouldn't need to know block boundaries or stamped counts — that's the
+    private-reach the hass integration had to do before this existed.
+    """
+    from givenergy_modbus.model.register import IR
+
+    t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367, 42: 3685}, base_register=0), received_at=t)
+    now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
+    # IR(42) sits inside the stamped IR(0,60) window.
+    assert plant.register_age(0x32, IR(42), now=now) == 30.0
+    # Outside any stamped window → None; wrong device → None.
+    assert plant.register_age(0x32, IR(180), now=now) is None
+    assert plant.register_age(0x99, IR(42), now=now) is None
+
+
+def test_register_age_freshest_of_overlapping_windows(plant: Plant):
+    """With overlapping stamped windows, the freshest containing one wins (#247)."""
+    from givenergy_modbus.model.register import IR
+
+    t0 = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    t1 = datetime(2026, 6, 11, 12, 0, 20, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t0)  # IR(0,60) @ t0
+    plant.update(_make_ir_pdu({5: 2368}, base_register=0, register_count=10), received_at=t1)  # IR(0,10) @ t1
+    now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
+    # IR(5) is covered by both; the fresher IR(0,10) stamp wins.
+    assert plant.register_age(0x32, IR(5), now=now) == 10.0
+    # IR(42) is only covered by the older full-width window.
+    assert plant.register_age(0x32, IR(42), now=now) == 30.0
+
+
+def test_register_age_pairs_with_registers_of(plant: Plant):
+    """The advertised composition: registers_of() → register_age() for attribute freshness (#247)."""
+    from givenergy_modbus.model.inverter import SinglePhaseInverterRegisterGetter
+
+    t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({42: 3685}, base_register=0), received_at=t)
+    regs = SinglePhaseInverterRegisterGetter.registers_of("p_load_demand")
+    assert regs, "p_load_demand must be register-backed"
+    now = datetime(2026, 6, 11, 12, 0, 15, tzinfo=UTC)
+    ages = [plant.register_age(0x32, r, now=now) for r in regs]
+    assert ages == [15.0]
+
+
+def test_register_age_normalises_naive_now(plant: Plant):
+    """A timezone-naive now is treated as UTC, matching block_age()'s posture (#208/#247)."""
+    from givenergy_modbus.model.register import IR
+
+    t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    assert plant.register_age(0x32, IR(5), now=datetime(2026, 6, 11, 12, 0, 7)) == 7.0
+
+
+def test_register_age_keeps_freshest_when_older_window_seen_later(plant: Plant):
+    """A staler containing window encountered after a fresher one must not displace it (#247)."""
+    from givenergy_modbus.model.register import IR
+
+    t_new = datetime(2026, 6, 11, 12, 0, 20, tzinfo=UTC)
+    t_old = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    # Stamp the fresher narrow window FIRST so iteration meets the older one second.
+    plant.update(_make_ir_pdu({5: 2368}, base_register=0, register_count=10), received_at=t_new)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t_old)  # IR(0,60), older
+    now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
+    assert plant.register_age(0x32, IR(5), now=now) == 10.0

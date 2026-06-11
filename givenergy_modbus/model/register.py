@@ -338,6 +338,18 @@ class RegisterGetter:
         defn = cls.REGISTER_LUT.get(name)
         return defn.precision if defn is not None else None
 
+    @classmethod
+    def registers_of(cls, name: str) -> "tuple[Register, ...]":
+        """The Register instances backing a named attribute, in wire order (#247).
+
+        Empty tuple for attributes not in the LUT (computed/aggregate values), so
+        callers can iterate unconditionally. Pair with ``Register.reg_type`` /
+        ``Register.index`` and ``Plant.register_age()`` to reason about the freshness
+        of an attribute's underlying data without reaching into private surfaces.
+        """
+        defn = cls.REGISTER_LUT.get(name)
+        return defn.registers if defn is not None else ()
+
     def get(self, key: str, default: Any = None) -> Any:
         """Return a named register's value, after pre- and post-conversion."""
         try:
@@ -538,6 +550,20 @@ class Register:
 
     def __init__(self, idx):
         self._idx = idx
+
+    @property
+    def index(self) -> int:
+        """Numeric register index — the public form of ``_idx`` (#247)."""
+        return self._idx
+
+    @property
+    def reg_type(self) -> str:
+        """Register type name ("HR"/"IR"/"MR") — public form of ``_type`` (#247).
+
+        Matches the ``reg_type`` string accepted by ``Plant.block_age()``, so consumers
+        don't need ``type(reg).__name__``.
+        """
+        return self._type
 
     def __str__(self):
         return "%s_%d" % (self._type, int(self._idx))
