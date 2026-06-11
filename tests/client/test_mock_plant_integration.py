@@ -73,11 +73,17 @@ async def test_detect_ems():
 
 @pytest.mark.timeout(30)
 async def test_detect_and_refresh_hybrid_gen1():
-    """HYBRID_GEN1: detect → Model.HYBRID_GEN1 @ 0x31 (not the 0x11 default); refresh completes."""
-    async for client in _client_for("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log"):
+    """HYBRID_GEN1: detect → Model.HYBRID_GEN1 @ 0x11 (unified addressing, #189); refresh completes.
+
+    Backed by the 0x11-polled capture — recorded by this library's own poll loop, so the
+    mock serves full banks at 0x11 exactly as the live unit did. The older passive dongle
+    capture only carries identity at 0x11 (the dongle polled the 0x31 facade) and can no
+    longer satisfy a 0x11-addressed refresh.
+    """
+    async for client in _client_for("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log"):
         caps = await client.detect(**_DETECT)
         assert caps.device_type is Model.HYBRID_GEN1
-        assert caps.inverter_address == 0x31
+        assert caps.inverter_address == 0x11
         plant = await client.refresh(timeout=1.0, retries=0)
         assert plant.capabilities.device_type is Model.HYBRID_GEN1
 

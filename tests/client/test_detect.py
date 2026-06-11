@@ -223,8 +223,8 @@ def test_plant_capabilities_derives_inverter_address_from_model():
     assert PlantCapabilities(device_type=Model.HYBRID).inverter_address == 0x11
     assert PlantCapabilities(device_type=Model.EMS).inverter_address == 0x11
     assert PlantCapabilities(device_type=Model.ALL_IN_ONE).inverter_address == 0x11
-    assert PlantCapabilities(device_type=Model.AC).inverter_address == 0x31
-    assert PlantCapabilities(device_type=Model.HYBRID_GEN1).inverter_address == 0x31
+    assert PlantCapabilities(device_type=Model.AC).inverter_address == 0x11
+    assert PlantCapabilities(device_type=Model.HYBRID_GEN1).inverter_address == 0x11
 
 
 def test_plant_capabilities_explicit_address_overrides_derivation():

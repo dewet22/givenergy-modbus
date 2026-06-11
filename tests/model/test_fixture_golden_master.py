@@ -118,28 +118,66 @@ async def test_aio_classifies_as_hv_all_in_one():
 
 
 @pytest.mark.timeout(20)
-async def test_hybrid_gen1_classifies_at_0x31():
-    """HYBRID_GEN1: 0x2001/fw449 → Model.HYBRID_GEN1 @ 0x31 (not the 0x11 default), LV batteries 0x32+."""
+async def test_hybrid_gen1_passive_capture_classifies_at_0x11_banks_stay_at_0x31():
+    """HYBRID_GEN1 passive dongle capture: 0x2001/fw449 → Model.HYBRID_GEN1 @ 0x11 (#189).
+
+    This capture predates the 0x31 retirement: the dongle polled the operational banks
+    at the 0x31 facade, so they live there in the replayed caches — and must STAY there
+    (no folding to the classification address; that's the anti-fold property #127
+    guards). The 0x11-polled sibling fixture below covers the current polling shape.
+    """
     plant = await _replay("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log")
     caps = _classify(plant)
 
     assert caps.device_type is Model.HYBRID_GEN1
-    assert caps.inverter_address == 0x31
+    assert caps.inverter_address == 0x11
     assert not caps.is_hv
     assert not caps.is_ems
 
-    # Operational banks at 0x31; identity-only at 0x11. LV battery packs at 0x32/0x33.
+    # Operational banks where the dongle polled them (0x31); identity-only at 0x11 in
+    # this capture. LV battery packs at 0x32/0x33.
     assert HR(60) in plant.register_caches[0x31]
     assert HR(60) not in plant.register_caches[0x11]
     assert 0x32 in plant.register_caches
     assert 0x33 in plant.register_caches
 
 
+@pytest.mark.timeout(20)
+async def test_hybrid_gen1_0x11_poll_capture_serves_full_banks_at_0x11():
+    """HYBRID_GEN1 polled by this library at 0x11 (#189): full banks land at 0x11.
+
+    Recorded with the library's own detect → load_config → refresh loop addressing the
+    inverter at 0x11 — the live-hardware proof that 0x11 is a full facade, not
+    identity-only. Passive HA traffic on the same bus still polls 0x31, which must
+    remain separately cached (anti-fold), and the LV packs answer at 0x32/0x33.
+    """
+    plant = await _replay("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log")
+    caps = _classify(plant)
+
+    assert caps.device_type is Model.HYBRID_GEN1
+    assert caps.inverter_address == 0x11
+    assert not caps.is_hv
+    assert not caps.is_ems
+
+    # Full config banks at 0x11 — what the old "identity-only" claim said couldn't happen.
+    assert HR(60) in plant.register_caches[0x11]
+    assert HR(120) in plant.register_caches[0x11]
+    # Passive 0x31 traffic from another consumer stays at its wire address (anti-fold).
+    assert HR(60) in plant.register_caches[0x31]
+    # LV battery packs.
+    assert 0x32 in plant.register_caches
+    assert 0x33 in plant.register_caches
+
+
 def test_inverter_address_matches_classification_for_all_fixtures():
-    """Belt-and-braces: the model→address map agrees with each fixture's classification."""
+    """Belt-and-braces: the model→address map agrees with where the library polls.
+
+    Unified on 0x11 for every model since #189 — the passive hybrid capture's 0x31
+    banks above are a record of pre-#189 dongle behaviour, not of the polling map.
+    """
     assert inverter_address_for(Model.EMS) == 0x11
     assert inverter_address_for(Model.ALL_IN_ONE) == 0x11
-    assert inverter_address_for(Model.HYBRID_GEN1) == 0x31
+    assert inverter_address_for(Model.HYBRID_GEN1) == 0x11
 
 
 @pytest.mark.parametrize(
