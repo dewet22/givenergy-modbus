@@ -59,7 +59,10 @@ class BatteryRegisterGetter(RegisterGetter):
         "status_7": Def((DT.duint8, 0), None, IR(93)),
         "warning_1": Def((DT.duint8, 0), None, IR(94)),
         "warning_2": Def((DT.duint8, 1), None, IR(94)),
-        # IR(95) unused
+        # IR(95) "Im_Avg" (v4.1.6 doc): average pack current, signed, 0.01 A.
+        # Field evidence (#238, two LV systems) confirms it tracks operating state;
+        # observed sign convention is +ve = discharge / -ve = charge.
+        "i_battery": Def(DT.int16, DT.centi, IR(95), min=-300.0, max=300.0),
         "num_cycles": Def(DT.uint16, None, IR(96)),
         "num_cells": Def(DT.uint16, None, IR(97)),
         "bms_firmware_version": Def(DT.uint16, None, IR(98)),
