@@ -170,8 +170,16 @@ as captures arrive.
 
 - **2.2.0 final** — ship the current rc line. No hard blockers remain; the #91
   freeze verdict is deferred, not blocking.
-- **2.3.x** — Pillar A (write safety) and Foundations §3.
-- **2.4.x** — Pillar B (provenance) feeding Pillar C (data-trust consolidation),
+- **2.3.0** — shipped 2026-06-12. Diverged from the slated theme: field evidence
+  delivered register-correctness and addressing work instead (0x11 unification
+  [#189](https://github.com/dewet22/givenergy-modbus/issues/189), meter
+  PF/apparent scales
+  [#246](https://github.com/dewet22/givenergy-modbus/issues/246), the
+  fork-migration guide, provenance accessors
+  [#248](https://github.com/dewet22/givenergy-modbus/issues/248)). Pillar A
+  moves down a line.
+- **2.4.x** — Pillar A (write safety) and Foundations §3.
+- **2.5.x** — Pillar B (provenance) feeding Pillar C (data-trust consolidation),
   with Foundations §6/§7/§10 alongside.
 - **3.0** — Pillar D, only once a second vendor or transport makes the extraction
   real.
