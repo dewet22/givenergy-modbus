@@ -14,7 +14,7 @@
         <link rel="prev" href="../register-identification/">
       
       
-        <link rel="next" href="../contributing/">
+        <link rel="next" href="../migrating-from-the-async-fork/">
       
       
         
@@ -403,6 +403,8 @@
       
         
       
+        
+      
     
     
     
@@ -601,6 +603,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lv-bmu-capacity-unit-is-wrong-in-the-doc-ir84-89-ir101-102" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LV BMU capacity unit is wrong in the doc (IR84-89, IR101-102)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -620,6 +633,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migrating-from-the-async-fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating from the async fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1070,6 +1111,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#lv-bmu-capacity-unit-is-wrong-in-the-doc-ir84-89-ir101-102" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LV BMU capacity unit is wrong in the doc (IR84-89, IR101-102)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#doc-unit-corrections-have-shipped-silently-mid-protocol" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1199,6 +1251,19 @@ the ambiguity; deriving watts from these via a rated-power table is unsafe (the
 <code>battery_max_power</code> DTC table is itself incomplete). A live-hardware write test is needed
 to settle the true unit.</p>
 <p><strong>References.</strong> v4.1.6 §4.1.1; issue #183.</p>
+<h3 id="lv-bmu-capacity-unit-is-wrong-in-the-doc-ir84-89-ir101-102">LV BMU capacity unit is wrong in the doc (IR84-89, IR101-102)<a class="headerlink" href="#lv-bmu-capacity-unit-is-wrong-in-the-doc-ir84-89-ir101-102" title="Permanent link">&para;</a></h3>
+<p><strong>Symptom.</strong> The doc's unit column disagrees with values observed on real hardware by
+two orders of magnitude.</p>
+<p><strong>Evidence.</strong> The v4.1.6 LV BMU table (§4.4.1.2) gives <code>0.1mAh</code> for the battery
+capacity register pairs (<code>Full_Capacity</code> IR84/85, <code>Design_Capacity</code> IR86/87 and
+IR101/102, <code>Remain_Capacity</code> IR88/89). Real captures decode sanely at 0.01 Ah
+(<code>centi</code>): raw 19097 → 190.97 Ah, right for a nominal 9.5 kWh / 51 V pack. At the
+doc's 0.1 mAh the same raw value would be 1.9 Ah — two orders of magnitude off any
+plausible pack.</p>
+<p><strong>Implication.</strong> Keep the library's <code>centi</code>/Ah decode; don't "fix" it to match the doc.
+The audit script's <code>device_sections</code> report will keep flagging these rows — that's the
+flag working as intended, recording a known doc error rather than a code bug.</p>
+<p><strong>References.</strong> v4.1.6 §4.4.1.2; issue #48.</p>
 <h3 id="doc-unit-corrections-have-shipped-silently-mid-protocol">Doc unit corrections have shipped silently mid-protocol<a class="headerlink" href="#doc-unit-corrections-have-shipped-silently-mid-protocol" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom.</strong> The same register's documented unit changes between protocol revisions.</p>
 <p><strong>Evidence.</strong> The v4.1.6 revision history records, among others: IR10 inverter current

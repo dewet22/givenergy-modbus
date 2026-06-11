@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/register-identification/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/migrating-from-the-async-fork/">
       
       
-        <link rel="prev" href="../api/">
+        <link rel="prev" href="../hardware-firmware-quirks/">
       
       
-        <link rel="next" href="../hardware-firmware-quirks/">
+        <link rel="next" href="../contributing/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Register identification - GivEnergy Modbus</title>
+        <title>Migrating from the async fork - GivEnergy Modbus</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#register-identification-via-sentinel-cross-correlation" class="md-skip">
+        <a href="#migrating-from-the-givenergy_modbus_async-fork" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Register identification
+              Migrating from the async fork
             
           </span>
         </div>
@@ -449,35 +449,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Register identification
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../register-identification/" class="md-nav__link">
         
   
   
@@ -493,157 +468,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#register-identification-via-sentinel-cross-correlation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Register identification via sentinel cross-correlation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Register identification via sentinel cross-correlation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#principle" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Principle
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-by-step-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step-by-step procedure
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step-by-step procedure">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-choose-the-register-banks-to-probe" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Choose the register banks to probe
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-run-pass-1-offset-0" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Run pass 1 (offset = 0)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-run-pass-2-offset-1000" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Run pass 2 (offset = 1000)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-identify-each-register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Identify each register
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-cross-check-against-the-existing-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Cross-check against the existing model
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-handle-clamping-and-non-linear-registers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Handle clamping and non-linear registers
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#example-mapping-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example mapping table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -681,10 +505,35 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../migrating-from-the-async-fork/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating from the async fork
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -700,6 +549,157 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#migrating-from-the-givenergy_modbus_async-fork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from the givenergy_modbus_async fork
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Migrating from the givenergy_modbus_async fork">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-polling-lifecycle-the-one-structural-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The polling lifecycle (the one structural change)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plant-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plant attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model attributes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model attributes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-enum-removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable enum removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#renamed-inverter-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Renamed inverter attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-slots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time slots
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-to-ask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to ask
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1083,22 +1083,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#register-identification-via-sentinel-cross-correlation" class="md-nav__link">
+  <a href="#migrating-from-the-givenergy_modbus_async-fork" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Register identification via sentinel cross-correlation
+        Migrating from the givenergy_modbus_async fork
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Register identification via sentinel cross-correlation">
+    <nav class="md-nav" aria-label="Migrating from the givenergy_modbus_async fork">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#principle" class="md-nav__link">
+  <a href="#installing" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Principle
+        Installing
       
     </span>
   </a>
@@ -1106,22 +1106,66 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-by-step-procedure" class="md-nav__link">
+  <a href="#import-map" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step-by-step procedure
+        Import map
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Step-by-step procedure">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-polling-lifecycle-the-one-structural-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The polling lifecycle (the one structural change)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plant-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plant attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Model attributes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model attributes">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-choose-the-register-banks-to-probe" class="md-nav__link">
+  <a href="#enable-enum-removed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Choose the register banks to probe
+        Enable enum removed
       
     </span>
   </a>
@@ -1129,10 +1173,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-run-pass-1-offset-0" class="md-nav__link">
+  <a href="#renamed-inverter-attributes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Run pass 1 (offset = 0)
+        Renamed inverter attributes
       
     </span>
   </a>
@@ -1140,43 +1184,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-run-pass-2-offset-1000" class="md-nav__link">
+  <a href="#time-slots" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Run pass 2 (offset = 1000)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-identify-each-register" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Identify each register
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-cross-check-against-the-existing-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Cross-check against the existing model
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-handle-clamping-and-non-linear-registers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Handle clamping and non-linear registers
+        Time slots
       
     </span>
   </a>
@@ -1189,21 +1200,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#example-mapping-table" class="md-nav__link">
+  <a href="#where-to-ask" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example mapping table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference
+        Where to ask
       
     </span>
   </a>
@@ -1235,199 +1235,426 @@
   
 
 
-  <h1>Register identification</h1>
+  <h1>Migrating from the async fork</h1>
 
-<h2 id="register-identification-via-sentinel-cross-correlation">Register identification via sentinel cross-correlation<a class="headerlink" href="#register-identification-via-sentinel-cross-correlation" title="Permanent link">&para;</a></h2>
-<p>The GivEnergy Android app's <strong>Read Only</strong> tab displays telemetry labels (e.g.
-"Grid voltage 242.7 V", "Battery temperature 25.0 °C") but does not show register
-numbers.  This document describes how to identify the register address backing each
-label using the <code>MockPlant</code> sentinel approach.</p>
-<h3 id="principle">Principle<a class="headerlink" href="#principle" title="Permanent link">&para;</a></h3>
-<p>Seed a <code>MockPlant</code> with <em>sentinel</em> values — raw register value = register address.
-When the app reads a register and applies its converter (e.g. divide by 10 for "deci"
-scale), it displays a value that encodes the address.  Reading that value off the
-screen and inverting the converter recovers the address.</p>
-<p>For a linear converter with scale <code>s</code>:</p>
-<div class="highlight"><pre><span></span><code>raw = address
-displayed = address × s
+<h2 id="migrating-from-the-givenergy_modbus_async-fork">Migrating from the <code>givenergy_modbus_async</code> fork<a class="headerlink" href="#migrating-from-the-givenergy_modbus_async-fork" title="Permanent link">&para;</a></h2>
+<p>This guide is for projects that consume the community <code>givenergy_modbus_async</code>
+fork — typically vendored, as GivTCP does — and want to move to this library
+(<code>givenergy-modbus</code> 2.2+ on PyPI). The two codebases share ancestry, so the
+module layout maps almost one-to-one and most of the port is mechanical
+renames. There is exactly one structural change: the polling lifecycle.</p>
+<p>The deltas below were derived by comparing the fork as vendored on GivTCP's
+<code>modbusv2</code> branch against 2.2.0. Other descendants of the fork may differ
+slightly.</p>
+<h3 id="installing">Installing<a class="headerlink" href="#installing" title="Permanent link">&para;</a></h3>
+<p>The library is published to PyPI — no vendoring or submodule needed:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>givenergy-modbus
 </code></pre></div>
-<p><strong>Single-pass ambiguity:</strong> the same displayed value can match multiple <code>(address, scale)</code> pairs.
-For example <code>24.2</code> matches both address 242 at scale 0.1 <em>and</em> address 2420 at scale 0.01.</p>
-<p><strong>Two-pass resolution:</strong> run a second pass with <code>offset=K</code> (e.g. 1000):</p>
-<div class="highlight"><pre><span></span><code>pass 1:  d1 = address × s
-pass 2:  d2 = (address + K) × s
-
-s = (d2 − d1) / K          ← scale, uniquely determined
-address = d1 / s            ← address, uniquely determined
-</code></pre></div>
-<h3 id="step-by-step-procedure">Step-by-step procedure<a class="headerlink" href="#step-by-step-procedure" title="Permanent link">&para;</a></h3>
-<h4 id="1-choose-the-register-banks-to-probe">1. Choose the register banks to probe<a class="headerlink" href="#1-choose-the-register-banks-to-probe" title="Permanent link">&para;</a></h4>
-<p>Decide which device address and register type to seed.  For inverter telemetry:</p>
+<h3 id="import-map">Import map<a class="headerlink" href="#import-map" title="Permanent link">&para;</a></h3>
+<p>The top-level package renames from <code>givenergy_modbus_async</code> to
+<code>givenergy_modbus</code>; nearly everything keeps its path under that:</p>
 <table>
 <thead>
 <tr>
-<th>Bank</th>
-<th>Device</th>
-<th>Type</th>
+<th>Fork</th>
+<th>2.2+</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Standard inverter IR</td>
-<td>0x31</td>
-<td>IR</td>
+<td><code>from givenergy_modbus_async.client.client import Client</code></td>
+<td><code>from givenergy_modbus.client.client import Client</code></td>
 </tr>
 <tr>
-<td>Holding registers</td>
-<td>0x11</td>
-<td>HR</td>
+<td><code>from givenergy_modbus_async.client.client import commands</code></td>
+<td><code>from givenergy_modbus.client import commands</code></td>
 </tr>
 <tr>
-<td>Battery</td>
-<td>0x32–0x37</td>
-<td>IR</td>
+<td><code>from givenergy_modbus_async.model.register import Model</code></td>
+<td><code>from givenergy_modbus.model.inverter import Model</code></td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.model.register import Enable</code></td>
+<td>removed — these fields are plain <code>bool</code>s now (see below)</td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.model.register import HR, IR</code></td>
+<td><code>from givenergy_modbus.model.register import HR, IR</code></td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.model import TimeSlot</code></td>
+<td><code>from givenergy_modbus.model import TimeSlot</code></td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.model.plant import Plant</code></td>
+<td><code>from givenergy_modbus.model.plant import Plant</code></td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.exceptions import CommunicationError</code></td>
+<td><code>from givenergy_modbus.exceptions import CommunicationError</code></td>
+</tr>
+<tr>
+<td><code>from givenergy_modbus_async.pdu import TransparentRequest, …</code></td>
+<td><code>from givenergy_modbus.pdu import TransparentRequest, …</code></td>
 </tr>
 </tbody>
 </table>
-<p>Seed ranges densely (e.g. <code>range(0, 240)</code>) so the app's read requests always find
-populated registers and don't time out.</p>
-<h4 id="2-run-pass-1-offset-0">2. Run pass 1 (offset = 0)<a class="headerlink" href="#2-run-pass-1-offset-0" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># Using givenergy-cli (once the identify commands are implemented):</span>
-givenergy-cli<span class="w"> </span>mock-plant<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--capture<span class="w"> </span>path/to/plant.log<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--sentinels<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--device<span class="w"> </span>0x31<span class="w"> </span>--type<span class="w"> </span>ir<span class="w"> </span>--base<span class="w"> </span><span class="m">0</span><span class="w"> </span>--count<span class="w"> </span><span class="m">240</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--offset<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span>--port<span class="w"> </span><span class="m">8899</span>
+<p>Throughout the API, the fork's <code>slave_address</code> terminology is
+<code>device_address</code> here (parameter names, PDU attributes, repr output).</p>
+<h3 id="the-polling-lifecycle-the-one-structural-change">The polling lifecycle (the one structural change)<a class="headerlink" href="#the-polling-lifecycle-the-one-structural-change" title="Permanent link">&para;</a></h3>
+<p>The fork's <code>detect_plant()</code> / <code>refresh_plant()</code> / <code>commands.refresh_plant_data()</code>
+orchestration is replaced by three primitives:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># once, after connecting — discovers device type, address, meters, batteries:</span>
+<span class="n">caps</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">detect</span><span class="p">()</span>
 
-<span class="c1"># Or directly in Python:</span>
-from<span class="w"> </span>givenergy_modbus.testing<span class="w"> </span>import<span class="w"> </span>MockPlant
-from<span class="w"> </span>givenergy_modbus.model.register<span class="w"> </span>import<span class="w"> </span>IR
+<span class="c1"># occasionally — non-volatile configuration (slots, targets, limits):</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">load_config</span><span class="p">()</span>
 
-<span class="nv">mock</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MockPlant.from_sentinels<span class="o">(</span>
-<span class="w">    </span><span class="s2">&quot;path/to/plant.log&quot;</span>,
-<span class="w">    </span><span class="nv">spec</span><span class="o">=[(</span>0x31,<span class="w"> </span>IR,<span class="w"> </span>range<span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">240</span><span class="o">))]</span>,
-<span class="w">    </span><span class="nv">offset</span><span class="o">=</span><span class="m">0</span>,
-<span class="o">)</span>
-import<span class="w"> </span>asyncio
-asyncio.run<span class="o">(</span>mock.serve_forever<span class="o">())</span>
+<span class="c1"># hot loop — volatile measurements:</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
 </code></pre></div>
-<p>Connect the GivEnergy app to the mock's IP and port.  Navigate to
-<strong>Direct Control → Read Only</strong>.  For each displayed label, record the value as <code>d1</code>.</p>
-<h4 id="3-run-pass-2-offset-1000">3. Run pass 2 (offset = 1000)<a class="headerlink" href="#3-run-pass-2-offset-1000" title="Permanent link">&para;</a></h4>
-<p>Stop the mock; re-start with <code>--offset 1000</code>.  Record each value as <code>d2</code>.</p>
-<blockquote>
-<p><strong>Choosing K:</strong> use K = 1000.  This is safe for all known GivEnergy register
-addresses (max address ≈ 5014; 5014 + 1000 = 6014 ≪ 65535 uint16 max).</p>
-</blockquote>
-<h4 id="4-identify-each-register">4. Identify each register<a class="headerlink" href="#4-identify-each-register" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1"># CLI:</span>
-givenergy-cli<span class="w"> </span>identify<span class="w"> </span><span class="m">242</span>.7<span class="w"> </span>--second<span class="w"> </span><span class="m">342</span>.7<span class="w"> </span>--k<span class="w"> </span><span class="m">1000</span>
-<span class="c1"># → address=2427, scale=0.1 (deci), confidence=two-pass</span>
-
-<span class="c1"># Python:</span>
-from<span class="w"> </span>givenergy_modbus.testing<span class="w"> </span>import<span class="w"> </span>identify
-<span class="nv">candidates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>identify<span class="o">(</span><span class="m">242</span>.7,<span class="w"> </span><span class="m">342</span>.7,<span class="w"> </span><span class="nv">k</span><span class="o">=</span><span class="m">1000</span><span class="o">)</span>
-print<span class="o">(</span>candidates<span class="o">)</span>
-<span class="c1"># → [Candidate(address=2427, scale=0.1, confidence=&#39;two-pass&#39;)]</span>
-</code></pre></div>
-<h4 id="5-cross-check-against-the-existing-model">5. Cross-check against the existing model<a class="headerlink" href="#5-cross-check-against-the-existing-model" title="Permanent link">&para;</a></h4>
-<p>Compare each <code>(address, scale)</code> against the existing register LUT
-(<code>SinglePhaseInverterRegisterGetter.REGISTER_LUT</code> in <code>model/inverter.py</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Fork</th>
+<th>2.2+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>await client.detect_plant(...)</code></td>
+<td><code>await client.detect()</code> → returns <code>PlantCapabilities</code></td>
+</tr>
+<tr>
+<td><code>await client.refresh_plant(full_refresh=True, ...)</code></td>
+<td><code>await client.load_config()</code> then <code>await client.refresh()</code></td>
+</tr>
+<tr>
+<td><code>await client.refresh_plant(full_refresh=False, ...)</code></td>
+<td><code>await client.refresh()</code></td>
+</tr>
+<tr>
+<td><code>commands.refresh_plant_data(...)</code></td>
+<td>removed — raises <code>PlantNotDetected</code> with migration pointers</td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
 <ul>
-<li><strong>Address matches an existing Def</strong> → confirm the app label is the human-readable
-  name for that field.  Update the field's comment/docstring if it differs.</li>
-<li><strong>Address unknown</strong> → record it as a new Def candidate for the #48 register audit.
-  Note the app label and inferred scale; submit a PR adding <code>Def(C.deci, None, IR(address))</code>
-  (or the appropriate converter) under the right field name.</li>
+<li><code>detect()</code> has no <code>additional=</code> or <code>lite=</code> parameters. Additional register
+  blocks are probed automatically per model. A consumer-controlled reduced
+  refresh ("lite mode") is being designed in
+  <a href="https://github.com/dewet22/givenergy-modbus/issues/242">#242</a> — input
+  welcome if you rely on the fork's <code>lite=True</code>.</li>
+<li><code>detect(prior=...)</code> accepts a previously persisted <code>PlantCapabilities</code>
+  (e.g. from <code>caps.to_dict()</code> / <code>PlantCapabilities.from_dict()</code>), so restarts
+  can skip the full probe.</li>
+<li><code>refresh(ir0_max_age=...)</code> opts in to skipping the IR(0,60) read when a
+  fresh copy was already received (dongles fan responses out to all connected
+  clients), reducing bus load — much of what lite mode was for.</li>
+<li><code>refresh()</code>/<code>load_config()</code> raise <code>RefreshPartiallySucceeded</code> /
+  <code>RefreshFailed</code> rather than returning silently on partial reads; the
+  partial-failure policy belongs to the consumer.</li>
+<li>A deprecated <code>refresh_plant()</code> shim exists for the transition but will be
+  removed in 3.0.</li>
 </ul>
-<h4 id="6-handle-clamping-and-non-linear-registers">6. Handle clamping and non-linear registers<a class="headerlink" href="#6-handle-clamping-and-non-linear-registers" title="Permanent link">&para;</a></h4>
-<p>Some fields are problematic for auto-identification:</p>
+<h3 id="plant-attributes">Plant attributes<a class="headerlink" href="#plant-attributes" title="Permanent link">&para;</a></h3>
+<p>Topology facts discovered at detect time live on <code>plant.capabilities</code> rather
+than directly on <code>Plant</code>:</p>
 <table>
 <thead>
 <tr>
-<th>Case</th>
-<th>Symptom</th>
-<th>Workaround</th>
+<th>Fork</th>
+<th>2.2+</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Clamped field</strong> (e.g. SOC %)</td>
-<td>App shows 100.0 % even with sentinel=2427</td>
-<td>Use a sentinel value in the valid range; probe with a third pass using a smaller offset</td>
+<td><code>plant.slave_address</code></td>
+<td><code>plant.capabilities.inverter_address</code></td>
 </tr>
 <tr>
-<td><strong>Boolean/enum</strong></td>
-<td>App shows only 0 or 1</td>
-<td>Use a non-zero in-range sentinel and check which field toggles</td>
+<td><code>plant.device_type</code></td>
+<td><code>plant.capabilities.device_type</code></td>
 </tr>
 <tr>
-<td><strong>uint32 pair</strong></td>
-<td>Two registers combine into one displayed value</td>
-<td>Seed the two adjacent addresses and note which label changes when each changes</td>
+<td><code>plant.isHV</code></td>
+<td><code>plant.capabilities.is_hv</code></td>
 </tr>
 <tr>
-<td><strong>timeslot</strong></td>
-<td>Two registers encode start/end time</td>
-<td>Similar to uint32</td>
+<td><code>plant.meter_list</code></td>
+<td><code>plant.capabilities.meter_addresses</code></td>
+</tr>
+<tr>
+<td><code>plant.number_batteries</code></td>
+<td>unchanged on LV plants (also <code>plant.capabilities.lv_battery_addresses</code>). <strong>HV plants: semantics changed</strong> — the fork summed BCU module counts here, but this property now counts LV batteries only, so it is 0 on HV. For the fork's total-module count use <code>sum(n for _, n in plant.capabilities.bcu_stacks)</code>, or work with <code>plant.hv_stacks</code> directly</td>
+</tr>
+<tr>
+<td><code>plant.HVStack</code></td>
+<td><code>plant.hv_stacks</code></td>
+</tr>
+<tr>
+<td><code>plant.inverter_serial_number</code></td>
+<td><code>plant.inverter_serial</code></td>
+</tr>
+<tr>
+<td><code>plant.additional_input_registers</code> / <code>..._holding_registers</code></td>
+<td>gone — handled internally by capability-aware polling</td>
+</tr>
+<tr>
+<td><code>plant.inverter</code>, <code>plant.gateway</code>, <code>plant.ems</code>, <code>plant.batteries</code>, <code>plant.meters</code>, <code>plant.register_caches</code></td>
+<td>unchanged</td>
 </tr>
 </tbody>
 </table>
-<p>Non-linear registers cannot be uniquely identified by <code>identify()</code> — handle them manually.</p>
-<h3 id="example-mapping-table">Example mapping table<a class="headerlink" href="#example-mapping-table" title="Permanent link">&para;</a></h3>
-<p>After completing both passes, build a table like:</p>
-<table>
-<thead>
-<tr>
-<th>App label</th>
-<th>address</th>
-<th>type</th>
-<th>scale</th>
-<th>Existing field</th>
-<th>Action</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Grid voltage</td>
-<td>2427</td>
-<td>IR</td>
-<td>0.1 (deci)</td>
-<td><code>v_ac1</code> at IR(8)</td>
-<td><strong>Mismatch</strong> — re-probe, likely IR(8) not 2427</td>
-</tr>
-<tr>
-<td>Battery temperature</td>
-<td>250</td>
-<td>IR</td>
-<td>0.1 (deci)</td>
-<td><code>t_battery</code> at IR(56)</td>
-<td>—</td>
-</tr>
-<tr>
-<td>AC charge today</td>
-<td>?</td>
-<td>IR</td>
-<td>0.1 (deci)</td>
-<td>unmapped</td>
-<td>Add <code>Def(C.deci, None, IR(?))</code></td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p>Note: the sentinel value is the <em>address</em>, not necessarily a realistic reading.
-"Grid voltage 242.7 V" from a sentinel means address 2427, but the real v_ac1 at
-address 8 would display 0.8 V in sentinel mode.  Use cross-referencing, not
-absolute values, to confirm names.</p>
-</blockquote>
-<h3 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h3>
+<p><code>plant.capabilities</code> also exposes convenience predicates the fork lacked
+(<code>is_three_phase</code>, <code>is_ac_coupled</code>, <code>is_gateway</code>, <code>is_ems</code>,
+<code>has_extended_slots</code>, …), which replace most <code>device_type</code>-string sniffing.</p>
+<h3 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h3>
+<p>The fork threads an <code>inv_type: str</code> parameter through many <code>set_*</code> helpers
+and branches on substrings like <code>"3ph"</code>. Here the model-specific behaviour
+is explicit instead:</p>
 <ul>
-<li><code>givenergy_modbus/testing/identify.py</code> — <code>sentinel_devices</code>, <code>identify</code>, <code>Candidate</code></li>
-<li><code>givenergy_modbus/testing/mock_plant.py</code> — <code>MockPlant.from_sentinels</code></li>
-<li><code>givenergy_modbus/model/inverter.py</code> — <code>SinglePhaseInverterRegisterGetter.REGISTER_LUT</code></li>
-<li>Issue #48 — register audit tracking confirmed and candidate fields</li>
+<li>3-phase variants are separate helpers: <code>set_charge_target_3ph()</code>,
+  <code>set_battery_soc_reserve_3ph()</code>, <code>disable_charge_target_3ph()</code>, …</li>
+<li>Slot commands take a <code>SlotMap</code> (<code>SINGLE_PHASE_SLOTS</code>, <code>EXTENDED_SLOTS</code>,
+  <code>THREE_PHASE_SLOTS</code>) instead of an <code>inv_type</code> string — pass
+  <code>inverter.slot_map</code> rather than choosing one by hand:</li>
 </ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.client</span><span class="w"> </span><span class="kn">import</span> <span class="n">commands</span>
+
+<span class="n">reqs</span> <span class="o">=</span> <span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">TimeSlot</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">),</span> <span class="n">inverter</span><span class="o">.</span><span class="n">slot_map</span><span class="p">)</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">reqs</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Fork</th>
+<th>2.2+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>set_enable_charge(v, inv_type)</code></td>
+<td><code>set_enable_charge(v)</code> (3-phase: also <code>set_ac_charge()</code> / <code>set_force_charge()</code> as appropriate)</td>
+</tr>
+<tr>
+<td><code>set_enable_discharge(v, inv_type)</code></td>
+<td><code>set_enable_discharge(v)</code></td>
+</tr>
+<tr>
+<td><code>set_enable_rtc(v, inv_type)</code></td>
+<td><code>set_enable_rtc(v)</code></td>
+</tr>
+<tr>
+<td><code>set_battery_charge_limit_ac(v, inv_type)</code></td>
+<td><code>set_battery_charge_limit_ac(v)</code></td>
+</tr>
+<tr>
+<td><code>set_battery_discharge_limit_ac(v, inv_type)</code></td>
+<td><code>set_battery_discharge_limit_ac(v)</code></td>
+</tr>
+<tr>
+<td><code>set_battery_soc_reserve(v, inv_type)</code></td>
+<td><code>set_battery_soc_reserve(v)</code> / <code>set_battery_soc_reserve_3ph(v)</code></td>
+</tr>
+<tr>
+<td><code>_set_charge_slot(discharge, idx, slot, inv_type)</code></td>
+<td><code>set_charge_slot(idx, slot, slot_map)</code> / <code>set_discharge_slot(idx, slot, slot_map)</code></td>
+</tr>
+<tr>
+<td><code>set_charge_target(v, inv_type)</code></td>
+<td><code>set_charge_target(v)</code> / <code>set_charge_target_3ph(v)</code></td>
+</tr>
+<tr>
+<td><code>set_charge_target_only(v, inv_type)</code></td>
+<td>no equivalent yet — <a href="https://github.com/dewet22/givenergy-modbus/issues/243">#243</a></td>
+</tr>
+<tr>
+<td><code>set_soc_target(discharge, idx, v, inv_type)</code></td>
+<td>EMS models: <code>set_ems_charge_target_soc(idx, v)</code> etc.; non-EMS per-slot targets: <a href="https://github.com/dewet22/givenergy-modbus/issues/243">#243</a></td>
+</tr>
+</tbody>
+</table>
+<p>EMS, export and smart-load slots all have first-class helpers
+(<code>set_ems_charge_slot()</code>, <code>set_export_slot()</code>, <code>set_smart_load_slot()</code>, …) —
+see the full table in <a href="../usage/">Usage</a>.</p>
+<h3 id="model-attributes">Model attributes<a class="headerlink" href="#model-attributes" title="Permanent link">&para;</a></h3>
+<h4 id="enable-enum-removed"><code>Enable</code> enum removed<a class="headerlink" href="#enable-enum-removed" title="Permanent link">&para;</a></h4>
+<p>The fork modelled several flags as an <code>Enable</code> enum (<code>ENABLE</code> / <code>DISABLE</code> /
+<code>UNKNOWN</code>); here they are plain <code>bool</code>s. Comparisons like
+<code>inverter.enable_charge == Enable.ENABLE</code> become just
+<code>inverter.enable_charge</code>. An attribute whose backing registers haven't been
+read yet returns <code>None</code>, so <code>== Enable.UNKNOWN</code> checks become <code>is None</code>.</p>
+<h4 id="renamed-inverter-attributes">Renamed inverter attributes<a class="headerlink" href="#renamed-inverter-attributes" title="Permanent link">&para;</a></h4>
+<p>Same registers, clearer names (register numbers shown as the join key):</p>
+<table>
+<thead>
+<tr>
+<th>Fork</th>
+<th>2.2+</th>
+<th>Registers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>battery_percent</code></td>
+<td><code>battery_soc</code></td>
+<td>IR(59)</td>
+</tr>
+<tr>
+<td><code>e_inverter_in_day</code></td>
+<td><code>e_ac_charge_today</code></td>
+<td>IR(35)</td>
+</tr>
+<tr>
+<td><code>e_inverter_out_day</code></td>
+<td><code>e_pv_generation_today</code> (deprecated alias kept for one release)</td>
+<td>IR(44)</td>
+</tr>
+<tr>
+<td><code>e_inverter_out_total</code></td>
+<td><code>e_pv_generation_total</code></td>
+<td>IR(45,46)</td>
+</tr>
+<tr>
+<td><code>e_battery_throughput_total</code></td>
+<td><code>e_battery_throughput</code></td>
+<td>IR(6,7)</td>
+</tr>
+<tr>
+<td><code>e_battery_charge_today</code></td>
+<td><code>e_battery_charge_today_alt1</code></td>
+<td>IR(36)</td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_today</code></td>
+<td><code>e_battery_discharge_today_alt1</code></td>
+<td>IR(37)</td>
+</tr>
+<tr>
+<td><code>e_battery_charge_today_2</code></td>
+<td><code>e_battery_charge_today_alt2</code></td>
+<td>IR(183)</td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_today_2</code></td>
+<td><code>e_battery_discharge_today_alt2</code></td>
+<td>IR(182)</td>
+</tr>
+<tr>
+<td><code>e_battery_charge_total_2</code></td>
+<td><code>e_battery_charge_total_alt1</code></td>
+<td>IR(181)</td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_total_2</code></td>
+<td><code>e_battery_discharge_total_alt1</code></td>
+<td>IR(180) — the fork reads HR(180), which looks like a typo</td>
+</tr>
+<tr>
+<td><code>e_battery_charge_today3</code></td>
+<td><code>e_battery_charge_today_alt3</code></td>
+<td>HR(4114)</td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_today3</code></td>
+<td><code>e_battery_discharge_today_alt3</code></td>
+<td>HR(4113)</td>
+</tr>
+<tr>
+<td><code>e_battery_charge_total3</code></td>
+<td><code>e_battery_charge_total_alt2</code></td>
+<td>HR(4111,4112)</td>
+</tr>
+<tr>
+<td><code>e_battery_discharge_total3</code></td>
+<td><code>e_battery_discharge_total_alt2</code></td>
+<td>HR(4109,4110)</td>
+</tr>
+<tr>
+<td><code>eco_mode</code></td>
+<td><code>battery_power_mode</code></td>
+<td>HR(27)</td>
+</tr>
+<tr>
+<td><code>soc_force_adjust</code></td>
+<td><code>battery_calibration_stage</code></td>
+<td>HR(29)</td>
+</tr>
+<tr>
+<td><code>rtc_enable</code></td>
+<td><code>enable_rtc</code></td>
+<td>HR(166)</td>
+</tr>
+<tr>
+<td><code>enable_standard_self_consumption_logic</code></td>
+<td><code>enable_inverter_parallel_mode</code></td>
+<td>HR(199)</td>
+</tr>
+<tr>
+<td><code>inverter_countdown</code></td>
+<td><code>countdown</code></td>
+<td>IR(38)</td>
+</tr>
+<tr>
+<td><code>p_inverter_out</code></td>
+<td><code>p_grid_out_ph1</code></td>
+<td>IR(24) — inverter AC terminal, distinct from the grid clamp at IR(30)</td>
+</tr>
+<tr>
+<td><code>p_eps_backup</code></td>
+<td><code>p_backup</code></td>
+<td>IR(31)</td>
+</tr>
+<tr>
+<td><code>v_eps_backup</code></td>
+<td><code>v_ac1_output</code></td>
+<td>IR(53)</td>
+</tr>
+<tr>
+<td><code>f_eps_backup</code></td>
+<td><code>f_ac1_output</code></td>
+<td>IR(54)</td>
+</tr>
+<tr>
+<td><code>temp_charger</code></td>
+<td><code>t_charger</code></td>
+<td>IR(55)</td>
+</tr>
+<tr>
+<td><code>temp_battery</code></td>
+<td><code>t_battery</code></td>
+<td>IR(56)</td>
+</tr>
+<tr>
+<td><code>temp_inverter_heatsink</code></td>
+<td><code>t_inverter_heatsink</code></td>
+<td>IR(41)</td>
+</tr>
+<tr>
+<td><code>work_time_total</code></td>
+<td><code>work_time_total_hours</code></td>
+<td>IR(47,48)</td>
+</tr>
+</tbody>
+</table>
+<p>Computed values like <code>battery_max_power</code> and <code>inverter_max_power</code> are
+properties on the inverter model rather than register definitions, but keep
+their names. Battery, meter and gateway attribute surfaces are unchanged
+(the gateway additionally gained the firmware-gated <code>GatewayV1</code>/<code>GatewayV2</code>
+split and the parallel-AIO registers that GivTCP patched into its fork).</p>
+<h4 id="time-slots">Time slots<a class="headerlink" href="#time-slots" title="Permanent link">&para;</a></h4>
+<p><code>charge_slot_1</code> … <code>charge_slot_10</code>, <code>discharge_slot_*</code> and
+<code>battery_pause_slot_1</code> are <code>TimeSlot</code>-valued attributes exactly as in the
+fork (<code>inverter.charge_slot_1.start</code>, <code>.end</code>).</p>
+<h3 id="where-to-ask">Where to ask<a class="headerlink" href="#where-to-ask" title="Permanent link">&para;</a></h3>
+<p>If a port surfaces something this guide misses — an attribute, a command, or
+behaviour that changed — please open an issue. Two are already tracked from
+GivTCP's port: reduced "lite" refresh
+(<a href="https://github.com/dewet22/givenergy-modbus/issues/242">#242</a>) and the two
+missing command helpers
+(<a href="https://github.com/dewet22/givenergy-modbus/issues/243">#243</a>).</p>
 
 
 

@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/release-notes/v2.2.0/">
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/release-notes/v2.3.0/">
       
       
       
@@ -21,7 +21,7 @@
     
     
       
-        <title>V2.2.0 - GivEnergy Modbus</title>
+        <title>V2.3.0 - GivEnergy Modbus</title>
       
     
     
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              V2.2.0
+              V2.3.0
             
           </span>
         </div>
@@ -911,50 +911,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#security" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Security
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#breaking-changes-migration-from-21" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Breaking changes &amp; migration from 2.1
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#home-assistant" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Home Assistant
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#givenergy-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        givenergy-cli
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -975,86 +931,42 @@
   
 
 
-  <h1>V2.2.0</h1>
+  <h1>V2.3.0</h1>
 
-<p>2.2 reshapes how a system is modelled and hardens the library end to end. The
-headline is the graph-shaped Plant (#106): instead of a flat model interrogated
-through scattered <code>is_*</code>/<code>has_*</code> predicates, a Plant now enumerates its hardware
-as typed devices — inverter, batteries, EMS, gateway, AIO battery modules — each
-addressable in its own right. The same release line absorbed a full security
-audit and a series of device-identity fixes, so serial numbers are now reliable
-across the whole detect→refresh lifecycle.</p>
+<p>2.3.0 is a register-correctness and addressing release, shaped by field
+evidence rather than the roadmap's planned theme — the write-safety pillar
+moves to 2.4.x. Two behaviour changes lead it, both capture-proven.</p>
 <h4 id="highlights">Highlights<a class="headerlink" href="#highlights" title="Permanent link">&para;</a></h4>
 <ul>
-<li><strong>Typed-device enumeration — <code>Plant.devices</code></strong> (#106): walk a system's hardware
-  as typed devices rather than reading raw register caches or model predicates.</li>
-<li><strong>Reliable device identity</strong>: serial reconciliation via <code>Plant.serial_index</code>
-  (#106), a single authoritative <code>Plant.inverter_serial</code> accessor that stays
-  correct from first detect through every refresh (#227), and a fix for
-  peripheral responses clobbering the inverter serial (givenergy-hass#95).</li>
-<li><strong>Per-module AIO battery data</strong> exposed as enumerable devices (#192).</li>
-<li><strong>Share-safe diagnostics</strong>: <code>RegisterCache.redact_serials()</code> and <code>Plant.redact()</code>
-  produce exports with serial numbers redacted, for attaching to issues (#212).</li>
-<li><strong>Model-aware write commands</strong> for three-phase inverters and EMS plants
-  (#75, #203): model-specific command mixins route writes to the correct
-  registers for the hardware, with write safety enforced by the global
-  allowlist at the PDU layer. Per-model allowlists are laid out as groundwork
-  but not yet enforced.</li>
-<li><strong>Frozen-BMS detection</strong> via a content-staleness primitive, so consumers can
-  tell live data from a stuck cache (#91).</li>
+<li><strong>Inverter addressing unified on <code>0x11</code></strong> (#189): the <code>0x31</code> read-alias for
+  AC and HYBRID_GEN1 is retired. Live validation on both families showed
+  <code>0x11</code> serves the full register file — the old "identity-only" claim was an
+  artefact of passive dongle captures — and it is where the official app
+  reads and writes. Capabilities persisted with the old <code>0x31</code> keep working
+  (the hardware facade still answers there) and self-heal to <code>0x11</code> on the
+  next <code>detect()</code>; no consumer action needed.</li>
+<li><strong>Meter power-factor decode fixed</strong> (#246): <code>pf_*</code> (IR 80–83) was decoded
+  as unsigned milli, producing impossible values like 9.998; the correct
+  encoding is signed int16 ×1e-4 in the EE [−1, +1] convention. Apparent
+  power gains its deci scaling (0.1 VA, unsigned), and reactive power is
+  confirmed correct at 1 var — all three scales settled against capture
+  evidence via the displacement-PF identity, and pinned by a golden-master
+  test so they can't silently regress.</li>
+<li><strong>Migration guide for fork consumers</strong>
+  (<a href="../../migrating-from-the-async-fork/">docs/migrating-from-the-async-fork.md</a>, #244):
+  the import map, polling-lifecycle change, command mapping and attribute
+  rename table for moving from the community <code>givenergy_modbus_async</code> fork to
+  this library — written for GivTCP's port, useful to any fork descendant.</li>
+<li><strong>Per-register provenance accessors</strong> (#248): public access to a field's
+  backing registers and their per-register freshness — early groundwork for
+  the provenance pillar.</li>
+<li><strong><code>i_battery</code></strong> — signed per-pack battery current (IR 95, #239) — plus an
+  audit extension that diffs device sections against their getters, closing
+  the blind spot that had hidden it (#240).</li>
+<li><strong>Redaction hardening</strong> (#245): identifier registers are auto-discovered
+  across all model modules, so a future device type can't silently miss
+  share-safe redaction coverage.</li>
 </ul>
-<h4 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h4>
-<p>This release carries the library's share of a coordinated security audit that
-swept all three GivEnergy repositories — the modbus library, the Home Assistant
-integration, and the CLI — conducted end-to-end by Anthropic's Mythos/Fable
-model, with every finding either fixed or closed with documented analysis
-(#223, #224). On the library side it delivered: a published <code>SECURITY.md</code> and
-threat model, fail-closed serial redaction, write-path input validation (bools
-and non-integral values are rejected before they reach a register), hardening
-of the decode layer against malformed frames and tampered cache files, an
-opt-in strict CRC mode (<code>ReadRegistersResponse.strict_crc</code>), and a hardened CI
-supply chain (actions pinned to commit SHAs, least-privilege workflow
-permissions).</p>
-<h4 id="breaking-changes-migration-from-21">Breaking changes &amp; migration from 2.1<a class="headerlink" href="#breaking-changes-migration-from-21" title="Permanent link">&para;</a></h4>
-<ul>
-<li><code>first_battery_serial_number</code> has been removed (#191) — it was unreliable on
-  real hardware. Use the typed-device enumeration or <code>Plant.serial_index</code>.</li>
-<li>For inverter identity, prefer the new <code>Plant.inverter_serial</code>;
-  <code>Plant.inverter_serial_number</code> remains but is now a fallback surface and a
-  candidate for deprecation in a future release.</li>
-<li>Topology checks built on flat predicates or raw register caches keep working,
-  but the typed-device API is the supported path going forward — new device
-  types will appear there first.</li>
-</ul>
-<h4 id="home-assistant">Home Assistant<a class="headerlink" href="#home-assistant" title="Permanent link">&para;</a></h4>
-<p>The Home Assistant integration
-(<a href="https://github.com/dewet22/givenergy-hass">givenergy-hass</a>) ships its 1.2.0
-line on 2.2, and it is the most visible beneficiary of the typed device model.
-All-in-One systems now surface each removable battery module as its own HA
-device — parented to the inverter, identified by the module's serial, with its
-24 per-cell voltages and temperatures as diagnostic sensors — so the
-cell-balance heatmap and pack-health views work at module granularity,
-validated end-to-end on a real four-module unit. The 2.2 identity fixes also
-resolve a long-standing All-in-One collision where the inverter device could
-merge into one of its own battery modules.</p>
-<p>Beyond the device model, 1.2.0 adds always-positive Grid Power Import/Export
-sensors that suit the Energy Dashboard's two-sensor grid option directly,
-hardens debug-capture access behind admin tokens and single-capture signed
-links (following a security review of the integration that found no
-exploitable vulnerabilities), and inherits the library's rejection of the
-dongle's transient all-zero register blocks — last-good values are kept rather
-than zeros reaching your sensors. There's no migration on upgrade; AIO owners
-who ran an early 1.2.0 pre-release should remove and re-add the integration
-once to clear stale entities.</p>
-<h4 id="givenergy-cli">givenergy-cli<a class="headerlink" href="#givenergy-cli" title="Permanent link">&para;</a></h4>
-<p>The CLI (<a href="https://github.com/dewet22/givenergy-cli">givenergy-cli</a>) tracks 2.2
-in its 1.5 line: the TUI gains Glance/Flow/Analyst views mirroring the Home
-Assistant dashboards, warm starts become near-instant by caching the detected
-topology, and a new Controls view sends inverter writes — the CLI's first step
-beyond read-only, gated behind an explicit <code>--allow-writes</code> flag. Diagnostic
-exports are share-safe by default, with serial numbers redacted. Nothing
-changes for users beyond a normal upgrade — the graph-shaped Plant and the
-register renames were absorbed inside the CLI.</p>
 
 
 

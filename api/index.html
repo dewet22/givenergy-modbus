@@ -1714,6 +1714,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.register_age" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_age
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.Plant.update" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3636,6 +3647,8 @@
       
         
       
+        
+      
     
     
     
@@ -3719,6 +3732,34 @@
     
   
     Hardware & firmware quirks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migrating-from-the-async-fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating from the async fork
   
 
     
@@ -5393,6 +5434,17 @@
     <span class="md-ellipsis">
       
         redact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.register_age" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        register_age
       
     </span>
   </a>
@@ -8520,8 +8572,7 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
 <span class="normal">1342</span>
 <span class="normal">1343</span>
 <span class="normal">1344</span>
-<span class="normal">1345</span>
-<span class="normal">1346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
+<span class="normal">1345</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.</span>
 
 <span class="sd">    Holds a long-lived connection drained by a single producer/consumer task pair.</span>
@@ -8931,10 +8982,9 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
             <span class="p">)</span>
 
         <span class="c1"># Step 1 — read the inverter&#39;s configuration block to get DTC and ARM firmware.</span>
-        <span class="c1"># 0x11 is the inverter&#39;s canonical address; discovery always reads there and the</span>
-        <span class="c1"># response is cached under 0x11 (issue #119). resolve_model() below maps the DTC to</span>
-        <span class="c1"># the model, from which PlantCapabilities derives the address used for later polling</span>
-        <span class="c1"># (0x11, or 0x31 for AC/HYBRID_GEN1).</span>
+        <span class="c1"># 0x11 is the inverter&#39;s canonical address for every model (#189); discovery reads</span>
+        <span class="c1"># there and the response is cached under 0x11 (issue #119). resolve_model() below maps</span>
+        <span class="c1"># the DTC to the model; PlantCapabilities derives the same 0x11 for later polling.</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request_and_await_response</span><span class="p">(</span>
             <span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="mh">0x11</span><span class="p">),</span>
             <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
@@ -9005,7 +9055,7 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
         <span class="p">)</span>
 
         <span class="c1"># Step 4 — LV battery detection. Battery pack #1 is at 0x32, additional batteries at</span>
-        <span class="c1"># 0x33–0x37 (the inverter itself now lives at 0x11/0x31, not 0x32 — issue #119). All</span>
+        <span class="c1"># 0x33–0x37 (the inverter itself lives at 0x11, not 0x32 — issues #119/#189). All</span>
         <span class="c1"># slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)</span>
         <span class="c1"># and EMS plant controllers (don&#39;t expose IR at the inverter address — see #86).</span>
         <span class="c1"># Per-slot (not break-on-fail) for the same reasons as the meter sweep above: battery</span>
@@ -9674,7 +9724,8 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1102</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1101</span>
+<span class="normal">1102</span>
 <span class="normal">1103</span>
 <span class="normal">1104</span>
 <span class="normal">1105</span>
@@ -9711,8 +9762,7 @@ Client at a time; calling while one is in flight raises RuntimeError.</p>
 <span class="normal">1136</span>
 <span class="normal">1137</span>
 <span class="normal">1138</span>
-<span class="normal">1139</span>
-<span class="normal">1140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
+<span class="normal">1139</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture_frames</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">sink</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Direction</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
     <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span>
@@ -10135,8 +10185,7 @@ speculative probes where absence is the common case.</p>
 <span class="normal">776</span>
 <span class="normal">777</span>
 <span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">detect</span><span class="p">(</span>
+<span class="normal">779</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">detect</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
     <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
@@ -10178,10 +10227,9 @@ speculative probes where absence is the common case.</p>
         <span class="p">)</span>
 
     <span class="c1"># Step 1 — read the inverter&#39;s configuration block to get DTC and ARM firmware.</span>
-    <span class="c1"># 0x11 is the inverter&#39;s canonical address; discovery always reads there and the</span>
-    <span class="c1"># response is cached under 0x11 (issue #119). resolve_model() below maps the DTC to</span>
-    <span class="c1"># the model, from which PlantCapabilities derives the address used for later polling</span>
-    <span class="c1"># (0x11, or 0x31 for AC/HYBRID_GEN1).</span>
+    <span class="c1"># 0x11 is the inverter&#39;s canonical address for every model (#189); discovery reads</span>
+    <span class="c1"># there and the response is cached under 0x11 (issue #119). resolve_model() below maps</span>
+    <span class="c1"># the DTC to the model; PlantCapabilities derives the same 0x11 for later polling.</span>
     <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_request_and_await_response</span><span class="p">(</span>
         <span class="n">ReadHoldingRegistersRequest</span><span class="p">(</span><span class="n">base_register</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">register_count</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">device_address</span><span class="o">=</span><span class="mh">0x11</span><span class="p">),</span>
         <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">,</span>
@@ -10252,7 +10300,7 @@ speculative probes where absence is the common case.</p>
     <span class="p">)</span>
 
     <span class="c1"># Step 4 — LV battery detection. Battery pack #1 is at 0x32, additional batteries at</span>
-    <span class="c1"># 0x33–0x37 (the inverter itself now lives at 0x11/0x31, not 0x32 — issue #119). All</span>
+    <span class="c1"># 0x33–0x37 (the inverter itself lives at 0x11, not 0x32 — issues #119/#189). All</span>
     <span class="c1"># slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)</span>
     <span class="c1"># and EMS plant controllers (don&#39;t expose IR at the inverter address — see #86).</span>
     <span class="c1"># Per-slot (not break-on-fail) for the same reasons as the meter sweep above: battery</span>
@@ -10327,7 +10375,8 @@ speculative probes where absence is the common case.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1232</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1231</span>
+<span class="normal">1232</span>
 <span class="normal">1233</span>
 <span class="normal">1234</span>
 <span class="normal">1235</span>
@@ -10341,8 +10390,7 @@ speculative probes where absence is the common case.</p>
 <span class="normal">1243</span>
 <span class="normal">1244</span>
 <span class="normal">1245</span>
-<span class="normal">1246</span>
-<span class="normal">1247</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
+<span class="normal">1246</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -10386,7 +10434,8 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">840</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">839</span>
+<span class="normal">840</span>
 <span class="normal">841</span>
 <span class="normal">842</span>
 <span class="normal">843</span>
@@ -10441,8 +10490,7 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 <span class="normal">892</span>
 <span class="normal">893</span>
 <span class="normal">894</span>
-<span class="normal">895</span>
-<span class="normal">896</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
+<span class="normal">895</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Plant</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Read HR configuration blocks for the inverter.</span>
 
 <span class="sd">    Returns the populated plant on full success. On partial/total read</span>
@@ -10525,11 +10573,11 @@ failure raises <code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</cod
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1080</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1079</span>
+<span class="normal">1080</span>
 <span class="normal">1081</span>
 <span class="normal">1082</span>
-<span class="normal">1083</span>
-<span class="normal">1084</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
+<span class="normal">1083</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">one_shot_command</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">requests</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">],</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">retries</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">retry_delay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a set of requests. Caller is responsible for connecting first.&quot;&quot;&quot;</span>
@@ -10576,7 +10624,8 @@ cloud-disconnected dongle the block ages out and we solicit it as normal.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">898</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">897</span>
+<span class="normal">898</span>
 <span class="normal">899</span>
 <span class="normal">900</span>
 <span class="normal">901</span>
@@ -10654,8 +10703,7 @@ cloud-disconnected dongle the block ages out and we solicit it as normal.</p>
 <span class="normal">973</span>
 <span class="normal">974</span>
 <span class="normal">975</span>
-<span class="normal">976</span>
-<span class="normal">977</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span>
+<span class="normal">976</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
     <span class="n">retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
@@ -10775,7 +10823,8 @@ an address.
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 979</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 978</span>
+<span class="normal"> 979</span>
 <span class="normal"> 980</span>
 <span class="normal"> 981</span>
 <span class="normal"> 982</span>
@@ -10825,8 +10874,7 @@ an address.
 <span class="normal">1026</span>
 <span class="normal">1027</span>
 <span class="normal">1028</span>
-<span class="normal">1029</span>
-<span class="normal">1030</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
+<span class="normal">1029</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">refresh_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">full_refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">max_batteries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
@@ -10911,7 +10959,8 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1249</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1248</span>
+<span class="normal">1249</span>
 <span class="normal">1250</span>
 <span class="normal">1251</span>
 <span class="normal">1252</span>
@@ -11007,8 +11056,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">1342</span>
 <span class="normal">1343</span>
 <span class="normal">1344</span>
-<span class="normal">1345</span>
-<span class="normal">1346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
+<span class="normal">1345</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">request</span><span class="p">:</span> <span class="n">TransparentRequest</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -11136,7 +11184,8 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/client.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1032</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1031</span>
+<span class="normal">1032</span>
 <span class="normal">1033</span>
 <span class="normal">1034</span>
 <span class="normal">1035</span>
@@ -11181,8 +11230,7 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">1074</span>
 <span class="normal">1075</span>
 <span class="normal">1076</span>
-<span class="normal">1077</span>
-<span class="normal">1078</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
+<span class="normal">1077</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_plant</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">handler</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">refresh_period</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">15.0</span><span class="p">,</span>
@@ -14438,9 +14486,7 @@ when it is most valuable to export energy.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 484</span>
-<span class="normal"> 485</span>
-<span class="normal"> 486</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 486</span>
 <span class="normal"> 487</span>
 <span class="normal"> 488</span>
 <span class="normal"> 489</span>
@@ -15113,7 +15159,43 @@ when it is most valuable to export energy.</p>
 <span class="normal">1156</span>
 <span class="normal">1157</span>
 <span class="normal">1158</span>
-<span class="normal">1159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">1159</span>
+<span class="normal">1160</span>
+<span class="normal">1161</span>
+<span class="normal">1162</span>
+<span class="normal">1163</span>
+<span class="normal">1164</span>
+<span class="normal">1165</span>
+<span class="normal">1166</span>
+<span class="normal">1167</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -15160,12 +15242,14 @@ when it is most valuable to export energy.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">_getter_for_device_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">type</span><span class="p">[</span><span class="n">RegisterGetter</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the RegisterGetter class appropriate for a given device address.</span>
 
-<span class="sd">        With capabilities the inverter lives at its model-specific address</span>
-<span class="sd">        (0x11, or 0x31 for AC/HYBRID_GEN1 — issue #119) and 0x32 is LV battery</span>
+<span class="sd">        With capabilities the inverter lives at ``capabilities.inverter_address``</span>
+<span class="sd">        (0x11 since #189; 0x31 may persist from pre-#189 state and the AC/</span>
+<span class="sd">        HYBRID_GEN1 hardware facade still answers there) and 0x32 is LV battery</span>
 <span class="sd">        pack #1. Without capabilities we fall back to the legacy mapping where</span>
 <span class="sd">        the inverter was cached at 0x32, and also treat 0x11/0x31 as inverter so</span>
 <span class="sd">        replay/debug tooling (which feeds PDUs to a bare Plant) keeps validating</span>
-<span class="sd">        inverter banks that now arrive at their true wire address.</span>
+<span class="sd">        inverter banks at either wire address — including passive captures of</span>
+<span class="sd">        other consumers still polling the 0x31 facade.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">device_address</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span><span class="p">:</span>
@@ -15246,10 +15330,11 @@ when it is most valuable to export energy.</p>
         <span class="c1"># battery (0x32-0x37), BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses</span>
         <span class="c1"># carry their own, so adopting it from every PDU let whichever device was polled last</span>
         <span class="c1"># clobber the real inverter serial — merging the AIO inverter HA device into a battery</span>
-        <span class="c1"># module downstream (givenergy-hass#95). The inverter is canonically addressed at</span>
-        <span class="c1"># 0x11/0x31 (inverter_address_for never yields anything else), so gate on that set — it</span>
-        <span class="c1"># excludes peripherals and the legacy 0x32 (battery pack #1) a pre-#119 persisted</span>
-        <span class="c1"># capability may still carry until detect() self-heals.</span>
+        <span class="c1"># module downstream (givenergy-hass#95). The inverter is canonically addressed at 0x11</span>
+        <span class="c1"># (#189), with 0x31 a hardware facade on AC/HYBRID_GEN1 that other bus consumers may</span>
+        <span class="c1"># still poll, so gate on that pair — it excludes peripherals and the legacy 0x32</span>
+        <span class="c1"># (battery pack #1) a pre-#119 persisted capability may still carry until detect()</span>
+        <span class="c1"># self-heals.</span>
         <span class="k">if</span> <span class="n">device_address</span> <span class="ow">in</span> <span class="p">(</span><span class="mh">0x11</span><span class="p">,</span> <span class="mh">0x31</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inverter_serial_number</span> <span class="o">=</span> <span class="n">pdu</span><span class="o">.</span><span class="n">inverter_serial_number</span>
 
@@ -15276,11 +15361,12 @@ when it is most valuable to export energy.</p>
                 <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ignoring, likely corrupt: </span><span class="si">{</span><span class="n">pdu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Writes target the inverter and the echo comes back on the write address</span>
-                <span class="c1"># (0x11), but the model reads caps.inverter_address (0x31 for AC/HYBRID_GEN1,</span>
-                <span class="c1"># 0x11 otherwise). 0x11 and 0x31 are the same device (a facade), so route the</span>
-                <span class="c1"># echo to where reads land — otherwise plant.inverter won&#39;t reflect the write</span>
-                <span class="c1"># until the next load_config(), and refresh() (IR-only) never will. The cache</span>
-                <span class="c1"># may not exist yet if the write precedes the first read at inverter_address.</span>
+                <span class="c1"># (0x11), and the model reads caps.inverter_address. Since #189 unified</span>
+                <span class="c1"># addressing on 0x11 the two normally coincide, but a pre-#189 persisted</span>
+                <span class="c1"># capability may still say 0x31 (the AC/HYBRID_GEN1 facade), so keep routing</span>
+                <span class="c1"># the echo to where reads land — otherwise plant.inverter won&#39;t reflect the</span>
+                <span class="c1"># write until the next load_config(), and refresh() (IR-only) never will. The</span>
+                <span class="c1"># cache may not exist yet if the write precedes the first read there.</span>
                 <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">device_address</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">())</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">HR</span><span class="p">(</span><span class="n">pdu</span><span class="o">.</span><span class="n">register</span><span class="p">):</span> <span class="n">pdu</span><span class="o">.</span><span class="n">value</span><span class="p">})</span>
 
@@ -15392,6 +15478,33 @@ when it is most valuable to export energy.</p>
             <span class="n">effective_now</span> <span class="o">=</span> <span class="n">effective_now</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">effective_now</span> <span class="o">-</span> <span class="n">ts</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">register</span><span class="p">:</span> <span class="n">Register</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">now</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Seconds since the freshest stamped block *containing* ``register`` was committed (#247).</span>
+
+<span class="sd">        Unlike ``block_age()``, the caller doesn&#39;t need to know block boundaries or the</span>
+<span class="sd">        stamped count — every stamped window for the device whose [base, base+count) span</span>
+<span class="sd">        covers the register is considered, and the freshest wins. None if no stamped</span>
+<span class="sd">        window covers it. Pair with ``RegisterGetter.registers_of()`` to reason about a</span>
+<span class="sd">        model attribute&#39;s freshness.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">effective_now</span> <span class="o">=</span> <span class="n">now</span> <span class="ow">or</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">effective_now</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">effective_now</span> <span class="o">=</span> <span class="n">effective_now</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
+        <span class="n">best</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">dev</span><span class="p">,</span> <span class="n">reg_type</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">count</span><span class="p">),</span> <span class="n">ts</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_block_updated_at</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">dev</span> <span class="o">==</span> <span class="n">device_address</span> <span class="ow">and</span> <span class="n">reg_type</span> <span class="o">==</span> <span class="n">register</span><span class="o">.</span><span class="n">reg_type</span> <span class="ow">and</span> <span class="n">base</span> <span class="o">&lt;=</span> <span class="n">register</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">base</span> <span class="o">+</span> <span class="n">count</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ts</span> <span class="o">&gt;</span> <span class="n">best</span><span class="p">:</span>
+                    <span class="n">best</span> <span class="o">=</span> <span class="n">ts</span>
+        <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">effective_now</span> <span class="o">-</span> <span class="n">best</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_track_content_change</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -15461,10 +15574,11 @@ when it is most valuable to export energy.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">inverter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SinglePhaseInverter</span> <span class="o">|</span> <span class="n">ThreePhaseInverter</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the inverter model, dispatching on device type when capabilities are available.</span>
 
-<span class="sd">        Tolerates the inverter-address cache not yet existing — for AC/HYBRID_GEN1 the</span>
-<span class="sd">        address is 0x31, which detect() doesn&#39;t populate (it only reads identity at 0x11),</span>
-<span class="sd">        so this would otherwise KeyError between detect() and the first poll. Returns an</span>
-<span class="sd">        empty-cache model in that window, matching the .ems / .gateway accessors. (#119)</span>
+<span class="sd">        Tolerates the inverter-address cache not yet existing — a pre-#189 persisted</span>
+<span class="sd">        capability may still point at 0x31, which detect() doesn&#39;t populate (it reads</span>
+<span class="sd">        identity at 0x11), so this would otherwise KeyError between detect() and the</span>
+<span class="sd">        first poll. Returns an empty-cache model in that window, matching the</span>
+<span class="sd">        .ems / .gateway accessors. (#119, #189)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="p">:</span>
             <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">())</span>
@@ -15477,10 +15591,11 @@ when it is most valuable to export energy.</p>
 
 <span class="sd">        Resolves the earliest-available inverter identity by trying, in order:</span>
 
-<span class="sd">        1. HR(13-17) in the capability-selected inverter cache (``inverter_address`` — 0x31 for</span>
-<span class="sd">           AC/HYBRID_GEN1, else 0x11);</span>
+<span class="sd">        1. HR(13-17) in the capability-selected inverter cache (``inverter_address`` — 0x11</span>
+<span class="sd">           since #189; 0x31 only via a pre-#189 persisted capability);</span>
 <span class="sd">        2. HR(13-17) in the 0x11 cache — ``detect()``&#39;s ``HR(0,60)`` identity read lands here for</span>
-<span class="sd">           every model, so this covers the detect→first-refresh window before 0x31 is populated;</span>
+<span class="sd">           every model, so this covers the detect→first-refresh window when a stale capability</span>
+<span class="sd">           still points at 0x31;</span>
 <span class="sd">        3. the ``inverter_serial_number`` envelope field — populated at ``detect()`` and the only</span>
 <span class="sd">           home on a persisted/bare plant carrying no register caches.</span>
 
@@ -15494,8 +15609,9 @@ when it is most valuable to export energy.</p>
 <span class="sd">        field can be deprecated.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">addresses</span> <span class="o">=</span> <span class="p">[</span><span class="mh">0x11</span><span class="p">]</span>
-        <span class="c1"># Prefer the device&#39;s own register home (0x31 for AC/HYBRID_GEN1); 0x32 is the battery</span>
-        <span class="c1"># pack and never a valid inverter address, so a stale pre-#119 0x32 capability is ignored.</span>
+        <span class="c1"># Prefer the capability-selected register home (0x11 since #189, or a persisted 0x31);</span>
+        <span class="c1"># 0x32 is the battery pack and never a valid inverter address, so a stale pre-#119</span>
+        <span class="c1"># 0x32 capability is ignored.</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span> <span class="ow">in</span> <span class="p">(</span><span class="mh">0x11</span><span class="p">,</span> <span class="mh">0x31</span><span class="p">):</span>
             <span class="n">addresses</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">addresses</span><span class="p">):</span>  <span class="c1"># de-dup, preserve order</span>
@@ -15966,10 +16082,11 @@ limitation).</p>
     <div class="doc doc-contents ">
 
         <p>Return the inverter model, dispatching on device type when capabilities are available.</p>
-<p>Tolerates the inverter-address cache not yet existing — for AC/HYBRID_GEN1 the
-address is 0x31, which detect() doesn't populate (it only reads identity at 0x11),
-so this would otherwise KeyError between detect() and the first poll. Returns an
-empty-cache model in that window, matching the .ems / .gateway accessors. (#119)</p>
+<p>Tolerates the inverter-address cache not yet existing — a pre-#189 persisted
+capability may still point at 0x31, which detect() doesn't populate (it reads
+identity at 0x11), so this would otherwise KeyError between detect() and the
+first poll. Returns an empty-cache model in that window, matching the
+.ems / .gateway accessors. (#119, #189)</p>
 
     </div>
 
@@ -15994,10 +16111,11 @@ empty-cache model in that window, matching the .ems / .gateway accessors. (#119)
         <p>Single authoritative inverter serial, robust across the whole plant lifecycle (#227).</p>
 <p>Resolves the earliest-available inverter identity by trying, in order:</p>
 <ol>
-<li>HR(13-17) in the capability-selected inverter cache (<code>inverter_address</code> — 0x31 for
-   AC/HYBRID_GEN1, else 0x11);</li>
+<li>HR(13-17) in the capability-selected inverter cache (<code>inverter_address</code> — 0x11
+   since #189; 0x31 only via a pre-#189 persisted capability);</li>
 <li>HR(13-17) in the 0x11 cache — <code>detect()</code>'s <code>HR(0,60)</code> identity read lands here for
-   every model, so this covers the detect→first-refresh window before 0x31 is populated;</li>
+   every model, so this covers the detect→first-refresh window when a stale capability
+   still points at 0x31;</li>
 <li>the <code>inverter_serial_number</code> envelope field — populated at <code>detect()</code> and the only
    home on a persisted/bare plant carrying no register caches.</li>
 </ol>
@@ -16141,16 +16259,16 @@ Client pointing at one of the EMS-managed inverters; <code>inverters</code> and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">968</span>
-<span class="normal">969</span>
-<span class="normal">970</span>
-<span class="normal">971</span>
-<span class="normal">972</span>
-<span class="normal">973</span>
-<span class="normal">974</span>
-<span class="normal">975</span>
-<span class="normal">976</span>
-<span class="normal">977</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1004</span>
+<span class="normal">1005</span>
+<span class="normal">1006</span>
+<span class="normal">1007</span>
+<span class="normal">1008</span>
+<span class="normal">1009</span>
+<span class="normal">1010</span>
+<span class="normal">1011</span>
+<span class="normal">1012</span>
+<span class="normal">1013</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store direct-inverter register caches for serial reconciliation (#106 Phase 3).</span>
 
 <span class="sd">    Caches are stored separately from ``register_caches`` to avoid the Modbus</span>
@@ -16188,13 +16306,7 @@ all-zero rejection (#206).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">736</span>
-<span class="normal">737</span>
-<span class="normal">738</span>
-<span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span>
-<span class="normal">742</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">742</span>
 <span class="normal">743</span>
 <span class="normal">744</span>
 <span class="normal">745</span>
@@ -16213,7 +16325,13 @@ all-zero rejection (#206).</p>
 <span class="normal">758</span>
 <span class="normal">759</span>
 <span class="normal">760</span>
-<span class="normal">761</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -16269,34 +16387,34 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">799</span>
-<span class="normal">800</span>
-<span class="normal">801</span>
-<span class="normal">802</span>
-<span class="normal">803</span>
-<span class="normal">804</span>
-<span class="normal">805</span>
-<span class="normal">806</span>
-<span class="normal">807</span>
-<span class="normal">808</span>
-<span class="normal">809</span>
-<span class="normal">810</span>
-<span class="normal">811</span>
-<span class="normal">812</span>
-<span class="normal">813</span>
-<span class="normal">814</span>
-<span class="normal">815</span>
-<span class="normal">816</span>
-<span class="normal">817</span>
-<span class="normal">818</span>
-<span class="normal">819</span>
-<span class="normal">820</span>
-<span class="normal">821</span>
-<span class="normal">822</span>
-<span class="normal">823</span>
-<span class="normal">824</span>
-<span class="normal">825</span>
-<span class="normal">826</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span>
+<span class="normal">859</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -16346,10 +16464,10 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">523</span>
-<span class="normal">524</span>
-<span class="normal">525</span>
-<span class="normal">526</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure a default register cache is always present.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span> <span class="o">=</span> <span class="p">{</span><span class="mh">0x32</span><span class="p">:</span> <span class="n">RegisterCache</span><span class="p">()}</span>
@@ -16379,11 +16497,7 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span>
-<span class="normal">557</span>
-<span class="normal">558</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">558</span>
 <span class="normal">559</span>
 <span class="normal">560</span>
 <span class="normal">561</span>
@@ -16399,7 +16513,11 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 <span class="normal">571</span>
 <span class="normal">572</span>
 <span class="normal">573</span>
-<span class="normal">574</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
+<span class="normal">574</span>
+<span class="normal">575</span>
+<span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a share-safe copy: every register cache redacted and the header serials cleared.</span>
 
 <span class="sd">    ``redact_serials()`` only covers the register caches; ``inverter_serial_number`` and</span>
@@ -16429,6 +16547,84 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 <div class="doc doc-object doc-function">
 
 
+<h3 id="givenergy_modbus.model.plant.Plant.register_age" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">register_age</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="n">register</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">now</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#givenergy_modbus.model.plant.Plant.register_age" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Seconds since the freshest stamped block <em>containing</em> <code>register</code> was committed (#247).</p>
+<p>Unlike <code>block_age()</code>, the caller doesn't need to know block boundaries or the
+stamped count — every stamped window for the device whose [base, base+count) span
+covers the register is considered, and the freshest wins. None if no stamped
+window covers it. Pair with <code>RegisterGetter.registers_of()</code> to reason about a
+model attribute's freshness.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">769</span>
+<span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span>
+<span class="normal">778</span>
+<span class="normal">779</span>
+<span class="normal">780</span>
+<span class="normal">781</span>
+<span class="normal">782</span>
+<span class="normal">783</span>
+<span class="normal">784</span>
+<span class="normal">785</span>
+<span class="normal">786</span>
+<span class="normal">787</span>
+<span class="normal">788</span>
+<span class="normal">789</span>
+<span class="normal">790</span>
+<span class="normal">791</span>
+<span class="normal">792</span>
+<span class="normal">793</span>
+<span class="normal">794</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
+    <span class="bp">self</span><span class="p">,</span>
+    <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">register</span><span class="p">:</span> <span class="n">Register</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">now</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Seconds since the freshest stamped block *containing* ``register`` was committed (#247).</span>
+
+<span class="sd">    Unlike ``block_age()``, the caller doesn&#39;t need to know block boundaries or the</span>
+<span class="sd">    stamped count — every stamped window for the device whose [base, base+count) span</span>
+<span class="sd">    covers the register is considered, and the freshest wins. None if no stamped</span>
+<span class="sd">    window covers it. Pair with ``RegisterGetter.registers_of()`` to reason about a</span>
+<span class="sd">    model attribute&#39;s freshness.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">effective_now</span> <span class="o">=</span> <span class="n">now</span> <span class="ow">or</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">UTC</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">effective_now</span><span class="o">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">effective_now</span> <span class="o">=</span> <span class="n">effective_now</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
+    <span class="n">best</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">dev</span><span class="p">,</span> <span class="n">reg_type</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">count</span><span class="p">),</span> <span class="n">ts</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_block_updated_at</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">dev</span> <span class="o">==</span> <span class="n">device_address</span> <span class="ow">and</span> <span class="n">reg_type</span> <span class="o">==</span> <span class="n">register</span><span class="o">.</span><span class="n">reg_type</span> <span class="ow">and</span> <span class="n">base</span> <span class="o">&lt;=</span> <span class="n">register</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">base</span> <span class="o">+</span> <span class="n">count</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">ts</span> <span class="o">&gt;</span> <span class="n">best</span><span class="p">:</span>
+                <span class="n">best</span> <span class="o">=</span> <span class="n">ts</span>
+    <span class="k">if</span> <span class="n">best</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">effective_now</span> <span class="o">-</span> <span class="n">best</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="givenergy_modbus.model.plant.Plant.update" class="doc doc-heading">
             <code class="highlight language-python"><span class="n">update</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
@@ -16445,11 +16641,7 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">576</span>
-<span class="normal">577</span>
-<span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">580</span>
 <span class="normal">581</span>
 <span class="normal">582</span>
 <span class="normal">583</span>
@@ -16522,7 +16714,13 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 <span class="normal">650</span>
 <span class="normal">651</span>
 <span class="normal">652</span>
-<span class="normal">653</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.</span>
 
 <span class="sd">    ``received_at`` overrides the ingestion timestamp recorded for a committed</span>
@@ -16563,10 +16761,11 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
     <span class="c1"># battery (0x32-0x37), BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses</span>
     <span class="c1"># carry their own, so adopting it from every PDU let whichever device was polled last</span>
     <span class="c1"># clobber the real inverter serial — merging the AIO inverter HA device into a battery</span>
-    <span class="c1"># module downstream (givenergy-hass#95). The inverter is canonically addressed at</span>
-    <span class="c1"># 0x11/0x31 (inverter_address_for never yields anything else), so gate on that set — it</span>
-    <span class="c1"># excludes peripherals and the legacy 0x32 (battery pack #1) a pre-#119 persisted</span>
-    <span class="c1"># capability may still carry until detect() self-heals.</span>
+    <span class="c1"># module downstream (givenergy-hass#95). The inverter is canonically addressed at 0x11</span>
+    <span class="c1"># (#189), with 0x31 a hardware facade on AC/HYBRID_GEN1 that other bus consumers may</span>
+    <span class="c1"># still poll, so gate on that pair — it excludes peripherals and the legacy 0x32</span>
+    <span class="c1"># (battery pack #1) a pre-#119 persisted capability may still carry until detect()</span>
+    <span class="c1"># self-heals.</span>
     <span class="k">if</span> <span class="n">device_address</span> <span class="ow">in</span> <span class="p">(</span><span class="mh">0x11</span><span class="p">,</span> <span class="mh">0x31</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inverter_serial_number</span> <span class="o">=</span> <span class="n">pdu</span><span class="o">.</span><span class="n">inverter_serial_number</span>
 
@@ -16593,11 +16792,12 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
             <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ignoring, likely corrupt: </span><span class="si">{</span><span class="n">pdu</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Writes target the inverter and the echo comes back on the write address</span>
-            <span class="c1"># (0x11), but the model reads caps.inverter_address (0x31 for AC/HYBRID_GEN1,</span>
-            <span class="c1"># 0x11 otherwise). 0x11 and 0x31 are the same device (a facade), so route the</span>
-            <span class="c1"># echo to where reads land — otherwise plant.inverter won&#39;t reflect the write</span>
-            <span class="c1"># until the next load_config(), and refresh() (IR-only) never will. The cache</span>
-            <span class="c1"># may not exist yet if the write precedes the first read at inverter_address.</span>
+            <span class="c1"># (0x11), and the model reads caps.inverter_address. Since #189 unified</span>
+            <span class="c1"># addressing on 0x11 the two normally coincide, but a pre-#189 persisted</span>
+            <span class="c1"># capability may still say 0x31 (the AC/HYBRID_GEN1 facade), so keep routing</span>
+            <span class="c1"># the echo to where reads land — otherwise plant.inverter won&#39;t reflect the</span>
+            <span class="c1"># write until the next load_config(), and refresh() (IR-only) never will. The</span>
+            <span class="c1"># cache may not exist yet if the write precedes the first read there.</span>
             <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">inverter_address</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">device_address</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">())</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">HR</span><span class="p">(</span><span class="n">pdu</span><span class="o">.</span><span class="n">register</span><span class="p">):</span> <span class="n">pdu</span><span class="o">.</span><span class="n">value</span><span class="p">})</span>
 </code></pre></div></td></tr></table></div>
@@ -16648,9 +16848,7 @@ callers). Both paths emit a DeprecationWarning.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">174</span>
 <span class="normal">175</span>
 <span class="normal">176</span>
 <span class="normal">177</span>
@@ -16943,7 +17141,9 @@ callers). Both paths emit a DeprecationWarning.</p>
 <span class="normal">464</span>
 <span class="normal">465</span>
 <span class="normal">466</span>
-<span class="normal">467</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describes the hardware topology discovered by Client.detect().</span>
 
 <span class="sd">    Returned by Client.detect(); callers assign it to plant.capabilities or</span>
@@ -17562,9 +17762,7 @@ state persisted under the older conventions still loads cleanly.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
-<span class="normal">350</span>
-<span class="normal">351</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">351</span>
 <span class="normal">352</span>
 <span class="normal">353</span>
 <span class="normal">354</span>
@@ -17620,7 +17818,9 @@ state persisted under the older conventions still loads cleanly.</p>
 <span class="normal">404</span>
 <span class="normal">405</span>
 <span class="normal">406</span>
-<span class="normal">407</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlantCapabilities&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct from a to_dict() payload.</span>
 
@@ -17704,9 +17904,7 @@ field gives future-us an escape hatch for format changes.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">332</span>
-<span class="normal">333</span>
-<span class="normal">334</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">334</span>
 <span class="normal">335</span>
 <span class="normal">336</span>
 <span class="normal">337</span>
@@ -17719,7 +17917,9 @@ field gives future-us an escape hatch for format changes.</p>
 <span class="normal">344</span>
 <span class="normal">345</span>
 <span class="normal">346</span>
-<span class="normal">347</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialise to a JSON-safe dict for caller-managed persistence.</span>
 
 <span class="sd">    Round-trips through from_dict(). Addresses render as `0x..` strings to</span>
@@ -17812,17 +18012,17 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">273</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
 <span class="normal">274</span>
 <span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryCalibrationStage</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">276</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryCalibrationStage</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery calibration stages.&quot;&quot;&quot;</span>
 
     <span class="n">OFF</span> <span class="o">=</span> <span class="mi">0</span>
@@ -17885,11 +18085,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPowerMode</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPowerMode</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery discharge strategy.&quot;&quot;&quot;</span>
 
     <span class="n">EXPORT</span> <span class="o">=</span> <span class="mi">0</span>
@@ -17946,11 +18146,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Installed battery type.&quot;&quot;&quot;</span>
 
     <span class="n">LEAD_ACID</span> <span class="o">=</span> <span class="mi">0</span>
@@ -18007,18 +18207,18 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">336</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
 <span class="normal">337</span>
 <span class="normal">338</span>
 <span class="normal">339</span>
-<span class="normal">340</span>
-<span class="normal">341</span>
-<span class="normal">342</span>
-<span class="normal">343</span>
-<span class="normal">344</span>
-<span class="normal">345</span>
-<span class="normal">346</span>
-<span class="normal">347</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Certification</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Certification</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid compliance certification.&quot;&quot;&quot;</span>
 
     <span class="n">UNKNOWN</span> <span class="o">=</span> <span class="mi">0</span>
@@ -18082,16 +18282,16 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">363</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
 <span class="normal">364</span>
-<span class="normal">365</span>
-<span class="normal">366</span>
-<span class="normal">367</span>
-<span class="normal">368</span>
-<span class="normal">369</span>
-<span class="normal">370</span>
-<span class="normal">371</span>
-<span class="normal">372</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Generation</span><span class="p">(</span><span class="n">StrEnum</span><span class="p">):</span>
+<span class="normal">365</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Generation</span><span class="p">(</span><span class="n">StrEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter hardware generation.&quot;&quot;&quot;</span>
 
     <span class="n">GEN1</span> <span class="o">=</span> <span class="s2">&quot;Gen 1&quot;</span>
@@ -18153,17 +18353,17 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">350</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
 <span class="normal">351</span>
 <span class="normal">352</span>
-<span class="normal">353</span>
-<span class="normal">354</span>
-<span class="normal">355</span>
-<span class="normal">356</span>
-<span class="normal">357</span>
-<span class="normal">358</span>
-<span class="normal">359</span>
-<span class="normal">360</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InverterType</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">353</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InverterType</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter phase and voltage type.&quot;&quot;&quot;</span>
 
     <span class="n">SINGLE_PHASE_LV</span> <span class="o">=</span> <span class="mi">0</span>
@@ -18226,11 +18426,11 @@ field gives future-us an escape hatch for format changes.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MeterType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MeterType</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Installed meter type.&quot;&quot;&quot;</span>
 
     <span class="n">CT_OR_EM418</span> <span class="o">=</span> <span class="mi">0</span>
@@ -18468,18 +18668,18 @@ raise ValueError. A field report from a Gen 2 owner is needed to add support.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">386</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
 <span class="normal">387</span>
 <span class="normal">388</span>
 <span class="normal">389</span>
-<span class="normal">390</span>
-<span class="normal">391</span>
-<span class="normal">392</span>
-<span class="normal">393</span>
-<span class="normal">394</span>
-<span class="normal">395</span>
-<span class="normal">396</span>
-<span class="normal">397</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Phase</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">390</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Phase</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of AC phases.&quot;&quot;&quot;</span>
 
     <span class="n">ONE</span> <span class="o">=</span> <span class="mi">1</span>
@@ -18543,16 +18743,16 @@ raise ValueError. A field report from a Gen 2 owner is needed to add support.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">300</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
 <span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PowerFactorFunctionModel</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">302</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PowerFactorFunctionModel</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Power Factor function model.&quot;&quot;&quot;</span>
 
     <span class="n">PF_1</span> <span class="o">=</span> <span class="mi">0</span>
@@ -18620,7 +18820,14 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">751</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">744</span>
+<span class="normal">745</span>
+<span class="normal">746</span>
+<span class="normal">747</span>
+<span class="normal">748</span>
+<span class="normal">749</span>
+<span class="normal">750</span>
+<span class="normal">751</span>
 <span class="normal">752</span>
 <span class="normal">753</span>
 <span class="normal">754</span>
@@ -18822,14 +19029,7 @@ in later 2.x minors — see #75.</p>
 <span class="normal">950</span>
 <span class="normal">951</span>
 <span class="normal">952</span>
-<span class="normal">953</span>
-<span class="normal">954</span>
-<span class="normal">955</span>
-<span class="normal">956</span>
-<span class="normal">957</span>
-<span class="normal">958</span>
-<span class="normal">959</span>
-<span class="normal">960</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">953</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -19394,11 +19594,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">777</span>
-<span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span>
-<span class="normal">781</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">770</span>
+<span class="normal">771</span>
+<span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -19429,10 +19629,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -19458,11 +19658,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">771</span>
-<span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -19509,7 +19709,14 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">400</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
 <span class="normal">401</span>
 <span class="normal">402</span>
 <span class="normal">403</span>
@@ -19821,14 +20028,7 @@ unknown (DTC unread).</p>
 <span class="normal">709</span>
 <span class="normal">710</span>
 <span class="normal">711</span>
-<span class="normal">712</span>
-<span class="normal">713</span>
-<span class="normal">714</span>
-<span class="normal">715</span>
-<span class="normal">716</span>
-<span class="normal">717</span>
-<span class="normal">718</span>
-<span class="normal">719</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">712</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -20200,14 +20400,14 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">312</span>
-<span class="normal">313</span>
-<span class="normal">314</span>
-<span class="normal">315</span>
-<span class="normal">316</span>
-<span class="normal">317</span>
-<span class="normal">318</span>
-<span class="normal">319</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Status</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Status</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter status.&quot;&quot;&quot;</span>
 
     <span class="n">WAITING</span> <span class="o">=</span> <span class="mi">0</span>
@@ -20267,12 +20467,12 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">UsbDevice</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">UsbDevice</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;USB devices that can be inserted into inverters.&quot;&quot;&quot;</span>
 
     <span class="n">NONE</span> <span class="o">=</span> <span class="mi">0</span>
@@ -20330,18 +20530,18 @@ unknown (DTC unread).</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">322</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
 <span class="normal">323</span>
 <span class="normal">324</span>
 <span class="normal">325</span>
-<span class="normal">326</span>
-<span class="normal">327</span>
-<span class="normal">328</span>
-<span class="normal">329</span>
-<span class="normal">330</span>
-<span class="normal">331</span>
-<span class="normal">332</span>
-<span class="normal">333</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WorkMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">326</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WorkMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inverter work mode.&quot;&quot;&quot;</span>
 
     <span class="n">INITIALISING</span> <span class="o">=</span> <span class="mi">0</span>
@@ -20390,22 +20590,29 @@ unknown (DTC unread).</p>
     <div class="doc doc-contents ">
 
         <p>Return the modbus device address the inverter's registers are served at.</p>
-<p><code>0x11</code> is the inverter's canonical address for every model except AC and
-HYBRID_GEN1, which expose their registers at <code>0x31</code> (GivTCP's map). EMS and
-All-in-One controllers serve all their data — including the IR/HR(2040)
-rollup — at <code>0x11</code>.</p>
-<p>The <code>0x31</code> special-case is retained while live AC validation is pending
-(see #189). For HYBRID_GEN1 it has been confirmed not to be load-bearing:
-live hardware tests show <code>0x11</code> serves the full register banks (not
-identity-only as previously stated), and value-equality between <code>0x11</code> and
-<code>0x31</code> holds across 114 HR registers — they are the same register file at
-two addresses. The official GivEnergy app reads and writes config at <code>0x11</code>
-on this model, firmware-invariant across ARM 449 and 451.</p>
+<p><code>0x11</code> is the canonical inverter address for all models. AC and HYBRID_GEN1
+units additionally expose their registers at <code>0x31</code> — a facade over the same
+register file (value-equality verified across 114 shared HR registers on a
+live HYBRID_GEN1, and byte-identical HR banks on two live AC units; #189) —
+but <code>0x11</code> is where the official app reads and writes, and where <code>detect()</code>
+always reads identity. EMS and All-in-One controllers likewise serve all
+their data — including the IR/HR(2040) rollup — at <code>0x11</code>.</p>
+<p>Capabilities persisted before the <code>0x31</code> retirement may still carry an
+explicit <code>inverter_address</code> of <code>0x31</code>; that keeps working (the hardware
+facade still answers there) and self-heals to <code>0x11</code> on the next
+<code>detect()</code>.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">239</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
 <span class="normal">240</span>
 <span class="normal">241</span>
 <span class="normal">242</span>
@@ -20414,30 +20621,23 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 <span class="normal">245</span>
 <span class="normal">246</span>
 <span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inverter_address_for</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="normal">248</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inverter_address_for</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">Model</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the modbus device address the inverter&#39;s registers are served at.</span>
 
-<span class="sd">    `0x11` is the inverter&#39;s canonical address for every model except AC and</span>
-<span class="sd">    HYBRID_GEN1, which expose their registers at `0x31` (GivTCP&#39;s map). EMS and</span>
-<span class="sd">    All-in-One controllers serve all their data — including the IR/HR(2040)</span>
-<span class="sd">    rollup — at `0x11`.</span>
+<span class="sd">    `0x11` is the canonical inverter address for all models. AC and HYBRID_GEN1</span>
+<span class="sd">    units additionally expose their registers at `0x31` — a facade over the same</span>
+<span class="sd">    register file (value-equality verified across 114 shared HR registers on a</span>
+<span class="sd">    live HYBRID_GEN1, and byte-identical HR banks on two live AC units; #189) —</span>
+<span class="sd">    but `0x11` is where the official app reads and writes, and where ``detect()``</span>
+<span class="sd">    always reads identity. EMS and All-in-One controllers likewise serve all</span>
+<span class="sd">    their data — including the IR/HR(2040) rollup — at `0x11`.</span>
 
-<span class="sd">    The `0x31` special-case is retained while live AC validation is pending</span>
-<span class="sd">    (see #189). For HYBRID_GEN1 it has been confirmed not to be load-bearing:</span>
-<span class="sd">    live hardware tests show `0x11` serves the full register banks (not</span>
-<span class="sd">    identity-only as previously stated), and value-equality between `0x11` and</span>
-<span class="sd">    `0x31` holds across 114 HR registers — they are the same register file at</span>
-<span class="sd">    two addresses. The official GivEnergy app reads and writes config at `0x11`</span>
-<span class="sd">    on this model, firmware-invariant across ARM 449 and 451.</span>
+<span class="sd">    Capabilities persisted before the `0x31` retirement may still carry an</span>
+<span class="sd">    explicit ``inverter_address`` of `0x31`; that keeps working (the hardware</span>
+<span class="sd">    facade still answers there) and self-heals to `0x11` on the next</span>
+<span class="sd">    ``detect()``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="mh">0x31</span> <span class="k">if</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">_INVERTER_ADDRESS_0X31_MODELS</span> <span class="k">else</span> <span class="mh">0x11</span>
+    <span class="k">return</span> <span class="mh">0x11</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -20559,10 +20759,7 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 91</span>
 <span class="normal"> 92</span>
 <span class="normal"> 93</span>
 <span class="normal"> 94</span>
@@ -20571,7 +20768,10 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 <span class="normal"> 97</span>
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Battery</span><span class="p">(</span><span class="n">_BatteryBase</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span><span class="p">):</span>  <span class="c1"># type: ignore[misc,valid-type]</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Battery</span><span class="p">(</span><span class="n">_BatteryBase</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span><span class="p">):</span>  <span class="c1"># type: ignore[misc,valid-type]</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy battery data model.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_GETTER</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">RegisterGetter</span><span class="p">]]</span> <span class="o">=</span> <span class="n">BatteryRegisterGetter</span>
@@ -20620,10 +20820,10 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">93</span>
-<span class="normal">94</span>
-<span class="normal">95</span>
-<span class="normal">96</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Battery&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a Battery from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">BatteryRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -20649,9 +20849,9 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Try to detect if a battery exists based on its attributes.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">is_valid_serial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
 </code></pre></div></td></tr></table></div>
@@ -20696,17 +20896,17 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">144</span>
 <span class="normal">145</span>
 <span class="normal">146</span>
 <span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
 <span class="normal">150</span>
-<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery maintenance mode.&quot;&quot;&quot;</span>
 
     <span class="n">OFF</span> <span class="o">=</span> <span class="mi">0</span>
@@ -20769,17 +20969,17 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
 <span class="normal">132</span>
 <span class="normal">133</span>
 <span class="normal">134</span>
 <span class="normal">135</span>
 <span class="normal">136</span>
 <span class="normal">137</span>
-<span class="normal">138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery pause mode.&quot;&quot;&quot;</span>
 
     <span class="n">DISABLED</span> <span class="o">=</span> <span class="mi">0</span>
@@ -20904,7 +21104,10 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
 <span class="normal">75</span>
 <span class="normal">76</span>
 <span class="normal">77</span>
-<span class="normal">78</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all battery attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -20950,7 +21153,10 @@ on this model, firmware-invariant across ARM 449 and 451.</p>
         <span class="s2">&quot;status_7&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">((</span><span class="n">DT</span><span class="o">.</span><span class="n">duint8</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">93</span><span class="p">)),</span>
         <span class="s2">&quot;warning_1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">((</span><span class="n">DT</span><span class="o">.</span><span class="n">duint8</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">94</span><span class="p">)),</span>
         <span class="s2">&quot;warning_2&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">((</span><span class="n">DT</span><span class="o">.</span><span class="n">duint8</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">94</span><span class="p">)),</span>
-        <span class="c1"># IR(95) unused</span>
+        <span class="c1"># IR(95) &quot;Im_Avg&quot; (v4.1.6 doc): average pack current, signed, 0.01 A.</span>
+        <span class="c1"># Field evidence (#238, two LV systems) confirms it tracks operating state;</span>
+        <span class="c1"># observed sign convention is +ve = discharge / -ve = charge.</span>
+        <span class="s2">&quot;i_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">DT</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span> <span class="n">DT</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">95</span><span class="p">),</span> <span class="nb">min</span><span class="o">=-</span><span class="mf">300.0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">300.0</span><span class="p">),</span>
         <span class="s2">&quot;num_cycles&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">DT</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">96</span><span class="p">)),</span>
         <span class="s2">&quot;num_cells&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">DT</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">97</span><span class="p">)),</span>
         <span class="s2">&quot;bms_firmware_version&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">DT</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">98</span><span class="p">)),</span>
@@ -21022,17 +21228,17 @@ control was cycled through its three options.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">118</span>
 <span class="normal">119</span>
 <span class="normal">120</span>
 <span class="normal">121</span>
 <span class="normal">122</span>
 <span class="normal">123</span>
 <span class="normal">124</span>
-<span class="normal">125</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch priority for surplus power on AC-coupled inverters.</span>
 
 <span class="sd">    Confirmed writable on Model.AC via direct portal observations (hass#52):</span>
@@ -21095,16 +21301,16 @@ control was cycled through its three options.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
 <span class="normal">107</span>
 <span class="normal">108</span>
 <span class="normal">109</span>
 <span class="normal">110</span>
 <span class="normal">111</span>
-<span class="normal">112</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">State</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">State</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery charge/discharge state.&quot;&quot;&quot;</span>
 
     <span class="n">STATIC</span> <span class="o">=</span> <span class="mi">0</span>

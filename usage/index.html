@@ -676,6 +676,8 @@
       
         
       
+        
+      
     
     
     
@@ -759,6 +761,34 @@
     
   
     Hardware & firmware quirks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migrating-from-the-async-fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating from the async fork
   
 
     
@@ -2128,11 +2158,14 @@ itself; storage location and lifecycle are entirely the caller's responsibility.
 <span class="w">  </span><span class="nt">&quot;bcu_stacks&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>inverter_address</code> is derived from the model: <code>0x11</code> for most inverters, <code>0x31</code>
-for <code>AC</code> and <code>HYBRID_GEN1</code>. LV battery pack #1 lives at <code>0x32</code>, additional packs
-at <code>0x33</code>–<code>0x37</code>. State persisted before this mapping (which used <code>0x32</code> as the
-inverter address) reloads unchanged and self-heals on the next <code>detect()</code> via a
-one-off <code>PlantTopologyMismatch</code>.</p>
+<p><code>inverter_address</code> is <code>0x11</code> for every model. (<code>AC</code> and <code>HYBRID_GEN1</code> hardware
+additionally answers at <code>0x31</code> — a facade over the same register file — which
+older library versions used as their polling address.) LV battery pack #1 lives
+at <code>0x32</code>, additional packs at <code>0x33</code>–<code>0x37</code>. Previously persisted state reloads
+unchanged and self-heals: a stored <code>0x31</code> keeps working against the hardware
+facade until the next <code>detect()</code> re-derives <code>0x11</code>, and a pre-existing <code>0x32</code>
+(the oldest mapping, where the inverter shared the battery address) surfaces as
+a one-off <code>PlantTopologyMismatch</code>.</p>
 
 
 
