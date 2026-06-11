@@ -447,8 +447,11 @@ The serialised form is stable and includes a `schema_version` field:
 }
 ```
 
-`inverter_address` is derived from the model: `0x11` for most inverters, `0x31`
-for `AC` and `HYBRID_GEN1`. LV battery pack #1 lives at `0x32`, additional packs
-at `0x33`–`0x37`. State persisted before this mapping (which used `0x32` as the
-inverter address) reloads unchanged and self-heals on the next `detect()` via a
-one-off `PlantTopologyMismatch`.
+`inverter_address` is `0x11` for every model. (`AC` and `HYBRID_GEN1` hardware
+additionally answers at `0x31` — a facade over the same register file — which
+older library versions used as their polling address.) LV battery pack #1 lives
+at `0x32`, additional packs at `0x33`–`0x37`. Previously persisted state reloads
+unchanged and self-heals: a stored `0x31` keeps working against the hardware
+facade until the next `detect()` re-derives `0x11`, and a pre-existing `0x32`
+(the oldest mapping, where the inverter shared the battery address) surfaces as
+a one-off `PlantTopologyMismatch`.

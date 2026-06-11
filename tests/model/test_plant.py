@@ -1460,19 +1460,29 @@ def _make_write_pdu(register: int, value: int, device_address: int = 0x11) -> Wr
 
 
 @pytest.mark.parametrize(
-    ("model", "read_addr"),
-    [(Model.HYBRID_GEN1, 0x31), (Model.HYBRID, 0x11)],
+    ("model", "explicit_addr", "read_addr"),
+    [
+        # pre-#189 persisted capability still pointing at the 0x31 facade
+        (Model.HYBRID_GEN1, 0x31, 0x31),
+        # current derivation: every model reads at 0x11 (#189)
+        (Model.HYBRID_GEN1, None, 0x11),
+        (Model.HYBRID, None, 0x11),
+    ],
 )
-def test_write_echo_routed_to_inverter_address(model: Model, read_addr: int):
+def test_write_echo_routed_to_inverter_address(model: Model, explicit_addr: int | None, read_addr: int):
     """A write echo lands in the cache the model reads (caps.inverter_address).
 
-    Writes go out to 0x11 and the response echoes 0x11, but for AC/HYBRID_GEN1 the model
-    reads caps.inverter_address = 0x31. The echo must be routed there so plant.inverter
-    reflects the write immediately — without a load_config(), and even though refresh() is
-    IR-only. For 0x11 models this is a no-op (echo and reads already share a cache).
+    Writes go out to 0x11 and the response echoes 0x11. Since #189 the model also reads
+    at 0x11, making the routing a no-op — but a pre-#189 persisted capability may still
+    say 0x31 (the AC/HYBRID_GEN1 facade), and the echo must follow it there so
+    plant.inverter reflects the write immediately — without a load_config(), and even
+    though refresh() is IR-only.
     """
     plant = Plant()
-    plant.capabilities = PlantCapabilities(device_type=model)
+    if explicit_addr is not None:
+        plant.capabilities = PlantCapabilities(device_type=model, inverter_address=explicit_addr)
+    else:
+        plant.capabilities = PlantCapabilities(device_type=model)
     assert plant.capabilities.inverter_address == read_addr  # guard the premise
 
     # CHARGE_TARGET_SOC = HR(116); the response echoes the 0x11 write address.
@@ -1483,14 +1493,16 @@ def test_write_echo_routed_to_inverter_address(model: Model, read_addr: int):
     assert plant.inverter.model_dump()["charge_target_soc"] == 85
 
 
-def test_write_echo_not_left_at_wire_address_for_0x31_models():
-    """Regression: for HYBRID_GEN1 the echo must NOT remain at the 0x11 wire address.
+def test_write_echo_not_left_at_wire_address_for_persisted_0x31_caps():
+    """Regression: with a capability still reading at 0x31, the echo must NOT stay at 0x11.
 
-    Pre-fix the value landed in register_caches[0x11], which plant.inverter (reading 0x31)
-    never sees — the reported bug where a write only showed up after load_config().
+    Pre-#187 the value landed in register_caches[0x11], which plant.inverter (reading 0x31)
+    never saw — the reported bug where a write only showed up after load_config(). Since
+    #189 a 0x31 read address only arises from a pre-#189 persisted capability, simulated
+    here with an explicit inverter_address.
     """
     plant = Plant()
-    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_GEN1)
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_GEN1, inverter_address=0x31)
 
     plant.update(_make_write_pdu(116, 85))
 
@@ -1533,7 +1545,7 @@ def test_derive_inverter_address_fills_only_when_unpinned_and_coercible():
     """_derive_inverter_address sets the model-derived address, never overrides an explicit one."""
     derived = {"device_type": Model.AC}
     _derive_inverter_address(derived)
-    assert derived["inverter_address"] == 0x31
+    assert derived["inverter_address"] == 0x11
 
     explicit = {"device_type": Model.EMS, "inverter_address": 0x99}
     _derive_inverter_address(explicit)

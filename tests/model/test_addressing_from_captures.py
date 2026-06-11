@@ -3,11 +3,14 @@
 Rather than synthetic register primes, these feed the committed captures in
 ``tests/fixtures/captures/`` through the framer into a bare ``Plant`` and assert
 the address each topology actually serves its inverter banks at — the concrete
-``0x11`` / ``0x31`` / ``0x32`` evidence the addressing redesign turns on:
+``0x11`` / ``0x31`` / ``0x32`` evidence the addressing redesign turned on:
 
 - **AIO** answers at ``0x11`` and exposes nothing at ``0x32`` (root cause of #105).
-- **HYBRID_GEN1** answers identity-only at ``0x11`` and serves full banks at
-  ``0x31`` — which is why GEN1/AC map to ``0x31`` rather than the ``0x11`` default.
+- **HYBRID_GEN1** (passive dongle capture, pre-#189): the dongle polled identity at
+  ``0x11`` and the full banks at the ``0x31`` facade. Historical wire evidence —
+  since #189 the library polls everything at ``0x11`` (live-validated; see the
+  ``0x11``-polled fixture and its golden-master coverage), and ``0x31`` remains a
+  hardware facade other consumers may still poll.
 - **EMS** serves its IR(2040) rollup at ``0x11``.
 """
 
@@ -72,9 +75,11 @@ async def test_aio_answers_at_0x11_and_nothing_at_0x32():
 
 @pytest.mark.timeout(15)
 async def test_hybrid_gen1_full_banks_at_0x31_identity_only_at_0x11():
-    """HYBRID_GEN1 serves full banks at 0x31, identity-only at 0x11.
+    """The passive HYBRID_GEN1 capture has full banks at 0x31, identity-only at 0x11.
 
-    So it must map to 0x31, not the 0x11 default (#119).
+    A record of what the *dongle* polled pre-#189 (it used the 0x31 facade), pinned
+    so replay never folds addresses (#119). Not the current polling map — since #189
+    the library reads everything at 0x11, proven live by the 0x11-polled fixture.
     """
     plant = await _replay("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log")
 

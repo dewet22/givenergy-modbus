@@ -52,29 +52,29 @@ async def test_load_config_single_phase():
 
 
 async def test_load_config_ac_polls_hr300():
-    """AC-coupled model polls HR(300-359) at 0x31 (export priority, EPS, AC charge/discharge limits)."""
+    """AC-coupled model polls HR(300-359) at 0x11 (export priority, EPS, AC charge/discharge limits; #189)."""
     client = _client_with_caps(Model.AC)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
-        _hr(0, 60, device=0x31),
-        _hr(60, 60, device=0x31),
-        _hr(120, 60, device=0x31),
-        _ir(120, 60, device=0x31),
-        _hr(300, 60, device=0x31),
+        _hr(0, 60),
+        _hr(60, 60),
+        _hr(120, 60),
+        _ir(120, 60),
+        _hr(300, 60),
     ]
 
 
-async def test_load_config_hybrid_gen1_uses_0x31_no_hr300():
-    """HYBRID_GEN1 exposes registers at 0x31 but is DC-coupled — no HR(300-359) (#162)."""
+async def test_load_config_hybrid_gen1_at_0x11_no_hr300():
+    """HYBRID_GEN1 reads at the unified 0x11 address (#189) and is DC-coupled — no HR(300-359) (#162)."""
     client = _client_with_caps(Model.HYBRID_GEN1)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
-        _hr(0, 60, device=0x31),
-        _hr(60, 60, device=0x31),
-        _hr(120, 60, device=0x31),
-        _ir(120, 60, device=0x31),
+        _hr(0, 60),
+        _hr(60, 60),
+        _hr(120, 60),
+        _ir(120, 60),
     ]
 
 
@@ -88,7 +88,7 @@ async def test_load_config_hybrid_gen1_does_not_poll_smart_load():
     client = _client_with_caps(Model.HYBRID_GEN1)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
-    assert _hr(540, 60, device=0x31) not in _reqs(mock_exec)
+    assert _hr(540, 60) not in _reqs(mock_exec)
 
 
 async def test_load_config_three_phase():

@@ -156,11 +156,13 @@ def _coerce_model(value: Any) -> Model | None:
 def _derive_inverter_address(mapping: dict[str, Any]) -> None:
     """Fill in ``inverter_address`` from ``device_type`` when not pinned explicitly.
 
-    Mutates ``mapping`` in place. 0x11 for most models, 0x31 for AC/HYBRID_GEN1
-    (issue #119). Payloads that already carry an explicit ``inverter_address``
-    (e.g. persisted state via ``from_dict``) are left untouched — so a stored
-    pre-#119 ``0x32`` surfaces as a PlantTopologyMismatch on the next detect()
-    and self-heals rather than being silently rewritten.
+    Mutates ``mapping`` in place. 0x11 for all models since the 0x31 read-alias
+    retirement (#189; previously 0x31 for AC/HYBRID_GEN1 — issue #119). Payloads
+    that already carry an explicit ``inverter_address`` (e.g. persisted state via
+    ``from_dict``) are left untouched — a stored ``0x31`` keeps working against
+    the hardware facade and self-heals on the next detect(), while a stored
+    pre-#119 ``0x32`` surfaces as a PlantTopologyMismatch rather than being
+    silently rewritten.
     """
     if mapping.get("inverter_address") is not None:
         return
@@ -528,12 +530,14 @@ class Plant(GivEnergyBaseModel):
     def _getter_for_device_address(self, device_address: int) -> type[RegisterGetter] | None:
         """Return the RegisterGetter class appropriate for a given device address.
 
-        With capabilities the inverter lives at its model-specific address
-        (0x11, or 0x31 for AC/HYBRID_GEN1 — issue #119) and 0x32 is LV battery
+        With capabilities the inverter lives at ``capabilities.inverter_address``
+        (0x11 since #189; 0x31 may persist from pre-#189 state and the AC/
+        HYBRID_GEN1 hardware facade still answers there) and 0x32 is LV battery
         pack #1. Without capabilities we fall back to the legacy mapping where
         the inverter was cached at 0x32, and also treat 0x11/0x31 as inverter so
         replay/debug tooling (which feeds PDUs to a bare Plant) keeps validating
-        inverter banks that now arrive at their true wire address.
+        inverter banks at either wire address — including passive captures of
+        other consumers still polling the 0x31 facade.
         """
         if self.capabilities is not None:
             if device_address == self.capabilities.inverter_address:
@@ -614,10 +618,11 @@ class Plant(GivEnergyBaseModel):
         # battery (0x32-0x37), BCU/BMS (0x70+/0xA0) and AIO battery-module (0x50-0x53) responses
         # carry their own, so adopting it from every PDU let whichever device was polled last
         # clobber the real inverter serial — merging the AIO inverter HA device into a battery
-        # module downstream (givenergy-hass#95). The inverter is canonically addressed at
-        # 0x11/0x31 (inverter_address_for never yields anything else), so gate on that set — it
-        # excludes peripherals and the legacy 0x32 (battery pack #1) a pre-#119 persisted
-        # capability may still carry until detect() self-heals.
+        # module downstream (givenergy-hass#95). The inverter is canonically addressed at 0x11
+        # (#189), with 0x31 a hardware facade on AC/HYBRID_GEN1 that other bus consumers may
+        # still poll, so gate on that pair — it excludes peripherals and the legacy 0x32
+        # (battery pack #1) a pre-#119 persisted capability may still carry until detect()
+        # self-heals.
         if device_address in (0x11, 0x31):
             self.inverter_serial_number = pdu.inverter_serial_number
 
@@ -644,11 +649,12 @@ class Plant(GivEnergyBaseModel):
                 _logger.warning(f"Ignoring, likely corrupt: {pdu}")
             else:
                 # Writes target the inverter and the echo comes back on the write address
-                # (0x11), but the model reads caps.inverter_address (0x31 for AC/HYBRID_GEN1,
-                # 0x11 otherwise). 0x11 and 0x31 are the same device (a facade), so route the
-                # echo to where reads land — otherwise plant.inverter won't reflect the write
-                # until the next load_config(), and refresh() (IR-only) never will. The cache
-                # may not exist yet if the write precedes the first read at inverter_address.
+                # (0x11), and the model reads caps.inverter_address. Since #189 unified
+                # addressing on 0x11 the two normally coincide, but a pre-#189 persisted
+                # capability may still say 0x31 (the AC/HYBRID_GEN1 facade), so keep routing
+                # the echo to where reads land — otherwise plant.inverter won't reflect the
+                # write until the next load_config(), and refresh() (IR-only) never will. The
+                # cache may not exist yet if the write precedes the first read there.
                 target = self.capabilities.inverter_address if self.capabilities is not None else device_address
                 self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
@@ -829,10 +835,11 @@ class Plant(GivEnergyBaseModel):
     def inverter(self) -> SinglePhaseInverter | ThreePhaseInverter:
         """Return the inverter model, dispatching on device type when capabilities are available.
 
-        Tolerates the inverter-address cache not yet existing — for AC/HYBRID_GEN1 the
-        address is 0x31, which detect() doesn't populate (it only reads identity at 0x11),
-        so this would otherwise KeyError between detect() and the first poll. Returns an
-        empty-cache model in that window, matching the .ems / .gateway accessors. (#119)
+        Tolerates the inverter-address cache not yet existing — a pre-#189 persisted
+        capability may still point at 0x31, which detect() doesn't populate (it reads
+        identity at 0x11), so this would otherwise KeyError between detect() and the
+        first poll. Returns an empty-cache model in that window, matching the
+        .ems / .gateway accessors. (#119, #189)
         """
         if self.capabilities:
             cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
@@ -845,10 +852,11 @@ class Plant(GivEnergyBaseModel):
 
         Resolves the earliest-available inverter identity by trying, in order:
 
-        1. HR(13-17) in the capability-selected inverter cache (``inverter_address`` — 0x31 for
-           AC/HYBRID_GEN1, else 0x11);
+        1. HR(13-17) in the capability-selected inverter cache (``inverter_address`` — 0x11
+           since #189; 0x31 only via a pre-#189 persisted capability);
         2. HR(13-17) in the 0x11 cache — ``detect()``'s ``HR(0,60)`` identity read lands here for
-           every model, so this covers the detect→first-refresh window before 0x31 is populated;
+           every model, so this covers the detect→first-refresh window when a stale capability
+           still points at 0x31;
         3. the ``inverter_serial_number`` envelope field — populated at ``detect()`` and the only
            home on a persisted/bare plant carrying no register caches.
 
@@ -862,8 +870,9 @@ class Plant(GivEnergyBaseModel):
         field can be deprecated.
         """
         addresses = [0x11]
-        # Prefer the device's own register home (0x31 for AC/HYBRID_GEN1); 0x32 is the battery
-        # pack and never a valid inverter address, so a stale pre-#119 0x32 capability is ignored.
+        # Prefer the capability-selected register home (0x11 since #189, or a persisted 0x31);
+        # 0x32 is the battery pack and never a valid inverter address, so a stale pre-#119
+        # 0x32 capability is ignored.
         if self.capabilities is not None and self.capabilities.inverter_address in (0x11, 0x31):
             addresses.insert(0, self.capabilities.inverter_address)
         for addr in dict.fromkeys(addresses):  # de-dup, preserve order

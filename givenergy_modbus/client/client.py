@@ -95,7 +95,7 @@ def _build_serial_register_groups() -> "list[tuple[str, int, int]]":
     # (#191: GivTCP-heritage, unused, unverifiable), but still redacted: AIO firmware
     # stores the unit serial here byte-swapped (CH… → HC…), recoverable to the real
     # serial, so it must not leak in shared captures. Appended unconditionally — no LUT
-    # Def carries it any more, and a duplicate (if a future field re-used HR 8) would
+    # Def carries it any more, and a duplicate (if a future field reused HR 8) would
     # only redact it twice, which is idempotent.
     groups.append(("HR", 8, 5))
     return groups
@@ -651,10 +651,9 @@ class Client:
             )
 
         # Step 1 — read the inverter's configuration block to get DTC and ARM firmware.
-        # 0x11 is the inverter's canonical address; discovery always reads there and the
-        # response is cached under 0x11 (issue #119). resolve_model() below maps the DTC to
-        # the model, from which PlantCapabilities derives the address used for later polling
-        # (0x11, or 0x31 for AC/HYBRID_GEN1).
+        # 0x11 is the inverter's canonical address for every model (#189); discovery reads
+        # there and the response is cached under 0x11 (issue #119). resolve_model() below maps
+        # the DTC to the model; PlantCapabilities derives the same 0x11 for later polling.
         await self.send_request_and_await_response(
             ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11),
             timeout=timeout,
@@ -725,7 +724,7 @@ class Client:
         )
 
         # Step 4 — LV battery detection. Battery pack #1 is at 0x32, additional batteries at
-        # 0x33–0x37 (the inverter itself now lives at 0x11/0x31, not 0x32 — issue #119). All
+        # 0x33–0x37 (the inverter itself lives at 0x11, not 0x32 — issues #119/#189). All
         # slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)
         # and EMS plant controllers (don't expose IR at the inverter address — see #86).
         # Per-slot (not break-on-fail) for the same reasons as the meter sweep above: battery

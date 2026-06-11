@@ -1015,10 +1015,10 @@ def test_resolve_model(raw_dtc, arm_fw, expected):
 @pytest.mark.parametrize(
     "model,expected",
     [
-        # 0x31 only for AC and HYBRID_GEN1 (GivTCP's map; issue #119)
-        (Model.AC, 0x31),
-        (Model.HYBRID_GEN1, 0x31),
-        # everything else at the 0x11 default
+        # 0x11 for every model since the 0x31 read-alias retirement (#189);
+        # AC and HYBRID_GEN1 hardware still answers at the 0x31 facade too
+        (Model.AC, 0x11),
+        (Model.HYBRID_GEN1, 0x11),
         (Model.HYBRID, 0x11),
         (Model.HYBRID_GEN2, 0x11),
         (Model.HYBRID_GEN3, 0x11),

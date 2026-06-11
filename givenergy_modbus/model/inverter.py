@@ -229,30 +229,23 @@ def resolve_model(raw_dtc: int, arm_fw: int) -> Model:
     return _DTC_PREFIX_TO_MODEL.get(prefix, Model(dtc))
 
 
-# Models whose inverter registers are served at device address 0x31 rather than
-# the 0x11 default. Mirrors GivTCP's detect() map: it forces 0x11 during
-# detection, then switches only AC and HYBRID_GEN1 to 0x31. 0x32 is battery
-# pack #1 and is never the inverter address.
-_INVERTER_ADDRESS_0X31_MODELS: frozenset[Model] = frozenset({Model.AC, Model.HYBRID_GEN1})
-
-
 def inverter_address_for(model: Model) -> int:
     """Return the modbus device address the inverter's registers are served at.
 
-    `0x11` is the inverter's canonical address for every model except AC and
-    HYBRID_GEN1, which expose their registers at `0x31` (GivTCP's map). EMS and
-    All-in-One controllers serve all their data — including the IR/HR(2040)
-    rollup — at `0x11`.
+    `0x11` is the canonical inverter address for all models. AC and HYBRID_GEN1
+    units additionally expose their registers at `0x31` — a facade over the same
+    register file (value-equality verified across 114 shared HR registers on a
+    live HYBRID_GEN1, and byte-identical HR banks on two live AC units; #189) —
+    but `0x11` is where the official app reads and writes, and where ``detect()``
+    always reads identity. EMS and All-in-One controllers likewise serve all
+    their data — including the IR/HR(2040) rollup — at `0x11`.
 
-    The `0x31` special-case is retained while live AC validation is pending
-    (see #189). For HYBRID_GEN1 it has been confirmed not to be load-bearing:
-    live hardware tests show `0x11` serves the full register banks (not
-    identity-only as previously stated), and value-equality between `0x11` and
-    `0x31` holds across 114 HR registers — they are the same register file at
-    two addresses. The official GivEnergy app reads and writes config at `0x11`
-    on this model, firmware-invariant across ARM 449 and 451.
+    Capabilities persisted before the `0x31` retirement may still carry an
+    explicit ``inverter_address`` of `0x31`; that keeps working (the hardware
+    facade still answers there) and self-heals to `0x11` on the next
+    ``detect()``.
     """
-    return 0x31 if model in _INVERTER_ADDRESS_0X31_MODELS else 0x11
+    return 0x11
 
 
 class UsbDevice(int, Enum):
