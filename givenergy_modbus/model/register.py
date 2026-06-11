@@ -172,6 +172,18 @@ class Converter:
             return val / 10
 
     @staticmethod
+    def pf_signed(val: int) -> float:
+        """Decode a power factor as a signed 16-bit int in 1/10,000 units (EE [-1, +1]).
+
+        The meter PF registers IR(80-83) use this plain signed encoding — distinct
+        from the inverter's HR(52), which is offset-unsigned (raw/10,000 - 1). The
+        sign carries flow direction; capture-proven against displacement-PF
+        cross-checks on real meters (#246).
+        """
+        if val is not None:
+            return Converter.int16(val) / 10_000
+
+    @staticmethod
     def datetime(year, month, day, hour, min, sec) -> "datetime | None":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
@@ -219,6 +231,7 @@ class Converter:
 # Converters absent from this map (enums, bools, strings, timeslots, datetimes,
 # and any bespoke converter) are treated as non-numeric — precision None.
 _PRECISION_BY_CONVERTER: dict[Any, int] = {
+    Converter.pf_signed: 4,
     Converter.milli: 3,
     Converter.centi: 2,
     Converter.deci: 1,

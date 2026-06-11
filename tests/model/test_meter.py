@@ -43,14 +43,14 @@ def test_meter_from_synthetic_registers():
             73: 100,
             74: 100,
             75: 300,  # p_reactive_total
-            76: 2302,  # p_apparent_phase_1
-            77: 2202,
-            78: 2402,
-            79: 6906,  # p_apparent_total
-            80: 999,  # pf_phase_1 = 0.999  (milli)
-            81: 998,
-            82: 997,
-            83: 998,  # pf_total
+            76: 23020,  # p_apparent_phase_1 = 2302.0 VA  (deci)
+            77: 22020,
+            78: 24020,
+            79: 30900,  # p_apparent_total = 3090.0 VA
+            80: 9990,  # pf_phase_1 = 0.999  (signed 1/10000)
+            81: 9980,
+            82: 9970,
+            83: 9980,  # pf_total
             84: 5000,  # frequency = 50.00 Hz  (centi)
             85: 12345,  # e_import_active = 1234.5 kWh  (deci)
             86: 100,
@@ -67,6 +67,7 @@ def test_meter_from_synthetic_registers():
     assert m.i_phase_2 == 9.5  # type: ignore[attr-defined]
     assert m.i_total == 30.0  # type: ignore[attr-defined]
     assert m.p_active_total == 6900  # type: ignore[attr-defined]
+    assert m.p_apparent_total == 3090.0  # type: ignore[attr-defined]
     assert m.pf_total == 0.998  # type: ignore[attr-defined]
     assert m.frequency == 50.0  # type: ignore[attr-defined]
     assert m.e_import_active == 1234.5  # type: ignore[attr-defined]
@@ -78,6 +79,37 @@ def test_meter_negative_power():
     cache = _meter_cache({60: 2300, 71: 65536 - 1000})  # -1000 W export
     m = Meter.from_register_cache(cache)
     assert m.p_active_total == -1000  # type: ignore[attr-defined]
+
+
+def test_meter_pf_signed_decode():
+    """pf_* decode as signed int16 x 1e-4 (EE [-1, +1]) — not unsigned milli (#246).
+
+    Raw values pinned from the committed EMS capture: meter 0x03 read 9998
+    (near-unity import) and meter 0x01 read 64670 (-866 as int16; small export).
+    The old C.milli decode produced the impossible 9.998 / 64.67.
+    """
+    m = Meter.from_register_cache(_meter_cache({60: 2300, 80: 9998, 83: 64670}))
+    assert m.pf_phase_1 == 0.9998  # type: ignore[attr-defined]
+    assert m.pf_total == -0.0866  # type: ignore[attr-defined]
+
+
+def test_meter_apparent_power_unsigned_above_int16_range():
+    """p_apparent_* is an unsigned magnitude — loads above 3.27 kVA must not go negative.
+
+    The capture shows apparent power staying positive during export (p_active < 0),
+    so the register is unsigned; a signed decode would overflow for any load above
+    32767 raw (3276.7 VA) — e.g. an EV charger or kettle (#246).
+    """
+    m = Meter.from_register_cache(_meter_cache({60: 2300, 79: 40000}))
+    assert m.p_apparent_total == 4000.0  # type: ignore[attr-defined]
+
+
+def test_meter_pf_precision():
+    """precision_of reports 4 decimal places for the pf_signed-converted fields."""
+    from givenergy_modbus.model.meter import MeterRegisterGetter
+
+    assert MeterRegisterGetter.precision_of("pf_total") == 4
+    assert MeterRegisterGetter.precision_of("p_apparent_total") == 1
 
 
 def test_meter_is_valid_zero_voltage():

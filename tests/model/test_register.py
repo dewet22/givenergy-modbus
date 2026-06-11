@@ -94,6 +94,16 @@ def test_register():
         json.dumps({HR(0): 1234, HR(1): 17185, HR(2): 43981, IR(0): 2}, cls=RegisterEncoder)
 
 
+def test_converter_pf_signed():
+    """Signed int16 x 1e-4 power-factor decode (EE [-1, +1]) — see #246."""
+    assert Converter.pf_signed(9998) == 0.9998  # near-unity import (capture, meter 0x03)
+    assert Converter.pf_signed(64670) == -0.0866  # small export (capture, meter 0x01)
+    assert Converter.pf_signed(0) == 0.0
+    assert Converter.pf_signed(10_000) == 1.0
+    assert Converter.pf_signed(0x10000 - 10_000) == -1.0
+    assert Converter.pf_signed(None) is None
+
+
 def test_converter_timeslot_sentinel():
     from givenergy_modbus.model import TimeSlot
 

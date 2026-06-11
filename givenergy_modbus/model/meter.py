@@ -43,14 +43,21 @@ class MeterRegisterGetter(RegisterGetter):
         "p_reactive_phase_2": Def(C.int16, None, IR(73)),
         "p_reactive_phase_3": Def(C.int16, None, IR(74)),
         "p_reactive_total": Def(C.int16, None, IR(75)),
-        "p_apparent_phase_1": Def(C.int16, None, IR(76)),
-        "p_apparent_phase_2": Def(C.int16, None, IR(77)),
-        "p_apparent_phase_3": Def(C.int16, None, IR(78)),
-        "p_apparent_total": Def(C.int16, None, IR(79)),
-        "pf_phase_1": Def(C.milli, None, IR(80)),
-        "pf_phase_2": Def(C.milli, None, IR(81)),
-        "pf_phase_3": Def(C.milli, None, IR(82)),
-        "pf_total": Def(C.milli, None, IR(83)),
+        # Apparent power is deci-scaled (0.1 VA), unlike active/reactive at 1 W/var —
+        # capture-proven via the displacement-PF cross-check: S >= sqrt(P²+Q²) only
+        # holds at x0.1, and the same identity lands the reactive registers exactly
+        # at 1 var, contradicting the doc's 0.1 var suggestion. Unsigned: apparent
+        # power is a magnitude (the capture shows it positive during export while
+        # p_active goes negative), and a signed decode would overflow above 3.27 kVA.
+        # See #246.
+        "p_apparent_phase_1": Def(C.deci, None, IR(76)),
+        "p_apparent_phase_2": Def(C.deci, None, IR(77)),
+        "p_apparent_phase_3": Def(C.deci, None, IR(78)),
+        "p_apparent_total": Def(C.deci, None, IR(79)),
+        "pf_phase_1": Def(C.pf_signed, None, IR(80), min=-1.0, max=1.0),
+        "pf_phase_2": Def(C.pf_signed, None, IR(81), min=-1.0, max=1.0),
+        "pf_phase_3": Def(C.pf_signed, None, IR(82), min=-1.0, max=1.0),
+        "pf_total": Def(C.pf_signed, None, IR(83), min=-1.0, max=1.0),
         "frequency": Def(C.centi, None, IR(84), min=40.0, max=70.0),
         "e_import_active": Def(C.deci, None, IR(85)),
         "e_import_reactive": Def(C.deci, None, IR(86)),
