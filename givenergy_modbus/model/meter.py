@@ -86,7 +86,10 @@ class MeterProductRegisterGetter(RegisterGetter):
 
     REGISTER_LUT = {
         # Meter Product Registers MR(60)–MR(68)
-        "serial_number": Def(C.string, None, MR(60), MR(61)),
+        # identifier=True: unit-identifying, so redact_serials() auto-discovers the group
+        # (#235; was the hand-fixed #228/H2 gap). factory_code is a factory/model code,
+        # shared across units, so deliberately not marked.
+        "serial_number": Def(C.string, None, MR(60), MR(61), identifier=True),
         "factory_code": Def(C.string, None, MR(62), MR(63)),
         "meter_type": Def(C.uint16, None, MR(64)),
         "hardware_version": Def(C.uint16, None, MR(65)),

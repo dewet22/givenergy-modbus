@@ -250,6 +250,10 @@ class RegisterDefinition(BaseModel):
     registers: tuple = ()
     min_value: int | float | None = None
     max_value: int | float | None = None
+    # Marks a unit-identifying field whose converter isn't Converter.serial (e.g. the
+    # meter product serial, a C.string), so redact_serials() discovers it (#235).
+    # Converter.serial fields are identifiers implicitly and don't need this.
+    identifier: bool = False
 
     def __init__(
         self,

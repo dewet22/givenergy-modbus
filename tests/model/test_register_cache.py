@@ -361,7 +361,7 @@ def test_redact_serials_meter_mr_group():
     so it can't be pattern-redacted — redact_serials() zeroes it instead, so a shared export
     doesn't leak the meter identity.
     """
-    val = "AB12".encode("latin1")  # 4-char meter identifier across MR(60-61)
+    val = b"AB12"  # 4-char meter identifier across MR(60-61)
     registers = {MR(60): int.from_bytes(val[0:2], "big"), MR(61): int.from_bytes(val[2:4], "big")}
 
     result = RegisterCache(registers).redact_serials()
@@ -405,3 +405,84 @@ def test_redact_serials_blanks_partial_meter_identifier():
     result = RegisterCache({MR(60): 0x4142}).redact_serials()  # "AB" fragment; MR(61) absent
     assert result[MR(60)] == 0
     assert MR(61) not in result, "absent MR register must not be injected"
+
+
+def test_serial_groups_cover_every_identifier_field():
+    """Every identifier register in ANY model module must be redaction-covered (#235).
+
+    Two layers, deliberately independent of the production discovery predicate so the
+    guard can catch what the builder misses:
+
+    1. *naming heuristic*: a LUT field whose name contains "serial" must use C.serial
+       or be marked ``identifier=True``. A future ``"serial_number": Def(C.string, ...)``
+       with a forgotten marker — the original #228/H2 meter failure mode — fails here
+       even though the builder's own predicate can't see it.
+    2. *coverage*: every field the predicate does match must land in
+       ``_get_serial_groups()`` — catches a module the builder fails to walk.
+    """
+    import importlib
+    import pkgutil
+
+    import givenergy_modbus.model as model_pkg
+    from givenergy_modbus.model.register import Converter
+    from givenergy_modbus.model.register_cache import _get_serial_groups
+
+    groups = set(_get_serial_groups())
+    unmarked = []
+    missing = []
+    for mod_info in pkgutil.iter_modules(model_pkg.__path__):
+        module = importlib.import_module(f"{model_pkg.__name__}.{mod_info.name}")
+        for attr in dir(module):
+            cls = getattr(module, attr)
+            if not isinstance(cls, type):
+                continue
+            lut = getattr(cls, "REGISTER_LUT", None)
+            if not lut:
+                continue
+            for field, defn in lut.items():
+                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
+                is_identifier = pre_conv is Converter.serial or defn.identifier
+                if "serial" in field.lower() and not is_identifier:
+                    unmarked.append(f"{module.__name__}.{attr}.{field}")
+                if is_identifier and defn.registers:
+                    key = (type(defn.registers[0]).__name__, defn.registers[0]._idx, len(defn.registers))
+                    if key not in groups:
+                        missing.append(f"{module.__name__}.{attr}.{field} -> {key}")
+    assert not unmarked, (
+        f"serial-named fields invisible to redaction discovery: {unmarked} — use C.serial, "
+        "mark the Def identifier=True, or (if genuinely not unit-identifying) rename it"
+    )
+    assert not missing, f"identifier fields not covered by _get_serial_groups(): {missing}"
+
+
+def test_serial_groups_pinned_floor():
+    """The known serial groups must all be present — a discovery refactor can't drop one.
+
+    Pins the full set as of #235: inverter HR(13,5); legacy first-battery HR(8,5) (#191,
+    byte-swap-recoverable AIO unit serial); battery IR(110,5); BMU strides IR(114+120i,5)
+    (#192 AIO modules answer per-address at the i=0 group); gateway IR(1627,5) + both
+    AIO-serial layout variants; EMS managed-inverter serials IR(2066..2081,5); meter
+    product serial MR(60,2) (#228 / audit H2).
+    """
+    from givenergy_modbus.model.register_cache import _BMU_STRIDE, _MAX_BMUS_PER_BCU, _get_serial_groups
+
+    groups = set(_get_serial_groups())
+    expected = {
+        ("HR", 8, 5),
+        ("HR", 13, 5),
+        ("IR", 110, 5),
+        ("IR", 1627, 5),
+        ("IR", 1831, 5),
+        ("IR", 1838, 5),
+        ("IR", 1841, 5),
+        ("IR", 1845, 5),
+        ("IR", 1848, 5),
+        ("IR", 1855, 5),
+        ("IR", 2066, 5),
+        ("IR", 2071, 5),
+        ("IR", 2076, 5),
+        ("IR", 2081, 5),
+        ("MR", 60, 2),
+    }
+    expected |= {("IR", 114 + _BMU_STRIDE * i, 5) for i in range(_MAX_BMUS_PER_BCU)}
+    assert expected <= groups, f"missing groups: {sorted(expected - groups)}"
