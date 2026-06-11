@@ -1,4 +1,5 @@
 from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.register import IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
@@ -9,6 +10,7 @@ def test_from_registers(register_cache):
         "cap_design": 160.0,
         "cap_design2": 160.0,
         "cap_calibrated": 190.97,
+        "i_battery": 0.0,
         "num_cells": 16,
         "num_cycles": 12,
         "cap_remaining": 18.04,
@@ -59,6 +61,7 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
         "cap_design": 160.0,
         "cap_design2": 160.0,
         "cap_calibrated": 195.13,
+        "i_battery": 0.0,
         "num_cells": 16,
         "num_cycles": 23,
         "cap_remaining": 131.42,
@@ -113,6 +116,7 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
         "cap_design": 0.0,
         "cap_design2": 0.0,
         "cap_remaining": 0.0,
+        "i_battery": 0.0,
         "num_cells": 0,
         "num_cycles": 0,
         "serial_number": "",
@@ -155,6 +159,19 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
     }
 
 
+def test_i_battery_signed_centi():
+    """IR(95) 'Im_Avg' decodes as a signed 0.01 A current (#238).
+
+    A negative charge current and a heavy discharge current, both from the
+    field report on real LV hardware, round-trip through int16 + centi scaling.
+    """
+    charging = Battery.from_register_cache(RegisterCache({IR(95): 65536 - 203}))
+    assert charging.i_battery == -2.03
+
+    discharging = Battery.from_register_cache(RegisterCache({IR(95): 4183}))
+    assert discharging.i_battery == 41.83
+
+
 def test_empty():
     """Ensure we can instantiate from empty data."""
     b1 = Battery()
@@ -173,6 +190,7 @@ def test_empty():
             "cap_design": None,
             "cap_design2": None,
             "cap_remaining": None,
+            "i_battery": None,
             "num_cells": None,
             "num_cycles": None,
             "serial_number": None,

@@ -1326,6 +1326,7 @@ def test_from_actual():
         "cap_design": 160.0,
         "cap_design2": 160.0,
         "cap_calibrated": 192.02,
+        "i_battery": 0.0,
         "num_cells": 16,
         "num_cycles": 116,
         "cap_remaining": 110.71,
