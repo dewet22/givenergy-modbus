@@ -78,7 +78,11 @@ CAP_JUMP_CENTI_AH = 5_000
 
 
 def load_rx_frames(paths: list[Path]) -> list[tuple[str, str, bytes]]:
-    """Read all rx frames from the given capture files: (file, ts, raw)."""
+    """Read all rx frames from the given capture files: (file key, ts, raw).
+
+    The file key is the full path string — distinct captures sharing a
+    basename must not share per-file tracker state.
+    """
     entries: list[tuple[str, str, bytes]] = []
     for path in paths:
         with open(path, encoding="utf-8") as f:
@@ -90,7 +94,7 @@ def load_rx_frames(paths: list[Path]) -> list[tuple[str, str, bytes]]:
                     raw = bytes.fromhex(m.group(3))
                 except ValueError:
                     continue
-                entries.append((path.name, m.group(1), raw))
+                entries.append((str(path), m.group(1), raw))
     return entries
 
 
@@ -116,14 +120,14 @@ def find_donor(suspect: list[int], window: tuple[int, int]) -> str | None:
     needle = sus[lo : hi + 1]
     if len(needle) < 3:
         return None
-    for start in range(0, len(sus) - len(needle)):
+    for start in range(0, len(sus) - len(needle) + 1):
         if start == lo:
             continue
         if sus[start : start + len(needle)] == needle:
             reg_lo, reg_hi = BANK_BASE + start // 2, BANK_BASE + (start + len(needle)) // 2
             return f"window is a copy of bytes at IR({reg_lo})-IR({reg_hi}) (offset {start - lo:+d})"
     # tolerate one mismatched byte (live values drift between donor and splice)
-    for start in range(0, len(sus) - len(needle)):
+    for start in range(0, len(sus) - len(needle) + 1):
         if start == lo:
             continue
         region = sus[start : start + len(needle)]
@@ -156,6 +160,19 @@ class BankTracker:
         return None
 
 
+def flush_open_zero_runs(trackers: dict[tuple[str, int], BankTracker]) -> None:
+    """Report zero-runs still open when their capture ends.
+
+    A sustained failure occupying the tail of a capture must not vanish from
+    the analysis just because no recovery poll followed it.
+    """
+    for (fname, device), tracker in trackers.items():
+        if tracker.zero_run_start is not None:
+            kind = "single-poll (splice?)" if tracker.zero_run_len == 1 else "sustained (device-origin)"
+            print(f"{Path(fname).name} {tracker.zero_run_start} device=0x{device:02x}")
+            print(f"  - temp group all-zero x{tracker.zero_run_len} polls — {kind}; still open at end of capture")
+
+
 async def scan(paths: list[Path]) -> int:
     framer = ClientFramer()
     frames = load_rx_frames(paths)
@@ -175,6 +192,7 @@ async def scan(paths: list[Path]) -> int:
             bank_count += 1
             key = (fname, pdu.device_address)
             tracker = trackers.setdefault(key, BankTracker())
+            label = Path(fname).name
             dev = f"device=0x{pdu.device_address:02x}"
             hits: list[str] = []
 
@@ -196,7 +214,7 @@ async def scan(paths: list[Path]) -> int:
             if run:
                 start, length = run
                 kind = "single-poll (splice?)" if length == 1 else "sustained (device-origin)"
-                print(f"{fname} {start} {dev}")
+                print(f"{label} {start} {dev}")
                 print(f"  - temp group all-zero x{length} polls — {kind}")
 
             # 3. cell pinned at exactly 0x0E10
@@ -208,7 +226,7 @@ async def scan(paths: list[Path]) -> int:
 
             if hits:
                 flagged += 1
-                print(f"{fname} {ts} {dev}")
+                print(f"{label} {ts} {dev}")
                 for h in hits:
                     print(f"  - {h}")
                 if tracker.prev is not None:
@@ -224,6 +242,8 @@ async def scan(paths: list[Path]) -> int:
 
             if not hits and not temp_zero:
                 tracker.prev = regs
+
+    flush_open_zero_runs(trackers)
 
     print(
         f"\n{len(frames)} rx frames, {bank_count} battery IR({BANK_BASE},60) banks, {flagged} splice-flagged",

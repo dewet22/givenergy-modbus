@@ -75,7 +75,11 @@ IMMUTABLE = [37, 38, *range(50, 56)]
 
 
 def load_rx_frames(paths: list[Path]) -> list[tuple[str, str, bytes]]:
-    """Read all rx frames from the given capture files: (file, ts, raw)."""
+    """Read all rx frames from the given capture files: (file key, ts, raw).
+
+    The file key is the full path string — distinct captures sharing a
+    basename must not share per-file tracker state.
+    """
     entries: list[tuple[str, str, bytes]] = []
     for path in paths:
         with open(path, encoding="utf-8") as f:
@@ -87,7 +91,7 @@ def load_rx_frames(paths: list[Path]) -> list[tuple[str, str, bytes]]:
                     raw = bytes.fromhex(m.group(3))
                 except ValueError:
                     continue
-                entries.append((path.name, m.group(1), raw))
+                entries.append((str(path), m.group(1), raw))
     return entries
 
 
@@ -139,7 +143,10 @@ async def classify(paths: list[Path]) -> int:
             n = len(phys) + len(immut)
             counts[n] += 1
             if n:
-                print(f"{fname} {ts} device=0x{pdu.device_address:02x}: {len(phys)} physics + {len(immut)} immutable")
+                print(
+                    f"{Path(fname).name} {ts} device=0x{pdu.device_address:02x}: "
+                    f"{len(phys)} physics + {len(immut)} immutable"
+                )
                 for reg, name, a, b in phys + immut:
                     print(f"    IR({reg}) {name}: 0x{a:04X} -> 0x{b:04X}")
     print(
