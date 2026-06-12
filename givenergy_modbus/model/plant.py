@@ -612,6 +612,17 @@ class Plant(GivEnergyBaseModel):
             return
         _logger.debug(f"Handling {pdu}")
 
+        # Reject CRC-failed frames before ANY Plant state is mutated. The CRC spans the device
+        # address and serial fields in the envelope, so those are untrusted on exactly the frames
+        # that fail here — a corrupt 0x11 response must not clobber the stable inverter identity.
+        if getattr(pdu, "crc_failed", False) and not getattr(pdu, "lenient_crc_commit", False):
+            _logger.warning(
+                "Skipping CRC-failed response from 0x%02x (base=%d) — no Plant state updated",
+                pdu.device_address,
+                getattr(pdu, "base_register", 0),
+            )
+            return
+
         # Store responses under their true wire device address. The old 0x11/0x00 → 0x32
         # fold was a courtesy to GivEnergy's cloud, not an inverter requirement: querying
         # 0x11 was relayed upstream by the dongle, and sub-5-minute polling there disturbed
@@ -642,14 +653,6 @@ class Plant(GivEnergyBaseModel):
         # self-heals.
         if device_address in (0x11, 0x31):
             self.inverter_serial_number = pdu.inverter_serial_number
-
-        if getattr(pdu, "crc_failed", False) and not getattr(pdu, "lenient_crc_commit", False):
-            _logger.warning(
-                "Skipping commit of CRC-failed response from 0x%02x (base=%d) — last-good cache preserved",
-                device_address,
-                getattr(pdu, "base_register", 0),
-            )
-            return
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}

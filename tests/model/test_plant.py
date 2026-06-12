@@ -2095,14 +2095,32 @@ def test_crc_failed_frame_does_not_overwrite_cache(plant: Plant):
 
 
 def test_crc_failed_cold_start_leaves_cache_empty(plant: Plant):
-    """A CRC-failed response on an empty cache must not populate the cache."""
+    """A CRC-failed response on an empty cache must not touch Plant state at all."""
     pdu = _make_ir_pdu({0: 9999}, base_register=0, register_count=60)
     pdu.crc_failed = True
     setattr(pdu, "lenient_crc_commit", False)
     plant.update(pdu)
 
-    # device_address entry is created on first encounter, but register data must be absent.
-    assert IR(0) not in plant.register_caches.get(0x32, {})
+    # No register data committed (Plant() pre-creates the 0x32 entry, but it stays empty).
+    assert IR(0) not in plant.register_caches[0x32]
+
+
+def test_crc_failed_frame_does_not_clobber_inverter_serial(plant: Plant):
+    """A CRC-failed 0x11 response must not overwrite the known inverter serial.
+
+    The CRC spans the device address and serial fields in the envelope, so those
+    values are untrusted on exactly the frames that fail here.
+    """
+    plant.inverter_serial_number = "GOOD1234567"
+
+    pdu = _make_ir_pdu({0: 0}, device_address=0x11, base_register=0, register_count=60)
+    pdu.crc_failed = True
+    setattr(pdu, "lenient_crc_commit", False)
+    pdu.inverter_serial_number = "CORRUPT_SERX"
+    plant.update(pdu)
+
+    assert plant.inverter_serial_number == "GOOD1234567"
+    assert IR(0) not in plant.register_caches.get(0x11, {})
 
 
 def test_crc_failed_lenient_commit_allows_data(plant: Plant):
