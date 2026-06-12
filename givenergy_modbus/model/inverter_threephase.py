@@ -525,6 +525,30 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         """
         return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def grid_import_power(self) -> float | None:
+        """Non-negative grid import power (W); aliases p_meter_import (#205)."""
+        return self.p_meter_import  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def grid_export_power(self) -> float | None:
+        """Non-negative grid export power (W); aliases p_meter_export (#205)."""
+        return self.p_meter_export  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_charge_power(self) -> float | None:
+        """Non-negative battery charge power (W); aliases p_battery_charge (#205)."""
+        return self.p_battery_charge  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_discharge_power(self) -> float | None:
+        """Non-negative battery discharge power (W); aliases p_battery_discharge (#205)."""
+        return self.p_battery_discharge  # type: ignore[attr-defined]
+
     @property
     def slot_map(self) -> SlotMap:
         """Register address pairs for the charge/discharge time slots on this model."""
