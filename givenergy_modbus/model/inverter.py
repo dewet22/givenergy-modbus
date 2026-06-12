@@ -844,6 +844,38 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         """Canonical total battery discharge energy (kWh), routed by model (see #76)."""
         return self._battery_energy("discharge", "total")
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def grid_import_power(self) -> int | None:
+        """Non-negative grid import power (W); zero when exporting or idle (#205)."""
+        if self.p_grid_out is None:  # type: ignore[attr-defined]
+            return None
+        return max(0, -self.p_grid_out)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def grid_export_power(self) -> int | None:
+        """Non-negative grid export power (W); zero when importing or idle (#205)."""
+        if self.p_grid_out is None:  # type: ignore[attr-defined]
+            return None
+        return max(0, self.p_grid_out)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_charge_power(self) -> int | None:
+        """Non-negative battery charge power (W); zero when discharging or idle (#205)."""
+        if self.p_battery is None:  # type: ignore[attr-defined]
+            return None
+        return max(0, -self.p_battery)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def battery_discharge_power(self) -> int | None:
+        """Non-negative battery discharge power (W); zero when charging or idle (#205)."""
+        if self.p_battery is None:  # type: ignore[attr-defined]
+            return None
+        return max(0, self.p_battery)  # type: ignore[attr-defined]
+
     @property
     def slot_map(self) -> SlotMap:
         """Register address pairs for the charge/discharge time slots on this model."""
