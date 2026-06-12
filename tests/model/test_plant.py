@@ -1218,7 +1218,7 @@ def test_from_actual():
         "i_ac1": 4.1,
         "e_pv_total": 1192.9,
         "f_ac1": 50.06,
-        "charge_status_code": 5,
+        "charge_status": 5,
         "charge_status_label": ChargeStatus.DISCHARGING,
         "v_highbrigh_bus": 276.0,
         "pf_inverter_output_now": -0.184,

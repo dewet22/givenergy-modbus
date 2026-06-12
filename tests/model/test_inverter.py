@@ -97,7 +97,7 @@ def test_inverter():
             "i_ac1": None,
             "e_pv_total": None,
             "f_ac1": None,
-            "charge_status_code": None,
+            "charge_status": None,
             "charge_status_label": None,
             "v_highbrigh_bus": None,
             "pf_inverter_output_now": None,
@@ -503,7 +503,7 @@ def test_from_registers(register_cache):
         "i_ac1": 0.0,
         "e_pv_total": 15.9,
         "f_ac1": 49.9,
-        "charge_status_code": 0,
+        "charge_status": 0,
         "charge_status_label": ChargeStatus.IDLE,
         "v_highbrigh_bus": 1.2,
         "pf_inverter_output_now": -0.521,
@@ -847,7 +847,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "i_ac1": 2.7,
         "e_pv_total": 26.3,
         "f_ac1": 49.96,
-        "charge_status_code": 5,
+        "charge_status": 5,
         "charge_status_label": ChargeStatus.DISCHARGING,
         "v_highbrigh_bus": 282.9,
         "pf_inverter_output_now": -0.0469,
@@ -1545,7 +1545,7 @@ def test_charge_status_enum():
     from givenergy_modbus.model.register import IR
 
     idle = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 0}))
-    assert idle.charge_status_code == 0
+    assert idle.charge_status == 0
     assert idle.charge_status_label is ChargeStatus.IDLE
 
     charging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 2}))
@@ -1558,12 +1558,5 @@ def test_charge_status_enum():
     assert discharging.charge_status_label is ChargeStatus.DISCHARGING
 
     unknown = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 99}))
-    assert unknown.charge_status_code == 99
+    assert unknown.charge_status == 99
     assert unknown.charge_status_label is None
-
-    # Deprecated @property returns raw int with a warning
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        raw = idle.charge_status
-    assert raw == 0
-    assert any(issubclass(w.category, DeprecationWarning) for w in caught)

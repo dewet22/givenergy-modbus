@@ -393,8 +393,7 @@ class Phase(IntEnum):
 class ChargeStatus(IntEnum):
     """Known charge-status codes observed on single-phase inverters (IR(14), #222).
 
-    Raw code accessible via `charge_status_code`; typed label via `charge_status_label`.
-    `charge_status` (deprecated) returns the same raw int as `charge_status_code`.
+    Raw int accessible via `charge_status`; typed label via `charge_status_label`.
     Unknown codes decode to ``None`` via `charge_status_label` rather than raising.
     """
 
@@ -404,10 +403,8 @@ class ChargeStatus(IntEnum):
     DISCHARGING = 5
 
 
-def _charge_status_from(code: int | None) -> "ChargeStatus | None":
+def _charge_status_from(code: int) -> "ChargeStatus | None":
     """Lenient ChargeStatus decode — returns None for unknown codes (#222)."""
-    if code is None:
-        return None
     try:
         return ChargeStatus(code)
     except ValueError:
@@ -650,7 +647,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "i_ac1": Def(C.deci, None, IR(10), min=0.0, max=500.0),
         "e_pv_total": Def(C.uint32, C.deci, IR(11), IR(12)),
         "f_ac1": Def(C.centi, None, IR(13), min=40.0, max=70.0),
-        "charge_status_code": Def(C.uint16, None, IR(14)),
+        "charge_status": Def(C.uint16, None, IR(14)),
         "charge_status_label": Def(C.uint16, _charge_status_from, IR(14)),
         "v_highbrigh_bus": Def(C.deci, None, IR(15)),
         "pf_inverter_output_now": Def(C.pf, None, IR(16)),  # offset-unsigned, see power_factor
@@ -978,19 +975,6 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
-
-    # Plain @property (not @computed_field) so it doesn't appear alongside
-    # charge_status_code / charge_status_label in model_dump(). See #222.
-    @property
-    def charge_status(self) -> int | None:
-        """Deprecated; use charge_status_label (ChargeStatus enum) or charge_status_code (raw int)."""
-        warnings.warn(
-            "SinglePhaseInverter.charge_status is deprecated; "
-            "use charge_status_label (ChargeStatus enum) or charge_status_code (raw int)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.charge_status_code  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):

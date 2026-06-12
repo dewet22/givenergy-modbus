@@ -104,6 +104,14 @@ def test_converter_pf_signed():
     assert Converter.pf_signed(None) is None
 
 
+def test_converter_pf():
+    """Offset-unsigned x 1e-4 power-factor decode (raw/10,000 − 1) — see #209."""
+    assert Converter.pf(10_000) == 0.0  # unity
+    assert Converter.pf(1_700) == -0.83  # charging dip
+    assert Converter.pf(19_000) == 0.9  # reactive burst
+    assert Converter.pf(None) is None
+
+
 def test_converter_timeslot_sentinel():
     from givenergy_modbus.model import TimeSlot
 
