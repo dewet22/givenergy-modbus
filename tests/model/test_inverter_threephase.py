@@ -260,3 +260,21 @@ def test_three_phase_inverter_is_ac_coupled():
     for dtc in (0x4001, 0x8001):  # HYBRID_3PH, ALL_IN_ONE
         inv = ThreePhaseInverter.from_register_cache(_cache({HR(0): dtc}))
         assert inv.is_ac_coupled is False, f"{inv.model} should not be AC-coupled"
+
+
+def test_directional_power_aliases():
+    """Canonical directional-power names alias the 3-phase native registers (#205)."""
+    tph = ThreePhaseInverter.from_register_cache(
+        _cache({IR(1079): 0, IR(1080): 3500, IR(1081): 0, IR(1082): 0, IR(1136): 0, IR(1137): 0, IR(1138): 0, IR(1139): 2000})
+    )
+    assert tph.grid_import_power == pytest.approx(350.0)  # type: ignore[attr-defined]
+    assert tph.grid_export_power == pytest.approx(0.0)  # type: ignore[attr-defined]
+    assert tph.battery_charge_power == pytest.approx(200.0)  # type: ignore[attr-defined]
+    assert tph.battery_discharge_power == pytest.approx(0.0)  # type: ignore[attr-defined]
+
+    # Missing registers → None
+    empty = ThreePhaseInverter.from_register_cache(_cache({}))
+    assert empty.grid_import_power is None  # type: ignore[attr-defined]
+    assert empty.grid_export_power is None  # type: ignore[attr-defined]
+    assert empty.battery_charge_power is None  # type: ignore[attr-defined]
+    assert empty.battery_discharge_power is None  # type: ignore[attr-defined]
