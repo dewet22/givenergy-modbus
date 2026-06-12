@@ -248,6 +248,23 @@ async def test_refresh_lv_batteries():
     assert _ir(60, 60, device=0x34) in reqs
 
 
+async def test_refresh_lv_bcu():
+    """A detected LV BCU adds an IR 60+60 read at its page address (#241)."""
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x32], lv_bcu_address=0x31)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    reqs = _reqs(mock_exec)
+    assert _ir(60, 60, device=0x31) in reqs
+
+
+async def test_refresh_no_lv_bcu_read_when_absent():
+    """No 0x31 read when the BCU block wasn't detected."""
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x32])
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    assert _ir(60, 60, device=0x31) not in _reqs(mock_exec)
+
+
 async def test_refresh_meter_addresses():
     """Meter devices each add an IR 60+30 read."""
     client = _client_with_caps(Model.HYBRID, meter_addresses=[0x01, 0x02])

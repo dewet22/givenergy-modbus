@@ -75,6 +75,31 @@ def test_plant_capabilities_round_trip_with_aio_modules():
     assert restored.aio_battery_module_addresses == [0x50, 0x51, 0x52, 0x53]
 
 
+def test_plant_capabilities_round_trip_with_lv_bcu():
+    caps = PlantCapabilities(
+        device_type=Model.HYBRID,
+        inverter_address=0x11,
+        lv_battery_addresses=[0x32, 0x33],
+        lv_bcu_address=0x31,
+    )
+    assert caps.to_dict()["lv_bcu_address"] == "0x31"
+    restored = PlantCapabilities.from_dict(caps.to_dict())
+    assert restored == caps
+    assert restored.lv_bcu_address == 0x31
+
+
+def test_plant_capabilities_lv_bcu_defaults_none_and_survives_round_trip():
+    """Payloads persisted before the field existed must load with lv_bcu_address=None."""
+    caps = PlantCapabilities(device_type=Model.HYBRID)
+    assert caps.lv_bcu_address is None
+    payload = caps.to_dict()
+    assert payload["lv_bcu_address"] is None
+    assert PlantCapabilities.from_dict(payload).lv_bcu_address is None
+    # Pre-field payload shape (no key at all):
+    del payload["lv_bcu_address"]
+    assert PlantCapabilities.from_dict(payload).lv_bcu_address is None
+
+
 def test_plant_capabilities_from_dict_accepts_v2_0_0_legacy_shape():
     """Regression: a v2.0.0-shaped payload must still parse after the v2.0.1 schema change.
 
@@ -353,6 +378,89 @@ async def test_detect_finds_lv_batteries():
             caps = await client.detect()
 
     assert caps.lv_battery_addresses == [0x32, 0x33]
+
+
+async def test_detect_finds_lv_bcu():
+    """A populated BCU block at 0x31 sets lv_bcu_address (#241)."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # The field-observed BCU shape: status words zero, request currents 167/167.
+    _prime_cache(client, 0x31, {IR(60): 0, IR(61): 0, IR(62): 167, IR(63): 167})
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x31
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.lv_bcu_address == 0x31
+
+
+async def test_detect_all_zero_lv_bcu_block_means_absent():
+    """An all-zero block at 0x31 leaves lv_bcu_address=None (firmware-gated, #241).
+
+    Units without the block still answer the probe — with zeros — so the probe
+    succeeding is necessary but not sufficient.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    _prime_cache(client, 0x31, {IR(60): 0, IR(61): 0, IR(62): 0, IR(63): 0})
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x31
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert caps.lv_bcu_address is None
+
+
+async def test_detect_hinted_reconfirms_lv_bcu():
+    """Hinted mode re-probes a prior lv_bcu_address and keeps it when still valid."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    _prime_cache(client, 0x31, {IR(60): 0, IR(61): 0, IR(62): 167, IR(63): 167})
+    prior = PlantCapabilities(device_type=Model.HYBRID_GEN1, lv_battery_addresses=[0x32], lv_bcu_address=0x31)
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x31
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect(prior=prior)
+
+    assert caps.lv_bcu_address == 0x31
+
+
+async def test_detect_hinted_absent_lv_bcu_skips_probe():
+    """Hinted mode trusts a prior None — no 0x31 probe is dispatched.
+
+    Follows the meter convention: hinted detect only re-checks addresses the
+    prior captured, so a firmware upgrade that adds the block needs a cold
+    detect to notice.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    prior = PlantCapabilities(device_type=Model.HYBRID_GEN1, lv_battery_addresses=[0x32])
+
+    probed_addresses = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed_addresses.append(request.device_address)
+        return False
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect(prior=prior)
+
+    assert caps.lv_bcu_address is None
+    assert 0x31 not in probed_addresses
 
 
 def _prime_aio_module_serial(client: Client, device_address: int, serial: str = "HX2414G832") -> None:

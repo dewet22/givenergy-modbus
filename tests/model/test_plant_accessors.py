@@ -193,3 +193,35 @@ def test_gateway_returned_for_gateway_device():
     plant = _plant_with_caps(device_type=Model.GATEWAY)
     gw = plant.gateway
     assert isinstance(gw, (GatewayV1, GatewayV2))
+
+
+# ---------------------------------------------------------------------------
+# plant.lv_bcu — present only when capabilities carry lv_bcu_address (#241)
+# ---------------------------------------------------------------------------
+
+
+def test_lv_bcu_none_without_capabilities():
+    assert Plant().lv_bcu is None
+
+
+def test_lv_bcu_none_when_not_detected():
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32])
+    assert plant.lv_bcu is None
+
+
+def test_lv_bcu_none_when_cache_unpopulated():
+    """No KeyError between detect() and the first poll of the BCU page."""
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_bcu_address=0x31)
+    assert 0x31 not in plant.register_caches
+    assert plant.lv_bcu is None
+
+
+def test_lv_bcu_decodes_from_cache():
+    from givenergy_modbus.model.lv_bcu import LvBcu
+
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_bcu_address=0x31)
+    _prime(plant, 0x31, {IR(60): 0, IR(61): 0, IR(62): 167, IR(63): 167})
+    bcu = plant.lv_bcu
+    assert isinstance(bcu, LvBcu)
+    assert bcu.request_charge_current == 167
+    assert bcu.request_discharge_current == 167

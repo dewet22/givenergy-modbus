@@ -22,6 +22,7 @@ from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.inverter import Model, resolve_model
+from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS, LvBcu
 from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
@@ -532,6 +533,40 @@ class Client:
                 continue
             caps.aio_battery_module_addresses.append(addr)
 
+    async def _detect_lv_bcu(
+        self,
+        caps: PlantCapabilities,
+        prior: PlantCapabilities | None,
+        probe_timeout: float,
+        probe_retries: int,
+    ) -> None:
+        """Probe the LV BCU page and set caps.lv_bcu_address when present (#241).
+
+        The stack-level BMS block (doc §4.4.1.1) answers at 0x31 IR(60-63) on LV
+        systems, firmware-gated: absent units still respond, just with an all-zero
+        block, so is_valid() (any-word-non-zero) is the presence test and the probe
+        costs nothing on healthy systems. Hinted mode follows the meter convention:
+        only re-check an address the prior captured — prior None-ness is trusted, so
+        a firmware upgrade that adds the block needs a cold detect to notice.
+        """
+        bcu_addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
+        if bcu_addr is None:
+            return
+        if not await self._probe(
+            ReadInputRegistersRequest(base_register=60, register_count=60, device_address=bcu_addr),
+            timeout=probe_timeout,
+            retries=probe_retries,
+        ):
+            return
+        bcu_cache = self.plant.register_caches.get(bcu_addr)
+        if not bcu_cache:
+            return
+        try:
+            if LvBcu.from_register_cache(bcu_cache).is_valid():
+                caps.lv_bcu_address = bcu_addr
+        except (KeyError, ValueError):
+            _logger.debug("detect: LV BCU probe at 0x%02x failed to decode — skipping", bcu_addr, exc_info=True)
+
     async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
         """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
 
@@ -642,12 +677,13 @@ class Client:
         if prior is not None:
             _logger.info(
                 "detect: hinted mode — assuming device_type=Model.%s, inverter=0x%02x, "
-                "meters=[%s], lv_batteries=[%s], bcus=[%s]",
+                "meters=[%s], lv_batteries=[%s], bcus=[%s], lv_bcu=%s",
                 prior.device_type.name,
                 prior.inverter_address,
                 ", ".join(f"0x{a:02x}" for a in prior.meter_addresses),
                 ", ".join(f"0x{a:02x}" for a in prior.lv_battery_addresses),
                 ", ".join(f"0x{0x70 + offset:02x} (x{n})" for offset, n in prior.bcu_stacks),
+                f"0x{prior.lv_bcu_address:02x}" if prior.lv_bcu_address is not None else "None",
             )
 
         # Step 1 — read the inverter's configuration block to get DTC and ARM firmware.
@@ -761,6 +797,13 @@ class Client:
             _logger.info(
                 "detect: lv_battery_addresses=[%s]",
                 ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
+            )
+
+            # Step 4b — LV BCU page probe (#241).
+            await self._detect_lv_bcu(caps, prior, probe_timeout, probe_retries)
+            _logger.info(
+                "detect: lv_bcu_address=%s",
+                f"0x{caps.lv_bcu_address:02x}" if caps.lv_bcu_address is not None else "None",
             )
 
         # Step 5 — EMS rollup cross-check. See `_ems_rollup_cross_check()` for the contract.
@@ -965,6 +1008,11 @@ class Client:
                 )
         for addr in caps.lv_battery_addresses:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
+        if caps.lv_bcu_address is not None:
+            # LV BCU stack-level page (#241) — count 60 matches the field-validated probe shape.
+            reqs.append(
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=caps.lv_bcu_address)
+            )
         for addr in caps.meter_addresses:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
         for offset, _ in caps.bcu_stacks:
