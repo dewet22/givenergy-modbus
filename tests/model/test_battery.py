@@ -10,6 +10,9 @@ def test_from_registers(register_cache):
         "cap_design": 160.0,
         "cap_design2": 160.0,
         "cap_calibrated": 190.97,
+        "e_battery_charge_total": 174.4,
+        "e_battery_discharge_total": 169.6,
+        "force_discharge_flag": 0,
         "i_battery": 0.0,
         "num_cells": 16,
         "num_cycles": 12,
@@ -61,6 +64,9 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
         "cap_design": 160.0,
         "cap_design2": 160.0,
         "cap_calibrated": 195.13,
+        "e_battery_charge_total": 174.4,
+        "e_battery_discharge_total": 169.6,
+        "force_discharge_flag": 0,
         "i_battery": 0.0,
         "num_cells": 16,
         "num_cycles": 23,
@@ -116,6 +122,9 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
         "cap_design": 0.0,
         "cap_design2": 0.0,
         "cap_remaining": 0.0,
+        "e_battery_charge_total": 0.0,
+        "e_battery_discharge_total": 0.0,
+        "force_discharge_flag": 0,
         "i_battery": 0.0,
         "num_cells": 0,
         "num_cycles": 0,
@@ -172,6 +181,23 @@ def test_i_battery_signed_centi():
     assert discharging.i_battery == 41.83
 
 
+def test_energy_totals_deci_kwh():
+    """IR(105/106) decode as unsigned 0.1 kWh lifetime energy totals (#238/#241).
+
+    Raw values from the field report on two real LV plants; both packs within a
+    plant reported identical values (the counters appear stack-level, mirrored
+    into each pack's register block).
+    """
+    plant_a = Battery.from_register_cache(RegisterCache({IR(105): 62165, IR(106): 61276, IR(107): 0}))
+    assert plant_a.e_battery_discharge_total == 6216.5
+    assert plant_a.e_battery_charge_total == 6127.6
+    assert plant_a.force_discharge_flag == 0
+
+    plant_b = Battery.from_register_cache(RegisterCache({IR(105): 28936, IR(106): 29751}))
+    assert plant_b.e_battery_discharge_total == 2893.6
+    assert plant_b.e_battery_charge_total == 2975.1
+
+
 def test_empty():
     """Ensure we can instantiate from empty data."""
     b1 = Battery()
@@ -190,6 +216,9 @@ def test_empty():
             "cap_design": None,
             "cap_design2": None,
             "cap_remaining": None,
+            "e_battery_charge_total": None,
+            "e_battery_discharge_total": None,
+            "force_discharge_flag": None,
             "i_battery": None,
             "num_cells": None,
             "num_cycles": None,

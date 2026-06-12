@@ -71,7 +71,19 @@ class BatteryRegisterGetter(RegisterGetter):
         "cap_design2": Def(DT.uint32, DT.centi, IR(101), IR(102)),
         "t_max": Def(DT.deci, None, IR(103), min=-60.0, max=150.0),
         "t_min": Def(DT.deci, None, IR(104), min=-60.0, max=150.0),
-        # IR(105-109) unused
+        # IR(105/106) "Battery discharge/charge energy total" (v4.1.6 doc): lifetime
+        # totals, 0.1 kWh, unsigned. Field evidence (#238, two LV systems): both packs
+        # within a plant report identical values — the counters look stack-level,
+        # mirrored into each pack, so don't sum across packs. Single uint16, so they
+        # wrap at 6553.5 kWh. Direction assignment follows the doc (and matches the
+        # long-shipped GivTCP fork mapping); one observed plant had lifetime
+        # discharge > charge, which remains unexplained.
+        "e_battery_discharge_total": Def(DT.deci, None, IR(105)),
+        "e_battery_charge_total": Def(DT.deci, None, IR(106)),
+        # IR(107) "Force_DisChg_Flag" (v4.1.6 doc): no unit or range documented; only 0
+        # observed in the field so far (#241). Raw uint16 until semantics are known.
+        "force_discharge_flag": Def(DT.uint16, None, IR(107)),
+        # IR(108-109) unused
         "serial_number": Def(DT.serial, None, IR(110), IR(111), IR(112), IR(113), IR(114)),
         # IR(115) meaning unverified — manufacturer specs only document 0 and 8 (originally
         # decoded as a UsbDevice enum), but observed values outside that set (e.g. 11 on
