@@ -1216,6 +1216,11 @@ class Client:
                 # because nothing yields between set_result and plant.update, but
                 # that's fragile to future refactors — make it explicit.
                 self.plant.update(message)
+                # Don't resolve the future for a discarded CRC-failed frame — leave it
+                # pending so send_request_and_await_response's timeout/retry fires a fresh
+                # request rather than treating a corrupt frame as a successful read.
+                if getattr(message, "crc_failed", False) and not getattr(message, "lenient_crc_commit", False):
+                    continue
                 future = self.expected_responses.get(message.shape_hash(), None)
                 if future and not future.done():
                     future.set_result(message)

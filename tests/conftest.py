@@ -388,6 +388,7 @@ _client_messages: PduTestCases = [
             "padding": 0x8A,
             "device_address": 0x32,
             "error": False,
+            "crc_failed": False,
         },
         b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
         # 154b total payload, starting with 34b of fields:
@@ -481,6 +482,7 @@ _client_messages: PduTestCases = [
             "padding": 0x8A,
             "device_address": 0x32,
             "error": False,
+            "crc_failed": False,
         },
         b"YY\x00\x01\x00\x9e\x01\x02",  # 8b MBAP header
         # 154b total payload, starting with 34b of fields:

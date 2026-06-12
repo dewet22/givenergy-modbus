@@ -8,6 +8,7 @@ import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.pdu import ReadInputRegistersResponse
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
 
@@ -273,6 +274,34 @@ async def test_connect_also_tears_down_leftover_resources_after_eof():
     leftover_writer.close.assert_called_once()
     assert client.writer is new_writer
     assert client.connected is True
+
+
+async def test_consumer_does_not_resolve_future_for_crc_failed_frame():
+    """A CRC-failed frame must leave the response future pending so retries fire."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+
+    msg = MagicMock(spec=ReadInputRegistersResponse)
+    msg.error = False
+    msg.crc_failed = True
+    setattr(msg, "lenient_crc_commit", False)
+    msg.device_address = 0x32
+    msg.base_register = 0
+    msg.shape_hash.return_value = 42
+
+    future = asyncio.get_event_loop().create_future()
+    client.expected_responses[42] = future
+
+    async def fake_decode(frame):
+        if frame:
+            yield msg
+
+    with patch.object(client.framer, "decode", new=fake_decode):
+        client.reader.feed_data(b"\x00")
+        client.reader.feed_eof()
+        await client._task_network_consumer()
+
+    assert not future.done(), "future must stay pending for a CRC-failed frame"
 
 
 async def test_consumer_clears_connected_on_unexpected_eof():

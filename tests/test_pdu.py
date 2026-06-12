@@ -446,16 +446,18 @@ def test_is_lan_config_rejects_nonzero_padding():
 def test_strict_crc_mode_raises_on_mismatch(monkeypatch):
     """Opt-in strict CRC mode raises InvalidPduState on a mismatch (audit H1-better).
 
-    The lenient default only warns and accepts the data.
+    The lenient default warns and sets crc_failed but does not raise.
     """
     resp = ReadHoldingRegistersResponse(base_register=0, register_count=1, register_values=[0], check=0x0000)
     resp.raw_frame = b"\x00" * 30  # CRC of raw_frame[26:-2] won't be 0x0000 → guaranteed mismatch
 
-    # Lenient default: warns, never raises.
+    # Lenient default: warns, sets crc_failed, never raises.
     assert ReadHoldingRegistersResponse.strict_crc is False
     resp._validate_check_code()
+    assert resp.crc_failed is True
 
     # Strict: raises InvalidPduState on the same mismatch.
+    resp.crc_failed = False
     monkeypatch.setattr(ReadHoldingRegistersResponse, "strict_crc", True)
     with pytest.raises(InvalidPduState, match="CRC"):
         resp._validate_check_code()
@@ -502,8 +504,8 @@ def test_write_request_crc_includes_device_address():
 def test_crc_mismatch_logs_at_warning(caplog):
     """A CRC integrity-check failure on a register response is logged at WARNING (audit H1).
 
-    The check stays non-fatal — the data is still accepted (incoming inverter frames are the
-    source of truth) — but a mismatch must be visible to operators, not buried at DEBUG.
+    The check is non-fatal (no raise), sets crc_failed=True, and the WARNING must be visible
+    to operators, not buried at DEBUG. Plant.update() will then skip the commit.
     """
     import logging
 
@@ -517,6 +519,39 @@ def test_crc_mismatch_logs_at_warning(caplog):
     assert any("integrity check" in r.message.lower() for r in caplog.records), (
         f"expected a WARNING about the integrity check, got: {[r.message for r in caplog.records]}"
     )
+    assert resp.crc_failed is True
+
+
+def test_crc_mismatch_default_sets_flag_no_raise(caplog):
+    """Default policy: CRC mismatch sets crc_failed=True and logs WARNING, does not raise."""
+    import logging
+
+    resp = ReadInputRegistersResponse(base_register=0, register_count=1, register_values=[42])
+    resp.raw_frame = b"\x00" * 30
+    resp.check = 0xABCD  # deliberately wrong
+
+    assert not resp.crc_failed
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.read_registers"):
+        resp._validate_check_code()
+
+    assert resp.crc_failed is True
+    assert any("commit skipped" in r.message for r in caplog.records)
+
+
+def test_crc_mismatch_lenient_commit_allows_and_still_sets_flag(caplog, monkeypatch):
+    """lenient_crc_commit=True: crc_failed is set and WARNING fires, but commit is allowed."""
+    import logging
+
+    monkeypatch.setattr(ReadInputRegistersResponse, "lenient_crc_commit", True)
+    resp = ReadInputRegistersResponse(base_register=0, register_count=1, register_values=[99])
+    resp.raw_frame = b"\x00" * 30
+    resp.check = 0xABCD  # deliberately wrong
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.read_registers"):
+        resp._validate_check_code()
+
+    assert resp.crc_failed is True
+    assert any("commit allowed" in r.message for r in caplog.records)
 
 
 def test_null_response_warning_escapes_serial(caplog):

@@ -77,6 +77,7 @@ class TransparentMessage(BasePDU, ABC):
                 "register_values",
                 "raw_frame",
                 "_builder",
+                "crc_failed",
             ):
                 return None
             return f"{key}={val}"

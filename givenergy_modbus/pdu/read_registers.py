@@ -73,15 +73,24 @@ class ReadRegistersRequest(ReadRegistersMessage, TransparentRequest, ABC):
 class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
     """Handles all messages that respond with a range of registers."""
 
-    #: Opt-in strict CRC enforcement. Lenient by default (a mismatch is logged at WARNING and
-    #: the data accepted, preserving firmware-quirk tolerance). Set to True on the class to make
-    #: a CRC mismatch raise :class:`InvalidPduState` instead — for consumers that prefer to drop
-    #: a corrupted/malformed frame rather than ingest it (audit H1).
+    #: Opt-in strict CRC enforcement. Set to True to raise :class:`InvalidPduState` on a CRC
+    #: mismatch rather than skipping the commit. Useful for consumers with retry logic that want
+    #: explicit error propagation. Takes precedence over :attr:`lenient_crc_commit`.
     strict_crc: ClassVar[bool] = False
+
+    #: Opt-in lenient commit. Set to True to accept and commit CRC-failed frames — intended for
+    #: frame-capture / forensic tools (which want every frame regardless of CRC) and the edge
+    #: case of a dongle that consistently emits bad CRCs on otherwise-valid frames. Default is
+    #: False: CRC-failed frames are logged at WARNING and then discarded (not committed to cache).
+    #: Corpus evidence: 3,106 register response frames, 4 CRC failures, all wire=0x0000
+    #: (zero-filled tail); zero non-zero CRC mismatches — the "bad CRC, valid data" scenario
+    #: has never been observed in the field.
+    lenient_crc_commit: ClassVar[bool] = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.register_values: list[int] = kwargs.get("register_values", [])
+        self.crc_failed: bool = False
 
     def _encode_function_data(self):
         super()._encode_function_data()
@@ -115,12 +124,17 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         Recomputes the unified CRC (CRC16/Modbus over `raw_frame[26:-2]` — the
         device-address byte onward, mirroring `TransparentMessage._update_check_code`'s
         `payload[18:]`, byte-swapped) and compares to the decoded `check`. Confirmed valid
-        for every frame in the real All-in-One corpus (#158: 102/102, incl. error
-        responses). **Lenient by default**: incoming inverter frames are the source of truth,
-        so a mismatch is logged at WARNING for visibility (a corrupted/malformed frame, not
-        authenticated tampering — the CRC is unauthenticated) but the data is still accepted.
-        Set :attr:`strict_crc` on the class to raise :class:`InvalidPduState` on mismatch
-        instead. Only runs when `raw_frame` is present (i.e. on decoded frames).
+        for 3,106 register response frames across all fixture captures (#158: 102/102,
+        incl. error responses; 4 CRC failures total, all wire=0x0000 / zero-filled tail).
+
+        On mismatch, sets :attr:`crc_failed` to True and logs at WARNING. Three outcomes:
+
+        - ``strict_crc=True``: raises :class:`InvalidPduState` (commit never happens).
+        - ``lenient_crc_commit=False`` (default): sets flag, logs, returns — ``Plant.update``
+          will skip the commit, preserving last-good cache data.
+        - ``lenient_crc_commit=True`` (opt-in): sets flag, logs, returns — commit is allowed.
+
+        Only runs when ``raw_frame`` is present (i.e. on decoded frames).
         """
         raw_frame = getattr(self, "raw_frame", None)
         if not raw_frame or len(raw_frame) < 28:
@@ -128,6 +142,7 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
         computed = CrcModbus().process(raw_frame[26:-2]).final()
         expected = ((computed & 0xFF) << 8) | ((computed >> 8) & 0xFF)
         if expected != self.check:
+            self.crc_failed = True
             if self.strict_crc:
                 raise InvalidPduState(
                     f"Response failed CRC integrity check: "
@@ -137,8 +152,8 @@ class ReadRegistersResponse(ReadRegistersMessage, TransparentResponse, ABC):
                 )
             _logger.warning(
                 f"Response failed CRC integrity check on {self}: "
-                f"wire=0x{self.check:04x} computed=0x{expected:04x} — data accepted (non-fatal), "
-                f"but the frame was corrupted or malformed in transit"
+                f"wire=0x{self.check:04x} computed=0x{expected:04x} — "
+                f"{'commit allowed (lenient_crc_commit)' if self.lenient_crc_commit else 'commit skipped'}"
             )
 
     def to_dict(self) -> dict[int, int]:
