@@ -116,21 +116,20 @@ def find_donor(suspect: list[int], window: tuple[int, int]) -> str | None:
     needle = sus[lo : hi + 1]
     if len(needle) < 3:
         return None
-    for shift in (1, 2):
-        for start in range(0, len(sus) - len(needle)):
-            if start == lo:
-                continue
-            if sus[start : start + len(needle)] == needle:
-                reg_lo, reg_hi = BANK_BASE + start // 2, BANK_BASE + (start + len(needle)) // 2
-                return f"window is a copy of bytes at IR({reg_lo})-IR({reg_hi}) (offset {start - lo:+d})"
-        # tolerate one mismatched byte (live values drift between donor and splice)
-        for start in range(0, len(sus) - len(needle)):
-            if start == lo:
-                continue
-            region = sus[start : start + len(needle)]
-            if sum(1 for a, b in zip(region, needle) if a != b) <= 1:
-                reg_lo, reg_hi = BANK_BASE + start // 2, BANK_BASE + (start + len(needle)) // 2
-                return f"window ~matches bytes at IR({reg_lo})-IR({reg_hi}) (offset {start - lo:+d}, 1 byte drift)"
+    for start in range(0, len(sus) - len(needle)):
+        if start == lo:
+            continue
+        if sus[start : start + len(needle)] == needle:
+            reg_lo, reg_hi = BANK_BASE + start // 2, BANK_BASE + (start + len(needle)) // 2
+            return f"window is a copy of bytes at IR({reg_lo})-IR({reg_hi}) (offset {start - lo:+d})"
+    # tolerate one mismatched byte (live values drift between donor and splice)
+    for start in range(0, len(sus) - len(needle)):
+        if start == lo:
+            continue
+        region = sus[start : start + len(needle)]
+        if sum(1 for a, b in zip(region, needle) if a != b) <= 1:
+            reg_lo, reg_hi = BANK_BASE + start // 2, BANK_BASE + (start + len(needle)) // 2
+            return f"window ~matches bytes at IR({reg_lo})-IR({reg_hi}) (offset {start - lo:+d}, 1 byte drift)"
     return None
 
 
