@@ -179,6 +179,7 @@ def test_capabilities_to_dict_format():
         "lv_battery_addresses": ["0x33"],
         "bcu_stacks": [[0, 2]],
         "aio_battery_module_addresses": [],
+        "lv_bcu_address": None,
     }
 
 

@@ -77,7 +77,9 @@ class BatteryRegisterGetter(RegisterGetter):
         # mirrored into each pack, so don't sum across packs. Single uint16, so they
         # wrap at 6553.5 kWh. Direction assignment follows the doc (and matches the
         # long-shipped GivTCP fork mapping); one observed plant had lifetime
-        # discharge > charge, which remains unexplained.
+        # discharge > charge, which remains unexplained. Firmware-gated (#241): packs
+        # on BMS fw 3007/3009 read 0 here where fw 3022 populates both — a zero is
+        # "not supported", not a true lifetime figure.
         "e_battery_discharge_total": Def(DT.deci, None, IR(105)),
         "e_battery_charge_total": Def(DT.deci, None, IR(106)),
         # IR(107) "Force_DisChg_Flag" (v4.1.6 doc): no unit or range documented; only 0

@@ -22,6 +22,7 @@ from givenergy_modbus.model.inverter import (
     resolve_model,
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
+from givenergy_modbus.model.lv_bcu import LvBcu, LvBcuRegisterGetter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, Converter, Register, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -196,6 +197,9 @@ class PlantCapabilities(BaseModel):
     # AIO (All-in-One) per-module battery device addresses (0x50-0x53). Separate-address
     # layout, distinct from the bcu_stacks stride model — see model/aio_battery.py (#192).
     aio_battery_module_addresses: list[int] = Field(default_factory=list)
+    # LV BCU page address (observed only at 0x31 — see model/lv_bcu.py). None when the
+    # block read all-zero at detect time (firmware-gated, #241).
+    lv_bcu_address: int | None = None
 
     def __init__(
         self,
@@ -205,6 +209,7 @@ class PlantCapabilities(BaseModel):
         lv_battery_addresses: list[int] | None = None,
         bcu_stacks: list[tuple[int, int]] | None = None,
         aio_battery_module_addresses: list[int] | None = None,
+        lv_bcu_address: int | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -227,6 +232,8 @@ class PlantCapabilities(BaseModel):
             kwargs["bcu_stacks"] = bcu_stacks
         if aio_battery_module_addresses is not None:
             kwargs["aio_battery_module_addresses"] = aio_battery_module_addresses
+        if lv_bcu_address is not None:
+            kwargs["lv_bcu_address"] = lv_bcu_address
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 
@@ -346,6 +353,7 @@ class PlantCapabilities(BaseModel):
             "lv_battery_addresses": [f"0x{a:02x}" for a in self.lv_battery_addresses],
             "bcu_stacks": [[offset, modules] for offset, modules in self.bcu_stacks],
             "aio_battery_module_addresses": [f"0x{a:02x}" for a in self.aio_battery_module_addresses],
+            "lv_bcu_address": f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else None,
         }
 
     @classmethod
@@ -406,6 +414,9 @@ class PlantCapabilities(BaseModel):
             # (`0x70 + offset` in detect()). Fail loud at parse time instead.
             bcu_stacks=[(int(offset), int(modules)) for offset, modules in (normalised.get("bcu_stacks") or [])],
             aio_battery_module_addresses=[_addr(a) for a in (normalised.get("aio_battery_module_addresses") or [])],
+            lv_bcu_address=(
+                _addr(normalised["lv_bcu_address"]) if normalised.get("lv_bcu_address") is not None else None
+            ),
         )
 
     def __repr__(self) -> str:
@@ -413,6 +424,7 @@ class PlantCapabilities(BaseModel):
         batts = ", ".join(f"0x{a:02x}" for a in self.lv_battery_addresses)
         bcus = ", ".join(f"({o}, {n})" for o, n in self.bcu_stacks)
         aio_mods = ", ".join(f"0x{a:02x}" for a in self.aio_battery_module_addresses)
+        lv_bcu = f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else "None"
         return (
             f"PlantCapabilities("
             f"device_type=Model.{self.device_type.name}, "
@@ -420,7 +432,8 @@ class PlantCapabilities(BaseModel):
             f"meter_addresses=[{meters}], "
             f"lv_battery_addresses=[{batts}], "
             f"bcu_stacks=[{bcus}], "
-            f"aio_battery_module_addresses=[{aio_mods}])"
+            f"aio_battery_module_addresses=[{aio_mods}], "
+            f"lv_bcu_address={lv_bcu})"
         )
 
     @property
@@ -542,6 +555,10 @@ class Plant(GivEnergyBaseModel):
         if self.capabilities is not None:
             if device_address == self.capabilities.inverter_address:
                 return SinglePhaseInverterRegisterGetter
+            # After the inverter check so a (theoretical) pre-#189 persisted
+            # inverter_address=0x31 still routes to the inverter getter.
+            if device_address == self.capabilities.lv_bcu_address:
+                return LvBcuRegisterGetter
             if 0x32 <= device_address <= 0x37:
                 return BatteryRegisterGetter
         else:
@@ -981,6 +998,24 @@ class Plant(GivEnergyBaseModel):
                 except Exception:
                     _logger.error("Failed to decode AIO battery module at 0x%02x", addr, exc_info=True)
         return modules
+
+    @property
+    def lv_bcu(self) -> LvBcu | None:
+        """Return the LV BCU stack-level block, or None when absent.
+
+        None when capabilities are unset, the block wasn't detected (firmware-gated —
+        see model/lv_bcu.py), or its cache hasn't been populated yet.
+        """
+        if not self.capabilities or self.capabilities.lv_bcu_address is None:
+            return None
+        cache = self.register_caches.get(self.capabilities.lv_bcu_address)
+        if not cache:
+            return None
+        try:
+            return LvBcu.from_register_cache(cache)
+        except Exception:
+            _logger.error("Failed to decode LV BCU at 0x%02x", self.capabilities.lv_bcu_address, exc_info=True)
+            return None
 
     @property
     def meters(self) -> dict[int, Meter]:
