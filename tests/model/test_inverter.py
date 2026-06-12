@@ -256,6 +256,10 @@ def test_inverter():
             "e_battery_discharge_today_alt2": None,
             "e_battery_charge_today_alt2": None,
             "p_combined_generation": None,
+            "grid_import_power": None,
+            "grid_export_power": None,
+            "battery_charge_power": None,
+            "battery_discharge_power": None,
         }
     )
 
@@ -604,6 +608,10 @@ def test_from_registers(register_cache):
         "e_battery_discharge_today_alt2": 8.9,  # IR(182)
         "e_battery_charge_today_alt2": 9.0,  # IR(183)
         "p_combined_generation": None,
+        "grid_import_power": 342,  # p_grid_out=-342 → importing
+        "grid_export_power": 0,
+        "battery_charge_power": 0,
+        "battery_discharge_power": 0,
     }
 
 
@@ -948,6 +956,10 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_battery_discharge_today_alt2": 3.4,  # IR(182)
         "e_battery_charge_today_alt2": 9.1,  # IR(183)
         "p_combined_generation": None,
+        "grid_import_power": 0,
+        "grid_export_power": 21,  # p_grid_out=21 → exporting
+        "battery_charge_power": 0,
+        "battery_discharge_power": 360,  # p_battery=360 → discharging
     }
 
 
@@ -1566,3 +1578,40 @@ def test_charge_status_enum():
     # Direct attribute access emits a DeprecationWarning pointing to charge_status_label.
     with pytest.warns(DeprecationWarning, match="charge_status_label"):
         _ = idle.charge_status
+
+
+def test_directional_power_sensors():
+    """Non-negative directional power sensors derived from p_grid_out and p_battery (#205)."""
+    from givenergy_modbus.model.register import IR
+
+    # Exporting: p_grid_out > 0
+    exporting = SinglePhaseInverter.from_register_cache(RegisterCache({IR(30): 1000}))
+    assert exporting.grid_export_power == 1000
+    assert exporting.grid_import_power == 0
+
+    # Importing: p_grid_out < 0 (raw uint16 = 65536 - 500 = 65036)
+    importing = SinglePhaseInverter.from_register_cache(RegisterCache({IR(30): 65036}))
+    assert importing.grid_import_power == 500
+    assert importing.grid_export_power == 0
+
+    # Grid idle
+    grid_idle = SinglePhaseInverter.from_register_cache(RegisterCache({IR(30): 0}))
+    assert grid_idle.grid_import_power == 0
+    assert grid_idle.grid_export_power == 0
+
+    # Missing register → None
+    missing = SinglePhaseInverter.from_register_cache(RegisterCache({}))
+    assert missing.grid_import_power is None
+    assert missing.grid_export_power is None
+    assert missing.battery_charge_power is None
+    assert missing.battery_discharge_power is None
+
+    # Discharging: p_battery > 0
+    discharging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(52): 3000}))
+    assert discharging.battery_discharge_power == 3000
+    assert discharging.battery_charge_power == 0
+
+    # Charging: p_battery < 0 (raw uint16 = 65536 - 2000 = 63536)
+    charging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(52): 63536}))
+    assert charging.battery_charge_power == 2000
+    assert charging.battery_discharge_power == 0

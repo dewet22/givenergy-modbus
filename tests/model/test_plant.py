@@ -1319,6 +1319,10 @@ def test_from_actual():
         "e_battery_discharge_today_alt2": 5.9,  # IR(182)
         "e_battery_charge_today_alt2": 5.7,  # IR(183)
         "p_combined_generation": None,
+        "grid_import_power": 39,  # p_grid_out=-39 → importing
+        "grid_export_power": 0,
+        "battery_charge_power": 0,
+        "battery_discharge_power": 1075,  # p_battery=1075 → discharging
     }
 
     assert p.number_batteries == 1
