@@ -390,6 +390,30 @@ class Phase(IntEnum):
         return None
 
 
+class ChargeStatus(IntEnum):
+    """Known charge-status codes observed on single-phase inverters (IR(14), #222).
+
+    Raw code accessible via `charge_status_code`; typed label via `charge_status_label`.
+    `charge_status` (deprecated) returns the same raw int as `charge_status_code`.
+    Unknown codes decode to ``None`` via `charge_status_label` rather than raising.
+    """
+
+    IDLE = 0
+    CHARGING = 2
+    FINISHING = 3
+    DISCHARGING = 5
+
+
+def _charge_status_from(code: int | None) -> "ChargeStatus | None":
+    """Lenient ChargeStatus decode — returns None for unknown codes (#222)."""
+    if code is None:
+        return None
+    try:
+        return ChargeStatus(code)
+    except ValueError:
+        return None
+
+
 class SinglePhaseInverterRegisterGetter(RegisterGetter):
     """Structured format for all inverter attributes."""
 
@@ -438,7 +462,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_reversed_418_meter": Def(C.bool, None, HR(49)),
         "active_power_rate": Def(C.uint16, None, HR(50)),
         "reactive_power_rate": Def(C.uint16, None, HR(51)),
-        "power_factor": Def(C.uint16, None, HR(52)),  # /10_000 - 1
+        # Offset-unsigned PF: (raw / 10,000) − 1. See Converter.pf for the encoding
+        # rationale and its distinction from the meter's pf_signed registers.
+        "power_factor": Def(C.pf, None, HR(52)),
         "enable_inverter_auto_restart": Def((C.duint8, 0), C.bool, HR(53)),
         "enable_inverter": Def((C.duint8, 1), C.bool, HR(53)),
         "battery_type": Def(C.uint16, BatteryType, HR(54)),
@@ -624,9 +650,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "i_ac1": Def(C.deci, None, IR(10), min=0.0, max=500.0),
         "e_pv_total": Def(C.uint32, C.deci, IR(11), IR(12)),
         "f_ac1": Def(C.centi, None, IR(13), min=40.0, max=70.0),
-        "charge_status": Def(C.uint16, None, IR(14)),
+        "charge_status_code": Def(C.uint16, None, IR(14)),
+        "charge_status_label": Def(C.uint16, _charge_status_from, IR(14)),
         "v_highbrigh_bus": Def(C.deci, None, IR(15)),
-        "pf_inverter_output_now": Def(C.uint16, None, IR(16)),
+        "pf_inverter_output_now": Def(C.pf, None, IR(16)),  # offset-unsigned, see power_factor
         "e_pv1_day": Def(C.deci, None, IR(17)),
         "p_pv1": Def(C.uint16, None, IR(18), max=50000),
         "e_pv2_day": Def(C.deci, None, IR(19)),
@@ -951,6 +978,19 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
+
+    # Plain @property (not @computed_field) so it doesn't appear alongside
+    # charge_status_code / charge_status_label in model_dump(). See #222.
+    @property
+    def charge_status(self) -> int | None:
+        """Deprecated; use charge_status_label (ChargeStatus enum) or charge_status_code (raw int)."""
+        warnings.warn(
+            "SinglePhaseInverter.charge_status is deprecated; "
+            "use charge_status_label (ChargeStatus enum) or charge_status_code (raw int)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.charge_status_code  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):

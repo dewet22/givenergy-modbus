@@ -184,6 +184,20 @@ class Converter:
             return Converter.int16(val) / 10_000
 
     @staticmethod
+    def pf(val: int) -> float | None:
+        """Decode an inverter power factor as offset-unsigned in 1/10,000 units.
+
+        Formula: (raw / 10,000) − 1, giving the EE signed convention where
+        0.0 = unity (pure resistive), positive = lagging (inductive), negative =
+        leading (capacitive), range [−1, +1].
+
+        Used for single-phase IR(16) and HR(52). Distinct from `pf_signed` (meter
+        registers IR(80-83)), which is plain signed int16/10,000 with no offset.
+        """
+        if val is not None:
+            return round(val / 10_000 - 1, 4)
+
+    @staticmethod
     def datetime(year, month, day, hour, min, sec) -> "datetime | None":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
@@ -232,6 +246,7 @@ class Converter:
 # and any bespoke converter) are treated as non-numeric — precision None.
 _PRECISION_BY_CONVERTER: dict[Any, int] = {
     Converter.pf_signed: 4,
+    Converter.pf: 4,
     Converter.milli: 3,
     Converter.centi: 2,
     Converter.deci: 1,
