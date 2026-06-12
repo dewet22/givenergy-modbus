@@ -2074,6 +2074,44 @@ def test_discarded_bank_does_not_update_unchanged_since(plant: Plant):
     assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=30)) == 30.0
 
 
+def test_crc_failed_frame_does_not_overwrite_cache(plant: Plant):
+    """A CRC-failed response must not commit its payload over previously-good cache data."""
+    good_bank = {60: 3221, 110: 0x4358, 111: 0x3232}
+    _feed_bank(plant, good_bank, received_at=_T0)
+
+    pdu = _make_ir_pdu({60: 0, 110: 0, 111: 0}, base_register=60, register_count=60)
+    pdu.crc_failed = True
+    setattr(pdu, "lenient_crc_commit", False)
+    plant.update(pdu, received_at=_T0 + timedelta(seconds=10))
+
+    # Cache must still reflect the good bank, not the zeroed CRC-failed payload.
+    cache = plant.register_caches[0x32]
+    assert cache[IR(60)] == 3221
+    assert cache[IR(110)] == 0x4358
+
+
+def test_crc_failed_cold_start_leaves_cache_empty(plant: Plant):
+    """A CRC-failed response on an empty cache must not populate the cache."""
+    pdu = _make_ir_pdu({0: 9999}, base_register=0, register_count=60)
+    pdu.crc_failed = True
+    setattr(pdu, "lenient_crc_commit", False)
+    plant.update(pdu)
+
+    # device_address entry is created on first encounter, but register data must be absent.
+    assert IR(0) not in plant.register_caches.get(0x32, {})
+
+
+def test_crc_failed_lenient_commit_allows_data(plant: Plant):
+    """With lenient_crc_commit=True, a CRC-failed response is committed as normal."""
+    pdu = _make_ir_pdu({60: 42, 61: 7}, base_register=60, register_count=60)
+    pdu.crc_failed = True
+    setattr(pdu, "lenient_crc_commit", True)
+    plant.update(pdu)
+
+    assert plant.register_caches[0x32][IR(60)] == 42
+    assert plant.register_caches[0x32][IR(61)] == 7
+
+
 def test_content_unchanged_seconds_normalises_naive_now(plant: Plant):
     """A timezone-naive now is treated as UTC rather than raising TypeError (mirrors block_age)."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}

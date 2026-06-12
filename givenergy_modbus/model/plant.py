@@ -643,6 +643,14 @@ class Plant(GivEnergyBaseModel):
         if device_address in (0x11, 0x31):
             self.inverter_serial_number = pdu.inverter_serial_number
 
+        if getattr(pdu, "crc_failed", False) and not getattr(pdu, "lenient_crc_commit", False):
+            _logger.warning(
+                "Skipping commit of CRC-failed response from 0x%02x (base=%d) — last-good cache preserved",
+                device_address,
+                getattr(pdu, "base_register", 0),
+            )
+            return
+
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             if self._commit_bank(device_address, incoming, pdu.register_count):
