@@ -9,6 +9,7 @@ from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
+    ChargeStatus,
     MeterType,
     Model,
     PowerFactorFunctionModel,
@@ -97,6 +98,7 @@ def test_inverter():
             "e_pv_total": None,
             "f_ac1": None,
             "charge_status": None,
+            "charge_status_label": None,
             "v_highbrigh_bus": None,
             "pf_inverter_output_now": None,
             "e_pv1_day": None,
@@ -485,7 +487,7 @@ def test_from_registers(register_cache):
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
-        "power_factor": 0,
+        "power_factor": -1.0,
         "reactive_power_rate": 0,
         "select_arm_chip": False,
         "serial_number": "SA1234G567",
@@ -502,8 +504,9 @@ def test_from_registers(register_cache):
         "e_pv_total": 15.9,
         "f_ac1": 49.9,
         "charge_status": 0,
+        "charge_status_label": ChargeStatus.IDLE,
         "v_highbrigh_bus": 1.2,
-        "pf_inverter_output_now": 4790,
+        "pf_inverter_output_now": -0.521,
         "e_pv1_day": 0.4,
         "p_pv1": 4,
         "e_pv2_day": 0.5,
@@ -828,7 +831,7 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "module": "00030832",
         "num_mppt": 2,
         "num_phases": 1,
-        "power_factor": 0,
+        "power_factor": -1.0,
         "reactive_power_rate": 0,
         "select_arm_chip": False,
         "serial_number": "SA1234G567",
@@ -845,8 +848,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_pv_total": 26.3,
         "f_ac1": 49.96,
         "charge_status": 5,
+        "charge_status_label": ChargeStatus.DISCHARGING,
         "v_highbrigh_bus": 282.9,
-        "pf_inverter_output_now": 9531,
+        "pf_inverter_output_now": -0.0469,
         "e_pv1_day": 0.4,
         "p_pv1": 117,
         "e_pv2_day": 0.6,
@@ -1509,3 +1513,56 @@ def test_single_phase_inverter_is_ac_coupled():
     assert bare.model is None
     assert bare.is_ac_coupled is False
     assert bare.model_dump()["is_ac_coupled"] is False
+
+
+def test_pf_converter_inverter():
+    """IR(16) and HR(52) decode with the offset-unsigned formula (raw/10,000 − 1) (#209).
+
+    Verifies the three empirical clusters from the issue's 24h live data: the normal
+    export cluster (~10,000), the heavy-charge dip (~1,700), and the reactive burst
+    (~19,000). Under the simpler ÷10,000 formula the >10,000 readings would be
+    impossible (>1.0), confirming the offset is necessary.
+    """
+    from givenergy_modbus.model.register import IR
+
+    unity = SinglePhaseInverter.from_register_cache(RegisterCache({IR(16): 10_000}))
+    assert unity.pf_inverter_output_now == 0.0
+
+    charging_dip = SinglePhaseInverter.from_register_cache(RegisterCache({IR(16): 1_700}))
+    assert charging_dip.pf_inverter_output_now == -0.83
+
+    reactive_burst = SinglePhaseInverter.from_register_cache(RegisterCache({IR(16): 19_000}))
+    assert reactive_burst.pf_inverter_output_now == 0.9
+
+    # Fixture values from the issue
+    assert round(4790 / 10_000 - 1, 4) == -0.521
+    assert round(9531 / 10_000 - 1, 4) == -0.0469
+    assert round(8160 / 10_000 - 1, 4) == -0.184
+
+
+def test_charge_status_enum():
+    """ChargeStatus decodes all known codes and returns None for unknowns (#222)."""
+    from givenergy_modbus.model.register import IR
+
+    idle = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 0}))
+    assert idle.charge_status_label is ChargeStatus.IDLE
+
+    charging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 2}))
+    assert charging.charge_status_label is ChargeStatus.CHARGING
+
+    finishing = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 3}))
+    assert finishing.charge_status_label is ChargeStatus.FINISHING
+
+    discharging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 5}))
+    assert discharging.charge_status_label is ChargeStatus.DISCHARGING
+
+    unknown = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 99}))
+    assert unknown.charge_status_label is None
+
+    # Raw field still accessible via model_dump() without triggering the deprecation warning.
+    assert idle.model_dump()["charge_status"] == 0
+    assert unknown.model_dump()["charge_status"] == 99
+
+    # Direct attribute access emits a DeprecationWarning pointing to charge_status_label.
+    with pytest.warns(DeprecationWarning, match="charge_status_label"):
+        _ = idle.charge_status

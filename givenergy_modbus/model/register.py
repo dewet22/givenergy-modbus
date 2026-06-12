@@ -5,7 +5,7 @@ from enum import Enum
 from json import JSONEncoder
 from typing import Any, ClassVar, get_type_hints
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from givenergy_modbus.model import TimeSlot
 
@@ -184,6 +184,20 @@ class Converter:
             return Converter.int16(val) / 10_000
 
     @staticmethod
+    def pf(val: int) -> float | None:
+        """Decode an inverter power factor as offset-unsigned in 1/10,000 units.
+
+        Formula: (raw / 10,000) − 1, giving the EE signed convention where
+        0.0 = unity (pure resistive), positive = lagging (inductive), negative =
+        leading (capacitive), range [−1, +1].
+
+        Used for single-phase IR(16) and HR(52). Distinct from `pf_signed` (meter
+        registers IR(80-83)), which is plain signed int16/10,000 with no offset.
+        """
+        if val is not None:
+            return round(val / 10_000 - 1, 4)
+
+    @staticmethod
     def datetime(year, month, day, hour, min, sec) -> "datetime | None":
         """Compose a datetime from 6 registers."""
         if None not in [year, month, day, hour, min, sec]:
@@ -232,6 +246,7 @@ class Converter:
 # and any bespoke converter) are treated as non-numeric — precision None.
 _PRECISION_BY_CONVERTER: dict[Any, int] = {
     Converter.pf_signed: 4,
+    Converter.pf: 4,
     Converter.milli: 3,
     Converter.centi: 2,
     Converter.deci: 1,
@@ -267,6 +282,10 @@ class RegisterDefinition(BaseModel):
     # meter product serial, a C.string), so redact_serials() discovers it (#235).
     # Converter.serial fields are identifiers implicitly and don't need this.
     identifier: bool = False
+    # When set, the generated Pydantic field is marked deprecated via Field(deprecated=...).
+    # Fires a DeprecationWarning on direct attribute access; also surfaces as
+    # "deprecated": true in model_json_schema() — visible to IDEs, agents, and code-gen.
+    deprecated: str | bool = False
 
     def __init__(
         self,
@@ -509,7 +528,10 @@ class RegisterGetter:
                     return infer_return_type(v.pre_conv)
             return Any
 
-        return {k: (return_type(v) | None, None) for k, v in cls.REGISTER_LUT.items()}
+        return {
+            k: (return_type(v) | None, Field(default=None, deprecated=v.deprecated) if v.deprecated else None)
+            for k, v in cls.REGISTER_LUT.items()
+        }
 
 
 class RegisterMetadataMixin:
