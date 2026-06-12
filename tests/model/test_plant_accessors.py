@@ -225,3 +225,17 @@ def test_lv_bcu_decodes_from_cache():
     assert isinstance(bcu, LvBcu)
     assert bcu.request_charge_current == 167
     assert bcu.request_discharge_current == 167
+
+
+def test_lv_bcu_decode_error_returns_none(caplog):
+    """A malformed cache raises during decode — must return None, not propagate (#241)."""
+    import logging
+    from unittest.mock import patch
+
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_bcu_address=0x31)
+    _prime(plant, 0x31, {IR(60): 1})
+    with patch("givenergy_modbus.model.plant.LvBcu.from_register_cache", side_effect=RuntimeError("oops")):
+        with caplog.at_level(logging.ERROR):
+            result = plant.lv_bcu
+    assert result is None
+    assert "Failed to decode LV BCU" in caplog.text

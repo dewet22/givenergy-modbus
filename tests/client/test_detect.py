@@ -463,6 +463,45 @@ async def test_detect_hinted_absent_lv_bcu_skips_probe():
     assert 0x31 not in probed_addresses
 
 
+@pytest.mark.asyncio
+async def test_detect_lv_bcu_probe_succeeds_but_cache_absent():
+    """Probe returns True but no data landed in the cache — gracefully leaves lv_bcu_address=None."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # No cache at 0x31 — probe "succeeds" but no registers were stored.
+
+    async def _probe_succeed_at_0x31(request, *, timeout, retries):
+        return request.device_address == 0x31
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_succeed_at_0x31):
+            caps = await client.detect()
+
+    assert caps.lv_bcu_address is None
+
+
+@pytest.mark.asyncio
+async def test_detect_lv_bcu_decode_error_is_swallowed():
+    """A decoding error in the BCU probe is logged and leaves lv_bcu_address=None."""
+    from unittest.mock import patch as _patch
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    _prime_cache(client, 0x31, {IR(60): 1, IR(61): 0, IR(62): 0, IR(63): 0})
+
+    async def _probe_succeed_at_0x31(request, *, timeout, retries):
+        return request.device_address == 0x31
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_succeed_at_0x31):
+            with _patch("givenergy_modbus.client.client.LvBcu.from_register_cache", side_effect=ValueError("corrupt")):
+                caps = await client.detect()
+
+    assert caps.lv_bcu_address is None
+
+
 def _prime_aio_module_serial(client: Client, device_address: int, serial: str = "HX2414G832") -> None:
     """Prime an AIO module cache with a valid module serial (IR 114-118)."""
     regs = {IR(114 + i): int.from_bytes(serial[i * 2 : i * 2 + 2].encode("latin1"), "big") for i in range(5)}

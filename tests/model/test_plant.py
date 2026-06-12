@@ -1570,6 +1570,14 @@ def test_getter_for_device_address_with_capabilities():
     assert plant._getter_for_device_address(0x99) is None
 
 
+def test_getter_for_device_address_lv_bcu():
+    """When capabilities carry lv_bcu_address, that address routes to LvBcuRegisterGetter (#241)."""
+    from givenergy_modbus.model.lv_bcu import LvBcuRegisterGetter
+
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID, lv_bcu_address=0x31))
+    assert plant._getter_for_device_address(0x31) is LvBcuRegisterGetter
+
+
 def test_commit_bank_incoherent_serial_discards_bank(plant: Plant, caplog):
     """A battery bank whose serial number registers decode to garbage must be discarded.
 
