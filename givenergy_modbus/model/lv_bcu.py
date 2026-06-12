@@ -68,6 +68,11 @@ class LvBcu(_LvBcuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
         so presence requires at least one non-zero word.
         """
         return any(
-            getattr(self, f) not in (None, 0)
-            for f in ("bms_status_1", "bms_status_2", "request_charge_current", "request_discharge_current")
+            v not in (None, 0)
+            for v in (
+                self.bms_status_1,
+                self.bms_status_2,
+                self.request_charge_current,
+                self.request_discharge_current,
+            )
         )
