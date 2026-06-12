@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-06-12
+
+### ✨ Added
+
+- map IR(105-107) — LV energy totals + force-discharge flag (#251) ([4150f11](https://github.com/dewet22/givenergy-modbus/commit/4150f11c140b57367c2ccb8208e77470faba8cc4))
+- map LV BCU block at 0x31 IR(60-63) (#241) (#253) ([e9cf91b](https://github.com/dewet22/givenergy-modbus/commit/e9cf91bd593fd9314cd3a2231b331b50450e67c8))
+- non-negative directional power sensors (#205) (#254) ([7cef175](https://github.com/dewet22/givenergy-modbus/commit/7cef17578944730ddf436d780795990b32700b45))
+
+### 🐛 Fixed
+
+- pf formula + ChargeStatus enum (#209, #222) (#252) ([7245382](https://github.com/dewet22/givenergy-modbus/commit/7245382fddb75d104a99c848736bb93d7b0ed7fa))
+- CRC-failed frames must not commit over good cache (#255) ([6edbc38](https://github.com/dewet22/givenergy-modbus/commit/6edbc38745f0899b2cdcb4d54c4a3dd3c34a0839))
+
 ## [2.3.0] - 2026-06-11
 
 2.3.0 is a register-correctness and addressing release, shaped by field
