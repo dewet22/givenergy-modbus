@@ -647,7 +647,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "i_ac1": Def(C.deci, None, IR(10), min=0.0, max=500.0),
         "e_pv_total": Def(C.uint32, C.deci, IR(11), IR(12)),
         "f_ac1": Def(C.centi, None, IR(13), min=40.0, max=70.0),
-        "charge_status": Def(C.uint16, None, IR(14)),
+        "charge_status": Def(C.uint16, None, IR(14), deprecated="use charge_status_label"),
         "charge_status_label": Def(C.uint16, _charge_status_from, IR(14)),
         "v_highbrigh_bus": Def(C.deci, None, IR(15)),
         "pf_inverter_output_now": Def(C.pf, None, IR(16), min=-1.0, max=1.0),  # offset-unsigned, see power_factor

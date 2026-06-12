@@ -1545,7 +1545,6 @@ def test_charge_status_enum():
     from givenergy_modbus.model.register import IR
 
     idle = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 0}))
-    assert idle.charge_status == 0
     assert idle.charge_status_label is ChargeStatus.IDLE
 
     charging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 2}))
@@ -1558,5 +1557,12 @@ def test_charge_status_enum():
     assert discharging.charge_status_label is ChargeStatus.DISCHARGING
 
     unknown = SinglePhaseInverter.from_register_cache(RegisterCache({IR(14): 99}))
-    assert unknown.charge_status == 99
     assert unknown.charge_status_label is None
+
+    # Raw field still accessible via model_dump() without triggering the deprecation warning.
+    assert idle.model_dump()["charge_status"] == 0
+    assert unknown.model_dump()["charge_status"] == 99
+
+    # Direct attribute access emits a DeprecationWarning pointing to charge_status_label.
+    with pytest.warns(DeprecationWarning, match="charge_status_label"):
+        _ = idle.charge_status

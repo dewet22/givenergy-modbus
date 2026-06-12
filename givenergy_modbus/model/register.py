@@ -5,7 +5,7 @@ from enum import Enum
 from json import JSONEncoder
 from typing import Any, ClassVar, get_type_hints
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from givenergy_modbus.model import TimeSlot
 
@@ -282,6 +282,10 @@ class RegisterDefinition(BaseModel):
     # meter product serial, a C.string), so redact_serials() discovers it (#235).
     # Converter.serial fields are identifiers implicitly and don't need this.
     identifier: bool = False
+    # When set, the generated Pydantic field is marked deprecated via Field(deprecated=...).
+    # Fires a DeprecationWarning on direct attribute access; also surfaces as
+    # "deprecated": true in model_json_schema() — visible to IDEs, agents, and code-gen.
+    deprecated: str | bool = False
 
     def __init__(
         self,
@@ -524,7 +528,10 @@ class RegisterGetter:
                     return infer_return_type(v.pre_conv)
             return Any
 
-        return {k: (return_type(v) | None, None) for k, v in cls.REGISTER_LUT.items()}
+        return {
+            k: (return_type(v) | None, Field(default=None, deprecated=v.deprecated) if v.deprecated else None)
+            for k, v in cls.REGISTER_LUT.items()
+        }
 
 
 class RegisterMetadataMixin:
