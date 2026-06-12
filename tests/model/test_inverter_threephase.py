@@ -265,7 +265,18 @@ def test_three_phase_inverter_is_ac_coupled():
 def test_directional_power_aliases():
     """Canonical directional-power names alias the 3-phase native registers (#205)."""
     tph = ThreePhaseInverter.from_register_cache(
-        _cache({IR(1079): 0, IR(1080): 3500, IR(1081): 0, IR(1082): 0, IR(1136): 0, IR(1137): 0, IR(1138): 0, IR(1139): 2000})
+        _cache(
+            {
+                IR(1079): 0,
+                IR(1080): 3500,  # p_meter_import = 350.0
+                IR(1081): 0,
+                IR(1082): 0,  # p_meter_export = 0.0
+                IR(1136): 0,
+                IR(1137): 0,  # p_battery_discharge = 0.0
+                IR(1138): 0,
+                IR(1139): 2000,  # p_battery_charge = 200.0
+            }
+        )
     )
     assert tph.grid_import_power == pytest.approx(350.0)  # type: ignore[attr-defined]
     assert tph.grid_export_power == pytest.approx(0.0)  # type: ignore[attr-defined]
