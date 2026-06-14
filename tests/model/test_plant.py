@@ -2778,3 +2778,41 @@ def test_splice_bypass_only_after_genuine_gap_not_rejection_streak(plant: Plant,
         )
     assert plant.register_caches[_BATT][IR(76)] == 0  # adopted via bypass
     assert [r for r in caplog.records if "stale baseline" in r.message and "0x33" in r.message]
+
+
+def test_splice_guard_normalises_naive_received_at(plant: Plant, caplog):
+    """A tz-naive received_at is normalised to UTC in the guard, so the gap still computes (#256).
+
+    Mirrors block_age()'s posture: ingestion timestamps may arrive naive. The observation clock
+    must normalise them, or subtracting a naive from an aware datetime would raise.
+    """
+    import logging
+
+    naive_t0 = datetime(2026, 6, 9, 12, 0, 0)  # no tzinfo
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=naive_t0)
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # cold-start commit, no crash on naive
+
+    naive_later = datetime(2026, 6, 9, 12, 6, 40)  # +400 s, still naive (> bypass window)
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({60: 3700, 76: 0}),  # would be >=2 trips on a fresh baseline
+            device_address=_BATT,
+            received_at=naive_later,
+        )
+    # The 400 s gap across two naive timestamps was computed correctly → bypass fired.
+    assert plant.register_caches[_BATT][IR(76)] == 0
+    assert [r for r in caplog.records if "stale baseline" in r.message and "0x33" in r.message]
+
+
+def test_splice_guard_defaults_now_when_received_at_missing(plant: Plant):
+    """With no received_at, the guard stamps the observation with the current time (#256).
+
+    The `now is None` fallback must produce a tz-aware timestamp so consecutive observations
+    still subtract cleanly; a near-instant second poll has a ~0 s gap and commits normally.
+    """
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT)  # received_at=None
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # cold-start commit, no crash
+    # Second bank moments later: gap ~0 s (no bypass), single in-threshold change commits.
+    _feed_bank(plant, _coherent_battery_bank({60: 3350}), device_address=_BATT)
+    assert plant.register_caches[_BATT][IR(60)] == 3350

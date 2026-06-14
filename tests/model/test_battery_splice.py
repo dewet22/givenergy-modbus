@@ -108,6 +108,24 @@ def test_present_gating_skips_rules_with_absent_registers():
     assert classify_transition(base, new, present=present) == ([], [])
 
 
+def test_present_gating_skips_pair_rule_with_absent_register():
+    """A PAIR rule is skipped when either of its two words is absent from `present`."""
+    base = _baseline()
+    new = list(base)
+    new[29] = 36000  # would trip the cap_remaining (28, 29) pair...
+    present = set(range(60)) - {29}  # ...but its low word is absent, so skip
+    assert classify_transition(base, new, present=present) == ([], [])
+
+
+def test_present_gating_skips_immutable_with_absent_register():
+    """An IMMUTABLE check is skipped when its register is absent from `present`."""
+    base = _baseline()
+    new = list(base)
+    new[38] = 3006  # would be a bms_firmware_version immutable violation...
+    present = set(range(60)) - {38}  # ...but it's absent, so skip
+    assert classify_transition(base, new, present=present) == ([], [])
+
+
 def test_threshold_table_covers_every_rule_class():
     """Every class name used by a rule must resolve in THRESHOLD_BY_CLASS (escrow lookup)."""
     from givenergy_modbus.model.battery_splice import PAIR_RULES, SCALAR_RULES
