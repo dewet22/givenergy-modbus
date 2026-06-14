@@ -2694,3 +2694,31 @@ def test_splice_rejected_bank_preserves_staleness(plant: Plant):
     _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
     # Age at t0 + 45 s must reflect the last *committed* bank at t0, not the rejected one.
     assert plant.block_age(_BATT, "IR", 60, 60, now=_T0 + timedelta(seconds=45)) == 45.0
+
+
+def test_splice_stale_baseline_bypass(plant: Plant, caplog):
+    """After a long gap the guard bypasses physics checks and adopts the incoming bank.
+
+    Per-poll thresholds are calibrated for ~30 s intervals. After a network outage or
+    prolonged refresh failure, a legitimate multi-field change (SOC/temp/cap drift) would
+    exceed them. Without this bypass, the guard would reject the first post-reconnect bank
+    and then pin the cache forever — rejected banks never advance the timestamp so every
+    subsequent poll also compares against the same stale baseline.
+    """
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    # Simulate a 400 s gap (> STALE_BYPASS_SECONDS=300): values that would be >=2 physics
+    # trips on a fresh baseline must commit unconditionally after a stale one.
+    t_reconnect = _T0 + timedelta(seconds=400)
+    post_outage = _coherent_battery_bank({60: 3700, 76: 0})  # 2 battery-physics trips
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, post_outage, device_address=_BATT, received_at=t_reconnect)
+    # Values committed (guard bypassed).
+    assert plant.register_caches[_BATT][IR(60)] == 3700
+    assert plant.register_caches[_BATT][IR(76)] == 0
+    # Bypass emits an INFO log; no splice rejection WARNING.
+    infos = [r for r in caplog.records if "stale baseline" in r.message and "0x33" in r.message]
+    assert len(infos) == 1 and infos[0].levelno == logging.INFO
+    warns = [r for r in caplog.records if "Rejected battery bank" in r.message]
+    assert not warns
