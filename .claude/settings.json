@@ -9,8 +9,15 @@
       "mcp__home-assistant__ha_get_state",
       "mcp__home-assistant__ha_get_integration",
       "mcp__home-assistant__ha_get_logs",
+      "mcp__home-assistant__ha_search",
       "Bash(git fetch)",
-      "Bash(git fetch *)"
+      "Bash(git fetch *)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format *)",
+      "Bash(uv run mypy *)",
+      "Bash(uv run tox *)",
+      "Bash(uv run prek run *)"
     ]
   },
   "hooks": {
