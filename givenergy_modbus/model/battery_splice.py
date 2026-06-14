@@ -66,13 +66,18 @@ THRESHOLD_BY_CLASS: dict[str, int] = {name: thr for name, _, thr in SCALAR_RULES
     name: thr for name, _, thr in PAIR_RULES
 }
 
-#: If the prior IR(60,60) commit is older than this many seconds, the per-poll physics thresholds
-#: no longer apply — a legitimate multi-field change after a network outage or prolonged refresh
-#: failure would exceed them, and rejected banks do not advance the cache timestamp, so the guard
-#: would pin the cache to a stale baseline forever. At this age the guard resets to cold-start
-#: semantics: adopt unconditionally and rebuild the baseline.
-#: Value: 10× the nominal ~30 s poll interval — large enough to survive transient hiccups but
-#: short enough that a genuine outage triggers a clean recovery on the first post-reconnect poll.
+#: Maximum plausible gap (seconds) between consecutive *observed* battery banks. If the guard
+#: sees no full bank for a device for longer than this, the next one arrives after a genuine
+#: polling outage (network drop / prolonged refresh failure): the cached baseline is too stale
+#: for the per-poll physics thresholds — legitimate SOC/temp/cap drift would exceed them — so the
+#: guard resets to cold-start semantics and adopts it.
+#: Critically this is measured against the last *observed* bank, NOT the last accepted commit. A
+#: sustained corruption run (e.g. a multi-poll temp-zero stream, an observed #256 shape) keeps
+#: arriving each poll and is rejected each poll; its last *good commit* ages past this bound, but
+#: the observation clock stays ~one poll old, so the bypass never fires and corruption stays
+#: rejected for as long as it lasts.
+#: Value: 10× the nominal ~30 s poll interval — survives transient hiccups, recovers a real outage
+#: on the first post-reconnect poll.
 STALE_BYPASS_SECONDS: int = 300
 
 #: A single trip: (absolute IR number, class name, old comparable value, new comparable value).

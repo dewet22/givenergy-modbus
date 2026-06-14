@@ -543,6 +543,15 @@ class Plant(GivEnergyBaseModel):
     # Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.
     _splice_escrow: dict[int, tuple[int, int]] = PrivateAttr(default_factory=dict)
 
+    # Splice-guard observation clock (#256): per battery device address, the ingestion time of the
+    # last full IR(60,60) bank the guard examined — accepted OR rejected. The stale-baseline bypass
+    # keys off this, NOT the last accepted commit: a sustained corruption run (every poll rejected)
+    # leaves the last-good commit ageing past the bypass window, but keeps arriving each poll, so
+    # this clock stays ~one poll old and the bypass never fires. Only a genuine polling gap (real
+    # outage, no banks at all) makes it stale and resets to cold-start adoption. Ephemeral; resets
+    # with a fresh Plant on reconnect; not serialised.
+    _splice_last_seen: dict[int, datetime] = PrivateAttr(default_factory=dict)
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -794,26 +803,22 @@ class Plant(GivEnergyBaseModel):
 
         Only full battery banks are guarded: a short read can't be physics-classified, a
         device with no prior committed bank (cold start) has nothing to compare against, and
-        a baseline older than ``STALE_BYPASS_SECONDS`` is too stale for per-poll thresholds
-        to apply (legitimate multi-field drift after a reconnect gap would trip them) — all
-        three fall through as a no-op commit so the cache self-heals without manual recovery.
+        a gap of more than ``STALE_BYPASS_SECONDS`` since the last *observed* full bank — a
+        genuine polling outage, not a rejection streak — is too stale for per-poll thresholds
+        to apply (legitimate multi-field drift over the gap would trip them) — all three fall
+        through as a no-op commit so the cache self-heals without manual recovery.
         """
         if register_count < 60:
             return True
-        # Stale-baseline bypass: after a long gap the per-poll thresholds don't hold (legitimate
-        # SOC/temp/cap drift would exceed them), and rejected banks never advance the timestamp,
-        # so without this the guard would pin the cache to the stale baseline indefinitely after
-        # a network outage or prolonged refresh failure. Adopt unconditionally and rebuild.
-        last_age = self.block_age(device_address, "IR", BANK_BASE, 60, now=now)
-        if last_age is not None and last_age > STALE_BYPASS_SECONDS:
-            self._splice_escrow.pop(device_address, None)
-            _logger.info(
-                "Battery bank for device 0x%02x: prior commit %.0f s old — splice guard bypassed "
-                "(stale baseline); adopting as new baseline.",
-                device_address,
-                last_age,
-            )
-            return True
+        now_ts = now if now is not None else datetime.now(UTC)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.replace(tzinfo=UTC)
+        # Record this observation up front — a rejected bank is still an observation, so the gap
+        # computed below measures time since we last *saw* a full bank, not since we last accepted
+        # one. This is what separates a real outage from a sustained corruption run (see below).
+        prev_seen = self._splice_last_seen.get(device_address)
+        self._splice_last_seen[device_address] = now_ts
+
         cache = self.register_caches[device_address]
         prev = [0] * 60
         new = [0] * 60
@@ -828,6 +833,23 @@ class Plant(GivEnergyBaseModel):
                 present.add(i)
         if not present:
             return True  # cold start: no last-good to compare against
+
+        # Stale-observation bypass: after a genuine polling gap the per-poll thresholds don't hold
+        # (legitimate SOC/temp/cap drift over the gap would exceed them), and rejected banks never
+        # advance the cache, so without recovery the guard would pin the cache to the stale baseline
+        # forever after a network outage. Crucially this keys off the last *observation*, not the
+        # last accepted commit: a sustained corruption run (e.g. a multi-poll temp-zero stream)
+        # keeps arriving and being rejected each poll, ageing the last *commit* past the window —
+        # but prev_seen stays ~one poll old, so this does NOT fire and the corruption stays rejected.
+        if prev_seen is not None and (now_ts - prev_seen).total_seconds() > STALE_BYPASS_SECONDS:
+            self._splice_escrow.pop(device_address, None)
+            _logger.info(
+                "Battery bank for device 0x%02x: %.0f s since the last observed bank — splice guard "
+                "bypassed (stale baseline); adopting as new baseline.",
+                device_address,
+                (now_ts - prev_seen).total_seconds(),
+            )
+            return True
 
         phys, immut = classify_transition(prev, new, present)
 

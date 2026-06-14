@@ -2722,3 +2722,59 @@ def test_splice_stale_baseline_bypass(plant: Plant, caplog):
     assert len(infos) == 1 and infos[0].levelno == logging.INFO
     warns = [r for r in caplog.records if "Rejected battery bank" in r.message]
     assert not warns
+
+
+def test_splice_sustained_corruption_never_bypassed(plant: Plant, caplog):
+    """A sustained corruption run stays rejected indefinitely — never adopted via the stale bypass.
+
+    The bypass keys off the last *observed* bank, not the last accepted commit. A continuous
+    temp-zero stream (an observed #256 corruption shape) keeps arriving each poll and is rejected
+    each poll: the last good commit ages past STALE_BYPASS_SECONDS, but the observation clock stays
+    one poll old, so the bypass never fires. Regression for the re-review P1: keying off commit age
+    alone would adopt the still-corrupt bank after 5 minutes.
+    """
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    corrupt = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # 4 temp-zero physics trips
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        # 20 consecutive polls × 30 s = 600 s, well past the 300 s bypass window.
+        for n in range(1, 21):
+            _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=30 * n))
+    # Last-good temps retained the whole time; the corrupt zeros never committed.
+    assert plant.register_caches[_BATT][IR(76)] == 250
+    # The bypass must never have fired (it would have adopted a corrupt bank).
+    assert not [r for r in caplog.records if "stale baseline" in r.message]
+    # Every corrupt poll was rejected.
+    rejects = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
+    assert len(rejects) == 20
+
+
+def test_splice_bypass_only_after_genuine_gap_not_rejection_streak(plant: Plant, caplog):
+    """An intervening (rejected) bank resets the observation clock, so a later gap is measured fresh.
+
+    A corruption bank at t+30 is rejected but still counts as an observation. A genuine bank at
+    t+400 is then only ~370 s after that rejected one (> window → bypass), confirming the clock
+    tracks every observation, not just commits. The complement of the sustained-run test.
+    """
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    # A rejected corruption bank shortly after seed: advances the observation clock to _T0+30.
+    _feed_bank(
+        plant,
+        _coherent_battery_bank({60: 3700, 76: 0}),
+        device_address=_BATT,
+        received_at=_T0 + timedelta(seconds=30),
+    )
+    assert plant.register_caches[_BATT][IR(76)] == 250  # rejected, last-good kept
+    # Then a real gap to _T0+400: 370 s since the last observation (the rejected bank) → bypass.
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({60: 3700, 76: 0}),
+            device_address=_BATT,
+            received_at=_T0 + timedelta(seconds=400),
+        )
+    assert plant.register_caches[_BATT][IR(76)] == 0  # adopted via bypass
+    assert [r for r in caplog.records if "stale baseline" in r.message and "0x33" in r.message]
