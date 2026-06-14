@@ -2427,3 +2427,270 @@ def test_register_age_keeps_freshest_when_older_window_seen_later(plant: Plant):
     plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t_old)  # IR(0,60), older
     now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
     assert plant.register_age(0x32, IR(5), now=now) == 10.0
+
+
+# ---------------------------------------------------------------------------
+# Battery sub-bus splice guard (#256) — Plant-level integration tests
+#
+# Tests that the splice guard correctly rejects or escrows LV battery banks
+# carrying physics-impossible register deltas, even when CRC, bounds, and
+# serial-coherence checks pass. All tests target device 0x33: on a bare
+# Plant, 0x32 → SinglePhaseInverterRegisterGetter and 0x33–0x37 →
+# BatteryRegisterGetter, so only 0x33+ is guarded.
+# ---------------------------------------------------------------------------
+
+
+def _coherent_battery_bank(overrides: dict[int, int] | None = None) -> dict[int, int]:
+    """A valid, coherent LV battery bank keyed by absolute IR number (60..119)."""
+    bank: dict[int, int] = {
+        # 16 cells at 3.300 V (bank-relative 0–15 → IR60–75)
+        **{60 + i: 3300 for i in range(16)},
+        # cell-mass temps at 25.0 °C (bank-relative 16–19 → IR76–79)
+        **{76 + i: 250 for i in range(4)},
+        80: 52800,  # v_cells_sum IR80
+        81: 260,  # mosfet_temp IR81
+        82: 0,
+        83: 52800,  # v_out pair IR82–83
+        84: 0,
+        85: 16000,  # cap_calibrated IR84–85
+        86: 0,
+        87: 16000,  # cap_design IR86–87
+        88: 0,
+        89: 16000,  # cap_remaining IR88–89
+        97: 16,  # num_cells IR97 (IMMUTABLE)
+        98: 3005,  # bms_fw IR98 (IMMUTABLE)
+        100: 55,  # soc IR100
+        101: 0,
+        102: 16000,  # cap_design2 IR101–102
+        103: 250,  # t_max IR103
+        104: 240,  # t_min IR104
+        105: 1000,  # e_total hi IR105
+        106: 1200,  # e_total lo IR106
+        # serial IR110–114 (IMMUTABLE) — "BG12345678", same as the Pattern-B battery test (L1797)
+        110: 0x4247,
+        111: 0x3132,
+        112: 0x3334,
+        113: 0x3536,
+        114: 0x3738,
+        115: 8,  # usb_device_inserted IR115 (mutable, exempt from IMMUTABLE)
+    }
+    if overrides:
+        bank.update(overrides)
+    return bank
+
+
+_BATT = 0x33  # battery pack #1 on bare Plant; 0x32 → inverter getter on bare Plant
+
+
+def test_splice_capacity_cohort_rejected(plant: Plant, caplog):
+    """A cap-pair physics step + immutable mutation is rejected outright (constant-register change)."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    corrupted = _coherent_battery_bank(
+        {
+            89: 36000,  # IR89: cap_remaining low word 16000 → 36000, pair delta 20000 > 1000 threshold
+            98: 3006,  # IR98: bms_fw IMMUTABLE violation
+        }
+    )
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[_BATT][IR(89)] == 16000  # last-good retained
+    assert plant.register_caches[_BATT][IR(98)] == 3005
+    warns = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
+    assert len(warns) == 1
+    assert "constant-register change" in warns[0].message
+
+
+def test_splice_cell_and_temp_cohort_rejected(plant: Plant, caplog):
+    """Two independent physics trips (a cell + a temperature) are rejected outright (≥2-physics rule)."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    corrupted = _coherent_battery_bank(
+        {
+            74: 3700,  # IR74: cell delta 400 mV > 100 threshold
+            103: 0,  # IR103: t_max delta 250 > 50 threshold
+        }
+    )
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[_BATT][IR(74)] == 3300
+    assert plant.register_caches[_BATT][IR(103)] == 250
+    warns = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
+    assert len(warns) == 1
+    assert "physics-impossible" in warns[0].message
+
+
+def test_splice_temp_cohort_zeros_rejected(plant: Plant, caplog):
+    """All four cell-mass temps dropping to zero (4 physics trips) is rejected outright."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    corrupted = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # IR76–79: 250 → 0
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[_BATT][IR(76)] == 250  # last-good retained
+    warns = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
+    assert len(warns) == 1
+
+
+def test_splice_clean_bank_commits_no_false_trip(plant: Plant, caplog):
+    """In-threshold jitter on a clean bank commits normally and emits no splice WARNING."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    # +99 mV cell (≤ 100 threshold), +49 deci temp (≤ 50 threshold) — both within limits.
+    jitter = _coherent_battery_bank({60: 3399, 76: 299})
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, jitter, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns
+    assert plant.register_caches[_BATT][IR(60)] == 3399
+    assert plant.register_caches[_BATT][IR(76)] == 299
+
+
+def test_splice_single_step_escrow_then_confirm(plant: Plant, caplog):
+    """A lone impossible delta is escrowed; re-reading the same value confirms and commits."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    t1 = _T0 + timedelta(seconds=30)
+    t2 = _T0 + timedelta(seconds=60)
+    wild = _coherent_battery_bank({60: 3500})  # IR60: +200 mV > 100 threshold — one trip
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, wild, device_address=_BATT, received_at=t1)
+    holds = [r for r in caplog.records if "Held battery bank" in r.message and "0x33" in r.message]
+    assert len(holds) == 1, "single impossible delta must emit one 'held' WARNING"
+    assert plant.register_caches[_BATT][IR(60)] == 3300, "escrowed bank must not commit"
+
+    caplog.clear()
+    # Re-read the same value: |3500 − 3500| = 0 ≤ 100 → value-consistent → confirm.
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, wild, device_address=_BATT, received_at=t2)
+    confirms = [r for r in caplog.records if "confirmed" in r.message and "0x33" in r.message]
+    assert len(confirms) == 1, "confirmed step must emit one INFO log"
+    assert plant.register_caches[_BATT][IR(60)] == 3500, "confirmed step must commit"
+
+
+def test_splice_single_step_escrow_then_snapback(plant: Plant, caplog):
+    """A transient splice that snaps back clears the escrow and commits the clean bank."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    t1 = _T0 + timedelta(seconds=30)
+    t2 = _T0 + timedelta(seconds=60)
+    wild = _coherent_battery_bank({60: 3500})
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, wild, device_address=_BATT, received_at=t1)
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+
+    caplog.clear()
+    clean = _coherent_battery_bank()  # IR60 back to seed value
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, clean, device_address=_BATT, received_at=t2)
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns, "snapback to seed must commit cleanly with no WARNING"
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+
+
+def test_splice_two_wild_values_in_a_row_held(plant: Plant, caplog):
+    """Two consecutive wild values for the same register are both held (value-consistency guard)."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    t1 = _T0 + timedelta(seconds=30)
+    t2 = _T0 + timedelta(seconds=60)
+    # v1: IR60 → 3500 (|3500 − 3300| = 200 > 100) → escrow (IR60, 3500).
+    # v2: IR60 → 3700 (|3700 − 3500| = 200 > 100) → does NOT confirm → re-escrow (IR60, 3700).
+    v1 = _coherent_battery_bank({60: 3500})
+    v2 = _coherent_battery_bank({60: 3700})
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, v1, device_address=_BATT, received_at=t1)
+        _feed_bank(plant, v2, device_address=_BATT, received_at=t2)
+    holds = [r for r in caplog.records if "Held battery bank" in r.message and "0x33" in r.message]
+    assert len(holds) == 2, "each wild read must emit its own 'held' WARNING"
+    assert plant.register_caches[_BATT][IR(60)] == 3300, "neither wild value must have committed"
+
+
+def test_splice_cold_start_no_op_commit(plant: Plant, caplog):
+    """The first bank to a fresh device address has no last-good and commits as a no-op."""
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+
+
+def test_splice_ir115_usb_change_alone_commits(plant: Plant, caplog):
+    """IR(115) usb_device_inserted is mutable (exempt from IMMUTABLE); a change alone must commit."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({115: 11}),  # 8 → 11, no other changes
+            device_address=_BATT,
+            received_at=_T0 + timedelta(seconds=30),
+        )
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns
+    assert plant.register_caches[_BATT][IR(115)] == 11
+
+
+def test_splice_short_read_skips_guard(plant: Plant, caplog):
+    """A register_count < 60 frame bypasses the splice guard even if values would trip battery physics."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    # IR76 dropping to 0 would be a temp-zero physics trip on a full 60-register bank.
+    # With count=1 the guard gates off and the value commits normally.
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, {76: 0}, device_address=_BATT, count=1, received_at=_T0 + timedelta(seconds=30))
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns
+    assert plant.register_caches[_BATT][IR(76)] == 0  # committed
+
+
+def test_splice_non_battery_device_skips_guard(plant: Plant, caplog):
+    """On a bare Plant, 0x32 → inverter getter; the splice guard is not applied there."""
+    import logging
+
+    # Seed 0x32 with a battery-shaped bank (committed under the inverter getter).
+    _feed_bank(plant, _coherent_battery_bank(), device_address=0x32, received_at=_T0)
+    # Two battery-physics trips — would be rejected on 0x33, but 0x32 is not BatteryRegisterGetter.
+    wild = _coherent_battery_bank({60: 3700, 76: 0})
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, wild, device_address=0x32, received_at=_T0 + timedelta(seconds=30))
+    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
+    assert not warns
+    assert plant.register_caches[0x32][IR(60)] == 3700  # committed
+
+
+def test_splice_escrow_isolated_per_device(plant: Plant):
+    """The splice escrow is keyed per device; confirming 0x33 must not affect 0x34's held state."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=0x33, received_at=_T0)
+    _feed_bank(plant, _coherent_battery_bank(), device_address=0x34, received_at=_T0)
+    t1 = _T0 + timedelta(seconds=30)
+    t2 = _T0 + timedelta(seconds=60)
+    # Hold 0x33 on IR60; hold 0x34 on IR61.
+    _feed_bank(plant, _coherent_battery_bank({60: 3500}), device_address=0x33, received_at=t1)
+    _feed_bank(plant, _coherent_battery_bank({61: 3500}), device_address=0x34, received_at=t1)
+    # Confirm 0x33 by re-reading IR60=3500.
+    _feed_bank(plant, _coherent_battery_bank({60: 3500}), device_address=0x33, received_at=t2)
+    assert plant.register_caches[0x33][IR(60)] == 3500, "0x33 confirmed and committed"
+    assert plant.register_caches[0x34][IR(61)] == 3300, "0x34 still held; 0x33 confirm must not clear it"
+
+
+def test_splice_rejected_bank_preserves_staleness(plant: Plant):
+    """A splice-rejected bank records no ingestion timestamp; block_age keeps growing (#65/#256)."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    # ≥2 physics trips → rejected → _stamp_block never called.
+    corrupted = _coherent_battery_bank({60: 3700, 76: 0})
+    _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    # Age at t0 + 45 s must reflect the last *committed* bank at t0, not the rejected one.
+    assert plant.block_age(_BATT, "IR", 60, 60, now=_T0 + timedelta(seconds=45)) == 45.0

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.battery_splice import BANK_BASE, THRESHOLD_BY_CLASS, classify_transition
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
@@ -529,6 +530,14 @@ class Plant(GivEnergyBaseModel):
     # exposed — see that method for why a threshold isn't yet derivable.
     _block_unchanged_since: dict = PrivateAttr(default_factory=dict)
 
+    # Splice-guard escrow (#256): per battery device address, the single physics-singleton
+    # transition currently held back pending confirmation — (tripping IR number, comparable
+    # value held). A held bank never updates the cache, so the next poll re-compares against
+    # the same last-good; the held value commits only if the device reads it again within
+    # threshold (genuine step persists) rather than snapping back (transient splice reverts).
+    # Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.
+    _splice_escrow: dict[int, tuple[int, int]] = PrivateAttr(default_factory=dict)
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -745,8 +754,91 @@ class Plant(GivEnergyBaseModel):
                 # TODO(enforcement): add `return False` here to discard the entire bank on any
                 # violation. When that happens, also raise this back to WARNING — at that point
                 # it has user-visible consequences (a poll cycle's data is dropped).
+        # Battery sub-bus splice guard (#256): valid-CRC, in-bounds, valid-serial garbage that
+        # all the checks above wave through. Runs last so the existing serial gate owns serial
+        # corruption (quietly) and the bounds pass runs first; it must see last-good, so it sits
+        # before the update below. Gated to battery banks via the getter identity.
+        if getter_cls is BatteryRegisterGetter and not self._splice_guard(device_address, incoming, register_count):
+            return False
         self.register_caches[device_address].update(incoming)
         return True
+
+    def _splice_guard(self, device_address: int, incoming: dict, register_count: int) -> bool:
+        """Reject (or escrow) a battery bank corrupted by a valid-CRC BMS sub-bus splice (#256).
+
+        Returns True to allow the commit, False to hold last-good. Compares the incoming bank
+        against the cached last-good using per-register-class physics thresholds
+        (:mod:`givenergy_modbus.model.battery_splice`): a change to a constant register or
+        >=2 physically-impossible per-poll deltas is corruption and is rejected outright; a
+        lone impossible delta is escrowed — held one poll and committed only if the next poll
+        reads the same value again (a genuine step persists; every observed splice reverts).
+
+        Only full battery banks are guarded: a short read can't be physics-classified, and a
+        device with no prior committed bank (cold start) has nothing to compare against — both
+        fall through as a no-op commit.
+        """
+        if register_count < 60:
+            return True
+        cache = self.register_caches[device_address]
+        prev = [0] * 60
+        new = [0] * 60
+        present: set[int] = set()
+        for i in range(60):
+            reg = IR(BANK_BASE + i)
+            cached = cache.get(reg)
+            incoming_val = incoming.get(reg)
+            prev[i] = cached if cached is not None else 0
+            new[i] = incoming_val if incoming_val is not None else prev[i]
+            if incoming_val is not None and cached is not None:
+                present.add(i)
+        if not present:
+            return True  # cold start: no last-good to compare against
+
+        phys, immut = classify_transition(prev, new, present)
+
+        if immut or len(phys) >= 2:
+            self._splice_escrow.pop(device_address, None)
+            reason = "constant-register change" if immut else ">=2 physics-impossible deltas"
+            _logger.warning(
+                "Rejected battery bank for device 0x%02x — sub-bus splice (%s); keeping last-good. "
+                "Trips: %s. Please report if seen.",
+                device_address,
+                reason,
+                self._format_splice_trips(immut + phys),
+            )
+            return False
+
+        if len(phys) == 1:
+            ir_no, name, _old, new_val = phys[0]
+            held = self._splice_escrow.get(device_address)
+            if held is not None and held[0] == ir_no and abs(new_val - held[1]) <= THRESHOLD_BY_CLASS[name]:
+                # The held value read the same again this poll — a genuine step that persists,
+                # not a transient splice (which reverts) — so commit the now-confirmed bank.
+                self._splice_escrow.pop(device_address, None)
+                _logger.info(
+                    "Battery bank for device 0x%02x: escrowed step at IR(%d) confirmed on re-read; committing.",
+                    device_address,
+                    ir_no,
+                )
+                return True
+            self._splice_escrow[device_address] = (ir_no, new_val)
+            _logger.warning(
+                "Held battery bank for device 0x%02x — single physics-impossible delta (%s) held pending "
+                "confirmation next poll; keeping last-good. Please report if seen.",
+                device_address,
+                self._format_splice_trips(phys),
+            )
+            return False
+
+        # Clean transition (no trips): a previously-held step that snapped back lands here, so
+        # drop any escrow and commit.
+        self._splice_escrow.pop(device_address, None)
+        return True
+
+    @staticmethod
+    def _format_splice_trips(trips: list[tuple[int, str, int, int]]) -> str:
+        """Render splice-guard trips compactly for the WARNING log (raw register units)."""
+        return ", ".join(f"IR({ir}) {name} {old}->{new}" for ir, name, old, new in trips)
 
     def _stamp_block(
         self,
