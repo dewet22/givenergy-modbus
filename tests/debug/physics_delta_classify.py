@@ -44,34 +44,15 @@ from collections import Counter
 from pathlib import Path
 
 from givenergy_modbus.framer import ClientFramer
+
+# The thresholds and the transition classifier are the production constants from the #256
+# splice guard — imported here so this corpus tool re-validates separation against the very
+# same rules the live guard enforces (no drift). See that module for the threshold rationale.
+from givenergy_modbus.model.battery_splice import BANK_BASE, classify_transition
 from givenergy_modbus.pdu import ReadInputRegistersResponse
 
 CAPTURE_LINE = re.compile(r"^(\S+) (rx|tx) ([0-9a-f]+)")
 BATTERY_DEVICES = range(0x32, 0x38)
-BANK_BASE = 60
-
-# (class name, indices within the bank, threshold on |delta| in raw units).
-# Indices are register - 60. Thresholds ~10x the real per-poll maximum.
-SCALAR_RULES = [
-    ("cell_mV", list(range(0, 16)), 100),  # cells: ~10 mV/poll real max
-    ("cell_temp_deci", [16, 17, 18, 19, 43, 44], 50),  # IR(76-79,103,104): thermal mass
-    ("mosfet_temp_deci", [21], 200),  # IR(81): junction-adjacent, steps with load
-    ("v_cells_sum_mV", [20], 1600),
-    ("soc_pct", [40], 10),
-    ("e_total_deci", [45, 46], 50),  # IR(105/106) lifetime energy
-]
-# uint32 pairs: (class name, (high index, low index), threshold on pair value).
-PAIR_RULES = [
-    ("v_out_mV", (22, 23), 2000),
-    ("cap_centiAh", (24, 25), 1000),  # cap_calibrated
-    ("cap_centiAh", (26, 27), 1000),  # cap_design
-    ("cap_centiAh", (28, 29), 1000),  # cap_remaining
-    ("cap_centiAh", (41, 42), 1000),  # cap_design2
-]
-# num_cells, bms_firmware_version, serial block + trailing constant IR(115).
-IMMUTABLE = [37, 38, *range(50, 56)]
-# Exempt (no physics): status/warning words IR(90-94), i_battery IR(95),
-# num_cycles IR(96), unknown/reserved IR(99,107-109,116-119).
 
 
 def load_rx_frames(paths: list[Path]) -> list[tuple[str, str, bytes]]:
@@ -100,21 +81,12 @@ def bonkers(
 ) -> tuple[list[tuple[int, str, int, int]], list[tuple[int, str, int, int]]]:
     """Return (physics trips, immutable violations) for one transition.
 
-    Each entry is (register number, class name, previous raw, new raw).
+    Thin compatibility alias over ``battery_splice.classify_transition`` — note the arg
+    order flips (``regs`` is the *current* frame, ``prev`` the previous), so the underlying
+    call is ``classify_transition(prev, regs)``. Each entry is
+    (register number, class name, previous raw, new raw).
     """
-    phys, immut = [], []
-    for name, idxs, thr in SCALAR_RULES:
-        for i in idxs:
-            if abs(regs[i] - prev[i]) > thr:
-                phys.append((i + BANK_BASE, name, prev[i], regs[i]))
-    for name, (h, lo), thr in PAIR_RULES:
-        a, b = (regs[h] << 16) | regs[lo], (prev[h] << 16) | prev[lo]
-        if abs(a - b) > thr:
-            phys.append((h + BANK_BASE, name, b, a))
-    for i in IMMUTABLE:
-        if regs[i] != prev[i]:
-            immut.append((i + BANK_BASE, "IMMUTABLE", prev[i], regs[i]))
-    return phys, immut
+    return classify_transition(prev, regs)
 
 
 async def classify(paths: list[Path]) -> int:

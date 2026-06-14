@@ -8,6 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
+from givenergy_modbus.model.battery_splice import (
+    BANK_BASE,
+    STALE_BYPASS_SECONDS,
+    THRESHOLD_BY_CLASS,
+    classify_transition,
+)
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
@@ -529,6 +535,23 @@ class Plant(GivEnergyBaseModel):
     # exposed — see that method for why a threshold isn't yet derivable.
     _block_unchanged_since: dict = PrivateAttr(default_factory=dict)
 
+    # Splice-guard escrow (#256): per battery device address, the single physics-singleton
+    # transition currently held back pending confirmation — (tripping IR number, comparable
+    # value held). A held bank never updates the cache, so the next poll re-compares against
+    # the same last-good; the held value commits only if the device reads it again within
+    # threshold (genuine step persists) rather than snapping back (transient splice reverts).
+    # Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.
+    _splice_escrow: dict[int, tuple[int, int]] = PrivateAttr(default_factory=dict)
+
+    # Splice-guard observation clock (#256): per battery device address, the ingestion time of the
+    # last full IR(60,60) bank the guard examined — accepted OR rejected. The stale-baseline bypass
+    # keys off this, NOT the last accepted commit: a sustained corruption run (every poll rejected)
+    # leaves the last-good commit ageing past the bypass window, but keeps arriving each poll, so
+    # this clock stays ~one poll old and the bypass never fires. Only a genuine polling gap (real
+    # outage, no banks at all) makes it stale and resets to cold-start adoption. Ephemeral; resets
+    # with a fresh Plant on reconnect; not serialised.
+    _splice_last_seen: dict[int, datetime] = PrivateAttr(default_factory=dict)
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -656,7 +679,7 @@ class Plant(GivEnergyBaseModel):
 
         if isinstance(pdu, ReadHoldingRegistersResponse):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
-            if self._commit_bank(device_address, incoming, pdu.register_count):
+            if self._commit_bank(device_address, incoming, pdu.register_count, received_at=received_at):
                 self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
                 self._track_content_change(
                     device_address, "HR", pdu.base_register, pdu.register_count, incoming, received_at
@@ -667,7 +690,7 @@ class Plant(GivEnergyBaseModel):
                 # constants. is_suspicious() logs at debug when it fires.
                 return
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
-            if self._commit_bank(device_address, incoming, pdu.register_count):
+            if self._commit_bank(device_address, incoming, pdu.register_count, received_at=received_at):
                 self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
                 self._track_content_change(
                     device_address, "IR", pdu.base_register, pdu.register_count, incoming, received_at
@@ -686,7 +709,14 @@ class Plant(GivEnergyBaseModel):
                 target = self.capabilities.inverter_address if self.capabilities is not None else device_address
                 self.register_caches.setdefault(target, RegisterCache()).update({HR(pdu.register): pdu.value})
 
-    def _commit_bank(self, device_address: int, incoming: dict, register_count: int = 60) -> bool:
+    def _commit_bank(
+        self,
+        device_address: int,
+        incoming: dict,
+        register_count: int = 60,
+        *,
+        received_at: datetime | None = None,
+    ) -> bool:
         """Validate incoming register bank against bounds and commit if clean.
 
         Returns True if the bank was committed to the cache, False if it was discarded —
@@ -698,6 +728,9 @@ class Plant(GivEnergyBaseModel):
         to full blocks (>= 60 registers), where a simultaneous all-zero read is genuinely
         suspicious. A short read (e.g. a single power register legitimately settling to
         zero) must not be blocked.
+
+        ``received_at`` is the PDU ingestion timestamp, threaded to the splice guard so it
+        can measure baseline staleness consistently with the rest of the stamping logic.
         """
         cache = self.register_caches[device_address]
         # Pattern B (#78/#147/#199, tracked in #206): a bank that previously held non-zero data and
@@ -745,8 +778,124 @@ class Plant(GivEnergyBaseModel):
                 # TODO(enforcement): add `return False` here to discard the entire bank on any
                 # violation. When that happens, also raise this back to WARNING — at that point
                 # it has user-visible consequences (a poll cycle's data is dropped).
+        # Battery sub-bus splice guard (#256): valid-CRC, in-bounds, valid-serial garbage that
+        # all the checks above wave through. Runs last so the existing serial gate owns serial
+        # corruption (quietly) and the bounds pass runs first; it must see last-good, so it sits
+        # before the update below. Gated to battery banks via the getter identity.
+        if getter_cls is BatteryRegisterGetter and not self._splice_guard(
+            device_address, incoming, register_count, now=received_at
+        ):
+            return False
         self.register_caches[device_address].update(incoming)
         return True
+
+    def _splice_guard(
+        self, device_address: int, incoming: dict, register_count: int, now: datetime | None = None
+    ) -> bool:
+        """Reject (or escrow) a battery bank corrupted by a valid-CRC BMS sub-bus splice (#256).
+
+        Returns True to allow the commit, False to hold last-good. Compares the incoming bank
+        against the cached last-good using per-register-class physics thresholds
+        (:mod:`givenergy_modbus.model.battery_splice`): a change to a constant register or
+        >=2 physically-impossible per-poll deltas is corruption and is rejected outright; a
+        lone impossible delta is escrowed — held one poll and committed only if the next poll
+        reads the same value again (a genuine step persists; every observed splice reverts).
+
+        Only full battery banks are guarded: a short read can't be physics-classified, a
+        device with no prior committed bank (cold start) has nothing to compare against, and
+        a gap of more than ``STALE_BYPASS_SECONDS`` since the last *observed* full bank — a
+        genuine polling outage, not a rejection streak — is too stale for per-poll thresholds
+        to apply (legitimate multi-field drift over the gap would trip them) — all three fall
+        through as a no-op commit so the cache self-heals without manual recovery.
+        """
+        if register_count < 60:
+            return True
+        now_ts = now if now is not None else datetime.now(UTC)
+        if now_ts.tzinfo is None:
+            now_ts = now_ts.replace(tzinfo=UTC)
+        # Record this observation up front — a rejected bank is still an observation, so the gap
+        # computed below measures time since we last *saw* a full bank, not since we last accepted
+        # one. This is what separates a real outage from a sustained corruption run (see below).
+        prev_seen = self._splice_last_seen.get(device_address)
+        self._splice_last_seen[device_address] = now_ts
+
+        cache = self.register_caches[device_address]
+        prev = [0] * 60
+        new = [0] * 60
+        present: set[int] = set()
+        for i in range(60):
+            reg = IR(BANK_BASE + i)
+            cached = cache.get(reg)
+            incoming_val = incoming.get(reg)
+            prev[i] = cached if cached is not None else 0
+            new[i] = incoming_val if incoming_val is not None else prev[i]
+            if incoming_val is not None and cached is not None:
+                present.add(i)
+        if not present:
+            return True  # cold start: no last-good to compare against
+
+        # Stale-observation bypass: after a genuine polling gap the per-poll thresholds don't hold
+        # (legitimate SOC/temp/cap drift over the gap would exceed them), and rejected banks never
+        # advance the cache, so without recovery the guard would pin the cache to the stale baseline
+        # forever after a network outage. Crucially this keys off the last *observation*, not the
+        # last accepted commit: a sustained corruption run (e.g. a multi-poll temp-zero stream)
+        # keeps arriving and being rejected each poll, ageing the last *commit* past the window —
+        # but prev_seen stays ~one poll old, so this does NOT fire and the corruption stays rejected.
+        if prev_seen is not None and (now_ts - prev_seen).total_seconds() > STALE_BYPASS_SECONDS:
+            self._splice_escrow.pop(device_address, None)
+            _logger.info(
+                "Battery bank for device 0x%02x: %.0f s since the last observed bank — splice guard "
+                "bypassed (stale baseline); adopting as new baseline.",
+                device_address,
+                (now_ts - prev_seen).total_seconds(),
+            )
+            return True
+
+        phys, immut = classify_transition(prev, new, present)
+
+        if immut or len(phys) >= 2:
+            self._splice_escrow.pop(device_address, None)
+            reason = "constant-register change" if immut else ">=2 physics-impossible deltas"
+            _logger.warning(
+                "Rejected battery bank for device 0x%02x — sub-bus splice (%s); keeping last-good. "
+                "Trips: %s. Please report if seen.",
+                device_address,
+                reason,
+                self._format_splice_trips(immut + phys),
+            )
+            return False
+
+        if len(phys) == 1:
+            ir_no, name, _old, new_val = phys[0]
+            held = self._splice_escrow.get(device_address)
+            if held is not None and held[0] == ir_no and abs(new_val - held[1]) <= THRESHOLD_BY_CLASS[name]:
+                # The held value read the same again this poll — a genuine step that persists,
+                # not a transient splice (which reverts) — so commit the now-confirmed bank.
+                self._splice_escrow.pop(device_address, None)
+                _logger.info(
+                    "Battery bank for device 0x%02x: escrowed step at IR(%d) confirmed on re-read; committing.",
+                    device_address,
+                    ir_no,
+                )
+                return True
+            self._splice_escrow[device_address] = (ir_no, new_val)
+            _logger.warning(
+                "Held battery bank for device 0x%02x — single physics-impossible delta (%s) held pending "
+                "confirmation next poll; keeping last-good. Please report if seen.",
+                device_address,
+                self._format_splice_trips(phys),
+            )
+            return False
+
+        # Clean transition (no trips): a previously-held step that snapped back lands here, so
+        # drop any escrow and commit.
+        self._splice_escrow.pop(device_address, None)
+        return True
+
+    @staticmethod
+    def _format_splice_trips(trips: list[tuple[int, str, int, int]]) -> str:
+        """Render splice-guard trips compactly for the WARNING log (raw register units)."""
+        return ", ".join(f"IR({ir}) {name} {old}->{new}" for ir, name, old, new in trips)
 
     def _stamp_block(
         self,
