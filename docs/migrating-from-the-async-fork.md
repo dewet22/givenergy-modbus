@@ -107,7 +107,7 @@ The fork threads an `inv_type: str` parameter through many `set_*` helpers
 and branches on substrings like `"3ph"`. Here the model-specific behaviour
 is explicit instead:
 
-- 3-phase variants are separate helpers: `set_charge_target_3ph()`,
+- 3-phase variants are separate helpers: `set_charge_target_enabled_3ph()`,
   `set_battery_soc_reserve_3ph()`, `disable_charge_target_3ph()`, …
 - Slot commands take a `SlotMap` (`SINGLE_PHASE_SLOTS`, `EXTENDED_SLOTS`,
   `THREE_PHASE_SLOTS`) instead of an `inv_type` string — pass
@@ -129,8 +129,8 @@ await client.execute(reqs, timeout=2.0, retries=3)
 | `set_battery_discharge_limit_ac(v, inv_type)` | `set_battery_discharge_limit_ac(v)` |
 | `set_battery_soc_reserve(v, inv_type)` | `set_battery_soc_reserve(v)` / `set_battery_soc_reserve_3ph(v)` |
 | `_set_charge_slot(discharge, idx, slot, inv_type)` | `set_charge_slot(idx, slot, slot_map)` / `set_discharge_slot(idx, slot, slot_map)` |
-| `set_charge_target(v, inv_type)` | `set_charge_target(v)` / `set_charge_target_3ph(v)` |
-| `set_charge_target_only(v, inv_type)` | no equivalent yet — [#243](https://github.com/dewet22/givenergy-modbus/issues/243) |
+| `set_charge_target(v, inv_type)` | `set_charge_target_enabled(v)` / `set_charge_target_enabled_3ph(v)` (old `set_charge_target(v)` retained as a deprecated alias) |
+| `set_charge_target_only(v, inv_type)` | `set_charge_target_soc(v)` / `set_charge_target_soc_3ph(v)` |
 | `set_soc_target(discharge, idx, v, inv_type)` | EMS models: `set_ems_charge_target_soc(idx, v)` etc.; non-EMS per-slot targets: [#243](https://github.com/dewet22/givenergy-modbus/issues/243) |
 
 EMS, export and smart-load slots all have first-class helpers

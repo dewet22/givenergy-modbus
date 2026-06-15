@@ -80,11 +80,33 @@ def test_mixin_classvar_does_not_leak_into_model_dump():
 
 def test_inverter_set_charge_target_emits_correct_writes():
     inv = _single_phase()
-    assert inv.set_charge_target(80) == [
+    assert inv.set_charge_target_enabled(80) == [
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 80),
     ]
+
+
+def test_inverter_set_charge_target_is_deprecated_alias():
+    """The mixin set_charge_target is a deprecated alias for set_charge_target_enabled (1ph + 3ph)."""
+    with pytest.warns(DeprecationWarning):
+        assert _single_phase().set_charge_target(80) == _single_phase().set_charge_target_enabled(80)
+    with pytest.warns(DeprecationWarning):
+        assert _three_phase().set_charge_target(80) == _three_phase().set_charge_target_enabled(80)
+
+
+def test_inverter_set_charge_target_soc_writes_only_hr116():
+    """Single-phase set_charge_target_soc writes only HR(116) — no enable bits."""
+    requests = _single_phase().set_charge_target_soc(55)
+    assert requests == [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 55)]
+    requests[0].encode()  # encode round-trip confirms allowlist membership
+
+
+def test_three_phase_set_charge_target_soc_writes_only_hr1111():
+    """Three-phase set_charge_target_soc writes only HR(1111) — no enable bits, no single-phase HR(116)."""
+    requests = _three_phase().set_charge_target_soc(55)
+    assert requests == [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 55)]
+    requests[0].encode()
 
 
 def test_inverter_set_enable_charge_emits_single_write():
@@ -266,7 +288,7 @@ def test_three_phase_set_battery_reserve_soc_available():
 
 def test_three_phase_set_charge_target_uses_correct_registers():
     """set_charge_target on three-phase emits HR(1112) AC_CHARGE_ENABLE + HR(1111) charge target."""
-    requests = _three_phase().set_charge_target(80)
+    requests = _three_phase().set_charge_target_enabled(80)
     regs = {r.register: r.value for r in requests}
     assert RegisterMap.AC_CHARGE_ENABLE in regs, "three-phase must enable AC charge (HR 1112)"
     assert RegisterMap.CHARGE_TARGET_SOC_3PH in regs, "three-phase must write charge target to HR(1111)"
@@ -279,7 +301,7 @@ def test_three_phase_set_charge_target_uses_correct_registers():
 
 def test_single_phase_set_charge_target_unchanged():
     """Regression: single-phase set_charge_target must still use HR(96) and HR(116)."""
-    requests = _single_phase().set_charge_target(80)
+    requests = _single_phase().set_charge_target_enabled(80)
     regs = {r.register: r.value for r in requests}
     assert RegisterMap.ENABLE_CHARGE in regs
     assert RegisterMap.CHARGE_TARGET_SOC in regs
@@ -319,12 +341,12 @@ def test_three_phase_set_battery_soc_reserve_validates():
 def test_three_phase_set_charge_target_validates():
     """Out-of-range charge target must raise ValueError via the 3ph primitive."""
     with pytest.raises(ValueError, match=r"\[4-100\]"):
-        _three_phase().set_charge_target(101)
+        _three_phase().set_charge_target_enabled(101)
 
 
 def test_three_phase_set_charge_target_100_disables_charge_target():
     """set_charge_target(100) on three-phase disables ENABLE_CHARGE_TARGET and writes HR(1111)=100."""
-    requests = _three_phase().set_charge_target(100)
+    requests = _three_phase().set_charge_target_enabled(100)
     regs = {r.register: r.value for r in requests}
     assert RegisterMap.ENABLE_CHARGE_TARGET in regs
     assert regs[RegisterMap.ENABLE_CHARGE_TARGET] == 0

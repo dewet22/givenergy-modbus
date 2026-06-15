@@ -47,7 +47,7 @@ async def main():
     plant = client.plant
 
     # Write configuration to the device
-    await client.one_shot_command(commands.set_charge_target(80))
+    await client.one_shot_command(commands.set_charge_target_enabled(80))
     # set a charging slot from 00:30 to 04:30; slot_map selects correct registers for this model
     await client.one_shot_command(
         commands.set_charge_slot(1, TimeSlot.from_components(0, 30, 4, 30), plant.inverter.slot_map)
