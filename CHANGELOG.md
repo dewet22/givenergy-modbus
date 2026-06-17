@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-06-17
+
+### ✨ Added
+
+- model-aware write rejection + dry_run in one_shot_command (Pillar A) ([485c95d](https://github.com/dewet22/givenergy-modbus/commit/485c95d409aa09bd5624f1f7891584647eafce75))
+- AioBatteryModule.REGISTER_GETTER for staleness gating (#273) ([fb24d79](https://github.com/dewet22/givenergy-modbus/commit/fb24d79e51ba56f135a825c228e72c9427c93b72))
+
+### 🐛 Fixed
+
+- tear down connection when detect() fails (atomic connect+detect, #274) ([ed2985a](https://github.com/dewet22/givenergy-modbus/commit/ed2985a5a2efac7eec8acc67176d035fc09bb795))
+
 ## [2.4.0] - 2026-06-17
 
 ### ✨ Added
