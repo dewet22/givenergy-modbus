@@ -447,9 +447,20 @@ class ThreePhaseInverterRegisterGetter(RegisterGetter):
     Merges the single-phase SinglePhaseInverterRegisterGetter LUT with three-phase-specific
     registers. Three-phase entries win for any key that appears in both (e.g.
     battery_soc moves from IR(59) to IR(1132)).
+
+    p_battery and e_battery_throughput are dropped from the merged LUT: on three-phase
+    they are DERIVED @computed_field properties on ThreePhaseInverter (from the native
+    p_battery_charge/discharge and the charge/discharge energy totals). Left register-backed
+    they would inherit single-phase IR(52) / IR(6,7), which three-phase firmware does not
+    populate (they read frozen) — and a generated pydantic field cannot be shadowed by a
+    same-named computed_field.
     """
 
-    REGISTER_LUT = dict(SinglePhaseInverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT)
+    REGISTER_LUT = {
+        k: v
+        for k, v in dict(SinglePhaseInverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT).items()
+        if k not in ("p_battery", "e_battery_throughput")
+    }
 
 
 _ThreePhaseInverterBase = create_model(  # type: ignore[call-overload]
@@ -548,6 +559,33 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
     def battery_discharge_power(self) -> float | None:
         """Non-negative battery discharge power (W); aliases p_battery_discharge (#205)."""
         return self.p_battery_discharge  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def p_battery(self) -> float | None:
+        """Net battery power (W); +ve = discharging, −ve = charging (#262).
+
+        Derived from the native p_battery_discharge − p_battery_charge registers; the
+        inherited single-phase IR(52) reads frozen on three-phase firmware. Sign matches
+        single-phase, where battery_discharge_power = max(0, p_battery). Returns None if
+        either input is None.
+        """
+        if self.p_battery_discharge is None or self.p_battery_charge is None:  # type: ignore[attr-defined]
+            return None
+        return self.p_battery_discharge - self.p_battery_charge  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_battery_throughput(self) -> float | None:
+        """Total battery energy throughput (kWh): charge_total + discharge_total (#262).
+
+        Derived from the native energy totals (IR1394/5 + IR1390/1); the inherited
+        single-phase e_battery_throughput (IR6/7) reads frozen on three-phase firmware.
+        Returns None if either input is None.
+        """
+        if self.e_battery_charge_total is None or self.e_battery_discharge_total is None:  # type: ignore[attr-defined]
+            return None
+        return self.e_battery_charge_total + self.e_battery_discharge_total  # type: ignore[attr-defined]
 
     @property
     def slot_map(self) -> SlotMap:
