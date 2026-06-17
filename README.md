@@ -42,8 +42,9 @@ async def main():
     client = Client(host="192.168.99.99", port=8899)
     await client.connect()
 
-    # Read current state first (needed for slot_map)
-    await client.refresh_plant(full_refresh=True)
+    # Detect the topology once, then read the config banks (needed for slot_map)
+    await client.detect()
+    await client.load_config()
     plant = client.plant
 
     # Write configuration to the device

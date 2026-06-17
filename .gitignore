@@ -62,3 +62,6 @@ ENV/
 # Claude Code — local-only, not shared
 .claude/settings.local.json
 .claude/worktrees/
+
+# Internal design-doc scaffolding — not user docs, excluded from the mkdocs build
+docs/superpowers/
