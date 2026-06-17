@@ -1133,10 +1133,11 @@ class _EmsCommands:
     dependency.
 
     The EMS register block (HR 2040, 2044–2071) is decoded in
-    `givenergy_modbus.model.ems`; write-safety for those registers is enforced at
-    the PDU level (`pdu.write_registers.WRITE_SAFE_REGISTERS`). A per-model mixin
-    `WRITE_SAFE_REGISTERS` allowlist is deferred to #106 alongside the inverter ones.
+    `givenergy_modbus.model.ems`; write-safety for those registers is enforced
+    both here and at the PDU level (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
     """
+
+    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset({2040, *range(2044, 2072)})
 
     # --- plant master enable -------------------------------------------------
 
