@@ -1,7 +1,12 @@
 import pytest
 
 from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, Status
-from givenergy_modbus.model.inverter_threephase import THREE_PHASE_SLOTS, ThreePhaseInverter, select_inverter
+from givenergy_modbus.model.inverter_threephase import (
+    THREE_PHASE_SLOTS,
+    ThreePhaseInverter,
+    ThreePhaseInverterRegisterGetter,
+    select_inverter,
+)
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -155,6 +160,54 @@ def test_i_battery_centi_scale():
     assert neg.i_battery == pytest.approx(-0.50)
     pos = ThreePhaseInverter.from_register_cache(_cache({IR(1140): 250}))
     assert pos.i_battery == pytest.approx(2.50)
+
+
+def test_p_battery_derived_from_charge_discharge():
+    """Three-phase p_battery is derived: discharge − charge (+ve = discharging).
+
+    Sign matches single-phase, where battery_discharge_power = max(0, p_battery).
+    The inherited single-phase IR(52) reads frozen on three-phase firmware, so the
+    register-backed field is dropped in favour of this computed one.
+    """
+    # discharge 0, charge 200.0 → -200.0 (charging)
+    charging = ThreePhaseInverter.from_register_cache(_cache({IR(1136): 0, IR(1137): 0, IR(1138): 0, IR(1139): 2000}))
+    assert charging.p_battery == pytest.approx(-200.0)  # type: ignore[attr-defined]
+    assert charging.battery_charge_power == pytest.approx(200.0)  # type: ignore[attr-defined]
+    assert charging.battery_discharge_power == pytest.approx(0.0)  # type: ignore[attr-defined]
+
+    # discharge 350.0, charge 0 → +350.0 (discharging)
+    discharging = ThreePhaseInverter.from_register_cache(
+        _cache({IR(1136): 0, IR(1137): 3500, IR(1138): 0, IR(1139): 0})
+    )
+    assert discharging.p_battery == pytest.approx(350.0)  # type: ignore[attr-defined]
+
+    # Either input missing → None (matches single-phase computed-field posture)
+    assert ThreePhaseInverter.from_register_cache(_cache({IR(1136): 0, IR(1137): 100})).p_battery is None  # type: ignore[attr-defined]
+    assert ThreePhaseInverter.from_register_cache(RegisterCache()).p_battery is None  # type: ignore[attr-defined]
+
+    assert "p_battery" in discharging.model_dump()
+
+
+def test_e_battery_throughput_derived_from_totals():
+    """Three-phase e_battery_throughput = charge_total + discharge_total (kWh)."""
+    inv = ThreePhaseInverter.from_register_cache(_cache({IR(1390): 0, IR(1391): 100, IR(1394): 0, IR(1395): 50}))
+    # discharge_total 10.0 + charge_total 5.0 = 15.0
+    assert inv.e_battery_throughput == pytest.approx(15.0)  # type: ignore[attr-defined]
+
+    # Either input missing → None
+    missing = ThreePhaseInverter.from_register_cache(_cache({IR(1394): 0, IR(1395): 50}))
+    assert missing.e_battery_throughput is None  # type: ignore[attr-defined]
+    assert ThreePhaseInverter.from_register_cache(RegisterCache()).e_battery_throughput is None  # type: ignore[attr-defined]
+
+    assert "e_battery_throughput" in inv.model_dump()
+
+
+def test_derived_battery_fields_are_not_register_backed():
+    """p_battery / e_battery_throughput are computed fields, not LUT entries."""
+    assert ThreePhaseInverter.precision_of("p_battery") is None
+    assert ThreePhaseInverter.precision_of("e_battery_throughput") is None
+    assert ThreePhaseInverterRegisterGetter.registers_of("p_battery") == ()
+    assert ThreePhaseInverterRegisterGetter.registers_of("e_battery_throughput") == ()
 
 
 def test_three_phase_inverter_slot_map():
