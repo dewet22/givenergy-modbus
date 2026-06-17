@@ -25,7 +25,7 @@ async def main():
     plant = client.plant
 
     # Write configuration to the device
-    await client.one_shot_command(commands.set_charge_target(80))
+    await client.one_shot_command(commands.set_charge_target_enabled(80))
     await client.one_shot_command(
         commands.set_charge_slot(1, TimeSlot.from_components(0, 30, 4, 30), plant.inverter.slot_map)
     )
@@ -185,7 +185,7 @@ The recommended entry point is the inverter instance itself:
 ```python
 inverter = plant.inverter
 
-await client.one_shot_command(inverter.set_charge_target(80))
+await client.one_shot_command(inverter.set_charge_target_enabled(80))
 await client.one_shot_command(inverter.set_enable_discharge(True))
 await client.one_shot_command(inverter.set_charge_slot(1, my_timeslot))
 ```
@@ -242,13 +242,14 @@ case-by-case.
 | `_EmsCommands` | `Ems` only | ▣ ems |
 | `commands.*` only | _(not exposed as mixin method)_ | ⛔ commands-only |
 
-An unmarked row means the method is available on both inverter types. On `ThreePhaseInverter`, `_ThreePhaseCommands` overrides `set_enable_charge`, `set_battery_soc_reserve`, `set_mode_dynamic`, `set_charge_target`, `disable_charge_target`, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).
+An unmarked row means the method is available on both inverter types. On `ThreePhaseInverter`, `_ThreePhaseCommands` overrides `set_enable_charge`, `set_battery_soc_reserve`, `set_mode_dynamic`, `set_charge_target_enabled`, `disable_charge_target`, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).
 
 ### Charging
 
 | Function | Description | Surface |
 |---|---|---|
-| `set_charge_target(soc)` | Stop charging when SOC reaches `soc`% (4–100) | |
+| `set_charge_target_enabled(soc)` | Enable charging and stop when SOC reaches `soc`% (4–100). (`set_charge_target` is a deprecated alias) | |
+| `set_charge_target_soc(soc)` | Set just the charge-target SOC (4–100), leaving the enable bits untouched | |
 | `disable_charge_target()` | Remove SOC limit, target 100% | |
 | `set_enable_charge(enabled)` | Enable or disable charging | |
 | `set_battery_charge_limit(val)` | Charge power limit (0–50%) | |

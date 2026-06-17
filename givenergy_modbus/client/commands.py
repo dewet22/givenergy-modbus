@@ -158,8 +158,9 @@ def disable_charge_target() -> list[TransparentRequest]:
     ]
 
 
-def set_charge_target(target_soc: int) -> list[TransparentRequest]:
-    """Sets inverter to stop charging when SOC reaches the desired level. Also referred to as "winter mode"."""
+def set_charge_target_enabled(target_soc: int) -> list[TransparentRequest]:
+    """Enable charging and stop once SOC reaches target_soc. Also referred to as "winter mode"."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     ret = set_enable_charge(True)
@@ -169,6 +170,20 @@ def set_charge_target(target_soc: int) -> list[TransparentRequest]:
         ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1))
         ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc))
     return ret
+
+
+@deprecated("use set_charge_target_enabled(target_soc) instead")
+def set_charge_target(target_soc: int) -> list[TransparentRequest]:
+    """Deprecated: use set_charge_target_enabled(target_soc)."""
+    return set_charge_target_enabled(target_soc)
+
+
+def set_charge_target_soc(target_soc: int) -> list[TransparentRequest]:
+    """Set only the charge target SOC (HR 116), leaving the charge / charge-target enable bits untouched."""
+    target_soc = _as_int(target_soc, "target_soc")
+    if not 4 <= target_soc <= 100:
+        raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc)]
 
 
 def set_enable_charge(enabled: bool) -> list[TransparentRequest]:
@@ -278,8 +293,9 @@ def set_battery_soc_reserve_3ph(val: int) -> list[TransparentRequest]:
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_SOC_RESERVE_3PH, val)]
 
 
-def set_charge_target_3ph(target_soc: int) -> list[TransparentRequest]:
-    """Set charge target SOC on three-phase inverters (HR 1111, shadows single-phase HR 116)."""
+def set_charge_target_enabled_3ph(target_soc: int) -> list[TransparentRequest]:
+    """Enable AC charging and set the charge target on three-phase inverters (HR 1111, shadows single-phase HR 116)."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     ret = set_ac_charge(True)
@@ -294,6 +310,20 @@ def set_charge_target_3ph(target_soc: int) -> list[TransparentRequest]:
         ret.append(WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1))
         ret.append(WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, target_soc))
     return ret
+
+
+@deprecated("use set_charge_target_enabled_3ph(target_soc) instead")
+def set_charge_target_3ph(target_soc: int) -> list[TransparentRequest]:
+    """Deprecated: use set_charge_target_enabled_3ph(target_soc)."""
+    return set_charge_target_enabled_3ph(target_soc)
+
+
+def set_charge_target_soc_3ph(target_soc: int) -> list[TransparentRequest]:
+    """Set only the charge target SOC on three-phase inverters (HR 1111), leaving enable bits untouched."""
+    target_soc = _as_int(target_soc, "target_soc")
+    if not 4 <= target_soc <= 100:
+        raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, target_soc)]
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
@@ -863,9 +893,18 @@ class _InverterCommands:
         """Disable use of a charge target so the battery charges to 100%."""
         return disable_charge_target()
 
+    def set_charge_target_enabled(self, target_soc: int) -> list[TransparentRequest]:
+        """Enable charging and stop once SOC reaches target_soc (4-100)."""
+        return set_charge_target_enabled(target_soc)
+
+    @deprecated("use set_charge_target_enabled(target_soc) instead")
     def set_charge_target(self, target_soc: int) -> list[TransparentRequest]:
-        """Sets inverter to stop charging when SOC reaches the desired level (4-100)."""
-        return set_charge_target(target_soc)
+        """Deprecated: use set_charge_target_enabled(target_soc)."""
+        return set_charge_target_enabled(target_soc)
+
+    def set_charge_target_soc(self, target_soc: int) -> list[TransparentRequest]:
+        """Adjust the charge target SOC (4-100) without touching the charge / charge-target enable bits."""
+        return set_charge_target_soc(target_soc)
 
     # --- charge/discharge enable --------------------------------------------
 
@@ -992,7 +1031,7 @@ class _ThreePhaseCommands:
     - `set_enable_charge()` → AC_CHARGE_ENABLE HR(1112) instead of HR(96)
     - `set_battery_soc_reserve()` → HR(1109) instead of HR(110)
     - `set_mode_dynamic()` → HR(1109) for the SOC reserve step instead of HR(110)
-    - `set_charge_target()` → HR(1112)+HR(1111) instead of HR(96)+HR(116)
+    - `set_charge_target_enabled()` → HR(1112)+HR(1111) instead of HR(96)+HR(116)
     - `set_battery_reserve_soc()` relocated here (three-phase only, HR 1078)
 
     MRO puts `_ThreePhaseCommands` before `_InverterCommands` on `ThreePhaseInverter`,
@@ -1070,9 +1109,18 @@ class _ThreePhaseCommands:
         """Remove SOC limit and target 100% charging (three-phase: HR 1111, shadows single-phase HR 116)."""
         return disable_charge_target_3ph()
 
+    def set_charge_target_enabled(self, target_soc: int) -> list[TransparentRequest]:
+        """Enable AC charging and set the charge target (three-phase HR 1111/1112, shadows single-phase HR 116)."""
+        return set_charge_target_enabled_3ph(target_soc)
+
+    @deprecated("use set_charge_target_enabled(target_soc) instead")
     def set_charge_target(self, target_soc: int) -> list[TransparentRequest]:
-        """Set charge target SOC (three-phase: HR 1111 + AC_CHARGE_ENABLE, shadows single-phase HR 116)."""
-        return set_charge_target_3ph(target_soc)
+        """Deprecated: use set_charge_target_enabled(target_soc)."""
+        return set_charge_target_enabled_3ph(target_soc)
+
+    def set_charge_target_soc(self, target_soc: int) -> list[TransparentRequest]:
+        """Adjust the charge target SOC, no enable side effects (three-phase HR 1111, shadows single-phase HR 116)."""
+        return set_charge_target_soc_3ph(target_soc)
 
 
 class _EmsCommands:

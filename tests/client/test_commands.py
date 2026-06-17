@@ -14,28 +14,82 @@ from givenergy_modbus.pdu import WriteHoldingRegisterRequest
 
 async def test_configure_charge_target():
     """Ensure we can set and disable a charge target."""
-    assert commands.set_charge_target(45) == [
+    assert commands.set_charge_target_enabled(45) == [
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 45),
     ]
-    assert commands.set_charge_target(100) == [
+    assert commands.set_charge_target_enabled(100) == [
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE, 1),
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
 
     with pytest.raises(ValueError, match=r"Charge Target SOC \(0\) must be in \[4-100\]\%"):
-        commands.set_charge_target(0)
+        commands.set_charge_target_enabled(0)
     with pytest.raises(ValueError, match=r"Charge Target SOC \(1\) must be in \[4-100\]\%"):
-        commands.set_charge_target(1)
+        commands.set_charge_target_enabled(1)
     with pytest.raises(ValueError, match=r"Charge Target SOC \(101\) must be in \[4-100\]\%"):
-        commands.set_charge_target(101)
+        commands.set_charge_target_enabled(101)
 
     assert commands.disable_charge_target() == [
         WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 0),
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
     ]
+
+
+async def test_set_charge_target_is_deprecated_alias():
+    """set_charge_target is retained as a deprecated alias for set_charge_target_enabled (1ph + 3ph)."""
+    with pytest.warns(DeprecationWarning):
+        assert commands.set_charge_target(45) == commands.set_charge_target_enabled(45)
+    with pytest.warns(DeprecationWarning):
+        assert commands.set_charge_target_3ph(45) == commands.set_charge_target_enabled_3ph(45)
+
+
+async def test_set_charge_target_soc_writes_only_the_target_register():
+    """set_charge_target_soc adjusts the target SOC without touching any enable bit."""
+    assert commands.set_charge_target_soc(45) == [
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 45),
+    ]
+    assert commands.set_charge_target_soc_3ph(45) == [
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 45),
+    ]
+    # Encode round-trip confirms both target registers are on the PDU write allowlist.
+    commands.set_charge_target_soc(45)[0].encode()
+    commands.set_charge_target_soc_3ph(45)[0].encode()
+
+    # The whole point: no enable side effects (unlike set_charge_target_enabled).
+    for reqs in (commands.set_charge_target_soc(45), commands.set_charge_target_soc_3ph(45)):
+        written = {r.register for r in reqs}
+        assert RegisterMap.ENABLE_CHARGE not in written
+        assert RegisterMap.ENABLE_CHARGE_TARGET not in written
+        assert RegisterMap.AC_CHARGE_ENABLE not in written
+
+    # 100 writes the register as-is — no special "disable" folding.
+    assert commands.set_charge_target_soc(100) == [
+        WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, 100),
+    ]
+
+    # Same [4-100] bound as set_charge_target_enabled.
+    for fn in (commands.set_charge_target_soc, commands.set_charge_target_soc_3ph):
+        with pytest.raises(ValueError, match=r"Charge Target SOC \(0\) must be in \[4-100\]\%"):
+            fn(0)
+        with pytest.raises(ValueError, match=r"Charge Target SOC \(101\) must be in \[4-100\]\%"):
+            fn(101)
+
+
+async def test_charge_target_setters_reject_non_integral():
+    """All charge-target setters route target_soc through _as_int (reject bool / non-integral float)."""
+    for fn in (
+        commands.set_charge_target_enabled,
+        commands.set_charge_target_soc,
+        commands.set_charge_target_enabled_3ph,
+        commands.set_charge_target_soc_3ph,
+    ):
+        with pytest.raises(ValueError, match="bool"):
+            fn(True)
+        with pytest.raises(ValueError, match="integral"):
+            fn(50.5)
 
 
 async def test_set_charge():
