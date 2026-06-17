@@ -372,8 +372,9 @@ _THREE_PHASE_LUT = {
     "v_inv_bus": Def(C.deci, None, IR(1135)),
     "p_battery_discharge": Def(C.uint32, C.deci, IR(1136), IR(1137), max=100000),
     "p_battery_charge": Def(C.uint32, C.deci, IR(1138), IR(1139), max=100000),
-    # i_battery shadows single-phase IR(51); same converter, different scale
-    "i_battery": Def(C.int16, C.deci, IR(1140), min=-500.0, max=500.0),
+    # i_battery shadows single-phase IR(51); same converter and scale (centi).
+    # Field-confirmed centi against a GIV-3HY-11 HV capture (V×I vs p_battery_charge).
+    "i_battery": Def(C.int16, C.centi, IR(1140), min=-500.0, max=500.0),
     #
     # Input Registers 1180–1192 — EPS
     #

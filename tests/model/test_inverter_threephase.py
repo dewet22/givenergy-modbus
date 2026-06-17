@@ -135,7 +135,7 @@ def test_energy_totals():
         (IR(1067), 5000, "f_ac1", 50.0),
         (IR(1068), 65535 - 100 + 1, "power_factor", -100),  # int16 negative
         (IR(1132), 75, "battery_soc", 75),
-        (IR(1140), 65536 - 50, "i_battery", -5.0),  # int16 at deci scale
+        (IR(1140), 65536 - 50, "i_battery", -0.5),  # int16 at centi scale
         (HR(1002), 95, "active_rate", 95),
     ],
 )
@@ -143,6 +143,18 @@ def test_individual_fields(reg, value, field, expected):
     cache = _cache({reg: value})
     tph = ThreePhaseInverter.from_register_cache(cache)
     assert getattr(tph, field) == expected
+
+
+def test_i_battery_centi_scale():
+    """i_battery on three-phase is centi (÷100), matching single-phase IR(51).
+
+    Field-confirmed against a real GIV-3HY-11 HV capture: the V×I identity at the
+    battery terminals only balances against p_battery_charge under the centi scale.
+    """
+    neg = ThreePhaseInverter.from_register_cache(_cache({IR(1140): 65536 - 50}))
+    assert neg.i_battery == pytest.approx(-0.50)
+    pos = ThreePhaseInverter.from_register_cache(_cache({IR(1140): 250}))
+    assert pos.i_battery == pytest.approx(2.50)
 
 
 def test_three_phase_inverter_slot_map():

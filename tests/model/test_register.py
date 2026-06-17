@@ -629,14 +629,15 @@ def test_getter_precision_of_known_and_unknown():
 def test_model_precision_of_is_model_specific():
     """The same attribute can scale differently per model — query the concrete model.
 
-    i_battery is centivolts (2 dp) on single-phase but decivolts (1 dp) on
-    three-phase; this is the whole reason precision is exposed per model.
+    p_pv1 is raw watts (uint16, 0 dp) on single-phase (IR18) but a deci-scaled
+    float (1 dp) on three-phase (IR1017/1018); this is the whole reason precision
+    is exposed per model.
     """
     from givenergy_modbus.model.inverter import SinglePhaseInverter
     from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
 
-    assert SinglePhaseInverter.precision_of("i_battery") == 2
-    assert ThreePhaseInverter.precision_of("i_battery") == 1
+    assert SinglePhaseInverter.precision_of("p_pv1") == 0
+    assert ThreePhaseInverter.precision_of("p_pv1") == 1
     # A computed attribute (not register-backed) falls through to None.
     assert SinglePhaseInverter.precision_of("p_pv") is None
 
