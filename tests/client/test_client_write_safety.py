@@ -15,6 +15,7 @@ from givenergy_modbus.client.commands import _EmsCommands, _InverterCommands, _T
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
+from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS as PDU_WRITE_SAFE_REGISTERS
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
 # HR 96 = ENABLE_CHARGE — in _InverterCommands.WRITE_SAFE_REGISTERS (single-phase)
@@ -194,3 +195,27 @@ def test_ems_reg_not_in_base_set():
 
 def test_ems_set_covers_full_range():
     assert _EmsCommands.WRITE_SAFE_REGISTERS == frozenset({2040, *range(2044, 2072)})
+
+
+# ---------------------------------------------------------------------------
+# Encode-path drift guard: every model command set must be a subset of the PDU
+# allowlist, else ensure_valid_state()/encode() would reject a model-"safe"
+# register at transmit time. Encoding an EMS request exercises that path directly.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "command_set",
+    [
+        _InverterCommands.WRITE_SAFE_REGISTERS,
+        _ThreePhaseCommands.WRITE_SAFE_REGISTERS,
+        _EmsCommands.WRITE_SAFE_REGISTERS,
+    ],
+)
+def test_model_command_set_subset_of_pdu_allowlist(command_set):
+    assert command_set <= PDU_WRITE_SAFE_REGISTERS
+
+
+def test_ems_write_request_encodes():
+    """An EMS write encodes cleanly — ensure_valid_state() accepts the register."""
+    WriteHoldingRegisterRequest(_EMS_REG, 1).encode()
