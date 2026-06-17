@@ -1,6 +1,6 @@
 """Tests for Client.detect() and PlantCapabilities."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -1260,3 +1260,117 @@ async def test_detect_lv_batteries_invalid_slot_skipped_not_aborted():
     assert 0x32 in caps.lv_battery_addresses
     assert 0x33 not in caps.lv_battery_addresses  # ghost — skipped
     assert 0x34 in caps.lv_battery_addresses
+
+
+# ---------------------------------------------------------------------------
+# connect()+detect() atomicity (#274): a connection-level detect() failure must
+# tear the connection down so connect()+detect() is atomic. A PlantTopologyMismatch
+# is raised on a healthy connection, so it must leave `connected` untouched.
+# ---------------------------------------------------------------------------
+
+
+def _prime_live_connection(client: Client) -> MagicMock:
+    """Put the client in a post-connect() state so the real close() can run.
+
+    Mirrors the mock-socket setup in tests/client/test_client.py — a MagicMock
+    writer whose wait_closed is awaitable, a reader, both background tasks, and
+    connected=True. Returns the writer for teardown assertions.
+    """
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock()
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+    client.connected = True
+    return writer
+
+
+@pytest.mark.asyncio
+async def test_detect_timeout_closes_connection():
+    """A TimeoutError during detect() tears the connection down (connected=False)."""
+    client = _make_client()
+    writer = _prime_live_connection(client)
+
+    with patch.object(client, "send_request_and_await_response", side_effect=TimeoutError):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with pytest.raises(TimeoutError):
+                await client.detect()
+
+    assert client.connected is False
+    writer.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_detect_teardown_error_does_not_mask_original():
+    """If close() raises during teardown, the original detect() error still propagates."""
+    client = _make_client()
+    _prime_live_connection(client)
+
+    with patch.object(client, "send_request_and_await_response", side_effect=TimeoutError):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with patch.object(client, "close", new=AsyncMock(side_effect=RuntimeError("teardown boom"))):
+                with pytest.raises(TimeoutError):  # not RuntimeError
+                    await client.detect()
+
+
+@pytest.mark.asyncio
+async def test_detect_missing_hr0_closes_connection():
+    """A CommunicationError ("HR(0) not populated") tears the connection down."""
+    client = _make_client()
+    _prime_live_connection(client)
+    # Don't prime any cache — HR(0) will be absent → CommunicationError.
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with pytest.raises(CommunicationError, match="HR\\(0\\)"):
+                await client.detect()
+
+    assert client.connected is False
+
+
+@pytest.mark.asyncio
+async def test_detect_topology_mismatch_keeps_connection():
+    """A PlantTopologyMismatch is raised on a healthy connection — leave it up.
+
+    The hint was wrong, not the link; capabilities is cleared, but the caller can
+    retry a cold detect() on the same live socket, so connected must stay True.
+    """
+    client = _make_client()
+    _prime_live_connection(client)
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    _prime_meter_voltage(client, 0x01)
+
+    prior = PlantCapabilities(
+        device_type=Model.HYBRID_GEN1,
+        meter_addresses=[0x01, 0x02],  # 0x02 won't confirm → mismatch
+        lv_battery_addresses=[0x32],
+    )
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x01
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            with pytest.raises(PlantTopologyMismatch):
+                await client.detect(prior=prior)
+
+    assert client.connected is True
+    assert client.plant.capabilities is None
+
+
+@pytest.mark.asyncio
+async def test_detect_success_leaves_connected():
+    """A successful detect() leaves the connection up (regression guard)."""
+    client = _make_client()
+    _prime_live_connection(client)
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert client.connected is True
+    assert client.plant.capabilities is caps
