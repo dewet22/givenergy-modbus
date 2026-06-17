@@ -676,7 +676,40 @@ class Client:
         Uses a two-tier timeout: `timeout`/`retries` for the known inverter device
         (where a response is expected), and `probe_timeout`/`probe_retries` for
         speculative probes where absence is the common case.
+
+        On a connection-level failure (TimeoutError / CommunicationError) the
+        connection is torn down via close(), so connect()+detect() is atomic:
+        `connected` flips to False and the standard "reconnect if not connected"
+        idiom recovers (#274). A PlantTopologyMismatch is raised on a healthy
+        connection (only the hint was wrong) and leaves it up so the caller can
+        retry a cold detect().
         """
+        try:
+            return await self._detect(
+                timeout=timeout,
+                retries=retries,
+                probe_timeout=probe_timeout,
+                probe_retries=probe_retries,
+                prior=prior,
+            )
+        except PlantTopologyMismatch:
+            # Healthy connection — only the hint was wrong; capabilities already cleared.
+            raise
+        except (TimeoutError, CommunicationError):
+            # A connection-level failure leaves a half-open socket with capabilities
+            # unset. Tear down so connect()+detect() is atomic (#274).
+            await self.close()
+            raise
+
+    async def _detect(
+        self,
+        timeout: float,
+        retries: int,
+        probe_timeout: float,
+        probe_retries: int,
+        prior: PlantCapabilities | None,
+    ) -> PlantCapabilities:
+        """Implementation of detect(); see detect() for the contract and error semantics."""
         if prior is not None:
             _logger.info(
                 "detect: hinted mode — assuming device_type=Model.%s, inverter=0x%02x, "
@@ -887,6 +920,11 @@ class Client:
 
         Returns the populated plant on full success. On partial/total read
         failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
+
+        Success does not imply *fresh*: the keep-last-good guards (CRC #255, sub-bus
+        splice #256, bank holds) report a successful poll while serving last-known-good
+        content for a device whose live read was rejected. Display consumers should gate
+        on ``Plant.register_age()`` / ``Plant.block_age()``, not on a poll returning.
         """
         caps = self.plant.capabilities
         if caps is None:
@@ -951,6 +989,11 @@ class Client:
 
         Returns the populated plant on full success. On partial/total read
         failure raises ``RefreshPartiallySucceeded`` / ``RefreshFailed``.
+
+        Success does not imply *fresh*: the keep-last-good guards (CRC #255, sub-bus
+        splice #256, bank holds) report a successful poll while serving last-known-good
+        content for a device whose live read was rejected. Display consumers should gate
+        on ``Plant.register_age()`` / ``Plant.block_age()``, not on a poll returning.
 
         The ``timeout=2.0, retries=1`` defaults are tuned for a contended bus: the
         inverter serialises requests, so when other clients (GivTCP, the vendor app,
