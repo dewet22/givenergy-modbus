@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-06-17
+
+### ✨ Added
+
+- add compact probe-dump serialisation (to_compact/parse_compact) ([4ec5f1e](https://github.com/dewet22/givenergy-modbus/commit/4ec5f1e3cf21ef777b94db2009fda7abfca0d345))
+
+### 🔧 Maintenance
+
+- add first real three-phase capture fixture + wire-level regression test ([4c7e55e](https://github.com/dewet22/givenergy-modbus/commit/4c7e55e69198dec42cceacc9f595546083024d0f))
+
 ## [2.3.3] - 2026-06-17
 
 ### ✨ Added
