@@ -1302,6 +1302,19 @@ async def test_detect_timeout_closes_connection():
 
 
 @pytest.mark.asyncio
+async def test_detect_teardown_error_does_not_mask_original():
+    """If close() raises during teardown, the original detect() error still propagates."""
+    client = _make_client()
+    _prime_live_connection(client)
+
+    with patch.object(client, "send_request_and_await_response", side_effect=TimeoutError):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            with patch.object(client, "close", new=AsyncMock(side_effect=RuntimeError("teardown boom"))):
+                with pytest.raises(TimeoutError):  # not RuntimeError
+                    await client.detect()
+
+
+@pytest.mark.asyncio
 async def test_detect_missing_hr0_closes_connection():
     """A CommunicationError ("HR(0) not populated") tears the connection down."""
     client = _make_client()

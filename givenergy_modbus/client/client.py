@@ -697,8 +697,13 @@ class Client:
             raise
         except (TimeoutError, CommunicationError):
             # A connection-level failure leaves a half-open socket with capabilities
-            # unset. Tear down so connect()+detect() is atomic (#274).
-            await self.close()
+            # unset. Tear down so connect()+detect() is atomic (#274). Guard close()
+            # so a teardown error (e.g. a flaky writer.wait_closed()) can't mask the
+            # original failure we're propagating.
+            try:
+                await self.close()
+            except Exception:
+                _logger.exception("detect: error during connection teardown after failure")
             raise
 
     async def _detect(
