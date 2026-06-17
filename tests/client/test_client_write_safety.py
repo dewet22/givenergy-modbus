@@ -135,6 +135,20 @@ async def test_validation_fires_before_transmit():
 
 
 @pytest.mark.asyncio
+async def test_dry_run_validates_value_bounds():
+    """A model-allowed register with an out-of-range value is rejected in dry_run.
+
+    dry_run must run the same PDU validation (ensure_valid_state) the live encode
+    path runs, otherwise a dry run can pass for a request real execution rejects.
+    """
+    client = _client(_caps(Model.HYBRID_GEN1))
+    # HR 96 is model-allowed, but 70000 > 0xFFFF — only ensure_valid_state catches it.
+    req = WriteHoldingRegisterRequest(_SINGLE_PHASE_REG, 70000)
+    with pytest.raises(InvalidPduState, match=r"16-bit"):
+        await client.one_shot_command([req], dry_run=True)
+
+
+@pytest.mark.asyncio
 async def test_dry_run_false_calls_execute(monkeypatch):
     """When dry_run=False and all registers are valid, execute() is called."""
     client = _client(_caps(Model.HYBRID_GEN1))

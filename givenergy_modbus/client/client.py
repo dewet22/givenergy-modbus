@@ -1141,7 +1141,9 @@ class Client:
         detected model. When capabilities are not yet known, falls back to the
         universally-applicable single-phase register set (conservative).
 
-        If dry_run is True, validates but does not transmit.
+        If dry_run is True, validates but does not transmit — running the same PDU
+        validation (``ensure_valid_state``) the live encode path runs, so a dry run
+        never passes for a request real execution would reject.
         """
         caps = self.plant.capabilities
         if caps is not None and caps.is_ems:
@@ -1154,6 +1156,9 @@ class Client:
         for req in requests:
             if isinstance(req, WriteHoldingRegisterRequest) and req.register not in safe:
                 raise InvalidPduState(f"HR({req.register}) is not permitted for {model_label} inverter", req)
+            # Run the same PDU-level validation encode() runs (value bounds, global
+            # safe-register set), so dry-run and live paths reject identically.
+            req.ensure_valid_state()
         if not dry_run:
             await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
 
