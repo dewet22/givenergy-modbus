@@ -2,7 +2,7 @@ import datetime
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HR, IR, MR
-from givenergy_modbus.model.register_cache import RegisterCache, parse_compact, to_compact
+from givenergy_modbus.model.register_cache import RegisterCache, _compact_blocks, parse_compact, to_compact
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
 
@@ -30,6 +30,11 @@ def test_compact_round_trip():
         0x32: RegisterCache({IR(60 + i): 0xABCD - i for i in range(60)}),
     }
     assert parse_compact(to_compact(caches)) == caches
+
+
+def test_compact_blocks_empty():
+    """The block grouper is a total function: empty indices → no blocks."""
+    assert _compact_blocks([]) == []
 
 
 def test_to_compact_grammar_and_60_aligned_blocking():

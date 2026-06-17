@@ -264,8 +264,10 @@ def _compact_blocks(indices: list[int]) -> list[tuple[int, int]]:
 
     A block never crosses a 60-aligned boundary and never spans a gap, so whole probe
     reads emit as clean ``(60k, 60)`` rows that can't overlap, while sparse/partial data
-    still round-trips exactly (no zero-fill).
+    still round-trips exactly (no zero-fill). Empty input yields no blocks.
     """
+    if not indices:
+        return []
     blocks: list[tuple[int, int]] = []
     base = prev = indices[0]
     for idx in indices[1:]:
