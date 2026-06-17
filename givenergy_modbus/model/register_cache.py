@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import re
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
@@ -237,3 +238,123 @@ class RegisterCache(defaultdict[Register, int]):
         if start_val is None or end_val is None or start_val == 60 or end_val == 60:
             return None
         return TimeSlot.from_repr(start_val, end_val)
+
+
+# --- Compact probe-dump serialisation -----------------------------------------------------------
+# A human-legible hex dump of register ranges, peer to RegisterCache.json()/from_json() but
+# multi-device. Kept as a text format (vs json) because users paste these redacted dumps into
+# bug reports and can eyeball the plaintext values. Serialisation lives here; file I/O (share-safe
+# writes, size caps, provenance) is the caller's (e.g. givenergy-cli).
+
+_REG_CLS: dict[str, type[Register]] = {"HR": HR, "IR": IR, "MR": MR}
+_COMPACT_STRIDE = 60  # GivEnergy probes read 60-aligned, 60-long blocks; emit on that grid.
+
+# Device-inline row: ``0x<dev>:<BANK>(<base>,<count>) <hex>`` (the canonical format).
+_COMPACT_ROW_RE = re.compile(r"^0x([0-9a-fA-F]+):(HR|IR|MR)\((\d+),(\d+)\)\s+([0-9a-fA-F]*)$")
+# TODO(remove in a near-future version once confident no old-format dumps remain): legacy format
+# put the device in a ``# <BANK> probe @ device 0x<NN> …`` header preceding bare colon rows.
+_COMPACT_LEGACY_HEADER_RE = re.compile(r"^#\s*\w+\s+probe\s+@\s+device\s+0x([0-9a-fA-F]+)")
+_COMPACT_LEGACY_ROW_RE = re.compile(r"^(HR|IR|MR)\((\d+),(\d+)\):\s+([0-9a-fA-F]*)$")
+# A bare-hex line — a continuation of a value reflowed across lines by copy-paste.
+_COMPACT_HEX_RE = re.compile(r"^[0-9a-fA-F]+$")
+
+
+def _compact_blocks(indices: list[int]) -> list[tuple[int, int]]:
+    """Group sorted register indices into (base, count) blocks, split at the 60-stride.
+
+    A block never crosses a 60-aligned boundary and never spans a gap, so whole probe
+    reads emit as clean ``(60k, 60)`` rows that can't overlap, while sparse/partial data
+    still round-trips exactly (no zero-fill).
+    """
+    blocks: list[tuple[int, int]] = []
+    base = prev = indices[0]
+    for idx in indices[1:]:
+        if idx == prev + 1 and idx // _COMPACT_STRIDE == base // _COMPACT_STRIDE:
+            prev = idx
+        else:
+            blocks.append((base, prev - base + 1))
+            base = prev = idx
+    blocks.append((base, prev - base + 1))
+    return blocks
+
+
+def to_compact(caches: "dict[int, RegisterCache]") -> str:
+    """Serialise device register caches to the compact hex probe-dump format.
+
+    Peer to :meth:`RegisterCache.json` — a pure ``str`` projection with no file I/O. Each
+    row is self-describing::
+
+        0x32:HR(0,60) 0000000500ff…
+
+    ``0x<dev>`` is the device address, ``HR``/``IR``/``MR`` the bank, ``(<base>,<count>)`` the
+    range, then ``count × 4`` lowercase hex chars (one 16-bit register per 4). Blocks are split
+    on the 60-register grid GivEnergy probes read on, so whole-block caches round-trip as clean,
+    non-overlapping rows. Rows are emitted in (device, bank, base) order for stable output.
+    Provenance (host:port) is the caller's to add as an ignored ``#`` comment.
+    """
+    lines: list[str] = []
+    for device in sorted(caches):
+        by_bank: dict[str, dict[int, int]] = {}
+        for reg, val in caches[device].items():
+            if isinstance(val, int) and not isinstance(val, bool):
+                by_bank.setdefault(reg.reg_type, {})[reg.index] = val
+        for bank in ("HR", "IR", "MR"):
+            present = by_bank.get(bank)
+            if not present:
+                continue
+            for base, count in _compact_blocks(sorted(present)):
+                hexstr = "".join(f"{present[base + i] & 0xFFFF:04x}" for i in range(count))
+                lines.append(f"0x{device:02x}:{bank}({base},{count}) {hexstr}")
+    return "".join(line + "\n" for line in lines)
+
+
+def parse_compact(text: str) -> "dict[int, RegisterCache]":
+    """Parse a compact probe-dump back into device caches (inverse of :func:`to_compact`).
+
+    Lenient and order-agnostic — the input is human-pasted diagnostic text. Accepts the
+    device-inline grammar emitted by :func:`to_compact` and (transitionally) the legacy
+    header format. Hex reflowed across lines by copy-paste is reassembled; a row that still
+    doesn't reach its declared length is skipped without aborting the rest. ``#`` comments
+    (provenance), ``Probing …`` status, ``..`` timed-out ranges and blank lines are ignored.
+    """
+    caches: dict[int, RegisterCache] = {}
+    legacy_device: int | None = None
+    lines = [line.strip() for line in text.splitlines()]
+    i, n = 0, len(lines)
+    while i < n:
+        line = lines[i]
+        i += 1
+
+        header = _COMPACT_LEGACY_HEADER_RE.match(line)
+        if header:
+            legacy_device = int(header.group(1), 16)
+            continue
+
+        inline = _COMPACT_ROW_RE.match(line)
+        legacy = _COMPACT_LEGACY_ROW_RE.match(line) if not inline else None
+        if inline:
+            device = int(inline.group(1), 16)
+            bank, base, count, hexstr = inline.group(2), int(inline.group(3)), int(inline.group(4)), inline.group(5)
+        elif legacy is not None:
+            if legacy_device is None:
+                _logger.warning("Skipping legacy compact row before any device header: %r", line)
+                continue
+            device = legacy_device
+            bank, base, count, hexstr = legacy.group(1), int(legacy.group(2)), int(legacy.group(3)), legacy.group(4)
+        else:
+            continue  # comment / Probing… / `..` timed-out / blank / stray
+
+        want = count * 4
+        # Reassemble hex reflowed across lines: pull in following bare-hex continuation lines.
+        while len(hexstr) < want and i < n and _COMPACT_HEX_RE.match(lines[i]):
+            hexstr += lines[i]
+            i += 1
+        if len(hexstr) != want:
+            _logger.warning("Skipping compact row with %d hex chars, expected %d: %r", len(hexstr), want, line)
+            continue
+
+        cls = _REG_CLS[bank]
+        cache = caches.setdefault(device, RegisterCache())
+        for j in range(count):
+            cache[cls(base + j)] = int(hexstr[j * 4 : j * 4 + 4], 16)
+    return caches
