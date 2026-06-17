@@ -8,9 +8,11 @@ from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from typing import Literal
 
+from givenergy_modbus.client.commands import _InverterCommands, _ThreePhaseCommands
 from givenergy_modbus.exceptions import (
     CommunicationError,
     ExceptionBase,
+    InvalidPduState,
     PlantNotDetected,
     PlantTopologyMismatch,
     ReadFailure,
@@ -35,6 +37,7 @@ from givenergy_modbus.pdu import (
     TransparentResponse,
     WriteHoldingRegisterResponse,
 )
+from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
 _logger = logging.getLogger(__name__)
 
@@ -1125,10 +1128,33 @@ class Client:
                 )
 
     async def one_shot_command(
-        self, requests: list[TransparentRequest], timeout=1.5, retries=0, retry_delay: float = 0.5
+        self,
+        requests: list[TransparentRequest],
+        timeout: float = 1.5,
+        retries: int = 0,
+        retry_delay: float = 0.5,
+        dry_run: bool = False,
     ) -> None:
-        """Execute a set of requests. Caller is responsible for connecting first."""
-        await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
+        """Execute write requests, validating each against the detected inverter model.
+
+        Raises InvalidPduState for any write to a register not permitted for the
+        detected model. When capabilities are not yet known, falls back to the
+        universally-applicable single-phase register set (conservative).
+
+        If dry_run is True, validates but does not transmit.
+        """
+        caps = self.plant.capabilities
+        safe = (
+            _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+            if caps is not None and caps.is_three_phase
+            else _InverterCommands.WRITE_SAFE_REGISTERS
+        )
+        model_label = caps.device_type.name if caps is not None else "undetected"
+        for req in requests:
+            if isinstance(req, WriteHoldingRegisterRequest) and req.register not in safe:
+                raise InvalidPduState(f"HR({req.register}) is not permitted for {model_label} inverter", req)
+        if not dry_run:
+            await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
 
     def _emit_to_sink(self, direction: "Direction", data: bytes) -> None:
         """Hand redacted bytes to the active capture sink, swallowing sink errors.
