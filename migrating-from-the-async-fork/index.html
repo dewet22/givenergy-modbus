@@ -1415,7 +1415,7 @@ than directly on <code>Plant</code>:</p>
 and branches on substrings like <code>"3ph"</code>. Here the model-specific behaviour
 is explicit instead:</p>
 <ul>
-<li>3-phase variants are separate helpers: <code>set_charge_target_3ph()</code>,
+<li>3-phase variants are separate helpers: <code>set_charge_target_enabled_3ph()</code>,
   <code>set_battery_soc_reserve_3ph()</code>, <code>disable_charge_target_3ph()</code>, …</li>
 <li>Slot commands take a <code>SlotMap</code> (<code>SINGLE_PHASE_SLOTS</code>, <code>EXTENDED_SLOTS</code>,
   <code>THREE_PHASE_SLOTS</code>) instead of an <code>inv_type</code> string — pass
@@ -1464,11 +1464,11 @@ is explicit instead:</p>
 </tr>
 <tr>
 <td><code>set_charge_target(v, inv_type)</code></td>
-<td><code>set_charge_target(v)</code> / <code>set_charge_target_3ph(v)</code></td>
+<td><code>set_charge_target_enabled(v)</code> / <code>set_charge_target_enabled_3ph(v)</code> (old <code>set_charge_target(v)</code> retained as a deprecated alias)</td>
 </tr>
 <tr>
 <td><code>set_charge_target_only(v, inv_type)</code></td>
-<td>no equivalent yet — <a href="https://github.com/dewet22/givenergy-modbus/issues/243">#243</a></td>
+<td><code>set_charge_target_soc(v)</code> / <code>set_charge_target_soc_3ph(v)</code></td>
 </tr>
 <tr>
 <td><code>set_soc_target(discharge, idx, v, inv_type)</code></td>

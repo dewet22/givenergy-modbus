@@ -1456,7 +1456,7 @@ requests, which you send via <code>one_shot_command</code> or <code>execute</cod
     <span class="n">plant</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">plant</span>
 
     <span class="c1"># Write configuration to the device</span>
-    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+    <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">commands</span><span class="o">.</span><span class="n">set_charge_target_enabled</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span>
         <span class="n">commands</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_components</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">30</span><span class="p">),</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span><span class="o">.</span><span class="n">slot_map</span><span class="p">)</span>
     <span class="p">)</span>
@@ -1651,7 +1651,7 @@ interactive command, pass <code>retry_delay=0</code>.</p>
 <p>The recommended entry point is the inverter instance itself:</p>
 <div class="highlight"><pre><span></span><code><span class="n">inverter</span> <span class="o">=</span> <span class="n">plant</span><span class="o">.</span><span class="n">inverter</span>
 
-<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_target</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
+<span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_target_enabled</span><span class="p">(</span><span class="mi">80</span><span class="p">))</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_enable_discharge</span><span class="p">(</span><span class="kc">True</span><span class="p">))</span>
 <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">one_shot_command</span><span class="p">(</span><span class="n">inverter</span><span class="o">.</span><span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">my_timeslot</span><span class="p">))</span>
 </code></pre></div>
@@ -1716,7 +1716,7 @@ case-by-case.</p>
 </tr>
 </tbody>
 </table>
-<p>An unmarked row means the method is available on both inverter types. On <code>ThreePhaseInverter</code>, <code>_ThreePhaseCommands</code> overrides <code>set_enable_charge</code>, <code>set_battery_soc_reserve</code>, <code>set_mode_dynamic</code>, <code>set_charge_target</code>, <code>disable_charge_target</code>, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).</p>
+<p>An unmarked row means the method is available on both inverter types. On <code>ThreePhaseInverter</code>, <code>_ThreePhaseCommands</code> overrides <code>set_enable_charge</code>, <code>set_battery_soc_reserve</code>, <code>set_mode_dynamic</code>, <code>set_charge_target_enabled</code>, <code>disable_charge_target</code>, and the slot setters to use the correct three-phase registers (HR 1112, 1109, 1111, 1113–1121).</p>
 <h4 id="charging">Charging<a class="headerlink" href="#charging" title="Permanent link">&para;</a></h4>
 <table>
 <thead>
@@ -1728,8 +1728,13 @@ case-by-case.</p>
 </thead>
 <tbody>
 <tr>
-<td><code>set_charge_target(soc)</code></td>
-<td>Stop charging when SOC reaches <code>soc</code>% (4–100)</td>
+<td><code>set_charge_target_enabled(soc)</code></td>
+<td>Enable charging and stop when SOC reaches <code>soc</code>% (4–100). (<code>set_charge_target</code> is a deprecated alias)</td>
+<td></td>
+</tr>
+<tr>
+<td><code>set_charge_target_soc(soc)</code></td>
+<td>Set just the charge-target SOC (4–100), leaving the enable bits untouched</td>
 <td></td>
 </tr>
 <tr>
