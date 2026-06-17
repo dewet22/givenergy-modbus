@@ -552,8 +552,8 @@ class RegisterMetadataMixin:
         """Decimal places for ``name`` per its register scaling (None if non-numeric/unknown).
 
         Precision is model-specific: the same attribute may scale differently
-        across models (e.g. ``i_battery`` is centivolts on single-phase but
-        decivolts on three-phase), so always query the concrete model.
+        across models (e.g. ``p_pv1`` is raw watts on single-phase but a
+        deci-scaled float on three-phase), so always query the concrete model.
         """
         return cls.REGISTER_GETTER.precision_of(name)
 
