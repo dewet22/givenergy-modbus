@@ -90,6 +90,12 @@ class Bcu(_BcuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
 _BMU_CELLS = 24
 # Register stride between BMUs within a BCU device's address space
 _BMU_STRIDE = 120
+# Base register addresses (relative to a module's ``base`` offset) for the per-cell block.
+# Shared by the field schema, the decode, and the register LUT so they can't drift (#273).
+_V_CELL_BASE = 60  # IR(60+base .. 83+base) — 24 cell voltages, milli (÷1000)
+_T_CELL_BASE = 90  # IR(90+base .. 113+base) — 24 cell temps, deci (÷10)
+_SERIAL_BASE = 114  # IR(114+base .. 118+base) — 5-register module serial
+_SERIAL_LEN = 5
 
 
 def module_cell_temp_serial_fields() -> dict[str, tuple[Any, None]]:
@@ -104,6 +110,23 @@ def module_cell_temp_serial_fields() -> dict[str, tuple[Any, None]]:
         fields[f"t_cell_{i:02d}"] = (float | None, None)
     fields["serial_number"] = (str | None, None)
     return fields
+
+
+def cell_temp_serial_register_lut(base: int = 0) -> dict[str, Def]:
+    """field→register LUT matching :func:`decode_cells_temps_serial` for the given ``base``.
+
+    Base-parametrised the same way the decode is, so a future `Bmu` getter could offset by
+    ``120 * bmu_index``; `AioBatteryModule` uses ``base = 0``. Converters mirror the decode:
+    voltages milli (÷1000), temperatures deci (÷10), serial the 5-register string decode.
+    Drives ``registers_of()`` / ``precision_of()`` for staleness gating (#273); the min/max on
+    voltages mirror `BatteryRegisterGetter` and are inert under the imperative decode.
+    """
+    lut: dict[str, Def] = {}
+    for i in range(_BMU_CELLS):
+        lut[f"v_cell_{i + 1:02d}"] = Def(C.milli, None, IR(_V_CELL_BASE + base + i), min=1.0, max=5.0)
+        lut[f"t_cell_{i + 1:02d}"] = Def(C.deci, None, IR(_T_CELL_BASE + base + i))
+    lut["serial_number"] = Def(C.serial, None, *(IR(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)))
+    return lut
 
 
 def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
@@ -121,12 +144,12 @@ def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
         return register_cache.get(IR(reg_idx))
 
     for i in range(_BMU_CELLS):
-        v = _get(60 + base + i)
+        v = _get(_V_CELL_BASE + base + i)
         data[f"v_cell_{i + 1:02d}"] = v / 1000 if v is not None else None
     for i in range(_BMU_CELLS):
-        t = _get(90 + base + i)
+        t = _get(_T_CELL_BASE + base + i)
         data[f"t_cell_{i + 1:02d}"] = t / 10 if t is not None else None
-    sn_regs = [_get(114 + base + j) for j in range(5)]
+    sn_regs = [_get(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)]
     if None not in sn_regs:
         data["serial_number"] = (
             b"".join(v.to_bytes(2, "big") for v in sn_regs)  # type: ignore[union-attr]

@@ -8,8 +8,9 @@ against the real aio_a fixture.
 
 import pytest
 
-from givenergy_modbus.model.aio_battery import AioBatteryModule
+from givenergy_modbus.model.aio_battery import AioBatteryModule, AioBatteryModuleRegisterGetter
 from givenergy_modbus.model.devices import DeviceType
+from givenergy_modbus.model.hv_bcu import decode_cells_temps_serial
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
 from givenergy_modbus.model.register import IR
@@ -66,6 +67,55 @@ def test_aio_module_serial_decodes_from_ir_114():
     assert module.serial_number == "HX2414G832"
     assert module.module_address == 0x52
     assert module.is_valid()
+
+
+# ---------------------------------------------------------------------------
+# Register-getter metadata (#273) — field→register map for staleness gating
+# ---------------------------------------------------------------------------
+
+
+def _regs(name: str) -> list[tuple[str, int]]:
+    return [(r.reg_type, r.index) for r in AioBatteryModule.REGISTER_GETTER.registers_of(name)]
+
+
+def test_aio_registers_of_resolves_boundary_fields():
+    """registers_of() maps each per-cell field to its backing IR register(s)."""
+    assert _regs("v_cell_01") == [("IR", 60)]
+    assert _regs("v_cell_24") == [("IR", 83)]
+    assert _regs("t_cell_01") == [("IR", 90)]
+    assert _regs("t_cell_24") == [("IR", 113)]
+    assert _regs("serial_number") == [("IR", 114), ("IR", 115), ("IR", 116), ("IR", 117), ("IR", 118)]
+
+
+def test_aio_registers_of_unknown_or_unbacked_is_empty():
+    """Non-register-backed (module_address) and unknown fields yield an empty tuple."""
+    assert AioBatteryModule.REGISTER_GETTER.registers_of("module_address") == ()
+    assert AioBatteryModule.REGISTER_GETTER.registers_of("nope") == ()
+
+
+def test_aio_precision_of_matches_scaling():
+    """precision_of() reflects the converter scaling (milli=3, deci=1)."""
+    assert AioBatteryModule.precision_of("v_cell_01") == 3
+    assert AioBatteryModule.precision_of("t_cell_01") == 1
+
+
+def test_aio_lut_field_set_matches_decode():
+    """Drift guard: the LUT's fields track exactly what decode_cells_temps_serial produces.
+
+    Adding/removing a cell in the decode loop without updating the LUT (or vice versa) fails here.
+    """
+    primed = RegisterCache({IR(i): 1 for i in range(60, 119)})
+    decoded = decode_cells_temps_serial(primed, base=0)
+    assert set(AioBatteryModuleRegisterGetter.REGISTER_LUT) == set(decoded)
+
+
+@pytest.mark.timeout(20)
+async def test_aio_registers_of_feeds_register_age():
+    """End-to-end: registers_of() yields a register that Plant.register_age() can age (the hass use-case)."""
+    plant = await _aio_plant_with_caps()
+    reg = AioBatteryModule.REGISTER_GETTER.registers_of("v_cell_01")[0]
+    age = plant.register_age(0x50, reg)
+    assert age is not None and age >= 0
 
 
 # ---------------------------------------------------------------------------

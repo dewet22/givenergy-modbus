@@ -7,11 +7,28 @@ layout (modules offset within a single BCU cache); see ``model/hv_bcu.py``. The 
 decode is shared via :func:`decode_cells_temps_serial`.
 """
 
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import ConfigDict, create_model
 
-from givenergy_modbus.model.hv_bcu import decode_cells_temps_serial, module_cell_temp_serial_fields
+from givenergy_modbus.model.hv_bcu import (
+    cell_temp_serial_register_lut,
+    decode_cells_temps_serial,
+    module_cell_temp_serial_fields,
+)
+from givenergy_modbus.model.register import RegisterGetter, RegisterMetadataMixin
+
+
+class AioBatteryModuleRegisterGetter(RegisterGetter):
+    """field→register metadata for AIO per-module data (#273).
+
+    Metadata only — `AioBatteryModule` still decodes imperatively via
+    :func:`decode_cells_temps_serial`; this LUT drives ``registers_of()`` /
+    ``precision_of()`` so a consumer can feed ``Plant.register_age()`` and gate a frozen
+    module unavailable (hass#192).
+    """
+
+    REGISTER_LUT = cell_temp_serial_register_lut(base=0)
 
 
 def _aio_module_fields() -> dict[str, tuple[Any, None]]:
@@ -27,12 +44,14 @@ _AioBatteryModuleBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class AioBatteryModule(_AioBatteryModuleBase):  # type: ignore[misc,valid-type]
+class AioBatteryModule(_AioBatteryModuleBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """One AIO battery module: 24 cell voltages + temperatures + the module serial.
 
     Decoded from the module's own device-address cache (``base=0``), keyed by its Modbus
     ``module_address`` (0x50-0x53).
     """
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = AioBatteryModuleRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache, module_address: int) -> "AioBatteryModule":
