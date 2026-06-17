@@ -42,18 +42,20 @@ are ordered by value and by their interlocks; the hardware-gated work floats.
 highest-value hardening left: writes hit real inverters, and the only protection
 today is register-level.
 
-- **Model-aware write policy at the `Client` boundary.** `Client.one_shot_command()`
-  / `execute()` should reject writes that aren't valid for the *detected* inverter
-  model, complementing the global `WRITE_SAFE_REGISTERS` allowlist enforced in
-  `pdu/write_registers.py::ensure_valid_state()`. A caller can still hand-build a
-  write PDU that bypasses the model-specific command mixins; this closes that gap.
-  Conservative default when capabilities are unknown. Tests must cover direct
-  `WriteHoldingRegisterRequest` construction, not just the high-level helpers.
-- **Dry-run validation.** A supported way to encode and validate a request list
-  without transmitting — `client.validate_requests(...)` or
-  `one_shot_command(..., dry_run=True)` — reporting register, value, device
-  address and rejection reason. Lets downstream integrations check before
-  enabling live writes.
+- ~~**Model-aware command routing (#203)**~~ — **shipped PR #215 (2026-06-07).**
+  `_ThreePhaseCommands` now overrides `set_mode_storage`, `set_battery_soc_reserve`,
+  `set_charge_target`, and `set_battery_reserve_soc` to target the correct three-phase
+  registers; `_ThreePhaseCommands.WRITE_SAFE_REGISTERS` is defined. `set_battery_reserve_soc`
+  (HR 1078) moved off the universal mixin where it didn't belong.
+- ~~**Model-aware write policy at the `Client` boundary.**~~ — **shipped 2026-06-17.**
+  `one_shot_command()` now validates every `WriteHoldingRegisterRequest` against
+  `_ThreePhaseCommands.WRITE_SAFE_REGISTERS` (three-phase) or
+  `_InverterCommands.WRITE_SAFE_REGISTERS` (single-phase / undetected), raising
+  `InvalidPduState` before any frame hits the wire. Closes the bypass path where
+  a hand-built PDU skipped the command-mixin checks.
+- ~~**Dry-run validation.**~~ — **shipped 2026-06-17.**
+  `one_shot_command(..., dry_run=True)` validates but does not transmit; lets
+  downstream integrations check a request list without a live connection.
 - **Interlock:** high-risk writes gate on register provenance (Pillar B).
 
 ### Pillar B — Register provenance and confidence
@@ -80,9 +82,9 @@ inherited mappings),
 [#185](https://github.com/dewet22/givenergy-modbus/issues/185) (scale/unit
 corrections),
 [#200](https://github.com/dewet22/givenergy-modbus/issues/200) (BMS fault
-bitfield) and
-[#209](https://github.com/dewet22/givenergy-modbus/issues/209) (power-factor
-formula).
+bitfield), and
+~~[#209](https://github.com/dewet22/givenergy-modbus/issues/209) (power-factor
+formula) — shipped 2026-06-12~~.
 
 ### Pillar C — Unified data-trust layer
 
@@ -94,9 +96,11 @@ re-deriving its own ad-hoc checks.
 | Signal | Mechanism | Status |
 |---|---|---|
 | Freshness | `Plant.block_age()` (#65) | shipped |
-| Staleness / freeze | `Plant.content_unchanged_seconds()` (#91 primitive) → freeze *verdict* | primitive shipped; [verdict deferred](https://github.com/dewet22/givenergy-modbus/issues/91) |
+| Staleness / freeze | `Plant.content_unchanged_seconds()` (#91 primitive) → freeze *verdict* | primitive shipped (v2.2.0; #91 closed); verdict deliberately not auto-thresholded — healthy batteries hold static content for 7–26 polls; one freeze capture is insufficient to calibrate a threshold that won't false-fire on healthy-but-static hardware |
 | Bank dropout | Pattern A/B rejection ([#78](https://github.com/dewet22/givenergy-modbus/issues/78) / [#147](https://github.com/dewet22/givenergy-modbus/issues/147)) | shipped |
-| Bounds | field-level out-of-range suppression + bank-level detection (#57); whole-bank discard still gated behind a `TODO(enforcement)` in `_commit_bank()` | detection shipped; discard deferred |
+| CRC guard | three-state policy: default=skip-commit, `strict_crc`=raise, `lenient_crc_commit`=opt-in ([#255](https://github.com/dewet22/givenergy-modbus/issues/255)) | shipped 2.3.1 |
+| Sub-bus splice guard | valid-CRC windowed splice rejection + singleton escrow ([#256](https://github.com/dewet22/givenergy-modbus/issues/256)) | shipped 2.3.2 |
+| Bounds | field-level OOB suppression shipped (#57 closed); bank-level whole-bank discard still gated behind `TODO(enforcement)` in `_commit_bank()` — prerequisites (#65 freshness, #91 primitive) now met; flip is the residual open work | field-level shipped; discard deferred |
 | Present-but-unavailable | placeholder for transiently-absent devices ([#213](https://github.com/dewet22/givenergy-modbus/issues/213)) | open |
 | Transient zeros | home-load debounce ([#199](https://github.com/dewet22/givenergy-modbus/issues/199)) | open |
 
@@ -134,7 +138,7 @@ pillar in their own right:
 | Item | Status |
 |---|---|
 | §3 internal refresh serialization (`asyncio.Lock` around detect/load_config/refresh) | not started |
-| §6 broaden golden-frame fixtures (have EMS, single-phase hybrid, AIO; need three-phase, gateway, write success/error) | partial |
+| §6 broaden golden-frame fixtures (have EMS, single-phase hybrid, AIO, three-phase [#270/2.4.0]; still need gateway, write success/error) | partial |
 | §7 mypy `check_untyped_defs` | partial — production on; `tests.*` deferred (58 findings) |
 | §10 public API compatibility tests | partial — `test_deprecation_aliases.py` covers aliases; documented imports + command-helper signatures untested |
 | §4 fail CI on async resource warnings | **done** (`pyproject.toml` filterwarnings) |
@@ -145,17 +149,17 @@ Adjacent protocol-citizen work, tracked independently:
 [#207](https://github.com/dewet22/givenergy-modbus/issues/207) (self-tuning
 skip-if-fresh), [#198](https://github.com/dewet22/givenergy-modbus/issues/198)
 (heartbeat-ACK dropout investigation),
-[#205](https://github.com/dewet22/givenergy-modbus/issues/205) (signed
-directional power sensors).
+~~[#205](https://github.com/dewet22/givenergy-modbus/issues/205) (signed
+directional power sensors) — shipped 2026-06-12~~.
 
 ## Hardware-gated backlog
 
 Throttled by capture availability rather than engineering time — listed so the
 gating is explicit, not scheduled:
 [#193](https://github.com/dewet22/givenergy-modbus/issues/193) (Gen-1 gateway),
-[#169](https://github.com/dewet22/givenergy-modbus/issues/169) /
-[#189](https://github.com/dewet22/givenergy-modbus/issues/189) (inverter
-addressing), [#114](https://github.com/dewet22/givenergy-modbus/issues/114) /
+[#169](https://github.com/dewet22/givenergy-modbus/issues/169) (inverter
+addressing — HYBRID_GEN2/GEN3 verification; ~~[#189](https://github.com/dewet22/givenergy-modbus/issues/189) 0x31 retire shipped 2.3.0~~),
+[#114](https://github.com/dewet22/givenergy-modbus/issues/114) /
 [#115](https://github.com/dewet22/givenergy-modbus/issues/115) (undecoded
 function codes), [#141](https://github.com/dewet22/givenergy-modbus/issues/141)
 (three-phase grid-power nodes),
@@ -178,9 +182,15 @@ as captures arrive.
   fork-migration guide, provenance accessors
   [#248](https://github.com/dewet22/givenergy-modbus/issues/248)). Pillar A
   moves down a line.
-- **2.4.x** — Pillar A (write safety) and Foundations §3.
-- **2.5.x** — Pillar B (provenance) feeding Pillar C (data-trust consolidation),
-  with Foundations §6/§7/§10 alongside.
+- **2.4.0** — shipped 2026-06-17. Diverged again from slated Pillar A: compact
+  probe-dump serialiser `to_compact`/`parse_compact` (#269, new public API) and
+  the first real three-phase capture fixture (#270). Proper semver from here —
+  roadmap items are prioritised, not version-pinned.
+- **2.4.x** — Pillar A remaining (client-boundary model-aware write rejection +
+  dry-run validation) and Foundations §3 (asyncio.Lock refresh serialisation).
+- **2.5.x** — Pillar B (provenance) feeding Pillar C (data-trust consolidation,
+  including the `_commit_bank` discard flip and freeze verdict once threshold is
+  calibrated), with Foundations §6/§7/§10 alongside.
 - **3.0** — Pillar D, only once a second vendor or transport makes the extraction
   real.
 
