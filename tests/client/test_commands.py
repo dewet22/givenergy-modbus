@@ -54,6 +54,9 @@ async def test_set_charge_target_soc_writes_only_the_target_register():
     assert commands.set_charge_target_soc_3ph(45) == [
         WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, 45),
     ]
+    # Encode round-trip confirms both target registers are on the PDU write allowlist.
+    commands.set_charge_target_soc(45)[0].encode()
+    commands.set_charge_target_soc_3ph(45)[0].encode()
 
     # The whole point: no enable side effects (unlike set_charge_target_enabled).
     for reqs in (commands.set_charge_target_soc(45), commands.set_charge_target_soc_3ph(45)):
@@ -73,6 +76,20 @@ async def test_set_charge_target_soc_writes_only_the_target_register():
             fn(0)
         with pytest.raises(ValueError, match=r"Charge Target SOC \(101\) must be in \[4-100\]\%"):
             fn(101)
+
+
+async def test_charge_target_setters_reject_non_integral():
+    """All charge-target setters route target_soc through _as_int (reject bool / non-integral float)."""
+    for fn in (
+        commands.set_charge_target_enabled,
+        commands.set_charge_target_soc,
+        commands.set_charge_target_enabled_3ph,
+        commands.set_charge_target_soc_3ph,
+    ):
+        with pytest.raises(ValueError, match="bool"):
+            fn(True)
+        with pytest.raises(ValueError, match="integral"):
+            fn(50.5)
 
 
 async def test_set_charge():

@@ -160,6 +160,7 @@ def disable_charge_target() -> list[TransparentRequest]:
 
 def set_charge_target_enabled(target_soc: int) -> list[TransparentRequest]:
     """Enable charging and stop once SOC reaches target_soc. Also referred to as "winter mode"."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     ret = set_enable_charge(True)
@@ -179,6 +180,7 @@ def set_charge_target(target_soc: int) -> list[TransparentRequest]:
 
 def set_charge_target_soc(target_soc: int) -> list[TransparentRequest]:
     """Set only the charge target SOC (HR 116), leaving the charge / charge-target enable bits untouched."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC, target_soc)]
@@ -293,6 +295,7 @@ def set_battery_soc_reserve_3ph(val: int) -> list[TransparentRequest]:
 
 def set_charge_target_enabled_3ph(target_soc: int) -> list[TransparentRequest]:
     """Enable AC charging and set the charge target on three-phase inverters (HR 1111, shadows single-phase HR 116)."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     ret = set_ac_charge(True)
@@ -317,6 +320,7 @@ def set_charge_target_3ph(target_soc: int) -> list[TransparentRequest]:
 
 def set_charge_target_soc_3ph(target_soc: int) -> list[TransparentRequest]:
     """Set only the charge target SOC on three-phase inverters (HR 1111), leaving enable bits untouched."""
+    target_soc = _as_int(target_soc, "target_soc")
     if not 4 <= target_soc <= 100:
         raise ValueError(f"Charge Target SOC ({target_soc}) must be in [4-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.CHARGE_TARGET_SOC_3PH, target_soc)]
