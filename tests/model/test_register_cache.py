@@ -48,6 +48,17 @@ def test_to_compact_grammar_and_60_aligned_blocking():
     assert not any("probe @ device" in line for line in lines)  # no header
 
 
+def test_to_compact_skips_none_valued_registers():
+    """A None-valued register (the 'unset' sentinel) isn't emitted; the gap splits the run."""
+    out = to_compact({0x31: RegisterCache({HR(0): 5, HR(1): None, HR(2): 7})})
+    assert out == "0x31:HR(0,1) 0005\n0x31:HR(2,1) 0007\n"
+
+
+def test_parse_compact_skips_legacy_row_without_header():
+    """A legacy colon row with no preceding device header is skipped (no device context)."""
+    assert parse_compact("HR(0,1): 0005\n") == {}
+
+
 def test_parse_compact_inline_sample():
     """Parse the device-inline format."""
     dump = "0x31:HR(0,3) 000000050234\n"
