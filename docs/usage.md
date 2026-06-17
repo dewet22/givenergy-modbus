@@ -4,6 +4,11 @@ The client is async — all network operations must run inside an `asyncio` even
 Commands are plain functions in `givenergy_modbus.client.commands` that return lists of
 requests, which you send via `one_shot_command` or `execute`.
 
+> Coming from the `givenergy-modbus-async` fork? See
+> [Migrating from the async fork](migrating-from-the-async-fork.md) for the lifecycle
+> change (`detect()` + `load_config()`/`refresh()` replacing `refresh_plant`) and the
+> attribute renames.
+
 ## Basic example
 
 ```python
@@ -122,6 +127,14 @@ grid_export` (IR24 = IR42 + IR30) holds at the busbar. These node assignments we
 established empirically against a single-phase Hybrid Gen 1; the three-phase layout
 (whether `p_grid_out` aggregates the inverter phases or stays a separate CT register)
 is not yet confirmed.
+
+### Directional power accessors
+
+If you just want non-negative, sign-resolved power for display, prefer the computed
+accessors over the raw signed registers — they read the same on single- and three-phase:
+`battery_charge_power` / `battery_discharge_power` (split `p_battery` by direction) and
+`grid_import_power` / `grid_export_power` (split the net grid register). Each returns the
+magnitude in its direction and `0` otherwise, so a consumer needn't handle the sign.
 
 ## Tuning timeouts and retries
 
@@ -356,6 +369,32 @@ All model objects are pydantic v2 models:
 plant.inverter.model_dump()       # dict
 plant.inverter.model_dump_json()  # JSON string
 ```
+
+### Register caches
+
+A `RegisterCache` (`plant.register_caches[device_address]`) round-trips two ways:
+
+```python
+from givenergy_modbus.model.register_cache import RegisterCache, to_compact, parse_compact
+
+cache.json()                   # JSON string of {register: value}
+RegisterCache.from_json(text)  # inverse
+
+to_compact({0x32: cache})      # compact hex probe-dump (str), human-legible
+parse_compact(text)            # inverse → {device_address: RegisterCache}
+```
+
+`json()`/`from_json()` are single-cache; `to_compact`/`parse_compact` are multi-device and
+emit the same compact hex format the CLI's `probe --compact` produces, so a register dump
+pasted into a bug report can be reconstructed and replayed offline.
+
+### Sharing a redacted dump
+
+Before sharing a cache or a whole plant, strip the serial numbers. `cache.redact_serials()`
+returns a copy with serial registers date-redacted (family prefix + manufacture week kept,
+unit digits zeroed — the same scheme as the capture-frame redaction below), and
+`plant.redact()` redacts the whole plant. Combine with the serialisers above for a
+share-safe export.
 
 ## Capturing frames for bug reports
 

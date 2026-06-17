@@ -16,6 +16,8 @@
 
 ::: givenergy_modbus.model.battery
 
+::: givenergy_modbus.model.register_cache
+
 ::: givenergy_modbus.model
 
 ## PDU

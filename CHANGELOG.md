@@ -77,7 +77,7 @@ moves to 2.4.x. Two behaviour changes lead it, both capture-proven.
   evidence via the displacement-PF identity, and pinned by a golden-master
   test so they can't silently regress.
 - **Migration guide for fork consumers**
-  ([docs/migrating-from-the-async-fork.md](../migrating-from-the-async-fork.md), #244):
+  ([migrating-from-the-async-fork](https://dewet22.github.io/givenergy-modbus/migrating-from-the-async-fork/), #244):
   the import map, polling-lifecycle change, command mapping and attribute
   rename table for moving from the community `givenergy_modbus_async` fork to
   this library — written for GivTCP's port, useful to any fork descendant.

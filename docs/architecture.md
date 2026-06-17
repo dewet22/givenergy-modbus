@@ -163,7 +163,7 @@ Each device model is backed by a `RegisterGetter` subclass that holds a `REGISTE
 - **Register address(es)** — one or more `HR`/`IR`/`MR` addresses; multi-register fields (e.g. `uint32`, strings) list all constituent registers.
 - **Bounds** — optional `min`/`max` in real-world units (post-conversion), used to detect physically impossible values and log violations before committing a bank.
 
-`RegisterCache` is a plain `dict[HR|IR|MR, int]` with coherence checking (serial-number validity) and bounds validation on each incoming bank. Violations are currently logged at ERROR and the bank committed; a future enforcement step will discard the whole bank on any violation.
+`RegisterCache` is a plain `defaultdict[HR|IR|MR, int]` — just storage. Coherence (serial-number validity) and bounds validation live on the `RegisterGetter`, applied by `Plant._commit_bank` as each bank arrives. Several classes of bad bank are already **rejected** outright: an invalid serial, a CRC failure, an all-zero dropout of a previously-populated bank, and a battery sub-bus splice. Bounds violations are the remaining exception — they're logged (at DEBUG) and the bank is still committed, pending the enforcement step tracked by a `TODO` in `_commit_bank`.
 
 ## References
 

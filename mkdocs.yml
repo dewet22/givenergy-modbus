@@ -2,6 +2,16 @@ site_name: GivEnergy Modbus
 site_url: https://dewet22.github.io/givenergy-modbus
 repo_url: https://github.com/dewet22/givenergy-modbus
 repo_name: dewet22/givenergy-modbus
+# Kept in the repo as history but excluded from the published site:
+# - release-notes/*: retired per-version pages — CHANGELOG.md is the single source of truth.
+# - the roadmap docs: superseded planning under trunk-based dev (no version-pinned roadmaps).
+# - superpowers/: untracked internal design-doc scaffolding, never user docs.
+exclude_docs: |
+  release-notes/
+  superpowers/
+  post-v2.2-plan.md
+  v2.1-roadmap.md
+  post-v2-improvement-plan.md
 nav:
   - Home: index.md
   - Installation: installation.md
@@ -12,16 +22,10 @@ nav:
       - Register identification: register-identification.md
       - Hardware & firmware quirks: hardware-firmware-quirks.md
       - Migrating from the async fork: migrating-from-the-async-fork.md
-  - Contributing: contributing.md
-  - Changelog: changelog.md
-  - Release notes:
-      - v2.0: release-notes/v2.0.md
-  - Planning:
-      - Post-v2.2 unified roadmap: post-v2.2-plan.md
-      - v2.1 roadmap: v2.1-roadmap.md
-      - Post-v2.0 improvement plan: post-v2-improvement-plan.md
       - Graph-shaped Plant (#106): plant-device-graph.md
       - Power-flow state (shared spec): flow-state-spec.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
 theme:
   name: material
   language: en
