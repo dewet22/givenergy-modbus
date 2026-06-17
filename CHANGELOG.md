@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] - 2026-06-17
+
+### ✨ Added
+
+- derive three-phase p_battery and e_battery_throughput (#262) ([52737cf](https://github.com/dewet22/givenergy-modbus/commit/52737cf05a16ace1a5376410eafe7b402c3d2b66))
+- add set_charge_target_soc + clarify set_charge_target naming (#243) ([1cb20c5](https://github.com/dewet22/givenergy-modbus/commit/1cb20c5a42944540930060aeffbf95ed9e85b9e7))
+
+### 🐛 Fixed
+
+- correct three-phase i_battery scale (deci → centi) (#264) ([fd64bb9](https://github.com/dewet22/givenergy-modbus/commit/fd64bb99e91ea973bb04efca759f0ce4fe294150))
+
+### 🔧 Maintenance
+
+- allowlist read-only dev commands in project settings ([1d4564d](https://github.com/dewet22/givenergy-modbus/commit/1d4564d6e790612bd4d78dad8205db1054accad5))
+- bump astral-sh/setup-uv from 7.6.0 to 8.2.0 (#259) ([2c9b0dd](https://github.com/dewet22/givenergy-modbus/commit/2c9b0dd99d350fd63569d722c327761ceca94c36))
+
 ## [2.3.2] - 2026-06-14
 
 ### 🐛 Fixed
