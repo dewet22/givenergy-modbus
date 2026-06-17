@@ -2,7 +2,7 @@ import datetime
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.register import HR, IR, MR
-from givenergy_modbus.model.register_cache import RegisterCache
+from givenergy_modbus.model.register_cache import RegisterCache, _compact_blocks, parse_compact, to_compact
 from tests.model.test_register import HOLDING_REGISTERS, INPUT_REGISTERS
 
 
@@ -21,6 +21,86 @@ def test_to_from_json():
 def test_to_from_json_mr():
     """Ensure MR keys round-trip through JSON serialisation."""
     assert RegisterCache.from_json('{"MR(0)": 1, "MR:5": 99}') == {MR(0): 1, MR(5): 99}
+
+
+def test_compact_round_trip():
+    """to_compact → parse_compact reproduces the device caches (multi-device, multi-bank, full blocks)."""
+    caches = {
+        0x31: RegisterCache({**{HR(i): i for i in range(60)}, **{IR(i): i * 2 for i in range(60)}}),
+        0x32: RegisterCache({IR(60 + i): 0xABCD - i for i in range(60)}),
+    }
+    assert parse_compact(to_compact(caches)) == caches
+
+
+def test_compact_blocks_empty():
+    """The block grouper is a total function: empty indices → no blocks."""
+    assert _compact_blocks([]) == []
+
+
+def test_to_compact_grammar_and_60_aligned_blocking():
+    """Device-inline rows, 60-aligned non-overlapping blocks, lowercase hex."""
+    caches = {0x31: RegisterCache({HR(i): i for i in range(120)})}
+    out = to_compact(caches)
+    lines = out.splitlines()
+    # HR 0-119 splits at the 60 boundary into two non-overlapping rows, device inline.
+    assert lines[0] == "0x31:HR(0,60) " + "".join(f"{i:04x}" for i in range(60))
+    assert lines[1] == "0x31:HR(60,60) " + "".join(f"{i:04x}" for i in range(60, 120))
+    assert not any("probe @ device" in line for line in lines)  # no header
+
+
+def test_to_compact_skips_none_valued_registers():
+    """A None-valued register (the 'unset' sentinel) isn't emitted; the gap splits the run."""
+    out = to_compact({0x31: RegisterCache({HR(0): 5, HR(1): None, HR(2): 7})})
+    assert out == "0x31:HR(0,1) 0005\n0x31:HR(2,1) 0007\n"
+
+
+def test_parse_compact_skips_legacy_row_without_header():
+    """A legacy colon row with no preceding device header is skipped (no device context)."""
+    assert parse_compact("HR(0,1): 0005\n") == {}
+
+
+def test_parse_compact_inline_sample():
+    """Parse the device-inline format."""
+    dump = "0x31:HR(0,3) 000000050234\n"
+    assert parse_compact(dump) == {0x31: RegisterCache({HR(0): 0, HR(1): 5, HR(2): 0x0234})}
+
+
+def test_parse_compact_legacy_header_fallback():
+    """Legacy header format (device in a comment, colon rows) still parses, incl. host:port tail."""
+    dump = "# HR probe @ device 0x31 on 192.168.1.5:8899\nHR(0,3): 000000050234\n"
+    assert parse_compact(dump) == {0x31: RegisterCache({HR(0): 0, HR(1): 5, HR(2): 0x0234})}
+
+
+def test_parse_compact_ignores_diagnostics_and_provenance():
+    """Timed-out `..` ranges, `Probing …` status lines, blank lines, and `#` provenance are ignored."""
+    dump = "Probing IR(0,60)…\n# probe of 192.168.1.5:8899\n0x11:IR(0,2) 00010002\nIR(180..239): timed out\n\n"
+    assert parse_compact(dump) == {0x11: RegisterCache({IR(0): 1, IR(1): 2})}
+
+
+def test_parse_compact_order_agnostic():
+    """Rows supplied out of order still produce the right caches."""
+    dump = "0x32:IR(5,1) 0009\n0x31:HR(0,1) 0007\n"
+    assert parse_compact(dump) == {0x31: RegisterCache({HR(0): 7}), 0x32: RegisterCache({IR(5): 9})}
+
+
+def test_parse_compact_tolerates_wrapped_hex():
+    """A reflowed (line-wrapped) hex value reassembles; a garbled row drops without aborting the rest."""
+    # IR(0,3) wants 12 hex chars, reflowed across two lines → reassembles.
+    wrapped = "0x11:IR(0,3) 00010002\n0003\n0x11:IR(10,1) 002a\n"
+    assert parse_compact(wrapped) == {0x11: RegisterCache({IR(0): 1, IR(1): 2, IR(2): 3, IR(10): 0x2A})}
+
+    # Overshooting continuation → only that row drops; the well-formed row still parses.
+    garbled = "0x11:HR(0,2) 0005\nzzzznotsensehex\n0x11:HR(10,1) 002a\n"
+    assert parse_compact(garbled) == {0x11: RegisterCache({HR(10): 0x2A})}
+
+
+def test_parse_compact_merges_concatenated_sections():
+    """Concatenated dumps across devices/banks merge into one cache map."""
+    dump = "0x31:HR(0,1) 0007\n0x32:IR(5,1) 0009\n0x31:IR(0,1) 0003\n"
+    assert parse_compact(dump) == {
+        0x31: RegisterCache({HR(0): 7, IR(0): 3}),
+        0x32: RegisterCache({IR(5): 9}),
+    }
 
 
 def test_from_json_skips_unknown_register_prefix():
