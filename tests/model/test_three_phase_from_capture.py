@@ -13,6 +13,7 @@ real wire→model path, and it locks in the fixes these frames drove:
 See ``tests/fixtures/captures/three_phase_hv_a/README.md`` for provenance.
 """
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -50,10 +51,20 @@ async def _replay() -> Plant:
     return plant
 
 
+@pytest.fixture(scope="module")
+def replayed_plant() -> Plant:
+    """Decode the capture once for the module (the frames are immutable, so share the Plant).
+
+    A plain sync fixture wrapping ``asyncio.run`` rather than a module-scoped async fixture,
+    which is brittle under pytest-asyncio's per-function event-loop scoping.
+    """
+    return asyncio.run(_replay())
+
+
 @pytest.mark.timeout(15)
-async def test_three_phase_inverter_battery_decode_from_capture():
+def test_three_phase_inverter_battery_decode_from_capture(replayed_plant: Plant):
     """Inverter-level battery fields decode correctly on a real three-phase HV unit (0x11)."""
-    inv = ThreePhaseInverter.from_register_cache((await _replay()).register_caches[0x11])
+    inv = ThreePhaseInverter.from_register_cache(replayed_plant.register_caches[0x11])
     assert inv.battery_soc == 71  # type: ignore[attr-defined]
     # #264: i_battery is centi, not deci — the final frame's raw -1 decodes to -0.01 A (was -0.1).
     assert inv.i_battery == pytest.approx(-0.01)  # type: ignore[attr-defined]
@@ -67,9 +78,9 @@ async def test_three_phase_inverter_battery_decode_from_capture():
 
 
 @pytest.mark.timeout(15)
-async def test_three_phase_hv_bcu_decode_from_capture():
+def test_three_phase_hv_bcu_decode_from_capture(replayed_plant: Plant):
     """BCU cluster-level data decodes (the path consumers read per-stack SOC/temp from)."""
-    bcu = Bcu.from_register_cache((await _replay()).register_caches[0x70])
+    bcu = Bcu.from_register_cache(replayed_plant.register_caches[0x70])
     assert bcu.number_of_modules == 6  # type: ignore[attr-defined]
     assert bcu.battery_soc_max == 71  # type: ignore[attr-defined]
     assert bcu.battery_soc_min == 68  # type: ignore[attr-defined]
