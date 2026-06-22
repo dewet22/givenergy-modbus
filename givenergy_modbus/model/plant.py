@@ -879,17 +879,29 @@ class Plant(GivEnergyBaseModel):
                 )
                 return True
             self._splice_escrow[device_address] = (ir_no, new_val)
-            _logger.warning(
-                "Held battery bank for device 0x%02x — single physics-impossible delta (%s) held pending "
-                "confirmation next poll; keeping last-good. Please report if seen.",
+            # A lone out-of-threshold delta is the self-healing escrow path: held one poll, then
+            # committed if it persists (genuine step) or dropped if it reverts (transient). It is
+            # NOT confirmed corruption — the >=2/immutable REJECT above is — so it logs at INFO to
+            # avoid alarming on legitimate load-step sag / recalibration (#256, hass#186).
+            _logger.info(
+                "Battery bank for device 0x%02x: single out-of-threshold delta (%s) held one poll pending "
+                "confirmation; serving last-good meanwhile.",
                 device_address,
                 self._format_splice_trips(phys),
             )
             return False
 
         # Clean transition (no trips): a previously-held step that snapped back lands here, so
-        # drop any escrow and commit.
-        self._splice_escrow.pop(device_address, None)
+        # drop any escrow and commit. Log the reversion so the held->resolved story is visible at
+        # one level (the hold is INFO too).
+        reverted = self._splice_escrow.pop(device_address, None)
+        if reverted is not None:
+            _logger.info(
+                "Battery bank for device 0x%02x: previously-held delta at IR(%d) reverted on re-read "
+                "(transient); committing clean bank.",
+                device_address,
+                reverted[0],
+            )
         return True
 
     @staticmethod
