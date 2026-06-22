@@ -566,6 +566,10 @@ def test_inverter_wrapper_delegates_to_primitive(method_name, args):
     assert via_wrapper == via_primitive
     # Sanity: a delegation that emits writes should produce a non-empty request list.
     assert via_wrapper
+    # Regression guard (per AGENTS.md): constructing is not enough — every emitted write
+    # must also encode(), which is where a missing PDU-allowlist entry surfaces.
+    for cmd in via_wrapper:
+        cmd.encode()
 
 
 # (method_name, args) for slot wrappers — the wrapper must thread `self.slot_map`
@@ -588,3 +592,6 @@ def test_inverter_slot_wrapper_threads_single_phase_slot_map(method_name, args):
     via_primitive = getattr(commands, method_name)(*args, SINGLE_PHASE_SLOTS)
     assert via_wrapper == via_primitive
     assert via_wrapper
+    # Regression guard (per AGENTS.md): slot writes must survive the PDU encode path too.
+    for cmd in via_wrapper:
+        cmd.encode()

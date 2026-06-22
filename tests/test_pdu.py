@@ -607,6 +607,9 @@ def test_write_request_rejects_non_int_register():
         WriteHoldingRegisterRequest(register="20", value=1)  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="Register type .* is unacceptable"):
         WriteHoldingRegisterRequest(register=None, value=1)  # type: ignore[arg-type]
+    # A valid request must also survive encode() — the path where a missing PDU-allowlist
+    # entry would surface (per AGENTS.md). HR 20 (ENABLE_CHARGE_TARGET) is write-safe.
+    assert WriteHoldingRegisterRequest(register=20, value=1).encode()
 
 
 def test_write_ensure_valid_state_rejects_none_register():

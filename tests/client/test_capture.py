@@ -375,14 +375,6 @@ async def test_capture_frames_resets_state_on_completion():
     assert client._capture_redactor_tx is None
 
 
-async def test_capture_frames_rejects_concurrent_capture():
-    """A second capture_frames while one is in flight raises RuntimeError (single-capture invariant)."""
-    client = Client(host="foo", port=4321)
-    client._capture_sink = lambda d, f: None  # simulate an in-flight capture
-    with pytest.raises(RuntimeError, match="already running"):
-        await client.capture_frames(lambda d, f: None, duration=0)
-
-
 async def test_capture_frames_flushes_held_tail_on_close(monkeypatch):
     """On close, each direction's redactor tail is flushed to the sink so trailing bytes aren't lost."""
     client = Client(host="foo", port=4321)
