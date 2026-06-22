@@ -15931,7 +15931,19 @@ when it is most valuable to export energy.</p>
 <span class="normal">1387</span>
 <span class="normal">1388</span>
 <span class="normal">1389</span>
-<span class="normal">1390</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">1390</span>
+<span class="normal">1391</span>
+<span class="normal">1392</span>
+<span class="normal">1393</span>
+<span class="normal">1394</span>
+<span class="normal">1395</span>
+<span class="normal">1396</span>
+<span class="normal">1397</span>
+<span class="normal">1398</span>
+<span class="normal">1399</span>
+<span class="normal">1400</span>
+<span class="normal">1401</span>
+<span class="normal">1402</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -16308,17 +16320,29 @@ when it is most valuable to export energy.</p>
                 <span class="p">)</span>
                 <span class="k">return</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ir_no</span><span class="p">,</span> <span class="n">new_val</span><span class="p">)</span>
-            <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                <span class="s2">&quot;Held battery bank for device 0x</span><span class="si">%02x</span><span class="s2"> — single physics-impossible delta (</span><span class="si">%s</span><span class="s2">) held pending &quot;</span>
-                <span class="s2">&quot;confirmation next poll; keeping last-good. Please report if seen.&quot;</span><span class="p">,</span>
+            <span class="c1"># A lone out-of-threshold delta is the self-healing escrow path: held one poll, then</span>
+            <span class="c1"># committed if it persists (genuine step) or dropped if it reverts (transient). It is</span>
+            <span class="c1"># NOT confirmed corruption — the &gt;=2/immutable REJECT above is — so it logs at INFO to</span>
+            <span class="c1"># avoid alarming on legitimate load-step sag / recalibration (#256, hass#186).</span>
+            <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: single out-of-threshold delta (</span><span class="si">%s</span><span class="s2">) held one poll pending &quot;</span>
+                <span class="s2">&quot;confirmation; serving last-good meanwhile.&quot;</span><span class="p">,</span>
                 <span class="n">device_address</span><span class="p">,</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_format_splice_trips</span><span class="p">(</span><span class="n">phys</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
 
         <span class="c1"># Clean transition (no trips): a previously-held step that snapped back lands here, so</span>
-        <span class="c1"># drop any escrow and commit.</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="c1"># drop any escrow and commit. Log the reversion so the held-&gt;resolved story is visible at</span>
+        <span class="c1"># one level (the hold is INFO too).</span>
+        <span class="n">reverted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reverted</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: previously-held delta at IR(</span><span class="si">%d</span><span class="s2">) reverted on re-read &quot;</span>
+                <span class="s2">&quot;(transient); committing clean bank.&quot;</span><span class="p">,</span>
+                <span class="n">device_address</span><span class="p">,</span>
+                <span class="n">reverted</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="nd">@staticmethod</span>
@@ -17195,16 +17219,16 @@ Client pointing at one of the EMS-managed inverters; <code>inverters</code> and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1199</span>
-<span class="normal">1200</span>
-<span class="normal">1201</span>
-<span class="normal">1202</span>
-<span class="normal">1203</span>
-<span class="normal">1204</span>
-<span class="normal">1205</span>
-<span class="normal">1206</span>
-<span class="normal">1207</span>
-<span class="normal">1208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store direct-inverter register caches for serial reconciliation (#106 Phase 3).</span>
 
 <span class="sd">    Caches are stored separately from ``register_caches`` to avoid the Modbus</span>
@@ -17242,19 +17266,7 @@ all-zero rejection (#206).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">919</span>
-<span class="normal">920</span>
-<span class="normal">921</span>
-<span class="normal">922</span>
-<span class="normal">923</span>
-<span class="normal">924</span>
-<span class="normal">925</span>
-<span class="normal">926</span>
-<span class="normal">927</span>
-<span class="normal">928</span>
-<span class="normal">929</span>
-<span class="normal">930</span>
-<span class="normal">931</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">931</span>
 <span class="normal">932</span>
 <span class="normal">933</span>
 <span class="normal">934</span>
@@ -17267,7 +17279,19 @@ all-zero rejection (#206).</p>
 <span class="normal">941</span>
 <span class="normal">942</span>
 <span class="normal">943</span>
-<span class="normal">944</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
+<span class="normal">944</span>
+<span class="normal">945</span>
+<span class="normal">946</span>
+<span class="normal">947</span>
+<span class="normal">948</span>
+<span class="normal">949</span>
+<span class="normal">950</span>
+<span class="normal">951</span>
+<span class="normal">952</span>
+<span class="normal">953</span>
+<span class="normal">954</span>
+<span class="normal">955</span>
+<span class="normal">956</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17323,19 +17347,7 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1009</span>
-<span class="normal">1010</span>
-<span class="normal">1011</span>
-<span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
-<span class="normal">1015</span>
-<span class="normal">1016</span>
-<span class="normal">1017</span>
-<span class="normal">1018</span>
-<span class="normal">1019</span>
-<span class="normal">1020</span>
-<span class="normal">1021</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1021</span>
 <span class="normal">1022</span>
 <span class="normal">1023</span>
 <span class="normal">1024</span>
@@ -17350,7 +17362,19 @@ policy. See #91.</p>
 <span class="normal">1033</span>
 <span class="normal">1034</span>
 <span class="normal">1035</span>
-<span class="normal">1036</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
+<span class="normal">1036</span>
+<span class="normal">1037</span>
+<span class="normal">1038</span>
+<span class="normal">1039</span>
+<span class="normal">1040</span>
+<span class="normal">1041</span>
+<span class="normal">1042</span>
+<span class="normal">1043</span>
+<span class="normal">1044</span>
+<span class="normal">1045</span>
+<span class="normal">1046</span>
+<span class="normal">1047</span>
+<span class="normal">1048</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17501,19 +17525,7 @@ model attribute's freshness.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">946</span>
-<span class="normal">947</span>
-<span class="normal">948</span>
-<span class="normal">949</span>
-<span class="normal">950</span>
-<span class="normal">951</span>
-<span class="normal">952</span>
-<span class="normal">953</span>
-<span class="normal">954</span>
-<span class="normal">955</span>
-<span class="normal">956</span>
-<span class="normal">957</span>
-<span class="normal">958</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">958</span>
 <span class="normal">959</span>
 <span class="normal">960</span>
 <span class="normal">961</span>
@@ -17526,7 +17538,19 @@ model attribute's freshness.</p>
 <span class="normal">968</span>
 <span class="normal">969</span>
 <span class="normal">970</span>
-<span class="normal">971</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
+<span class="normal">971</span>
+<span class="normal">972</span>
+<span class="normal">973</span>
+<span class="normal">974</span>
+<span class="normal">975</span>
+<span class="normal">976</span>
+<span class="normal">977</span>
+<span class="normal">978</span>
+<span class="normal">979</span>
+<span class="normal">980</span>
+<span class="normal">981</span>
+<span class="normal">982</span>
+<span class="normal">983</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">register</span><span class="p">:</span> <span class="n">Register</span><span class="p">,</span>
