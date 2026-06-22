@@ -593,3 +593,116 @@ def test_write_request_rejects_bool_value():
     # Plain ints still accepted.
     assert WriteHoldingRegisterRequest(register=20, value=1).value == 1
     assert WriteHoldingRegisterRequest(register=20, value=0).value == 0
+
+
+# ── Write-register guard paths ────────────────────────────────────────────────
+# The write-register PDUs are the hardware-write boundary; their defensive
+# rejection branches matter as much as the happy path. These pin the type guard,
+# the None guards in ensure_valid_state, and the unsafe-register Response warning.
+
+
+def test_write_request_rejects_non_int_register():
+    """A non-int register is rejected at construction, not silently passed to the wire."""
+    with pytest.raises(ValueError, match="Register type .* is unacceptable"):
+        WriteHoldingRegisterRequest(register="20", value=1)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="Register type .* is unacceptable"):
+        WriteHoldingRegisterRequest(register=None, value=1)  # type: ignore[arg-type]
+
+
+def test_write_ensure_valid_state_rejects_none_register():
+    """A register forced to None after construction is caught by ensure_valid_state."""
+    w = WriteHoldingRegisterResponse(register=20, value=5)
+    w.register = None  # type: ignore[assignment]
+    with pytest.raises(InvalidPduState, match="Register must be set"):
+        w.ensure_valid_state()
+
+
+def test_write_ensure_valid_state_rejects_none_value():
+    """A value forced to None after construction is caught by ensure_valid_state."""
+    w = WriteHoldingRegisterResponse(register=20, value=5)
+    w.value = None  # type: ignore[assignment]
+    with pytest.raises(InvalidPduState, match="Register value must be set"):
+        w.ensure_valid_state()
+
+
+def test_write_str_falls_back_when_register_unset():
+    """__str__ degrades to the base representation rather than crashing on a None register."""
+    w = WriteHoldingRegisterResponse(register=20, value=5)
+    w.register = None  # type: ignore[assignment]
+    s = str(w)
+    assert "WriteHoldingRegisterResponse" in s
+    # The "<reg> -> <val>" detail form is skipped when the register is unset.
+    assert " -> " not in s
+
+
+def test_write_response_warns_on_unsafe_register(caplog):
+    """A WriteHoldingRegisterResponse for a non-allowlisted register logs a WARNING.
+
+    The Response side is advisory (it never raises — the inverter has already acted), but a
+    register outside WRITE_SAFE_REGISTERS arriving in a response is worth surfacing to operators.
+    """
+    import logging
+
+    # 12345 is a valid 16-bit value but is not in WRITE_SAFE_REGISTERS.
+    resp = WriteHoldingRegisterResponse(register=12345, value=1)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.write_registers"):
+        resp.ensure_valid_state()  # must not raise
+    assert any("not safe for writing" in r.message for r in caplog.records), (
+        f"expected an unsafe-register WARNING, got: {[r.message for r in caplog.records]}"
+    )
+
+
+def test_write_response_error_frame_skips_unsafe_warning(caplog):
+    """An error response is exempt from the unsafe-register warning (the write was rejected)."""
+    import logging
+
+    resp = WriteHoldingRegisterResponse(register=12345, value=1, error=True)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.pdu.write_registers"):
+        resp.ensure_valid_state()
+    assert not any("not safe for writing" in r.message for r in caplog.records)
+
+
+# ── Heartbeat PDU round-trip ──────────────────────────────────────────────────
+# Heartbeats keep the dongle connection alive; a decode/expected_response
+# regression silently drops the link. None of these paths had direct coverage.
+
+
+def test_heartbeat_request_expected_response_carries_adapter_type():
+    """A HeartbeatRequest produces a HeartbeatResponse echoing the data-adapter type."""
+    req = HeartbeatRequest(data_adapter_serial_number="AB1234G567", data_adapter_type=5)
+    resp = req.expected_response()
+    assert isinstance(resp, HeartbeatResponse)
+    assert resp.data_adapter_type == 5
+
+
+def test_heartbeat_response_decode_populates_fields():
+    """HeartbeatResponse.decode reads the 10-byte serial and the adapter-type byte."""
+    resp = HeartbeatResponse()
+    resp.decode(b"AB1234G567" + b"\x07")
+    assert resp.data_adapter_serial_number == "AB1234G567"
+    assert resp.data_adapter_type == 7
+    # No further reply is expected for a HeartbeatResponse.
+    assert resp.expected_response() is None
+
+
+def test_heartbeat_decode_function_data_reads_adapter_type():
+    """_decode_function_data pulls the single adapter-type byte off the decoder."""
+    m = HeartbeatRequest(data_adapter_serial_number="AB1234G567")
+    m._decode_function_data(PayloadDecoder(b"\x09"))
+    assert m.data_adapter_type == 9
+
+
+def test_heartbeat_extra_shape_hash_keys_includes_adapter_type():
+    """The adapter type participates in the shape hash so distinct types don't collide."""
+    assert HeartbeatRequest(data_adapter_type=3)._extra_shape_hash_keys() == (3,)
+    assert HeartbeatRequest(data_adapter_type=3).shape_hash() != HeartbeatRequest(data_adapter_type=4).shape_hash()
+
+
+def test_heartbeat_request_encode_decode_round_trip():
+    """A HeartbeatRequest survives an encode→decode round-trip intact (exercises check-code path)."""
+    req = HeartbeatRequest(data_adapter_serial_number="AB1234G567", data_adapter_type=5)
+    frame = req.encode()
+    decoded = ClientIncomingMessage.decode_bytes(frame)
+    assert isinstance(decoded, HeartbeatRequest)
+    assert decoded.data_adapter_serial_number == "AB1234G567"
+    assert decoded.data_adapter_type == 5

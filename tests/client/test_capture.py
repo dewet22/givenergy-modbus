@@ -354,3 +354,45 @@ def test_frame_redactor_recovers_from_oversized_length_field():
     assert b"CE2231G454" not in out, "redactor must recover and still redact the real frame"
     assert out.startswith(bogus), "the false-marker junk must pass through intact"
     assert len(out) == len(bogus) + len(real), "no bytes lost or stalled in the buffer"
+
+
+# ---------------------------------------------------------------------------
+# capture_frames() orchestration — setup, flush-on-close, single-capture guard
+# ---------------------------------------------------------------------------
+
+
+async def test_capture_frames_resets_state_on_completion():
+    """capture_frames installs the sink/redactors for its duration and tears them all down."""
+    client = Client(host="foo", port=4321)
+    captured: list[tuple[str, bytes]] = []
+
+    # duration=0 returns from the internal sleep immediately, then runs the finally block.
+    await client.capture_frames(lambda d, f: captured.append((d, f)), duration=0)
+
+    # The finally block must clear every capture handle so a later capture starts clean.
+    assert client._capture_sink is None
+    assert client._capture_redactor_rx is None
+    assert client._capture_redactor_tx is None
+
+
+async def test_capture_frames_rejects_concurrent_capture():
+    """A second capture_frames while one is in flight raises RuntimeError (single-capture invariant)."""
+    client = Client(host="foo", port=4321)
+    client._capture_sink = lambda d, f: None  # simulate an in-flight capture
+    with pytest.raises(RuntimeError, match="already running"):
+        await client.capture_frames(lambda d, f: None, duration=0)
+
+
+async def test_capture_frames_flushes_held_tail_on_close(monkeypatch):
+    """On close, each direction's redactor tail is flushed to the sink so trailing bytes aren't lost."""
+    client = Client(host="foo", port=4321)
+    emitted: list[tuple[str, bytes]] = []
+    monkeypatch.setattr(client, "_emit_to_sink", lambda direction, data: emitted.append((direction, data)))
+
+    # Force both redactors to yield a non-empty tail when flushed at close.
+    monkeypatch.setattr(FrameRedactor, "flush", lambda self: b"tail-" + self._direction.encode())
+
+    await client.capture_frames(lambda d, f: None, duration=0)
+
+    assert ("rx", b"tail-rx") in emitted
+    assert ("tx", b"tail-tx") in emitted
