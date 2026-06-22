@@ -16,13 +16,23 @@ This module is the single source of truth for those thresholds. ``Plant._commit_
 imports it to guard live commits; ``tests/debug/physics_delta_classify.py`` imports it to
 re-validate the corpus separation against the very same constants.
 
-Thresholds are in raw register units and set at roughly 10x what the quantity can really do
-in a ~30 s poll interval — cell voltages barely move (electrochemical inertia), cell-mass
+Thresholds are in raw register units, set comfortably above what the quantity can really do
+in a ~30 s poll interval — cell voltages move little near idle but sag under load, cell-mass
 temperatures drift, the junction-adjacent MOSFET sensor steps (hence its much wider
-threshold), capacities move with charge current (~0.5 Ah/poll at LV power). Status/bitfield
+threshold), capacities move with charge current and step on recalibration. Status/bitfield
 words carry no physics and are exempt (IR(91) legitimately toggles 0x0E10 <-> 0x0610 every
 few minutes). ``num_cells``, ``bms_firmware_version`` and the serial block are constant —
 ANY transient change is corruption on its own.
+
+The original Gen1-calibrated corpus separated cleanly, but field reports from higher-power
+hardware (hass#186, an AC3 + 2x Giv-Bat 5.2: a ~103 mV cell sag on a load step, a ~10 Ah
+capacity recalibration) showed legitimate per-poll deltas just past the ``cell_mV`` (100) and
+``cap_centiAh`` (1000) thresholds — caught by the singleton escrow but noisy. Both were widened
+(cell_mV->150, cap_centiAh->1500). This is safe because the corpus's *only* corruption signature
+is the temperature-zero cohort (>=2 temp registers -> rejected outright): no corruption has ever
+presented as a lone ``cell_mV`` or ``cap_centiAh`` delta, so widening exactly these two classes
+(temps untouched) cannot weaken detection, and any residual over-threshold singleton still
+escrows.
 
 Indices throughout are **bank-relative** (``i`` == register ``IR(60 + i)``); the trips
 returned carry the **absolute** IR number for logging.
@@ -35,7 +45,9 @@ BANK_BASE = 60
 
 # (class name, bank-relative indices, threshold on |delta| in raw units).
 SCALAR_RULES: list[tuple[str, list[int], int]] = [
-    ("cell_mV", list(range(0, 16)), 100),  # IR(60-75) cells: ~10 mV/poll real max
+    # IR(60-75) cells: ~10 mV/poll at idle, but a higher-power inverter (e.g. AC3) sags a cell
+    # ~100+ mV on a charge<->discharge load step (I×R) — see hass#186; 150 clears that with margin.
+    ("cell_mV", list(range(0, 16)), 150),
     ("cell_temp_deci", [16, 17, 18, 19, 43, 44], 50),  # IR(76-79,103,104): thermal mass
     ("mosfet_temp_deci", [21], 200),  # IR(81): junction-adjacent, steps with load
     ("v_cells_sum_mV", [20], 1600),  # IR(80)
@@ -43,12 +55,14 @@ SCALAR_RULES: list[tuple[str, list[int], int]] = [
     ("e_total_deci", [45, 46], 50),  # IR(105/106) lifetime energy
 ]
 # uint32 pairs: (class name, (high index, low index), threshold on the assembled pair value).
+# cap_centiAh 1500: capacity recalibration (coulomb-count correction) can step ~10 Ah in one poll
+# on a larger pack — see hass#186.
 PAIR_RULES: list[tuple[str, tuple[int, int], int]] = [
     ("v_out_mV", (22, 23), 2000),  # IR(82-83)
-    ("cap_centiAh", (24, 25), 1000),  # IR(84-85) cap_calibrated
-    ("cap_centiAh", (26, 27), 1000),  # IR(86-87) cap_design
-    ("cap_centiAh", (28, 29), 1000),  # IR(88-89) cap_remaining
-    ("cap_centiAh", (41, 42), 1000),  # IR(101-102) cap_design2
+    ("cap_centiAh", (24, 25), 1500),  # IR(84-85) cap_calibrated
+    ("cap_centiAh", (26, 27), 1500),  # IR(86-87) cap_design
+    ("cap_centiAh", (28, 29), 1500),  # IR(88-89) cap_remaining
+    ("cap_centiAh", (41, 42), 1500),  # IR(101-102) cap_design2
 ]
 # num_cells IR(97), bms_firmware_version IR(98), serial block IR(110-114) — ANY change is
 # corruption on its own. IR(115) is deliberately NOT here: the corpus treated it as a

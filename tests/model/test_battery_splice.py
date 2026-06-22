@@ -48,7 +48,7 @@ def test_ir115_is_dropped_from_immutable():
 def test_single_cell_voltage_step_is_one_physics_trip():
     base = _baseline()
     new = list(base)
-    new[5] = 3600  # +300 mV > 100 mV threshold
+    new[5] = 3600  # +300 mV > 150 mV threshold
     phys, immut = classify_transition(base, new)
     assert immut == []
     assert phys == [(BANK_BASE + 5, "cell_mV", 3300, 3600)]
@@ -57,7 +57,7 @@ def test_single_cell_voltage_step_is_one_physics_trip():
 def test_within_threshold_jitter_does_not_trip():
     base = _baseline()
     new = list(base)
-    new[5] = 3399  # +99 mV, within the 100 mV threshold
+    new[5] = 3449  # +149 mV, within the 150 mV threshold
     new[16] = 299  # +49 deci, within the 50 threshold
     assert classify_transition(base, new) == ([], [])
 

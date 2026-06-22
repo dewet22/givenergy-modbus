@@ -2540,13 +2540,13 @@ def test_splice_clean_bank_commits_no_false_trip(plant: Plant, caplog):
     import logging
 
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
-    # +99 mV cell (≤ 100 threshold), +49 deci temp (≤ 50 threshold) — both within limits.
-    jitter = _coherent_battery_bank({60: 3399, 76: 299})
+    # +149 mV cell (≤ 150 threshold), +49 deci temp (≤ 50 threshold) — both within limits.
+    jitter = _coherent_battery_bank({60: 3449, 76: 299})
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, jitter, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
     warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
     assert not warns
-    assert plant.register_caches[_BATT][IR(60)] == 3399
+    assert plant.register_caches[_BATT][IR(60)] == 3449
     assert plant.register_caches[_BATT][IR(76)] == 299
 
 
@@ -2557,41 +2557,47 @@ def test_splice_single_step_escrow_then_confirm(plant: Plant, caplog):
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
-    wild = _coherent_battery_bank({60: 3500})  # IR60: +200 mV > 100 threshold — one trip
+    wild = _coherent_battery_bank({60: 3500})  # IR60: +200 mV > 150 threshold — one trip
 
-    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+    # The singleton self-healing path is INFO, never WARNING (#256/hass#186).
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, wild, device_address=_BATT, received_at=t1)
-    holds = [r for r in caplog.records if "Held battery bank" in r.message and "0x33" in r.message]
-    assert len(holds) == 1, "single impossible delta must emit one 'held' WARNING"
+    holds = [r for r in caplog.records if "held one poll pending confirmation" in r.message and "0x33" in r.message]
+    assert len(holds) == 1, "single out-of-threshold delta must emit one 'held' log"
+    assert holds[0].levelno == logging.INFO, "self-healing hold must be INFO, not WARNING"
     assert plant.register_caches[_BATT][IR(60)] == 3300, "escrowed bank must not commit"
 
     caplog.clear()
-    # Re-read the same value: |3500 − 3500| = 0 ≤ 100 → value-consistent → confirm.
+    # Re-read the same value: |3500 − 3500| = 0 ≤ 150 → value-consistent → confirm.
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, wild, device_address=_BATT, received_at=t2)
-    confirms = [r for r in caplog.records if "confirmed" in r.message and "0x33" in r.message]
+    confirms = [r for r in caplog.records if "confirmed on re-read" in r.message and "0x33" in r.message]
     assert len(confirms) == 1, "confirmed step must emit one INFO log"
     assert plant.register_caches[_BATT][IR(60)] == 3500, "confirmed step must commit"
 
 
 def test_splice_single_step_escrow_then_snapback(plant: Plant, caplog):
-    """A transient splice that snaps back clears the escrow and commits the clean bank."""
+    """A transient splice that snaps back clears the escrow, logs the reversion (INFO), commits clean."""
     import logging
 
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     wild = _coherent_battery_bank({60: 3500})
-    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, wild, device_address=_BATT, received_at=t1)
     assert plant.register_caches[_BATT][IR(60)] == 3300
 
     caplog.clear()
     clean = _coherent_battery_bank()  # IR60 back to seed value
-    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, clean, device_address=_BATT, received_at=t2)
-    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
-    assert not warns, "snapback to seed must commit cleanly with no WARNING"
+    plant_warns = [
+        r for r in caplog.records if r.levelno >= logging.WARNING and r.name == "givenergy_modbus.model.plant"
+    ]
+    assert not plant_warns, "snapback must emit no WARNING from the splice guard"
+    reverts = [r for r in caplog.records if "reverted on re-read" in r.message and "0x33" in r.message]
+    assert len(reverts) == 1, "snapback must emit one INFO reversion log"
     assert plant.register_caches[_BATT][IR(60)] == 3300
 
 
@@ -2602,15 +2608,15 @@ def test_splice_two_wild_values_in_a_row_held(plant: Plant, caplog):
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
-    # v1: IR60 → 3500 (|3500 − 3300| = 200 > 100) → escrow (IR60, 3500).
-    # v2: IR60 → 3700 (|3700 − 3500| = 200 > 100) → does NOT confirm → re-escrow (IR60, 3700).
+    # v1: IR60 → 3500 (|3500 − 3300| = 200 > 150) → escrow (IR60, 3500).
+    # v2: IR60 → 3700 (|3700 − 3500| = 200 > 150) → does NOT confirm → re-escrow (IR60, 3700).
     v1 = _coherent_battery_bank({60: 3500})
     v2 = _coherent_battery_bank({60: 3700})
-    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, v1, device_address=_BATT, received_at=t1)
         _feed_bank(plant, v2, device_address=_BATT, received_at=t2)
-    holds = [r for r in caplog.records if "Held battery bank" in r.message and "0x33" in r.message]
-    assert len(holds) == 2, "each wild read must emit its own 'held' WARNING"
+    holds = [r for r in caplog.records if "held one poll pending confirmation" in r.message and "0x33" in r.message]
+    assert len(holds) == 2, "each wild read must emit its own 'held' INFO log"
     assert plant.register_caches[_BATT][IR(60)] == 3300, "neither wild value must have committed"
 
 
