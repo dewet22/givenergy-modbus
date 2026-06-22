@@ -8,7 +8,7 @@ import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.model import TimeSlot
-from givenergy_modbus.pdu import ReadInputRegistersResponse
+from givenergy_modbus.pdu import HeartbeatRequest, ReadInputRegistersResponse
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
 
 
@@ -44,6 +44,43 @@ async def test_expected_response():
     expected_res = await expected_res_future
     assert expected_res.has_same_shape(res)
     assert expected_res == res
+
+
+async def test_consumer_auto_responds_to_heartbeat_request():
+    """An inbound HeartbeatRequest is answered automatically by queueing a HeartbeatResponse frame."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    client.reader.feed_data(HeartbeatRequest(data_adapter_serial_number="AB1234G567", data_adapter_type=2).encode())
+    client.reader.feed_eof()
+
+    await client._task_network_consumer()
+
+    # The consumer enqueues the heartbeat reply (frame, None, None) on the tx queue.
+    assert not client.tx_queue.empty()
+    frame, frame_sent, response_future = client.tx_queue.get_nowait()
+    assert frame_sent is None and response_future is None
+    # The reply round-trips back to a HeartbeatResponse echoing the adapter type.
+    from givenergy_modbus.pdu import ClientOutgoingMessage
+
+    reply = ClientOutgoingMessage.decode_bytes(frame)
+    assert reply.data_adapter_type == 2
+
+
+async def test_consumer_logs_warning_on_write_error_response(caplog):
+    """A WriteHoldingRegisterResponse flagged as an error is surfaced at WARNING."""
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    client.reader.feed_data(
+        WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20, error=True).encode()
+    )
+    client.reader.feed_eof()
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    assert any("WriteHoldingRegisterResponse" in r.message and r.levelno == logging.WARNING for r in caplog.records), (
+        f"expected a WARNING for the errored write response, got: {[(r.levelname, r.message) for r in caplog.records]}"
+    )
 
 
 def test_timeslot():

@@ -10,6 +10,7 @@ without threading `slot_map` through every slot call. Lower-level callers
 still use `commands.*` directly (covered by `test_commands.py`).
 """
 
+from datetime import datetime
 from datetime import time as dt_time
 
 import pytest
@@ -530,3 +531,67 @@ def test_mixin_write_safe_registers_is_subset_of_pdu_set():
 
     rogue = _InverterCommands.WRITE_SAFE_REGISTERS - PDU_SET
     assert not rogue, f"mixin WRITE_SAFE_REGISTERS contains registers the PDU layer rejects: {sorted(rogue)}"
+
+
+# ---------------------------------------------------------------------------
+# Wrapper delegation — every _InverterCommands.set_* / reset_* wrapper must
+# forward to the matching commands.* primitive. These are the public surface
+# givenergy-hass / givenergy-cli call; the primitives are tested in
+# test_commands.py, but the thin instance wrappers were largely uncovered.
+# ---------------------------------------------------------------------------
+
+# (method_name, args) for wrappers that take no slot_map.
+_PLAIN_WRAPPERS = [
+    ("disable_charge_target", ()),
+    ("set_inverter_reboot", ()),
+    ("set_calibrate_battery_soc", ()),
+    ("set_discharge_mode_max_power", ()),
+    ("set_discharge_mode_to_match_demand", ()),
+    ("set_enable_discharge", (True,)),
+    ("set_active_power_rate", (50,)),
+    ("set_enable_rtc", (True,)),
+    ("set_battery_charge_limit", (30,)),
+    ("set_battery_discharge_limit", (30,)),
+    ("set_battery_power_reserve", (20,)),
+    ("set_system_date_time", (datetime(2024, 1, 2, 3, 4, 5),)),
+]
+
+
+@pytest.mark.parametrize("method_name, args", _PLAIN_WRAPPERS)
+def test_inverter_wrapper_delegates_to_primitive(method_name, args):
+    """inverter.<method>(*args) returns exactly what commands.<method>(*args) produces."""
+    inv = _single_phase()
+    via_wrapper = getattr(inv, method_name)(*args)
+    via_primitive = getattr(commands, method_name)(*args)
+    assert via_wrapper == via_primitive
+    # Sanity: a delegation that emits writes should produce a non-empty request list.
+    assert via_wrapper
+    # Regression guard (per AGENTS.md): constructing is not enough — every emitted write
+    # must also encode(), which is where a missing PDU-allowlist entry surfaces.
+    for cmd in via_wrapper:
+        cmd.encode()
+
+
+# (method_name, args) for slot wrappers — the wrapper must thread `self.slot_map`
+# (SINGLE_PHASE_SLOTS here) through to the primitive's final positional argument.
+_SLOT_WRAPPERS = [
+    ("set_charge_slot_start", (1, dt_time(1, 30))),
+    ("set_charge_slot_end", (1, dt_time(2, 0))),
+    ("set_discharge_slot_start", (1, dt_time(3, 0))),
+    ("set_discharge_slot_end", (1, dt_time(4, 0))),
+    ("reset_charge_slot", (1,)),
+    ("set_discharge_slot", (1, TimeSlot(start=dt_time(5, 0), end=dt_time(7, 0)))),
+]
+
+
+@pytest.mark.parametrize("method_name, args", _SLOT_WRAPPERS)
+def test_inverter_slot_wrapper_threads_single_phase_slot_map(method_name, args):
+    """Slot wrappers forward to the primitive with the inverter's slot_map appended."""
+    inv = _single_phase()
+    via_wrapper = getattr(inv, method_name)(*args)
+    via_primitive = getattr(commands, method_name)(*args, SINGLE_PHASE_SLOTS)
+    assert via_wrapper == via_primitive
+    assert via_wrapper
+    # Regression guard (per AGENTS.md): slot writes must survive the PDU encode path too.
+    for cmd in via_wrapper:
+        cmd.encode()
