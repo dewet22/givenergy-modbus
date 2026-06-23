@@ -1604,14 +1604,12 @@ def test_commit_bank_incoherent_serial_discards_bank(plant: Plant, caplog):
 
 
 def test_commit_bank_valid_serial_allows_bank(plant: Plant):
-    """A battery bank with a valid serial number must be committed."""
+    """A battery bank with a valid serial number must be committed (after #289 cold-start corroboration)."""
     # "BG1234G567" encoded across IR(110-114): each register holds two ASCII chars
     # 'B'=0x42, 'G'=0x47 → 0x4247; '1'=0x31, '2'=0x32 → 0x3132; etc.
-    pdu = _make_ir_pdu(
-        {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221},
-        device_address=0x33,
-    )
-    plant.update(pdu)
+    bank = {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221}
+    plant.update(_make_ir_pdu(bank, device_address=0x33))  # held (cold-start, #289)
+    plant.update(_make_ir_pdu(bank, device_address=0x33))  # corroborates → committed
     assert plant.register_caches[0x33].get(IR(60)) == 3221
 
 
@@ -1795,7 +1793,8 @@ def test_commit_rejects_allzero_over_nonzero_battery_bank(plant: Plant):
     """#147: an all-zero battery page over previously-good data is rejected (kept last-good)."""
     # Valid serial ("BG1234G567" across IR110-114) + data, so the seed is coherent and commits.
     seed = {110: 0x4247, 111: 0x3132, 112: 0x3334, 113: 0x3536, 114: 0x3738, 60: 3221}
-    plant.update(_make_ir_pdu(seed, device_address=0x33, base_register=60))
+    plant.update(_make_ir_pdu(seed, device_address=0x33, base_register=60))  # held (cold-start, #289)
+    plant.update(_make_ir_pdu(seed, device_address=0x33, base_register=60))  # corroborates → commits
     assert plant.register_caches[0x33][IR(60)] == 3221
     plant.update(_make_ir_pdu(dict.fromkeys(seed, 0), device_address=0x33, base_register=60))
     assert plant.register_caches[0x33][IR(60)] == 3221  # retained
@@ -2143,6 +2142,7 @@ def test_comms_quality_counters_initialised_empty():
     assert plant.splice_reject_count == {}
     assert plant.splice_held_count == {}
     assert plant.retry_count == {}
+    assert plant.cold_start_held_count == {}
 
 
 def test_crc_failure_count_increments_per_device(plant: Plant):
@@ -2157,7 +2157,7 @@ def test_crc_failure_count_increments_per_device(plant: Plant):
 
 def test_splice_reject_count_increments_on_hard_reject(plant: Plant):
     """A hard-rejected battery bank bumps splice_reject_count, not splice_held_count."""
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     corrupt = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # 4 temp-zeros → >=2 physics
     _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
     assert plant.splice_reject_count == {_BATT: 1}
@@ -2166,7 +2166,7 @@ def test_splice_reject_count_increments_on_hard_reject(plant: Plant):
 
 def test_splice_held_count_increments_on_escrow(plant: Plant):
     """A single-delta escrow hold bumps splice_held_count, not splice_reject_count."""
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     wild = _coherent_battery_bank({60: 3600})  # one out-of-threshold delta → hold one poll
     _feed_bank(plant, wild, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
     assert plant.splice_held_count == {_BATT: 1}
@@ -2176,7 +2176,7 @@ def test_splice_held_count_increments_on_escrow(plant: Plant):
 def test_splice_held_count_tracks_scalar_immutable_coherent_hold(plant: Plant):
     """The #281 coherent scalar-immutable hold counts as a held event."""
     poisoned = _coherent_battery_bank({98: 9999})
-    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)  # cold-start adopts (no count)
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)  # corroborate poison in (#289)
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
     assert plant.splice_held_count == {_BATT: 1}
     assert plant.splice_reject_count == {}
@@ -2530,6 +2530,28 @@ def _coherent_battery_bank(overrides: dict[int, int] | None = None) -> dict[int,
 _BATT = 0x33  # battery pack #1 on bare Plant; 0x32 → inverter getter on bare Plant
 
 
+def _establish_baseline(
+    plant: "Plant",
+    bank: dict[int, int] | None = None,
+    *,
+    device_address: int = _BATT,
+    received_at: datetime | None = _T0,
+) -> None:
+    """Commit a corroborated last-good battery baseline (two agreeing cold-start reads, #289).
+
+    Under #289 the first bank seen against an empty cache is *held* pending a corroborating read, so
+    a single feed no longer seeds the cache. Splice scenarios that need an established baseline feed
+    the same bank twice: the second read (at ``received_at``) corroborates and commits, leaving the
+    cache, ingestion stamp and observation clock exactly where a pre-#289 single feed at
+    ``received_at`` would — the held first read lands one nominal poll (30 s) earlier. A persistently
+    identical value corroborates, so this also primes a poisoned baseline (pass the poison as ``bank``).
+    """
+    bank = bank if bank is not None else _coherent_battery_bank()
+    first_at = received_at - timedelta(seconds=30) if received_at is not None else None
+    _feed_bank(plant, bank, device_address=device_address, received_at=first_at)
+    _feed_bank(plant, bank, device_address=device_address, received_at=received_at)
+
+
 def test_splice_scalar_immut_with_physics_held_not_rejected(plant: Plant, caplog):
     """A cap-pair physics step + scalar-immutable mutation is HELD as last-good, not rejected (#286).
 
@@ -2538,7 +2560,7 @@ def test_splice_scalar_immut_with_physics_held_not_rejected(plant: Plant, caplog
     """
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     corrupted = _coherent_battery_bank({89: 36000, 98: 3006})  # cap-pair physics + IR98 immutable
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
@@ -2558,7 +2580,7 @@ def test_splice_poisoned_scalar_immut_heals_after_long_insistence(plant: Plant, 
     import logging
 
     poisoned = _coherent_battery_bank({98: 9999})  # corrupt first frame adopted at cold start
-    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
     healthy = _coherent_battery_bank()  # true IR98 == 3005, coherent
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         for n in range(1, 10):  # polls 1-9 @ 100 s: streak started at poll 1, elapsed <= 800 s < 900
@@ -2577,7 +2599,7 @@ def test_splice_poisoned_baseline_with_drift_heals_whole_bank(plant: Plant, capl
     import logging
 
     poisoned = _coherent_battery_bank({98: 9999})
-    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
     healthy = _coherent_battery_bank({98: 3005, 60: 3600})  # true fw + a sustained real cell delta
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         for n in range(1, 11):  # 10 polls @ 100 s → poll 10: count 10, elapsed 900 → heal
@@ -2595,7 +2617,7 @@ def test_splice_transient_corruption_held_not_adopted_soc_protected(plant: Plant
     """
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)  # baseline: fw 3005, soc 55
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)  # baseline: fw 3005, soc 55
     corrupt = _coherent_battery_bank({98: 2241, 100: 13})  # IR98 immutable + IR100 soc 55->13 (>10 thresh)
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         for n in range(1, 7):  # 6 polls @ 30 s = 180 s, far inside the 900 s heal window
@@ -2615,7 +2637,7 @@ def test_splice_heal_seconds_knob_tunes_hold_duration(plant: Plant):
     """splice_heal_seconds tunes how long a scalar-immutable disagreement is held before healing (#286)."""
     plant.splice_heal_seconds = 60.0  # much shorter than the 900 s default
     poisoned = _coherent_battery_bank({98: 9999})
-    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
     healthy = _coherent_battery_bank()
     for n in range(1, 11):  # 10 polls @ 10 s → poll 10: count 10, elapsed 90 >= 60 → heal
         _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
@@ -2627,7 +2649,7 @@ def test_splice_block_age_grows_during_scalar_immut_hold(plant: Plant):
 
     A consumer can therefore see the data is cached/stale (#65).
     """
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)  # commits at t0
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)  # commits at t0
     corrupt = _coherent_battery_bank({98: 2241, 100: 13})  # held (not re-stamped)
     for n in range(1, 4):
         _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=30 * n))
@@ -2639,7 +2661,7 @@ def test_splice_oscillating_scalar_immut_never_adopts(plant: Plant, caplog):
     """Oscillating IR98 garbage never self-adopts — a changing signature resets the streak (#281)."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)  # clean seed: IR98 3005
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)  # clean seed: IR98 3005
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         for n in range(1, 13):  # 12 polls @ 15 s = 180 s, still < 300 s (no stale bypass)
             garbage = _coherent_battery_bank({98: 9000 + (n % 2) * 500, 60: 3600})  # IR98 flips each poll
@@ -2652,7 +2674,7 @@ def test_splice_serial_block_change_always_rejected(plant: Plant, caplog):
     """A serial-block change is hard-rejected forever — wrong-pack / re-address protection (#281)."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     swapped = _coherent_battery_bank({110: 0x4248})  # serial first word BG.. → a different pack
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         for n in range(1, 25):  # 24 polls @ 15 s = 360 s; observation clock refreshes so bypass never fires
@@ -2673,7 +2695,7 @@ def test_splice_heal_requires_uninterrupted_signature(plant: Plant, caplog):
 
     plant.splice_heal_seconds = 1.0  # make the 10-poll floor the operative gate
     poisoned = _coherent_battery_bank({98: 9999})
-    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
     drift = _coherent_battery_bank({98: 3005, 60: 3600})  # scalar trip (IR98) + 1 physics trip (IR60)
     interrupt = _coherent_battery_bank({98: 9999, 60: 3600})  # IR98 == baseline → no scalar trip → resets streak
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
@@ -2690,7 +2712,7 @@ def test_splice_cell_and_temp_cohort_rejected(plant: Plant, caplog):
     """Two independent physics trips (a cell + a temperature) are rejected outright (≥2-physics rule)."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     corrupted = _coherent_battery_bank(
         {
             74: 3700,  # IR74: cell delta 400 mV > 100 threshold
@@ -2710,7 +2732,7 @@ def test_splice_temp_cohort_zeros_rejected(plant: Plant, caplog):
     """All four cell-mass temps dropping to zero (4 physics trips) is rejected outright."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     corrupted = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # IR76–79: 250 → 0
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
@@ -2723,7 +2745,7 @@ def test_splice_clean_bank_commits_no_false_trip(plant: Plant, caplog):
     """In-threshold jitter on a clean bank commits normally and emits no splice WARNING."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     # +149 mV cell (≤ 150 threshold), +49 deci temp (≤ 50 threshold) — both within limits.
     jitter = _coherent_battery_bank({60: 3449, 76: 299})
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
@@ -2738,7 +2760,7 @@ def test_splice_single_step_escrow_then_confirm(plant: Plant, caplog):
     """A lone impossible delta is escrowed; re-reading the same value confirms and commits."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     wild = _coherent_battery_bank({60: 3500})  # IR60: +200 mV > 150 threshold — one trip
@@ -2764,7 +2786,7 @@ def test_splice_single_step_escrow_then_snapback(plant: Plant, caplog):
     """A transient splice that snaps back clears the escrow, logs the reversion (INFO), commits clean."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     wild = _coherent_battery_bank({60: 3500})
@@ -2789,7 +2811,7 @@ def test_splice_two_wild_values_in_a_row_held(plant: Plant, caplog):
     """Two consecutive wild values for the same register are both held (value-consistency guard)."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     # v1: IR60 → 3500 (|3500 − 3300| = 200 > 150) → escrow (IR60, 3500).
@@ -2804,22 +2826,107 @@ def test_splice_two_wild_values_in_a_row_held(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(60)] == 3300, "neither wild value must have committed"
 
 
-def test_splice_cold_start_no_op_commit(plant: Plant, caplog):
-    """The first bank to a fresh device address has no last-good and commits as a no-op."""
+def test_cold_start_first_frame_held_pending(plant: Plant, caplog):
+    """The first bank against an empty cache is held pending a corroborating read, not adopted (#289).
+
+    A transient sub-bus splice in the very first frame would otherwise poison the baseline. The frame
+    is held (the cache stays empty, the device serves "unknown") at INFO — normal startup, not
+    corruption, so no WARNING.
+    """
     import logging
 
-    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
-    warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
-    assert not warns
+    assert IR(60) not in plant.register_caches[_BATT], "first cold-start frame must be held, not committed"
+    assert plant.cold_start_held_count == {_BATT: 1}
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "0x33" in r.message]
+    assert [r for r in caplog.records if "first cold-start frame" in r.message and "0x33" in r.message]
+
+
+def test_cold_start_baseline_adopted_on_corroborating_read(plant: Plant, caplog):
+    """A cold-start baseline is adopted once a second poll reads it the same (#289)."""
+    import logging
+
+    bank = _coherent_battery_bank()
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, bank, device_address=_BATT, received_at=_T0)  # held
+        _feed_bank(plant, bank, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))  # corroborates
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # committed after corroboration
+    assert plant.register_caches[_BATT][IR(98)] == 3005
+    assert [r for r in caplog.records if "corroborated on re-read" in r.message and "0x33" in r.message]
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "0x33" in r.message]
+
+
+def test_cold_start_transient_splice_first_frame_not_adopted(plant: Plant, caplog):
+    """A transient splice in the first cold-start frame never becomes the baseline (#289 — core anti-poison).
+
+    Frame 1 is a temp-zero cohort splice; frame 2 is clean. They disagree, so the splice is never
+    corroborated; the most-recent (clean) frame becomes the candidate and is adopted once it reads the
+    same again. The corrupt zeros must never reach the cache.
+    """
+    import logging
+
+    splice = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # 4 temp-zeros — a #256 splice shape
+    clean = _coherent_battery_bank()
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, splice, device_address=_BATT, received_at=_T0)  # held (frame 1)
+        _feed_bank(plant, clean, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))  # disagree → re-hold
+        assert IR(76) not in plant.register_caches[_BATT], "must not adopt with only one clean read seen"
+        _feed_bank(plant, clean, device_address=_BATT, received_at=_T0 + timedelta(seconds=60))  # corroborates clean
+    assert plant.register_caches[_BATT][IR(76)] == 250, "clean baseline adopted; splice zeros never committed"
     assert plant.register_caches[_BATT][IR(60)] == 3300
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "0x33" in r.message]
+
+
+def test_cold_start_most_recent_wins_recovers_from_corrupt_first(plant: Plant):
+    """When cold-start reads disagree, the most-recent frame becomes the candidate (#289).
+
+    corrupt, clean, clean → the corrupt first frame is discarded and the clean value adopted.
+    """
+    corrupt = _coherent_battery_bank({98: 9999, 60: 3600})  # immutable + physics trip vs clean
+    clean = _coherent_battery_bank()
+    _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0)  # held
+    _feed_bank(plant, clean, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))  # disagree → re-hold clean
+    _feed_bank(plant, clean, device_address=_BATT, received_at=_T0 + timedelta(seconds=60))  # corroborate clean
+    assert plant.register_caches[_BATT][IR(98)] == 3005  # corrupt first frame discarded
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+
+
+def test_cold_start_stale_pending_reset(plant: Plant):
+    """A pending cold-start frame older than the stale-bypass window isn't corroborated across the gap (#289).
+
+    The first frame is held; the next arrives after > STALE_BYPASS_SECONDS (a genuine outage). It is
+    treated as a fresh first read (re-held), not corroborated against the stale pending, so a further
+    matching read is needed to adopt.
+    """
+    bank = _coherent_battery_bank()
+    _feed_bank(plant, bank, device_address=_BATT, received_at=_T0)  # held
+    # 400 s later (> 300 s): the pending is stale → treated as a fresh first, re-held (not adopted).
+    _feed_bank(plant, bank, device_address=_BATT, received_at=_T0 + timedelta(seconds=400))
+    assert IR(60) not in plant.register_caches[_BATT], "stale pending must not corroborate across the gap"
+    assert plant.cold_start_held_count[_BATT] == 2  # both reads held
+    # A further matching read now corroborates the fresh pending and commits.
+    _feed_bank(plant, bank, device_address=_BATT, received_at=_T0 + timedelta(seconds=430))
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+
+
+def test_cold_start_persistent_value_corroborates(plant: Plant):
+    """A persistently-identical value corroborates and is adopted — #289 targets transient splices, not it.
+
+    Two identical poisoned reads read the same, so they corroborate into the baseline; recovering a
+    *persistent* poison is the #286 heal's job, not the cold-start guard's. Documents the boundary.
+    """
+    poisoned = _coherent_battery_bank({98: 9999})
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)  # held
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))  # corroborates
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # adopted — #286 heal recovers this later
 
 
 def test_splice_ir115_usb_change_alone_commits(plant: Plant, caplog):
     """IR(115) usb_device_inserted is mutable (exempt from IMMUTABLE); a change alone must commit."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
         _feed_bank(
             plant,
@@ -2836,7 +2943,7 @@ def test_splice_short_read_skips_guard(plant: Plant, caplog):
     """A register_count < 60 frame bypasses the splice guard even if values would trip battery physics."""
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     # IR76 dropping to 0 would be a temp-zero physics trip on a full 60-register bank.
     # With count=1 the guard gates off and the value commits normally.
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
@@ -2863,8 +2970,8 @@ def test_splice_non_battery_device_skips_guard(plant: Plant, caplog):
 
 def test_splice_escrow_isolated_per_device(plant: Plant):
     """The splice escrow is keyed per device; confirming 0x33 must not affect 0x34's held state."""
-    _feed_bank(plant, _coherent_battery_bank(), device_address=0x33, received_at=_T0)
-    _feed_bank(plant, _coherent_battery_bank(), device_address=0x34, received_at=_T0)
+    _establish_baseline(plant, device_address=0x33, received_at=_T0)
+    _establish_baseline(plant, device_address=0x34, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     # Hold 0x33 on IR60; hold 0x34 on IR61.
@@ -2878,7 +2985,7 @@ def test_splice_escrow_isolated_per_device(plant: Plant):
 
 def test_splice_rejected_bank_preserves_staleness(plant: Plant):
     """A splice-rejected bank records no ingestion timestamp; block_age keeps growing (#65/#256)."""
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     # ≥2 physics trips → rejected → _stamp_block never called.
     corrupted = _coherent_battery_bank({60: 3700, 76: 0})
     _feed_bank(plant, corrupted, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
@@ -2897,7 +3004,7 @@ def test_splice_stale_baseline_bypass(plant: Plant, caplog):
     """
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     # Simulate a 400 s gap (> STALE_BYPASS_SECONDS=300): values that would be >=2 physics
     # trips on a fresh baseline must commit unconditionally after a stale one.
     t_reconnect = _T0 + timedelta(seconds=400)
@@ -2925,7 +3032,7 @@ def test_splice_sustained_corruption_never_bypassed(plant: Plant, caplog):
     """
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     corrupt = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # 4 temp-zero physics trips
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         # 20 consecutive polls × 30 s = 600 s, well past the 300 s bypass window.
@@ -2949,7 +3056,7 @@ def test_splice_bypass_only_after_genuine_gap_not_rejection_streak(plant: Plant,
     """
     import logging
 
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     # A rejected corruption bank shortly after seed: advances the observation clock to _T0+30.
     _feed_bank(
         plant,
@@ -2979,8 +3086,8 @@ def test_splice_guard_normalises_naive_received_at(plant: Plant, caplog):
     import logging
 
     naive_t0 = datetime(2026, 6, 9, 12, 0, 0)  # no tzinfo
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=naive_t0)
-    assert plant.register_caches[_BATT][IR(60)] == 3300  # cold-start commit, no crash on naive
+    _establish_baseline(plant, device_address=_BATT, received_at=naive_t0)
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # corroborated commit, no crash on naive
 
     naive_later = datetime(2026, 6, 9, 12, 6, 40)  # +400 s, still naive (> bypass window)
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
@@ -3001,8 +3108,8 @@ def test_splice_guard_defaults_now_when_received_at_missing(plant: Plant):
     The `now is None` fallback must produce a tz-aware timestamp so consecutive observations
     still subtract cleanly; a near-instant second poll has a ~0 s gap and commits normally.
     """
-    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT)  # received_at=None
-    assert plant.register_caches[_BATT][IR(60)] == 3300  # cold-start commit, no crash
+    _establish_baseline(plant, device_address=_BATT, received_at=None)  # both reads default now()
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # corroborated commit, no crash
     # Second bank moments later: gap ~0 s (no bypass), single in-threshold change commits.
     _feed_bank(plant, _coherent_battery_bank({60: 3350}), device_address=_BATT)
     assert plant.register_caches[_BATT][IR(60)] == 3350
