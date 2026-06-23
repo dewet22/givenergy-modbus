@@ -16,6 +16,7 @@ from givenergy_modbus.model.battery_splice import (
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
+    is_corruption_cohort,
 )
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
@@ -540,6 +541,10 @@ class Plant(GivEnergyBaseModel):
     splice_reject_count: dict[int, int] = Field(default_factory=dict, exclude=True)
     splice_held_count: dict[int, int] = Field(default_factory=dict, exclude=True)
     retry_count: dict[int, int] = Field(default_factory=dict, exclude=True)
+    # Cold-start baseline holds (#289): a battery bank held back while the first frame after an
+    # empty cache awaits a corroborating read (vs splice_held_count, which is corruption). A benign
+    # "battery initialising / confirming baseline" signal — expected once per device at startup.
+    cold_start_held_count: dict[int, int] = Field(default_factory=dict, exclude=True)
 
     # How long (seconds) to hold last-good for a disputed *constant* battery register (num_cells,
     # bms_firmware_version) before healing to a sustained new value (#286). Splice corruption that
@@ -565,6 +570,16 @@ class Plant(GivEnergyBaseModel):
     # threshold (genuine step persists) rather than snapping back (transient splice reverts).
     # Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.
     _splice_escrow: dict[int, tuple[int, int]] = PrivateAttr(default_factory=dict)
+
+    # Cold-start baseline confirmation (#289): per battery device address, the first full bank seen
+    # against an empty cache, held pending a corroborating read — (the 60-value bank-relative frame,
+    # ingestion time). A cold-start frame is not adopted until the next poll reads it the same (no
+    # physics/immutable trip between the two), so a transient sub-bus splice (#256) — different
+    # garbage each poll — never corroborates and never poisons the baseline. Most-recent-wins on a
+    # disagreement. A persistently-identical scalar-immutable poison corroborates and is left to the
+    # #286 heal; a corroborated temp-zero corruption cohort is refused outright (it would hard-reject
+    # all healthy data, which the scalar heal can't recover). Ephemeral; rebuilt on reconnect.
+    _splice_pending_baseline: dict[int, tuple[list[int], datetime]] = PrivateAttr(default_factory=dict)
 
     # Splice-guard observation clock (#256): per battery device address, the ingestion time of the
     # last full IR(60,60) bank the guard examined — accepted OR rejected. The stale-baseline bypass
@@ -868,16 +883,25 @@ class Plant(GivEnergyBaseModel):
         prev = [0] * 60
         new = [0] * 60
         present: set[int] = set()
+        incoming_present: set[int] = set()
         for i in range(60):
             reg = IR(BANK_BASE + i)
             cached = cache.get(reg)
             incoming_val = incoming.get(reg)
             prev[i] = cached if cached is not None else 0
             new[i] = incoming_val if incoming_val is not None else prev[i]
-            if incoming_val is not None and cached is not None:
-                present.add(i)
+            if incoming_val is not None:
+                incoming_present.add(i)
+                if cached is not None:
+                    present.add(i)
         if not present:
-            return True  # cold start: no last-good to compare against
+            # Cold start: no last-good to compare against. Don't adopt the first frame blindly — a
+            # transient splice would poison the baseline (#289). Hold it until a second poll
+            # corroborates it (incoming_present, not present, since the cache is empty here).
+            return self._confirm_cold_start_baseline(device_address, list(new), incoming_present, now_ts)
+        # Past cold start — a real baseline exists, so any pending first frame is moot. Clear it so a
+        # short read that seeded the cache mid-confirmation can't leave an orphan around.
+        self._splice_pending_baseline.pop(device_address, None)
 
         # Stale-observation bypass: after a genuine polling gap the per-poll thresholds don't hold
         # (legitimate SOC/temp/cap drift over the gap would exceed them), and rejected banks never
@@ -970,6 +994,66 @@ class Plant(GivEnergyBaseModel):
                 reverted[0],
             )
         return True
+
+    def _confirm_cold_start_baseline(
+        self, device_address: int, frame: list[int], incoming_present: set[int], now_ts: datetime
+    ) -> bool:
+        """Hold a device's first post-empty-cache battery bank until a second poll corroborates it (#289).
+
+        With no last-good to compare against, adopting the first frame blindly lets a transient sub-bus
+        splice (#256) poison the baseline — the very state #281/#286 then spend the heal window
+        recovering from. Instead the first frame is held (cache untouched, the device serves "unknown")
+        and adopted only once the next poll reads it the same — ``classify_transition`` finds no physics
+        or immutable trip between the two. A transient splice reads different garbage each poll, so it
+        never corroborates; on a disagreement the most-recent frame becomes the new candidate (so a
+        splice in the *first* frame is recovered from).
+
+        Two exceptions to "corroboration adopts": a frame in the temp-zero corruption cohort
+        (:func:`is_corruption_cohort`) is refused even when corroborated — adopting it would
+        hard-reject every healthy frame forever, an unrecoverable physics-only poison. A
+        persistently-identical *scalar*-immutable poison (IR97/IR98) does corroborate and is adopted,
+        because recovering that one is the #286 heal's job, not this guard's.
+
+        Returns True to adopt (corroborated), False to keep holding last-good ("unknown").
+        """
+        pending = self._splice_pending_baseline.get(device_address)
+        # A pending older than the stale-bypass window straddles a genuine polling gap — don't
+        # corroborate across it; treat the incoming frame as a fresh first read.
+        if pending is not None and (now_ts - pending[1]).total_seconds() > STALE_BYPASS_SECONDS:
+            pending = None
+        if pending is not None:
+            phys, immut = classify_transition(pending[0], frame, incoming_present)
+            if not phys and not immut and is_corruption_cohort(frame, incoming_present):
+                # Corroborated, but the frame IS the temp-zero corruption signature (#256/#289 review).
+                # Baselining it would be unrecoverable: every later healthy frame then trips >=2 physics
+                # and is hard-rejected forever, and the #286 heal only recovers scalar-immutable poison.
+                # Keep holding (cache untouched) — a healthy corroborated pair will baseline instead.
+                self._bump(self.cold_start_held_count, device_address)
+                _logger.warning(
+                    "Battery bank for device 0x%02x: cold-start frame corroborated but is the temp-zero "
+                    "corruption cohort; refusing to baseline it, holding for a healthy read. Please report if seen.",
+                    device_address,
+                )
+                return False
+            if not phys and not immut:
+                self._splice_pending_baseline.pop(device_address, None)
+                _logger.info(
+                    "Battery bank for device 0x%02x: cold-start baseline corroborated on re-read; committing.",
+                    device_address,
+                )
+                return True
+            reason = f"cold-start reads disagree ({self._format_splice_trips(phys + immut)})"
+        else:
+            reason = "first cold-start frame"
+        # Hold (or re-hold) the most-recent frame as the pending baseline and wait for corroboration.
+        self._splice_pending_baseline[device_address] = (frame, now_ts)
+        self._bump(self.cold_start_held_count, device_address)
+        _logger.info(
+            "Battery bank for device 0x%02x: %s — holding pending a corroborating read; serving unknown meanwhile.",
+            device_address,
+            reason,
+        )
+        return False
 
     def _handle_scalar_immutable(
         self,

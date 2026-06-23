@@ -148,3 +148,27 @@ def test_threshold_table_covers_every_rule_class():
         assert THRESHOLD_BY_CLASS[name] == thr
     for name, _pair, thr in PAIR_RULES:
         assert THRESHOLD_BY_CLASS[name] == thr
+
+
+def test_is_corruption_cohort_detects_temp_zero_shape():
+    """>=2 cell-mass temps (IR76-79) at zero is the corruption cohort; a clean bank is not (#289)."""
+    from givenergy_modbus.model.battery_splice import is_corruption_cohort
+
+    assert not is_corruption_cohort(_baseline())  # temps 250 — plausible
+    one_zero = _baseline()
+    one_zero[16] = 0
+    assert not is_corruption_cohort(one_zero)  # a lone zero temp is not the cohort
+    two_zero = _baseline()
+    two_zero[16] = two_zero[17] = 0
+    assert is_corruption_cohort(two_zero)  # >=2 zero temps → cohort
+
+
+def test_is_corruption_cohort_skips_absent_temps():
+    """A never-read temp register (absent from ``present``) is not counted as a zero (#289)."""
+    from givenergy_modbus.model.battery_splice import is_corruption_cohort
+
+    frame = _baseline()  # temps populated and non-zero
+    # Two temps absent from the read: their 0-fill must not be mistaken for the corruption cohort.
+    present = set(range(60)) - {16, 17}
+    frame[16] = frame[17] = 0
+    assert not is_corruption_cohort(frame, present)

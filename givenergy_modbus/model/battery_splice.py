@@ -158,3 +158,23 @@ def classify_transition(
         if new[i] != prev[i]:
             immut.append((i + BANK_BASE, "IMMUTABLE", prev[i], new[i]))
     return phys, immut
+
+
+#: Cell-mass temperature indices IR(76-79). Their simultaneous zeroing is the corpus's only
+#: corruption *cohort* signature (#256) — a live, reporting pack never does this.
+CELL_TEMP_IDXS: tuple[int, ...] = (16, 17, 18, 19)
+
+
+def is_corruption_cohort(frame: list[int], present: set[int] | None = None) -> bool:
+    """True if a bank exhibits the temp-zero corruption cohort *absolutely* (no baseline needed).
+
+    :func:`classify_transition` catches a *transition* into the temp-zero shape against a last-good
+    baseline; this catches the shape on its own. The cold-start confirmation uses it to refuse to
+    *baseline* such a frame even when two reads corroborate it (#289). Adopting it would be
+    unrecoverable: every subsequent healthy frame would then trip >=2 physics deltas and be
+    hard-rejected forever, and the #286 heal only recovers scalar-immutable poison. Only the
+    cell-mass temps are gated (the corpus signature); a near-zero singleton or a genuinely cold pack
+    on a single sensor is unaffected (``present`` skips never-read registers).
+    """
+    zeros = sum(1 for i in CELL_TEMP_IDXS if (present is None or i in present) and frame[i] == 0)
+    return zeros >= 2
