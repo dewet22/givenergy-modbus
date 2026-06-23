@@ -203,3 +203,54 @@ async def test_respond_returns_none_for_unknown_pdus():
     mock = MockPlant(devices={})
     hb = HeartbeatResponse(data_adapter_serial_number="AB1234G567", data_adapter_type=0)
     assert mock._respond(hb) is None
+
+
+# --- distinct device serials ------------------------------------------------
+
+
+def test_serial_encode_decode_roundtrip():
+    """`_encode_serial` is the inverse of `_decode_serial` over a 5-register IR serial."""
+    from givenergy_modbus.model.register import IR
+    from givenergy_modbus.testing.mock_plant import _decode_serial, _encode_serial
+
+    regs = [IR(114 + i) for i in range(5)]
+    cache = RegisterCache(dict(zip(regs, _encode_serial("HX2414G832", len(regs)))))
+    assert _decode_serial(cache, regs) == "HX2414G832"
+
+
+def test_make_device_serials_distinct_rewrites_only_collisions():
+    """Collided LV-pack serials become distinct (address-tailed); already-distinct ones are left."""
+    from givenergy_modbus.model.battery import BatteryRegisterGetter
+    from givenergy_modbus.model.plant import Plant
+    from givenergy_modbus.testing.mock_plant import (
+        _decode_serial,
+        _encode_serial,
+        _make_device_serials_distinct,
+    )
+
+    regs = BatteryRegisterGetter.registers_of("serial_number")  # IR(110-114)
+    plant = Plant()
+    for addr in (0x33, 0x34):  # share an identical redacted serial → collision
+        plant.register_caches[addr] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G000", len(regs)))))
+    plant.register_caches[0x35] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G999", len(regs)))))
+
+    _make_device_serials_distinct(plant)
+
+    assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G033"
+    assert _decode_serial(plant.register_caches[0x34], regs) == "BG0000G034"
+    assert _decode_serial(plant.register_caches[0x35], regs) == "BG0000G999"  # distinct already → untouched
+
+
+def test_aio_mock_serves_distinct_module_serials():
+    """The AIO mock gives each battery module its own serial (was all `HX0000G000`)."""
+    from givenergy_modbus.model.aio_battery import AioBatteryModule
+
+    mock = MockPlant.from_capture(_CAPTURES / "aio_a" / "aio_arm612_5min.log")
+    serials = {
+        addr: AioBatteryModule.from_register_cache(mock.devices[addr], addr).serial_number
+        for addr in (0x50, 0x51, 0x52, 0x53)
+    }
+    assert len(set(serials.values())) == 4, f"module serials must be distinct: {serials}"
+    for addr in (0x50, 0x51, 0x52, 0x53):
+        assert serials[addr].startswith("HX"), serials[addr]  # real prefix preserved
+        assert serials[addr].endswith(f"{addr:02x}"), serials[addr]  # address-tailed, distinct
