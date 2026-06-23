@@ -479,6 +479,88 @@ async def test_send_request_retries_on_error_response():
         drainer.cancel()
 
 
+async def test_retry_count_increments_on_consumed_retry():
+    """A consumed retry bumps the plant's per-device retry_count (#284)."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+    attempt = 0
+
+    async def drain_and_respond():
+        nonlocal attempt
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            attempt += 1
+            if attempt >= 2:  # first attempt times out; resolve on the retry
+                await asyncio.sleep(0)
+                future = client.expected_responses.get(expected_hash)
+                if future and not future.done():
+                    future.set_result(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20))
+
+    drainer = asyncio.create_task(drain_and_respond())
+    try:
+        await client.send_request_and_await_response(req, timeout=0.02, retries=2, retry_delay=0)
+    finally:
+        drainer.cancel()
+    assert client.plant.retry_count == {req.device_address: 1}
+
+
+async def test_retry_count_excludes_probe_retries():
+    """Absent-device probes (warn_timeout=False) must not pollute retry_count (#284)."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    async def drain_queue():
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+
+    drainer = asyncio.create_task(drain_queue())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(
+                req, timeout=0.02, retries=1, retry_delay=0, warn_timeout=False
+            )
+    finally:
+        drainer.cancel()
+    assert client.plant.retry_count == {}
+
+
+async def test_retry_count_excludes_probe_on_error_response_with_delay():
+    """An error-response retry with warn_timeout=False and a retry delay still skips retry_count (#284)."""
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+
+    async def drain_and_error():
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            await asyncio.sleep(0)
+            future = client.expected_responses.get(expected_hash)
+            if future and not future.done():
+                error_resp = WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20)
+                error_resp.error = True
+                future.set_result(error_resp)
+
+    drainer = asyncio.create_task(drain_and_error())
+    try:
+        with pytest.raises(TimeoutError):
+            await client.send_request_and_await_response(
+                req, timeout=0.02, retries=1, retry_delay=0.01, warn_timeout=False
+            )
+    finally:
+        drainer.cancel()
+    assert client.plant.retry_count == {}
+
+
 async def test_send_request_sleeps_between_retries_on_timeout():
     """A retry_delay > 0 must impose a sleep between a timed-out attempt and the next.
 

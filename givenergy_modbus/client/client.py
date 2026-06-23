@@ -1451,11 +1451,17 @@ class Client:
                     f"Timeout awaiting {expected_response} (future: {response_future}), "
                     f"attempting retry {tries} of {retries}"
                 )
-                if tries <= retries and retry_delay > 0:
-                    # Discard the orphaned future so a late response from this attempt
-                    # doesn't accidentally resolve into the next attempt's future.
-                    response_future.cancel()
-                    await asyncio.sleep(retry_delay)
+                if tries <= retries:
+                    # Count the consumed retry (#284), but only where a response was genuinely
+                    # expected — absent-device detect probes pass warn_timeout=False and their
+                    # expected timeouts shouldn't pollute the per-device retry noise floor.
+                    if warn_timeout:
+                        self.plant.record_retry(request.device_address)
+                    if retry_delay > 0:
+                        # Discard the orphaned future so a late response from this attempt
+                        # doesn't accidentally resolve into the next attempt's future.
+                        response_future.cancel()
+                        await asyncio.sleep(retry_delay)
                 continue
             response = response_future.result()
             if tries > 0:
@@ -1466,8 +1472,11 @@ class Client:
                 # Unlike the timeout path above, no response_future.cancel() is needed here:
                 # the future is already resolved (we just called .result()), so cancel() would
                 # be a no-op, and the next attempt overwrites expected_responses[hash] anyway.
-                if tries <= retries and retry_delay > 0:
-                    await asyncio.sleep(retry_delay)
+                if tries <= retries:
+                    if warn_timeout:  # count the consumed retry (#284); skip absent-device probes
+                        self.plant.record_retry(request.device_address)
+                    if retry_delay > 0:
+                        await asyncio.sleep(retry_delay)
                 continue
             return response
 
