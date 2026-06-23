@@ -2922,6 +2922,33 @@ def test_cold_start_persistent_value_corroborates(plant: Plant):
     assert plant.register_caches[_BATT][IR(98)] == 9999  # adopted — #286 heal recovers this later
 
 
+def test_cold_start_corroborated_temp_zero_cohort_not_adopted(plant: Plant, caplog):
+    """A temp-zero corruption cohort is refused as a baseline even when two reads corroborate it (#289 review).
+
+    Codex's case: two identical IR76-79=0 frames corroborate, but baselining them would hard-reject
+    every healthy frame forever (physics-only poison the #286 scalar heal can't recover). The cohort
+    is refused (held, surfaced at WARNING); sustained healthy reads then corroborate and adopt.
+    """
+    import logging
+
+    splice = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # IR76-79 = 0 — the temp-zero cohort
+    healthy = _coherent_battery_bank()
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, splice, device_address=_BATT, received_at=_T0)  # held
+        _feed_bank(
+            plant, splice, device_address=_BATT, received_at=_T0 + timedelta(seconds=30)
+        )  # corroborates → refused
+        assert IR(76) not in plant.register_caches[_BATT], "corroborated temp-zero cohort must not be baselined"
+        # Sustained healthy reads: the first disagrees with the held cohort, the second corroborates → adopt.
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=60))
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=90))
+    assert plant.register_caches[_BATT][IR(76)] == 250, "healthy baseline finally adopted; cohort never committed"
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+    assert plant.splice_reject_count == {}, "the cohort was held at cold start, never hard-rejected"
+    warns = [r for r in caplog.records if "temp-zero corruption cohort" in r.message and "0x33" in r.message]
+    assert warns and warns[0].levelno == logging.WARNING
+
+
 def test_splice_ir115_usb_change_alone_commits(plant: Plant, caplog):
     """IR(115) usb_device_inserted is mutable (exempt from IMMUTABLE); a change alone must commit."""
     import logging

@@ -16,6 +16,7 @@ from givenergy_modbus.model.battery_splice import (
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
+    is_corruption_cohort,
 )
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
@@ -575,8 +576,9 @@ class Plant(GivEnergyBaseModel):
     # ingestion time). A cold-start frame is not adopted until the next poll reads it the same (no
     # physics/immutable trip between the two), so a transient sub-bus splice (#256) — different
     # garbage each poll — never corroborates and never poisons the baseline. Most-recent-wins on a
-    # disagreement. A persistently-identical wrong value DOES corroborate; that is left to the #286
-    # heal, by design. Ephemeral; rebuilt with a fresh Plant on reconnect; not serialised.
+    # disagreement. A persistently-identical scalar-immutable poison corroborates and is left to the
+    # #286 heal; a corroborated temp-zero corruption cohort is refused outright (it would hard-reject
+    # all healthy data, which the scalar heal can't recover). Ephemeral; rebuilt on reconnect.
     _splice_pending_baseline: dict[int, tuple[list[int], datetime]] = PrivateAttr(default_factory=dict)
 
     # Splice-guard observation clock (#256): per battery device address, the ingestion time of the
@@ -1004,8 +1006,13 @@ class Plant(GivEnergyBaseModel):
         and adopted only once the next poll reads it the same — ``classify_transition`` finds no physics
         or immutable trip between the two. A transient splice reads different garbage each poll, so it
         never corroborates; on a disagreement the most-recent frame becomes the new candidate (so a
-        splice in the *first* frame is recovered from). A persistently-identical wrong value does
-        corroborate and is adopted — by design: recovering that is the #286 heal's job, not this guard's.
+        splice in the *first* frame is recovered from).
+
+        Two exceptions to "corroboration adopts": a frame in the temp-zero corruption cohort
+        (:func:`is_corruption_cohort`) is refused even when corroborated — adopting it would
+        hard-reject every healthy frame forever, an unrecoverable physics-only poison. A
+        persistently-identical *scalar*-immutable poison (IR97/IR98) does corroborate and is adopted,
+        because recovering that one is the #286 heal's job, not this guard's.
 
         Returns True to adopt (corroborated), False to keep holding last-good ("unknown").
         """
@@ -1016,6 +1023,18 @@ class Plant(GivEnergyBaseModel):
             pending = None
         if pending is not None:
             phys, immut = classify_transition(pending[0], frame, incoming_present)
+            if not phys and not immut and is_corruption_cohort(frame, incoming_present):
+                # Corroborated, but the frame IS the temp-zero corruption signature (#256/#289 review).
+                # Baselining it would be unrecoverable: every later healthy frame then trips >=2 physics
+                # and is hard-rejected forever, and the #286 heal only recovers scalar-immutable poison.
+                # Keep holding (cache untouched) — a healthy corroborated pair will baseline instead.
+                self._bump(self.cold_start_held_count, device_address)
+                _logger.warning(
+                    "Battery bank for device 0x%02x: cold-start frame corroborated but is the temp-zero "
+                    "corruption cohort; refusing to baseline it, holding for a healthy read. Please report if seen.",
+                    device_address,
+                )
+                return False
             if not phys and not immut:
                 self._splice_pending_baseline.pop(device_address, None)
                 _logger.info(
