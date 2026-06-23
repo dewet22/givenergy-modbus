@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.3] - 2026-06-23
+
+### ✨ Added
+
+- per-device comms-quality counters on Plant (CRC, splice, retries) (#285) ([7fd07c1](https://github.com/dewet22/givenergy-modbus/commit/7fd07c1ec48be2cc16b322f055987935c202a49b))
+
+### 🐛 Fixed
+
+- give multi-instance devices distinct serials to avoid collisions (#283) ([6ec8692](https://github.com/dewet22/givenergy-modbus/commit/6ec86929b60ab99ba0c2c715998031733cdc1e5f))
+
 ## [2.5.2] - 2026-06-23
 
 ### 🐛 Fixed
