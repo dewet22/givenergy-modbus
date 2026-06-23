@@ -371,3 +371,36 @@ def test_ems_mock_serves_distinct_managed_inverter_serials():
     assert len(serials) == 2  # the 2-managed-inverter fixture
     assert len(set(serials)) == 2, f"managed-inverter serials must be distinct: {serials}"
     assert all(s.startswith("CE") for s in serials)  # real prefix preserved
+
+
+def test_main_serve_path_disambiguates_managed_inverter_serials(monkeypatch):
+    """main() (the scripted serve path) disambiguates serials like from_capture, not collide them.
+
+    Regression for the hass-reported gap: main() built MockPlant from plant_from_capture() directly and
+    skipped _make_device_serials_distinct, so the served mock collided both managed inverters at CE…G000.
+    Spy on construction and stub the server so we can inspect the built mock without binding a socket.
+    """
+    from givenergy_modbus.model.ems import Ems
+    from givenergy_modbus.testing.mock_plant import MockPlant, main
+
+    captured: dict = {}
+    orig_init = MockPlant.__init__
+
+    def _spy_init(self, devices, **kwargs):
+        orig_init(self, devices, **kwargs)
+        captured["mock"] = self
+
+    async def _noop_start(self, host="127.0.0.1", port=0):
+        return ("127.0.0.1", 0)
+
+    async def _noop_serve(self):
+        return
+
+    monkeypatch.setattr(MockPlant, "__init__", _spy_init)
+    monkeypatch.setattr(MockPlant, "start", _noop_start)
+    monkeypatch.setattr(MockPlant, "serve_forever", _noop_serve)
+
+    rc = main(["--capture", str(_CAPTURES / "ems_2_inv_3_bat_a" / "ems_arm1036_60s.log"), "--port", "0"])
+    assert rc == 0
+    serials = [inv.serial_number for inv in Ems.from_register_cache(captured["mock"].devices[0x11]).managed_inverters]
+    assert len(serials) == 2 and len(set(serials)) == 2, f"main() must serve distinct serials, got {serials}"

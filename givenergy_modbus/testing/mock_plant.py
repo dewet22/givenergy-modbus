@@ -15,9 +15,19 @@ Fidelity choices (Phase 1 — read-serving, static topology):
 
 Mutable writes and dynamic bus/device add-remove are a later phase.
 
-Run it directly to point another client at a capture::
+To serve a mock from a capture, use the CLI (the canonical serve tool)::
 
-    python -m givenergy_modbus.testing.mock_plant --capture path/to/plant.log --port 8899
+    givenergy-cli mock-server --capture path/to/plant.log   # see --help for --bind/--port
+
+In-process (tests, scripting), build one with :meth:`MockPlant.from_capture` — which also
+re-tails multi-instance devices to distinct serials (#283/#288/#290)::
+
+    mock = MockPlant.from_capture("path/to/plant.log")
+    host, port = await mock.start()
+
+Running this module as ``python -m givenergy_modbus.testing.mock_plant`` is **deprecated**: it
+double-imports under the package ``__init__`` (a ``RuntimeWarning``). Prefer the CLI or
+``from_capture`` above.
 """
 
 from __future__ import annotations
@@ -409,6 +419,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     plant = plant_from_capture(*args.capture)
+    # Match MockPlant.from_capture(): give replayed multi-instance devices distinct serials so the
+    # served mock doesn't collide e.g. EMS managed-inverter serials (#283/#288/#290). Building the
+    # MockPlant by hand below would otherwise skip this and serve colliding serials.
+    _make_device_serials_distinct(plant)
     for reg, val in ((21, args.arm_fw), (19, args.dsp_fw)):  # HR(21)=ARM, HR(19)=DSP firmware version
         if val is not None:
             for cache in plant.register_caches.values():
@@ -434,4 +448,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # `python -m …mock_plant` double-imports under the package __init__ (RuntimeWarning) and is
+    # deprecated; the CLI is the serve tool. Warn once (lastResort handler shows it before main()
+    # configures logging), then run anyway so existing scripts don't break.
+    _logger.warning(
+        "`python -m givenergy_modbus.testing.mock_plant` is deprecated (it double-imports under the "
+        "package __init__). Use `givenergy-cli mock-server` to serve a mock, or MockPlant.from_capture() "
+        "in-process."
+    )
     raise SystemExit(main())
