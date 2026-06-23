@@ -71,6 +71,16 @@ PAIR_RULES: list[tuple[str, tuple[int, int], int]] = [
 # corruption cohort it was meant to catch already trips the >=2-physics rule on the
 # temperatures themselves (#256 discussion).
 IMMUTABLE: list[int] = [37, 38, *range(50, 55)]
+# Scalar immutables — num_cells IR(97), bms_firmware_version IR(98). Constant in normal
+# operation, but a corrupt first frame can poison the cold-start baseline (#281), and a
+# genuine BMS firmware upgrade legitimately changes IR(98). Unlike the serial block these
+# are single uint16 scalars a healthy pack reports *stably*, so a sustained stable
+# disagreement is the real value and is recoverable (escrow / backstop in
+# Plant._splice_guard). ABSOLUTE IR numbers, to match a trip's ``trip[0]``.
+IMMUTABLE_SCALAR: frozenset[int] = frozenset({BANK_BASE + 37, BANK_BASE + 38})  # {97, 98}
+# Serial block IR(110-114). A genuine change means a different pack answered or a re-address
+# — never recoverable; always hard-reject. ABSOLUTE IR numbers.
+IMMUTABLE_SERIAL: frozenset[int] = frozenset(range(BANK_BASE + 50, BANK_BASE + 55))  # {110..114}
 # Exempt (no physics): status/warning words IR(90-94), i_battery IR(95), num_cycles IR(96),
 # usb_device_inserted IR(115), unknown/reserved IR(99,107-109,116-119).
 
@@ -93,6 +103,17 @@ THRESHOLD_BY_CLASS: dict[str, int] = {name: thr for name, _, thr in SCALAR_RULES
 #: Value: 10× the nominal ~30 s poll interval — survives transient hiccups, recovers a real outage
 #: on the first post-reconnect poll.
 STALE_BYPASS_SECONDS: int = 300
+
+#: Backstop recovery bound for a poisoned scalar-immutable baseline (IR97/IR98) that ALSO trips
+#: physics (#281), so the coherent-physics escrow can't engage. A *stable* scalar-immutable
+#: disagreement (the same incoming value every poll) that persists this many consecutive polls —
+#: OR this many seconds since the streak began, whichever first — forces a re-baseline. Both
+#: bounds resolve strictly inside STALE_BYPASS_SECONDS so a real poison self-heals well before the
+#: coarse stale bypass would, while oscillating garbage (changing value) resets the streak and
+#: never reaches either bound. Field report (#281): ~6-15 s poll cadence, so 6 polls ≈ 36-90 s and
+#: the 120 s ceiling both land comfortably under 300 s even at the slow end.
+SCALAR_IMMUT_STREAK_POLLS: int = 6
+SCALAR_IMMUT_STREAK_SECONDS: int = 120
 
 #: A single trip: (absolute IR number, class name, old comparable value, new comparable value).
 #: For pair rules the comparable values are the assembled uint32s, not the high word alone.

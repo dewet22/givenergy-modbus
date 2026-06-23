@@ -10,6 +10,10 @@ from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
 from givenergy_modbus.model.battery_splice import (
     BANK_BASE,
+    IMMUTABLE_SCALAR,
+    IMMUTABLE_SERIAL,
+    SCALAR_IMMUT_STREAK_POLLS,
+    SCALAR_IMMUT_STREAK_SECONDS,
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
@@ -552,6 +556,18 @@ class Plant(GivEnergyBaseModel):
     # with a fresh Plant on reconnect; not serialised.
     _splice_last_seen: dict[int, datetime] = PrivateAttr(default_factory=dict)
 
+    # Scalar-immutable poison-recovery streak (#281): per battery device address,
+    # (signature, started_at, consecutive_count) where signature is the sorted tuple of
+    # (IR number, incoming value) over the poll's scalar-immutable trips (IR97/IR98). Tracks a
+    # *stable* disagreement on a constant scalar — a real value a healthy pack keeps reporting
+    # after a poisoned cold-start baseline, or a genuine BMS firmware upgrade. A changing
+    # signature (oscillating garbage) resets it, so corruption never accumulates a streak. Used
+    # by both the coherent-physics escrow (confirm on the second identical read) and the
+    # physics-drift backstop (force re-baseline once stable). Ephemeral; not serialised.
+    _splice_immut_streak: dict[int, tuple[tuple[tuple[int, int], ...], datetime, int]] = PrivateAttr(
+        default_factory=dict
+    )
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -843,6 +859,7 @@ class Plant(GivEnergyBaseModel):
         # but prev_seen stays ~one poll old, so this does NOT fire and the corruption stays rejected.
         if prev_seen is not None and (now_ts - prev_seen).total_seconds() > STALE_BYPASS_SECONDS:
             self._splice_escrow.pop(device_address, None)
+            self._splice_immut_streak.pop(device_address, None)
             _logger.info(
                 "Battery bank for device 0x%02x: %.0f s since the last observed bank — splice guard "
                 "bypassed (stale baseline); adopting as new baseline.",
@@ -853,17 +870,36 @@ class Plant(GivEnergyBaseModel):
 
         phys, immut = classify_transition(prev, new, present)
 
-        if immut or len(phys) >= 2:
+        # Split immutable trips by recoverability (#281): the serial block (IR110-114) genuinely
+        # can't change, but the scalar immutables (num_cells IR97, bms_firmware_version IR98) can be
+        # poisoned by a corrupt cold-start frame — or change legitimately on a BMS firmware upgrade —
+        # and a healthy pack reports them *stably*, so a sustained stable disagreement is recoverable.
+        serial_immut = [t for t in immut if t[0] in IMMUTABLE_SERIAL]
+        scalar_immut = [t for t in immut if t[0] in IMMUTABLE_SCALAR]
+
+        # Hard reject: a serial-block change (wrong pack / re-address), OR >=2 physics deltas with no
+        # recoverable scalar immutable (the temp-zero corruption cohort) — neither ever self-adopts.
+        if serial_immut or (len(phys) >= 2 and not scalar_immut):
             self._splice_escrow.pop(device_address, None)
-            reason = "constant-register change" if immut else ">=2 physics-impossible deltas"
+            self._splice_immut_streak.pop(device_address, None)
+            reason = "serial-block change" if serial_immut else ">=2 physics-impossible deltas"
             _logger.warning(
                 "Rejected battery bank for device 0x%02x — sub-bus splice (%s); keeping last-good. "
                 "Trips: %s. Please report if seen.",
                 device_address,
                 reason,
-                self._format_splice_trips(immut + phys),
+                self._format_splice_trips(serial_immut + phys),
             )
             return False
+
+        # Scalar-immutable change (no serial trip): escrow + re-baseline rather than reject (#281).
+        if scalar_immut:
+            return self._handle_scalar_immutable(device_address, scalar_immut, phys, now_ts)
+
+        # No scalar-immutable trip this poll: any in-progress scalar disagreement is interrupted, so
+        # the backstop streak resets here — it requires an *uninterrupted* stable signature. Covers
+        # both the physics-singleton path below and the clean-transition path (#281 review).
+        self._splice_immut_streak.pop(device_address, None)
 
         if len(phys) == 1:
             ir_no, name, _old, new_val = phys[0]
@@ -893,7 +929,7 @@ class Plant(GivEnergyBaseModel):
 
         # Clean transition (no trips): a previously-held step that snapped back lands here, so
         # drop any escrow and commit. Log the reversion so the held->resolved story is visible at
-        # one level (the hold is INFO too).
+        # one level (the hold is INFO too). The scalar-immut streak was already cleared above.
         reverted = self._splice_escrow.pop(device_address, None)
         if reverted is not None:
             _logger.info(
@@ -903,6 +939,90 @@ class Plant(GivEnergyBaseModel):
                 reverted[0],
             )
         return True
+
+    def _handle_scalar_immutable(
+        self,
+        device_address: int,
+        scalar_immut: list[tuple[int, str, int, int]],
+        phys: list[tuple[int, str, int, int]],
+        now_ts: datetime,
+    ) -> bool:
+        """Escrow / re-baseline a scalar-immutable (IR97/IR98) disagreement instead of rejecting (#281).
+
+        A scalar immutable that reads the same incoming value identically across polls is the real
+        value — the cached baseline was poisoned by a corrupt cold-start frame, or the BMS firmware
+        was legitimately upgraded — so adopt it rather than rejecting forever (the bug this fixes).
+        Two paths share one streak counter keyed on the incoming signature:
+
+        * coherent physics (no other trips) — adopt on the second identical read (~2 polls), a
+          high-confidence poison signal;
+        * with physics drift — keep rejecting, but adopt once the same signature persists
+          ``SCALAR_IMMUT_STREAK_POLLS`` polls or ``SCALAR_IMMUT_STREAK_SECONDS`` seconds (whichever
+          first, both inside the 300 s stale window).
+
+        A *changing* signature (oscillating garbage) restarts the streak and never adopts, so genuine
+        corruption can't self-heal into the cache. Returns True to commit (adopt), False to hold.
+        """
+        sig = tuple(sorted((ir_no, new_val) for ir_no, _name, _old, new_val in scalar_immut))
+        streak = self._splice_immut_streak.get(device_address)
+
+        # Coherent physics: a single identical re-read is enough (high-confidence poison signal).
+        if not phys:
+            if streak is not None and streak[0] == sig:
+                self._splice_escrow.pop(device_address, None)
+                self._splice_immut_streak.pop(device_address, None)
+                _logger.info(
+                    "Battery bank for device 0x%02x: constant register(s) %s read identically twice "
+                    "with coherent physics — cold-start baseline was poisoned; adopting incoming as "
+                    "new baseline.",
+                    device_address,
+                    self._fmt_scalar_sig(scalar_immut),
+                )
+                return True
+            self._splice_immut_streak[device_address] = (sig, now_ts, 1)
+            _logger.info(
+                "Battery bank for device 0x%02x: constant register(s) %s disagree with baseline "
+                "(coherent physics) — held one poll pending an identical re-read.",
+                device_address,
+                self._fmt_scalar_sig(scalar_immut),
+            )
+            return False
+
+        # Physics also drifted: less confident, so require a sustained stable streak before adopting.
+        if streak is not None and streak[0] == sig:
+            started, count = streak[1], streak[2] + 1
+            elapsed = (now_ts - started).total_seconds()
+            if count >= SCALAR_IMMUT_STREAK_POLLS or elapsed >= SCALAR_IMMUT_STREAK_SECONDS:
+                self._splice_escrow.pop(device_address, None)
+                self._splice_immut_streak.pop(device_address, None)
+                _logger.info(
+                    "Battery bank for device 0x%02x: constant register(s) %s stably disagreed with "
+                    "baseline for %d consecutive polls (%.0f s) — cold-start baseline was poisoned; "
+                    "adopting incoming as new baseline.",
+                    device_address,
+                    self._fmt_scalar_sig(scalar_immut),
+                    count,
+                    elapsed,
+                )
+                return True
+            self._splice_immut_streak[device_address] = (sig, started, count)
+        else:
+            # New device, or the signature changed (oscillating garbage): (re)start the streak.
+            self._splice_immut_streak[device_address] = (sig, now_ts, 1)
+
+        self._splice_escrow.pop(device_address, None)
+        _logger.warning(
+            "Rejected battery bank for device 0x%02x — sub-bus splice (constant-register change with "
+            "physics drift); keeping last-good. Trips: %s. Please report if seen.",
+            device_address,
+            self._format_splice_trips(scalar_immut + phys),
+        )
+        return False
+
+    @staticmethod
+    def _fmt_scalar_sig(scalar_immut: list[tuple[int, str, int, int]]) -> str:
+        """Render scalar-immutable trips compactly for the INFO logs, e.g. ``IR(98) 3005->3010``."""
+        return ", ".join(f"IR({ir_no}) {old}->{new}" for ir_no, _name, old, new in scalar_immut)
 
     @staticmethod
     def _format_splice_trips(trips: list[tuple[int, str, int, int]]) -> str:

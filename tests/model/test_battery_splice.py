@@ -8,6 +8,8 @@ is exercised in test_plant.py.
 from givenergy_modbus.model.battery_splice import (
     BANK_BASE,
     IMMUTABLE,
+    IMMUTABLE_SCALAR,
+    IMMUTABLE_SERIAL,
     THRESHOLD_BY_CLASS,
     classify_transition,
 )
@@ -43,6 +45,18 @@ def test_ir115_is_dropped_from_immutable():
     """IR(115) (bank index 55) must not be immutable — it's a mutable usb_device_inserted field."""
     assert 55 not in IMMUTABLE
     assert IMMUTABLE == [37, 38, 50, 51, 52, 53, 54]
+
+
+def test_immutable_scalar_serial_partition_covers_immutable():
+    """The scalar/serial split (#281) partitions IMMUTABLE exactly — no overlap, no gap.
+
+    Scalar/serial sets are ABSOLUTE IR numbers (to match a trip's ``trip[0]``); IMMUTABLE is
+    the bank-relative union the classifier loops over.
+    """
+    assert IMMUTABLE_SCALAR == {97, 98}  # num_cells, bms_firmware_version
+    assert IMMUTABLE_SERIAL == {110, 111, 112, 113, 114}  # serial block
+    assert IMMUTABLE_SCALAR.isdisjoint(IMMUTABLE_SERIAL)
+    assert {BANK_BASE + i for i in IMMUTABLE} == IMMUTABLE_SCALAR | IMMUTABLE_SERIAL
 
 
 def test_single_cell_voltage_step_is_one_physics_trip():
