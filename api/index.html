@@ -15124,8 +15124,7 @@ when it is most valuable to export energy.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 508</span>
-<span class="normal"> 509</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 509</span>
 <span class="normal"> 510</span>
 <span class="normal"> 511</span>
 <span class="normal"> 512</span>
@@ -16158,7 +16157,91 @@ when it is most valuable to export energy.</p>
 <span class="normal">1539</span>
 <span class="normal">1540</span>
 <span class="normal">1541</span>
-<span class="normal">1542</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">1542</span>
+<span class="normal">1543</span>
+<span class="normal">1544</span>
+<span class="normal">1545</span>
+<span class="normal">1546</span>
+<span class="normal">1547</span>
+<span class="normal">1548</span>
+<span class="normal">1549</span>
+<span class="normal">1550</span>
+<span class="normal">1551</span>
+<span class="normal">1552</span>
+<span class="normal">1553</span>
+<span class="normal">1554</span>
+<span class="normal">1555</span>
+<span class="normal">1556</span>
+<span class="normal">1557</span>
+<span class="normal">1558</span>
+<span class="normal">1559</span>
+<span class="normal">1560</span>
+<span class="normal">1561</span>
+<span class="normal">1562</span>
+<span class="normal">1563</span>
+<span class="normal">1564</span>
+<span class="normal">1565</span>
+<span class="normal">1566</span>
+<span class="normal">1567</span>
+<span class="normal">1568</span>
+<span class="normal">1569</span>
+<span class="normal">1570</span>
+<span class="normal">1571</span>
+<span class="normal">1572</span>
+<span class="normal">1573</span>
+<span class="normal">1574</span>
+<span class="normal">1575</span>
+<span class="normal">1576</span>
+<span class="normal">1577</span>
+<span class="normal">1578</span>
+<span class="normal">1579</span>
+<span class="normal">1580</span>
+<span class="normal">1581</span>
+<span class="normal">1582</span>
+<span class="normal">1583</span>
+<span class="normal">1584</span>
+<span class="normal">1585</span>
+<span class="normal">1586</span>
+<span class="normal">1587</span>
+<span class="normal">1588</span>
+<span class="normal">1589</span>
+<span class="normal">1590</span>
+<span class="normal">1591</span>
+<span class="normal">1592</span>
+<span class="normal">1593</span>
+<span class="normal">1594</span>
+<span class="normal">1595</span>
+<span class="normal">1596</span>
+<span class="normal">1597</span>
+<span class="normal">1598</span>
+<span class="normal">1599</span>
+<span class="normal">1600</span>
+<span class="normal">1601</span>
+<span class="normal">1602</span>
+<span class="normal">1603</span>
+<span class="normal">1604</span>
+<span class="normal">1605</span>
+<span class="normal">1606</span>
+<span class="normal">1607</span>
+<span class="normal">1608</span>
+<span class="normal">1609</span>
+<span class="normal">1610</span>
+<span class="normal">1611</span>
+<span class="normal">1612</span>
+<span class="normal">1613</span>
+<span class="normal">1614</span>
+<span class="normal">1615</span>
+<span class="normal">1616</span>
+<span class="normal">1617</span>
+<span class="normal">1618</span>
+<span class="normal">1619</span>
+<span class="normal">1620</span>
+<span class="normal">1621</span>
+<span class="normal">1622</span>
+<span class="normal">1623</span>
+<span class="normal">1624</span>
+<span class="normal">1625</span>
+<span class="normal">1626</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -16193,6 +16276,10 @@ when it is most valuable to export energy.</p>
     <span class="n">splice_reject_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">splice_held_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">retry_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># Cold-start baseline holds (#289): a battery bank held back while the first frame after an</span>
+    <span class="c1"># empty cache awaits a corroborating read (vs splice_held_count, which is corruption). A benign</span>
+    <span class="c1"># &quot;battery initialising / confirming baseline&quot; signal — expected once per device at startup.</span>
+    <span class="n">cold_start_held_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># How long (seconds) to hold last-good for a disputed *constant* battery register (num_cells,</span>
     <span class="c1"># bms_firmware_version) before healing to a sustained new value (#286). Splice corruption that</span>
@@ -16218,6 +16305,16 @@ when it is most valuable to export energy.</p>
     <span class="c1"># threshold (genuine step persists) rather than snapping back (transient splice reverts).</span>
     <span class="c1"># Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.</span>
     <span class="n">_splice_escrow</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="c1"># Cold-start baseline confirmation (#289): per battery device address, the first full bank seen</span>
+    <span class="c1"># against an empty cache, held pending a corroborating read — (the 60-value bank-relative frame,</span>
+    <span class="c1"># ingestion time). A cold-start frame is not adopted until the next poll reads it the same (no</span>
+    <span class="c1"># physics/immutable trip between the two), so a transient sub-bus splice (#256) — different</span>
+    <span class="c1"># garbage each poll — never corroborates and never poisons the baseline. Most-recent-wins on a</span>
+    <span class="c1"># disagreement. A persistently-identical scalar-immutable poison corroborates and is left to the</span>
+    <span class="c1"># #286 heal; a corroborated temp-zero corruption cohort is refused outright (it would hard-reject</span>
+    <span class="c1"># all healthy data, which the scalar heal can&#39;t recover). Ephemeral; rebuilt on reconnect.</span>
+    <span class="n">_splice_pending_baseline</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">datetime</span><span class="p">]]</span> <span class="o">=</span> <span class="n">PrivateAttr</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
 
     <span class="c1"># Splice-guard observation clock (#256): per battery device address, the ingestion time of the</span>
     <span class="c1"># last full IR(60,60) bank the guard examined — accepted OR rejected. The stale-baseline bypass</span>
@@ -16521,16 +16618,25 @@ when it is most valuable to export energy.</p>
         <span class="n">prev</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">60</span>
         <span class="n">new</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">60</span>
         <span class="n">present</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">incoming_present</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">60</span><span class="p">):</span>
             <span class="n">reg</span> <span class="o">=</span> <span class="n">IR</span><span class="p">(</span><span class="n">BANK_BASE</span> <span class="o">+</span> <span class="n">i</span><span class="p">)</span>
             <span class="n">cached</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">reg</span><span class="p">)</span>
             <span class="n">incoming_val</span> <span class="o">=</span> <span class="n">incoming</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">reg</span><span class="p">)</span>
             <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">cached</span> <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span>
             <span class="n">new</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">incoming_val</span> <span class="k">if</span> <span class="n">incoming_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">incoming_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">present</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">incoming_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">incoming_present</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">present</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">present</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># cold start: no last-good to compare against</span>
+            <span class="c1"># Cold start: no last-good to compare against. Don&#39;t adopt the first frame blindly — a</span>
+            <span class="c1"># transient splice would poison the baseline (#289). Hold it until a second poll</span>
+            <span class="c1"># corroborates it (incoming_present, not present, since the cache is empty here).</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_confirm_cold_start_baseline</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">new</span><span class="p">),</span> <span class="n">incoming_present</span><span class="p">,</span> <span class="n">now_ts</span><span class="p">)</span>
+        <span class="c1"># Past cold start — a real baseline exists, so any pending first frame is moot. Clear it so a</span>
+        <span class="c1"># short read that seeded the cache mid-confirmation can&#39;t leave an orphan around.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_splice_pending_baseline</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
         <span class="c1"># Stale-observation bypass: after a genuine polling gap the per-poll thresholds don&#39;t hold</span>
         <span class="c1"># (legitimate SOC/temp/cap drift over the gap would exceed them), and rejected banks never</span>
@@ -16623,6 +16729,66 @@ when it is most valuable to export energy.</p>
                 <span class="n">reverted</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_confirm_cold_start_baseline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">incoming_present</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">now_ts</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Hold a device&#39;s first post-empty-cache battery bank until a second poll corroborates it (#289).</span>
+
+<span class="sd">        With no last-good to compare against, adopting the first frame blindly lets a transient sub-bus</span>
+<span class="sd">        splice (#256) poison the baseline — the very state #281/#286 then spend the heal window</span>
+<span class="sd">        recovering from. Instead the first frame is held (cache untouched, the device serves &quot;unknown&quot;)</span>
+<span class="sd">        and adopted only once the next poll reads it the same — ``classify_transition`` finds no physics</span>
+<span class="sd">        or immutable trip between the two. A transient splice reads different garbage each poll, so it</span>
+<span class="sd">        never corroborates; on a disagreement the most-recent frame becomes the new candidate (so a</span>
+<span class="sd">        splice in the *first* frame is recovered from).</span>
+
+<span class="sd">        Two exceptions to &quot;corroboration adopts&quot;: a frame in the temp-zero corruption cohort</span>
+<span class="sd">        (:func:`is_corruption_cohort`) is refused even when corroborated — adopting it would</span>
+<span class="sd">        hard-reject every healthy frame forever, an unrecoverable physics-only poison. A</span>
+<span class="sd">        persistently-identical *scalar*-immutable poison (IR97/IR98) does corroborate and is adopted,</span>
+<span class="sd">        because recovering that one is the #286 heal&#39;s job, not this guard&#39;s.</span>
+
+<span class="sd">        Returns True to adopt (corroborated), False to keep holding last-good (&quot;unknown&quot;).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_splice_pending_baseline</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">device_address</span><span class="p">)</span>
+        <span class="c1"># A pending older than the stale-bypass window straddles a genuine polling gap — don&#39;t</span>
+        <span class="c1"># corroborate across it; treat the incoming frame as a fresh first read.</span>
+        <span class="k">if</span> <span class="n">pending</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">now_ts</span> <span class="o">-</span> <span class="n">pending</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;</span> <span class="n">STALE_BYPASS_SECONDS</span><span class="p">:</span>
+            <span class="n">pending</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">pending</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">phys</span><span class="p">,</span> <span class="n">immut</span> <span class="o">=</span> <span class="n">classify_transition</span><span class="p">(</span><span class="n">pending</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">frame</span><span class="p">,</span> <span class="n">incoming_present</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">phys</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">immut</span> <span class="ow">and</span> <span class="n">is_corruption_cohort</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">incoming_present</span><span class="p">):</span>
+                <span class="c1"># Corroborated, but the frame IS the temp-zero corruption signature (#256/#289 review).</span>
+                <span class="c1"># Baselining it would be unrecoverable: every later healthy frame then trips &gt;=2 physics</span>
+                <span class="c1"># and is hard-rejected forever, and the #286 heal only recovers scalar-immutable poison.</span>
+                <span class="c1"># Keep holding (cache untouched) — a healthy corroborated pair will baseline instead.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cold_start_held_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
+                <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: cold-start frame corroborated but is the temp-zero &quot;</span>
+                    <span class="s2">&quot;corruption cohort; refusing to baseline it, holding for a healthy read. Please report if seen.&quot;</span><span class="p">,</span>
+                    <span class="n">device_address</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">phys</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">immut</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_splice_pending_baseline</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: cold-start baseline corroborated on re-read; committing.&quot;</span><span class="p">,</span>
+                    <span class="n">device_address</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;cold-start reads disagree (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_format_splice_trips</span><span class="p">(</span><span class="n">phys</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">immut</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;first cold-start frame&quot;</span>
+        <span class="c1"># Hold (or re-hold) the most-recent frame as the pending baseline and wait for corroboration.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_splice_pending_baseline</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">now_ts</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cold_start_held_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
+        <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> — holding pending a corroborating read; serving unknown meanwhile.&quot;</span><span class="p">,</span>
+            <span class="n">device_address</span><span class="p">,</span>
+            <span class="n">reason</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_handle_scalar_immutable</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -17571,16 +17737,16 @@ Client pointing at one of the EMS-managed inverters; <code>inverters</code> and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1351</span>
-<span class="normal">1352</span>
-<span class="normal">1353</span>
-<span class="normal">1354</span>
-<span class="normal">1355</span>
-<span class="normal">1356</span>
-<span class="normal">1357</span>
-<span class="normal">1358</span>
-<span class="normal">1359</span>
-<span class="normal">1360</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1435</span>
+<span class="normal">1436</span>
+<span class="normal">1437</span>
+<span class="normal">1438</span>
+<span class="normal">1439</span>
+<span class="normal">1440</span>
+<span class="normal">1441</span>
+<span class="normal">1442</span>
+<span class="normal">1443</span>
+<span class="normal">1444</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store direct-inverter register caches for serial reconciliation (#106 Phase 3).</span>
 
 <span class="sd">    Caches are stored separately from ``register_caches`` to avoid the Modbus</span>
@@ -17618,32 +17784,32 @@ all-zero rejection (#206).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1071</span>
-<span class="normal">1072</span>
-<span class="normal">1073</span>
-<span class="normal">1074</span>
-<span class="normal">1075</span>
-<span class="normal">1076</span>
-<span class="normal">1077</span>
-<span class="normal">1078</span>
-<span class="normal">1079</span>
-<span class="normal">1080</span>
-<span class="normal">1081</span>
-<span class="normal">1082</span>
-<span class="normal">1083</span>
-<span class="normal">1084</span>
-<span class="normal">1085</span>
-<span class="normal">1086</span>
-<span class="normal">1087</span>
-<span class="normal">1088</span>
-<span class="normal">1089</span>
-<span class="normal">1090</span>
-<span class="normal">1091</span>
-<span class="normal">1092</span>
-<span class="normal">1093</span>
-<span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1155</span>
+<span class="normal">1156</span>
+<span class="normal">1157</span>
+<span class="normal">1158</span>
+<span class="normal">1159</span>
+<span class="normal">1160</span>
+<span class="normal">1161</span>
+<span class="normal">1162</span>
+<span class="normal">1163</span>
+<span class="normal">1164</span>
+<span class="normal">1165</span>
+<span class="normal">1166</span>
+<span class="normal">1167</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17699,34 +17865,34 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1161</span>
-<span class="normal">1162</span>
-<span class="normal">1163</span>
-<span class="normal">1164</span>
-<span class="normal">1165</span>
-<span class="normal">1166</span>
-<span class="normal">1167</span>
-<span class="normal">1168</span>
-<span class="normal">1169</span>
-<span class="normal">1170</span>
-<span class="normal">1171</span>
-<span class="normal">1172</span>
-<span class="normal">1173</span>
-<span class="normal">1174</span>
-<span class="normal">1175</span>
-<span class="normal">1176</span>
-<span class="normal">1177</span>
-<span class="normal">1178</span>
-<span class="normal">1179</span>
-<span class="normal">1180</span>
-<span class="normal">1181</span>
-<span class="normal">1182</span>
-<span class="normal">1183</span>
-<span class="normal">1184</span>
-<span class="normal">1185</span>
-<span class="normal">1186</span>
-<span class="normal">1187</span>
-<span class="normal">1188</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1245</span>
+<span class="normal">1246</span>
+<span class="normal">1247</span>
+<span class="normal">1248</span>
+<span class="normal">1249</span>
+<span class="normal">1250</span>
+<span class="normal">1251</span>
+<span class="normal">1252</span>
+<span class="normal">1253</span>
+<span class="normal">1254</span>
+<span class="normal">1255</span>
+<span class="normal">1256</span>
+<span class="normal">1257</span>
+<span class="normal">1258</span>
+<span class="normal">1259</span>
+<span class="normal">1260</span>
+<span class="normal">1261</span>
+<span class="normal">1262</span>
+<span class="normal">1263</span>
+<span class="normal">1264</span>
+<span class="normal">1265</span>
+<span class="normal">1266</span>
+<span class="normal">1267</span>
+<span class="normal">1268</span>
+<span class="normal">1269</span>
+<span class="normal">1270</span>
+<span class="normal">1271</span>
+<span class="normal">1272</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17776,10 +17942,10 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">596</span>
-<span class="normal">597</span>
-<span class="normal">598</span>
-<span class="normal">599</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">611</span>
+<span class="normal">612</span>
+<span class="normal">613</span>
+<span class="normal">614</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure a default register cache is always present.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span> <span class="o">=</span> <span class="p">{</span><span class="mh">0x32</span><span class="p">:</span> <span class="n">RegisterCache</span><span class="p">()}</span>
@@ -17805,9 +17971,9 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">660</span>
-<span class="normal">661</span>
-<span class="normal">662</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">record_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">record_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Record a consumed read retry for a device (#284); called by the Client per retry.&quot;&quot;&quot;</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -17836,27 +18002,27 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">633</span>
-<span class="normal">634</span>
-<span class="normal">635</span>
-<span class="normal">636</span>
-<span class="normal">637</span>
-<span class="normal">638</span>
-<span class="normal">639</span>
-<span class="normal">640</span>
-<span class="normal">641</span>
-<span class="normal">642</span>
-<span class="normal">643</span>
-<span class="normal">644</span>
-<span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span>
-<span class="normal">648</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">648</span>
 <span class="normal">649</span>
 <span class="normal">650</span>
 <span class="normal">651</span>
 <span class="normal">652</span>
-<span class="normal">653</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a share-safe copy: every register cache redacted and the header serials cleared.</span>
 
 <span class="sd">    ``redact_serials()`` only covers the register caches; ``inverter_serial_number`` and</span>
@@ -17904,32 +18070,32 @@ model attribute's freshness.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1098</span>
-<span class="normal">1099</span>
-<span class="normal">1100</span>
-<span class="normal">1101</span>
-<span class="normal">1102</span>
-<span class="normal">1103</span>
-<span class="normal">1104</span>
-<span class="normal">1105</span>
-<span class="normal">1106</span>
-<span class="normal">1107</span>
-<span class="normal">1108</span>
-<span class="normal">1109</span>
-<span class="normal">1110</span>
-<span class="normal">1111</span>
-<span class="normal">1112</span>
-<span class="normal">1113</span>
-<span class="normal">1114</span>
-<span class="normal">1115</span>
-<span class="normal">1116</span>
-<span class="normal">1117</span>
-<span class="normal">1118</span>
-<span class="normal">1119</span>
-<span class="normal">1120</span>
-<span class="normal">1121</span>
-<span class="normal">1122</span>
-<span class="normal">1123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">register</span><span class="p">:</span> <span class="n">Register</span><span class="p">,</span>
@@ -17980,22 +18146,7 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">664</span>
-<span class="normal">665</span>
-<span class="normal">666</span>
-<span class="normal">667</span>
-<span class="normal">668</span>
-<span class="normal">669</span>
-<span class="normal">670</span>
-<span class="normal">671</span>
-<span class="normal">672</span>
-<span class="normal">673</span>
-<span class="normal">674</span>
-<span class="normal">675</span>
-<span class="normal">676</span>
-<span class="normal">677</span>
-<span class="normal">678</span>
-<span class="normal">679</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">679</span>
 <span class="normal">680</span>
 <span class="normal">681</span>
 <span class="normal">682</span>
@@ -18071,7 +18222,22 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 <span class="normal">752</span>
 <span class="normal">753</span>
 <span class="normal">754</span>
-<span class="normal">755</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="normal">755</span>
+<span class="normal">756</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span>
+<span class="normal">770</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.</span>
 
 <span class="sd">    ``received_at`` overrides the ingestion timestamp recorded for a committed</span>
@@ -18211,8 +18377,7 @@ callers). Both paths emit a DeprecationWarning.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">184</span>
-<span class="normal">185</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">185</span>
 <span class="normal">186</span>
 <span class="normal">187</span>
 <span class="normal">188</span>
@@ -18518,7 +18683,8 @@ callers). Both paths emit a DeprecationWarning.</p>
 <span class="normal">488</span>
 <span class="normal">489</span>
 <span class="normal">490</span>
-<span class="normal">491</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="normal">491</span>
+<span class="normal">492</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PlantCapabilities</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describes the hardware topology discovered by Client.detect().</span>
 
 <span class="sd">    Returned by Client.detect(); callers assign it to plant.capabilities or</span>
@@ -19149,8 +19315,7 @@ state persisted under the older conventions still loads cleanly.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">368</span>
-<span class="normal">369</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">369</span>
 <span class="normal">370</span>
 <span class="normal">371</span>
 <span class="normal">372</span>
@@ -19210,7 +19375,8 @@ state persisted under the older conventions still loads cleanly.</p>
 <span class="normal">426</span>
 <span class="normal">427</span>
 <span class="normal">428</span>
-<span class="normal">429</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+<span class="normal">429</span>
+<span class="normal">430</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;PlantCapabilities&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct from a to_dict() payload.</span>
 
@@ -19297,8 +19463,7 @@ field gives future-us an escape hatch for format changes.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">350</span>
-<span class="normal">351</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">351</span>
 <span class="normal">352</span>
 <span class="normal">353</span>
 <span class="normal">354</span>
@@ -19313,7 +19478,8 @@ field gives future-us an escape hatch for format changes.</p>
 <span class="normal">363</span>
 <span class="normal">364</span>
 <span class="normal">365</span>
-<span class="normal">366</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="normal">366</span>
+<span class="normal">367</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialise to a JSON-safe dict for caller-managed persistence.</span>
 
 <span class="sd">    Round-trips through from_dict(). Addresses render as `0x..` strings to</span>
