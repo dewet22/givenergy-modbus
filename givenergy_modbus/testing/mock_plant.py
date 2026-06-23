@@ -111,19 +111,6 @@ def plant_from_capture(*paths: str | Path) -> Plant:
     return plant
 
 
-# Device-address ranges that can host multiple instances of one serial-bearing device type,
-# each mapped to the getter whose ``serial_number`` Def locates the serial registers. Capture
-# fixtures redact every serial to an identical placeholder (and the byte-level fixture policy
-# forbids editing them — see scripts/regen_fixture_crcs.py), so replayed multi-instance devices
-# collide on serial, which breaks consumers that key entities by serial (e.g. AIO modules in
-# Home Assistant). Only IR/``C.serial`` 5-register devices are handled here; meters (MR/
-# ``C.string``) and HV BMUs (stride within a single 0x70 cache) use other layouts — out of scope.
-_SERIAL_DEVICE_GETTERS: tuple[tuple[range, type[RegisterGetter]], ...] = (
-    (range(0x33, 0x38), BatteryRegisterGetter),  # LV battery packs (bare-plant addressing)
-    (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
-)
-
-
 def _decode_serial(cache: RegisterCache, regs: tuple[Register, ...] | list[Register]) -> str | None:
     """Decode a serial from its registers in a cache (mirrors the model serial converter)."""
     values = [cache.get(r) for r in regs]
@@ -147,9 +134,22 @@ def _make_device_serials_distinct(plant: Plant) -> None:
     member's serial with its device address — preserving the real prefix, making it unique, and
     keeping it obviously synthetic. Distinct or singular serials are left untouched; only the
     in-memory mock caches are changed, never the fixture bytes.
+
+    Only IR/``C.serial`` 5-register devices are handled (LV battery packs, AIO modules); meters
+    (MR/``C.string``) and HV BMUs (stride within a single 0x70 cache) use other layouts and are
+    out of scope.
     """
     caches = plant.register_caches
-    for addr_range, getter in _SERIAL_DEVICE_GETTERS:
+    # Unified addressing (inverter at 0x11/0x31) puts LV battery pack #1 at 0x32; legacy bare-plant
+    # addressing keeps the inverter facade at 0x32 (pack #1 at 0x33). Gate strictly on the canonical
+    # inverter addresses present in the caches so a legacy capture never has its inverter serial
+    # rewritten as if it were a battery pack (#283 review).
+    lv_start = 0x32 if (0x11 in caches or 0x31 in caches) else 0x33
+    serial_device_getters: tuple[tuple[range, type[RegisterGetter]], ...] = (
+        (range(lv_start, 0x38), BatteryRegisterGetter),  # LV battery packs
+        (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
+    )
+    for addr_range, getter in serial_device_getters:
         regs = getter.registers_of("serial_number")
         if not regs:
             continue

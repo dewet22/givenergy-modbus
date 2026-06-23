@@ -254,3 +254,48 @@ def test_aio_mock_serves_distinct_module_serials():
     for addr in (0x50, 0x51, 0x52, 0x53):
         assert serials[addr].startswith("HX"), serials[addr]  # real prefix preserved
         assert serials[addr].endswith(f"{addr:02x}"), serials[addr]  # address-tailed, distinct
+
+
+def test_make_device_serials_distinct_includes_0x32_under_unified_addressing():
+    """With a 0x11 inverter present, pack #1 lives at 0x32 and must join the collision set (#283)."""
+    from givenergy_modbus.model.battery import BatteryRegisterGetter
+    from givenergy_modbus.model.plant import Plant
+    from givenergy_modbus.testing.mock_plant import (
+        _decode_serial,
+        _encode_serial,
+        _make_device_serials_distinct,
+    )
+
+    regs = BatteryRegisterGetter.registers_of("serial_number")
+    plant = Plant()
+    plant.register_caches[0x11] = RegisterCache()  # canonical inverter present → 0x32 is a pack
+    for addr in (0x32, 0x33):  # both packs share the redacted placeholder → collision
+        plant.register_caches[addr] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G000", len(regs)))))
+
+    _make_device_serials_distinct(plant)
+
+    assert _decode_serial(plant.register_caches[0x32], regs) == "BG0000G032"
+    assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G033"
+
+
+def test_make_device_serials_distinct_leaves_legacy_inverter_at_0x32():
+    """Without a canonical inverter address, 0x32 is the inverter facade and must not be rewritten."""
+    from givenergy_modbus.model.battery import BatteryRegisterGetter
+    from givenergy_modbus.model.plant import Plant
+    from givenergy_modbus.testing.mock_plant import (
+        _decode_serial,
+        _encode_serial,
+        _make_device_serials_distinct,
+    )
+
+    regs = BatteryRegisterGetter.registers_of("serial_number")
+    plant = Plant()  # no 0x11/0x31 → legacy bare-plant addressing, 0x32 is the inverter
+    plant.register_caches[0x32] = RegisterCache(dict(zip(regs, _encode_serial("SA0000G000", len(regs)))))
+    for addr in (0x33, 0x34):  # the actual packs collide
+        plant.register_caches[addr] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G000", len(regs)))))
+
+    _make_device_serials_distinct(plant)
+
+    assert _decode_serial(plant.register_caches[0x32], regs) == "SA0000G000"  # inverter untouched
+    assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G033"
+    assert _decode_serial(plant.register_caches[0x34], regs) == "BG0000G034"
