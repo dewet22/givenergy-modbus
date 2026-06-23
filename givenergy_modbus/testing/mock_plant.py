@@ -25,12 +25,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import cast
 
 from givenergy_modbus.framer import ServerFramer
+from givenergy_modbus.model.aio_battery import AioBatteryModuleRegisterGetter
+from givenergy_modbus.model.battery import BatteryRegisterGetter
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.model.register import HR, IR, MR, Register
+from givenergy_modbus.model.register import HR, IR, MR, Register, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -108,6 +111,58 @@ def plant_from_capture(*paths: str | Path) -> Plant:
     return plant
 
 
+def _decode_serial(cache: RegisterCache, regs: tuple[Register, ...] | list[Register]) -> str | None:
+    """Decode a serial from its registers in a cache (mirrors the model serial converter)."""
+    values = [cache.get(r) for r in regs]
+    if any(v is None for v in values):
+        return None
+    raw = b"".join(v.to_bytes(2, "big") for v in values if v is not None)
+    return raw.decode("latin1").replace("\x00", "").upper() or None
+
+
+def _encode_serial(serial: str, n_regs: int) -> list[int]:
+    """Encode a serial string into ``n_regs`` big-endian uint16 registers (inverse of decode)."""
+    data = serial.encode("latin1")[: n_regs * 2].ljust(n_regs * 2, b"\x00")
+    return [int.from_bytes(data[i * 2 : i * 2 + 2], "big") for i in range(n_regs)]
+
+
+def _make_device_serials_distinct(plant: Plant) -> None:
+    """Give each instance of a multi-instance device a distinct serial where the capture collides.
+
+    Fixtures redact every serial to the same placeholder, so replayed packs/modules share a serial
+    and collide downstream. For each device group with duplicate non-empty serials, re-tail each
+    member's serial with its device address — preserving the real prefix, making it unique, and
+    keeping it obviously synthetic. Distinct or singular serials are left untouched; only the
+    in-memory mock caches are changed, never the fixture bytes.
+
+    Only IR/``C.serial`` 5-register devices are handled (LV battery packs, AIO modules); meters
+    (MR/``C.string``) and HV BMUs (stride within a single 0x70 cache) use other layouts and are
+    out of scope.
+    """
+    caches = plant.register_caches
+    # Unified addressing (inverter at 0x11/0x31) puts LV battery pack #1 at 0x32; legacy bare-plant
+    # addressing keeps the inverter facade at 0x32 (pack #1 at 0x33). Gate strictly on the canonical
+    # inverter addresses present in the caches so a legacy capture never has its inverter serial
+    # rewritten as if it were a battery pack (#283 review).
+    lv_start = 0x32 if (0x11 in caches or 0x31 in caches) else 0x33
+    serial_device_getters: tuple[tuple[range, type[RegisterGetter]], ...] = (
+        (range(lv_start, 0x38), BatteryRegisterGetter),  # LV battery packs
+        (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
+    )
+    for addr_range, getter in serial_device_getters:
+        regs = getter.registers_of("serial_number")
+        if not regs:
+            continue
+        serials = {addr: _decode_serial(caches[addr], regs) for addr in addr_range if addr in caches}
+        named = {addr: s for addr, s in serials.items() if s}
+        shared = {s for s, n in Counter(named.values()).items() if n > 1}
+        for addr, serial in named.items():
+            if serial in shared and len(serial) >= 2:  # only re-tail the colliding members
+                distinct = serial[:-2] + f"{addr:02x}"
+                for reg, value in zip(regs, _encode_serial(distinct, len(regs))):
+                    caches[addr][reg] = value
+
+
 class MockPlant:
     """A TCP server impersonating a GivEnergy plant, seeded from a capture."""
 
@@ -131,6 +186,7 @@ class MockPlant:
     def from_capture(cls, *paths: str | Path) -> MockPlant:
         """Build a mock plant seeded from one or more capture ``.log`` files."""
         plant = plant_from_capture(*paths)
+        _make_device_serials_distinct(plant)
         return cls(
             plant.register_caches,
             inverter_serial=plant.inverter_serial_number,
