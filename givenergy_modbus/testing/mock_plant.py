@@ -25,15 +25,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from collections import Counter
 from pathlib import Path
 from typing import cast
 
 from givenergy_modbus.framer import ServerFramer
 from givenergy_modbus.model.aio_battery import AioBatteryModuleRegisterGetter
 from givenergy_modbus.model.battery import BatteryRegisterGetter
+from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.model.register import HR, IR, MR, Register, RegisterGetter
+from givenergy_modbus.model.register import HR, IR, MR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
     ClientIncomingMessage,
@@ -117,7 +117,10 @@ def _decode_serial(cache: RegisterCache, regs: tuple[Register, ...] | list[Regis
     if any(v is None for v in values):
         return None
     raw = b"".join(v.to_bytes(2, "big") for v in values if v is not None)
-    return raw.decode("latin1").replace("\x00", "").upper() or None
+    # Strip null AND whitespace padding (matching the model's serial handling, e.g. Ems
+    # managed_inverters' strip("\x00 ")), so an empty-but-space-padded slot reads as no serial
+    # rather than a whitespace string that would be mistaken for a real (colliding) value.
+    return raw.decode("latin1").replace("\x00", "").strip().upper() or None
 
 
 def _encode_serial(serial: str, n_regs: int) -> list[int]:
@@ -126,18 +129,40 @@ def _encode_serial(serial: str, n_regs: int) -> list[int]:
     return [int.from_bytes(data[i * 2 : i * 2 + 2], "big") for i in range(n_regs)]
 
 
+def _disambiguate_serials(members: list[tuple[RegisterCache, tuple[Register, ...], str]]) -> None:
+    """Make a group of multi-instance members carry distinct serials in the mock cache.
+
+    Each member is ``(cache, serial-registers, suffix)``, where ``suffix`` is a 2-char identity
+    unique within the group (bus address or slot index). If two or more members share a non-empty
+    serial, **every** populated member is re-tailed with its suffix — preserving the prefix and
+    keeping it obviously synthetic. Rewriting *only* the colliding members could mint a value that
+    matches an already-distinct member (#288 review); rewriting all, with each member's unique
+    suffix, guarantees no two collide. A fully-distinct group is left untouched; empty / sub-2-char
+    serials are skipped.
+    """
+    decoded = [(cache, regs, suffix, _decode_serial(cache, regs)) for cache, regs, suffix in members]
+    serials = [s for *_, s in decoded if s]
+    if len(set(serials)) == len(serials):
+        return  # no collision in this group
+    for cache, regs, suffix, serial in decoded:
+        if serial and len(serial) >= 2:
+            for reg, value in zip(regs, _encode_serial(serial[:-2] + suffix, len(regs))):
+                cache[reg] = value
+
+
 def _make_device_serials_distinct(plant: Plant) -> None:
     """Give each instance of a multi-instance device a distinct serial where the capture collides.
 
-    Fixtures redact every serial to the same placeholder, so replayed packs/modules share a serial
-    and collide downstream. For each device group with duplicate non-empty serials, re-tail each
-    member's serial with its device address — preserving the real prefix, making it unique, and
-    keeping it obviously synthetic. Distinct or singular serials are left untouched; only the
-    in-memory mock caches are changed, never the fixture bytes.
+    Fixtures redact every serial to the same placeholder, so replayed packs/modules/slots share a
+    serial and collide downstream. Where a group collides, each populated member is re-tailed with a
+    unique 2-char suffix (bus address, or EMS slot index) — preserving the real prefix, obviously
+    synthetic. A fully-distinct group is left untouched; only the in-memory mock caches change,
+    never the fixture bytes.
 
-    Only IR/``C.serial`` 5-register devices are handled (LV battery packs, AIO modules); meters
-    (MR/``C.string``) and HV BMUs (stride within a single 0x70 cache) use other layouts and are
-    out of scope.
+    Handles the IR/``C.serial`` 5-register devices: LV battery packs and AIO modules (re-tailed by
+    bus address), and EMS managed-inverter slots within the 0x11 cache (re-tailed by slot index,
+    since they share an address). Meters (MR/``C.string``) and HV BMUs (stride within a single 0x70
+    cache) use other layouts and are out of scope.
     """
     caches = plant.register_caches
     # Unified addressing (inverter at 0x11/0x31) puts LV battery pack #1 at 0x32; legacy bare-plant
@@ -145,22 +170,28 @@ def _make_device_serials_distinct(plant: Plant) -> None:
     # inverter addresses present in the caches so a legacy capture never has its inverter serial
     # rewritten as if it were a battery pack (#283 review).
     lv_start = 0x32 if (0x11 in caches or 0x31 in caches) else 0x33
-    serial_device_getters: tuple[tuple[range, type[RegisterGetter]], ...] = (
+    for addr_range, getter in (
         (range(lv_start, 0x38), BatteryRegisterGetter),  # LV battery packs
         (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
-    )
-    for addr_range, getter in serial_device_getters:
+    ):
+        # registers_of returns () for getters without a serial_number; _disambiguate_serials then
+        # decodes every member to None and no-ops, so we can iterate unconditionally (#247 contract).
         regs = getter.registers_of("serial_number")
-        if not regs:
-            continue
-        serials = {addr: _decode_serial(caches[addr], regs) for addr in addr_range if addr in caches}
-        named = {addr: s for addr, s in serials.items() if s}
-        shared = {s for s, n in Counter(named.values()).items() if n > 1}
-        for addr, serial in named.items():
-            if serial in shared and len(serial) >= 2:  # only re-tail the colliding members
-                distinct = serial[:-2] + f"{addr:02x}"
-                for reg, value in zip(regs, _encode_serial(distinct, len(regs))):
-                    caches[addr][reg] = value
+        _disambiguate_serials([(caches[a], regs, f"{a:02x}") for a in addr_range if a in caches])
+
+    # EMS managed-inverter slots (#288): up to 4 sub-slots in the single 0x11 EMS cache (not separate
+    # device addresses), so address keying can't see them — re-tail by slot index instead. A non-EMS
+    # 0x11 cache has no IR2066+ managed-inverter serials, so this is a no-op; the EMS controller's own
+    # serial is never touched.
+    ems_cache = caches.get(0x11)
+    if ems_cache is not None:
+        _disambiguate_serials(
+            [
+                (ems_cache, regs, f"{i:02d}")
+                for i in range(1, 5)
+                if (regs := EmsRegisterGetter.registers_of(f"inverter_{i}_serial_number"))
+            ]
+        )
 
 
 class MockPlant:
