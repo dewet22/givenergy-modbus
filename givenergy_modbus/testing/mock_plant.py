@@ -32,6 +32,7 @@ from typing import cast
 from givenergy_modbus.framer import ServerFramer
 from givenergy_modbus.model.aio_battery import AioBatteryModuleRegisterGetter
 from givenergy_modbus.model.battery import BatteryRegisterGetter
+from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import HR, IR, MR, Register, RegisterGetter
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -135,9 +136,10 @@ def _make_device_serials_distinct(plant: Plant) -> None:
     keeping it obviously synthetic. Distinct or singular serials are left untouched; only the
     in-memory mock caches are changed, never the fixture bytes.
 
-    Only IR/``C.serial`` 5-register devices are handled (LV battery packs, AIO modules); meters
-    (MR/``C.string``) and HV BMUs (stride within a single 0x70 cache) use other layouts and are
-    out of scope.
+    Handles the IR/``C.serial`` 5-register devices: LV battery packs and AIO modules (re-tailed by
+    bus address), and EMS managed-inverter slots within the 0x11 cache (re-tailed by slot index,
+    since they share an address). Meters (MR/``C.string``) and HV BMUs (stride within a single 0x70
+    cache) use other layouts and are out of scope.
     """
     caches = plant.register_caches
     # Unified addressing (inverter at 0x11/0x31) puts LV battery pack #1 at 0x32; legacy bare-plant
@@ -161,6 +163,22 @@ def _make_device_serials_distinct(plant: Plant) -> None:
                 distinct = serial[:-2] + f"{addr:02x}"
                 for reg, value in zip(regs, _encode_serial(distinct, len(regs))):
                     caches[addr][reg] = value
+
+    # EMS managed-inverter slots (#288): up to 4 sub-slots in the single 0x11 EMS cache (not separate
+    # device addresses), so the address-keyed pass above can't see them. Re-tail collisions by slot
+    # index instead. Collision-only + register-presence gated, so a non-EMS 0x11 cache (no IR2066+
+    # managed-inverter serials) is a no-op; the EMS controller's own serial is never touched.
+    ems_cache = caches.get(0x11)
+    if ems_cache is not None:
+        slots = [(i, EmsRegisterGetter.registers_of(f"inverter_{i}_serial_number")) for i in range(1, 5)]
+        named = {i: s for i, regs in slots if regs and (s := _decode_serial(ems_cache, regs))}
+        shared = {s for s, n in Counter(named.values()).items() if n > 1}
+        for i, regs in slots:
+            slot_serial = named.get(i)
+            if slot_serial and slot_serial in shared and len(slot_serial) >= 2:  # only colliding slots
+                distinct = slot_serial[:-2] + f"{i:02d}"  # slot index (1..4), preserving the prefix
+                for reg, value in zip(regs, _encode_serial(distinct, len(regs))):
+                    ems_cache[reg] = value
 
 
 class MockPlant:

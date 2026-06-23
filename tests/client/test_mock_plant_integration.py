@@ -299,3 +299,43 @@ def test_make_device_serials_distinct_leaves_legacy_inverter_at_0x32():
     assert _decode_serial(plant.register_caches[0x32], regs) == "SA0000G000"  # inverter untouched
     assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G033"
     assert _decode_serial(plant.register_caches[0x34], regs) == "BG0000G034"
+
+
+def test_make_device_serials_distinct_disambiguates_ems_managed_inverter_slots():
+    """Colliding EMS managed-inverter slot serials (0x11 sub-slots) are re-tailed by slot index (#288)."""
+    from givenergy_modbus.model.ems import EmsRegisterGetter
+    from givenergy_modbus.model.plant import Plant
+    from givenergy_modbus.testing.mock_plant import (
+        _decode_serial,
+        _encode_serial,
+        _make_device_serials_distinct,
+    )
+
+    def slot_regs(i):
+        return EmsRegisterGetter.registers_of(f"inverter_{i}_serial_number")
+
+    plant = Plant()
+    seed: dict = {}
+    for i in (1, 2):  # slots 1 & 2 share a redacted placeholder
+        seed.update(dict(zip(slot_regs(i), _encode_serial("CE0000G000", 5))))
+    seed.update(dict(zip(slot_regs(3), _encode_serial("CE0000G999", 5))))  # already distinct; slot 4 absent
+    plant.register_caches[0x11] = RegisterCache(seed)
+
+    _make_device_serials_distinct(plant)
+
+    cache = plant.register_caches[0x11]
+    assert _decode_serial(cache, slot_regs(1)) == "CE0000G001"
+    assert _decode_serial(cache, slot_regs(2)) == "CE0000G002"
+    assert _decode_serial(cache, slot_regs(3)) == "CE0000G999"  # already distinct → untouched
+    assert _decode_serial(cache, slot_regs(4)) is None  # absent slot ignored
+
+
+def test_ems_mock_serves_distinct_managed_inverter_serials():
+    """The EMS mock gives each managed-inverter slot its own serial (was both CE…G000) (#288)."""
+    from givenergy_modbus.model.ems import Ems
+
+    mock = MockPlant.from_capture(_CAPTURES / "ems_2_inv_3_bat_a" / "ems_arm1036_60s.log")
+    serials = [inv.serial_number for inv in Ems.from_register_cache(mock.devices[0x11]).managed_inverters]
+    assert len(serials) == 2  # the 2-managed-inverter fixture
+    assert len(set(serials)) == 2, f"managed-inverter serials must be distinct: {serials}"
+    assert all(s.startswith("CE") for s in serials)  # real prefix preserved
