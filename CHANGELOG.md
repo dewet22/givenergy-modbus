@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4] - 2026-06-23
+
+### 🐛 Fixed
+
+- hold scalar-immutable battery disagreements, heal only after long (tunable) insistence (#287) ([a4336e0](https://github.com/dewet22/givenergy-modbus/commit/a4336e07baaf695ccd9cfaa724ade1257299fb19))
+
 ## [2.5.3] - 2026-06-23
 
 ### ✨ Added
