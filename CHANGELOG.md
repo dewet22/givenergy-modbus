@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.5] - 2026-06-23
+
+### ✨ Added
+
+- confirm cold-start battery baseline before adopting (#289) (#291) ([595a937](https://github.com/dewet22/givenergy-modbus/commit/595a9378d46e68eb740f164660c1f8aec023bb23))
+
+### 🐛 Fixed
+
+- disambiguate EMS managed-inverter slot serials by slot index (#290) ([cc247c4](https://github.com/dewet22/givenergy-modbus/commit/cc247c49994a2c566054d489cf3257c7badf2bdb))
+
+### 🔧 Maintenance
+
+- bump cryptography in the uv group across 1 directory (#260) ([50e021c](https://github.com/dewet22/givenergy-modbus/commit/50e021c9465c554e006107a00809d931a0b5f949))
+- bump softprops/action-gh-release from 3.0.0 to 3.0.1 (#277) ([b7ae7d7](https://github.com/dewet22/givenergy-modbus/commit/b7ae7d76f01fdf8b443bba76c83989025093b7d1))
+- bump actions/checkout from 6 to 7 (#278) ([41094b2](https://github.com/dewet22/givenergy-modbus/commit/41094b29ee9d9a929c1114b785482f52508c4667))
+
 ## [2.5.4] - 2026-06-23
 
 ### 🐛 Fixed
