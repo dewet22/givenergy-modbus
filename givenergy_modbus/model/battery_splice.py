@@ -104,16 +104,14 @@ THRESHOLD_BY_CLASS: dict[str, int] = {name: thr for name, _, thr in SCALAR_RULES
 #: on the first post-reconnect poll.
 STALE_BYPASS_SECONDS: int = 300
 
-#: Backstop recovery bound for a poisoned scalar-immutable baseline (IR97/IR98) that ALSO trips
-#: physics (#281), so the coherent-physics escrow can't engage. A *stable* scalar-immutable
-#: disagreement (the same incoming value every poll) that persists this many consecutive polls —
-#: OR this many seconds since the streak began, whichever first — forces a re-baseline. Both
-#: bounds resolve strictly inside STALE_BYPASS_SECONDS so a real poison self-heals well before the
-#: coarse stale bypass would, while oscillating garbage (changing value) resets the streak and
-#: never reaches either bound. Field report (#281): ~6-15 s poll cadence, so 6 polls ≈ 36-90 s and
-#: the 120 s ceiling both land comfortably under 300 s even at the slow end.
-SCALAR_IMMUT_STREAK_POLLS: int = 6
-SCALAR_IMMUT_STREAK_SECONDS: int = 120
+#: Minimum consecutive-poll count before a sustained scalar-immutable (IR97/IR98) disagreement is
+#: healed (#286). A scalar-immutable change is held (last-good) and only adopted once the same
+#: value has been insisted upon uninterrupted for BOTH this many polls AND ``Plant.splice_heal_
+#: seconds`` (the time bound — consumer-tunable — is the primary discriminator: ongoing splice
+#: corruption reverts within minutes, a genuine poisoned baseline persists indefinitely). This
+#: poll floor only guards the degenerate "a few polls far apart" case; at any cadence ≤90 s the
+#: seconds bound dominates. A changing signature or a clean poll resets the streak.
+SCALAR_IMMUT_HEAL_POLLS: int = 10
 
 #: A single trip: (absolute IR number, class name, old comparable value, new comparable value).
 #: For pair rules the comparable values are the assembled uint32s, not the high word alone.

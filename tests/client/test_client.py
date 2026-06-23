@@ -561,6 +561,12 @@ async def test_retry_count_excludes_probe_on_error_response_with_delay():
     assert client.plant.retry_count == {}
 
 
+def test_client_forwards_splice_heal_seconds():
+    """Client(splice_heal_seconds=…) is applied to its plant, default 900 (#286)."""
+    assert Client(host="foo", port=4321).plant.splice_heal_seconds == 900.0
+    assert Client(host="foo", port=4321, splice_heal_seconds=42.0).plant.splice_heal_seconds == 42.0
+
+
 async def test_send_request_sleeps_between_retries_on_timeout():
     """A retry_delay > 0 must impose a sleep between a timed-out attempt and the next.
 
