@@ -174,9 +174,10 @@ def _make_device_serials_distinct(plant: Plant) -> None:
         (range(lv_start, 0x38), BatteryRegisterGetter),  # LV battery packs
         (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
     ):
+        # registers_of returns () for getters without a serial_number; _disambiguate_serials then
+        # decodes every member to None and no-ops, so we can iterate unconditionally (#247 contract).
         regs = getter.registers_of("serial_number")
-        if regs:
-            _disambiguate_serials([(caches[a], regs, f"{a:02x}") for a in addr_range if a in caches])
+        _disambiguate_serials([(caches[a], regs, f"{a:02x}") for a in addr_range if a in caches])
 
     # EMS managed-inverter slots (#288): up to 4 sub-slots in the single 0x11 EMS cache (not separate
     # device addresses), so address keying can't see them — re-tail by slot index instead. A non-EMS
