@@ -2483,14 +2483,19 @@ _BATT = 0x33  # battery pack #1 on bare Plant; 0x32 → inverter getter on bare 
 
 
 def test_splice_capacity_cohort_rejected(plant: Plant, caplog):
-    """A cap-pair physics step + immutable mutation is rejected outright (constant-register change)."""
+    """A cap-pair physics step + scalar-immutable mutation rejects on the first poll (#281).
+
+    With the scalar-immutable split this is no longer a hard reject — it's the backstop's
+    first poll (1 physics trip, not >=2), so the bank is held and the streak armed. Recovery
+    only happens if the same value persists (see the backstop test); a lone poll stays rejected.
+    """
     import logging
 
     _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
     corrupted = _coherent_battery_bank(
         {
-            89: 36000,  # IR89: cap_remaining low word 16000 → 36000, pair delta 20000 > 1000 threshold
-            98: 3006,  # IR98: bms_fw IMMUTABLE violation
+            89: 36000,  # IR89: cap_remaining low word 16000 → 36000, pair delta 20000 > 1500 threshold
+            98: 3006,  # IR98: bms_fw scalar-immutable violation
         }
     )
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
@@ -2499,7 +2504,87 @@ def test_splice_capacity_cohort_rejected(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(98)] == 3005
     warns = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
     assert len(warns) == 1
-    assert "constant-register change" in warns[0].message
+    assert "constant-register change with physics drift" in warns[0].message
+
+
+def test_splice_poisoned_scalar_immut_self_heals_via_escrow(plant: Plant, caplog):
+    """A poisoned cold-start IR98 baseline self-heals via escrow once the true value reads twice (#281).
+
+    Cold start commits a corrupt IR98 (9999); every later poll reports the true 3005 with
+    otherwise-coherent physics. Two identical reads ⇒ the baseline was poisoned ⇒ adopt.
+    """
+    import logging
+
+    poisoned = _coherent_battery_bank({98: 9999})  # corrupt first frame adopted at cold start
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    assert plant.register_caches[_BATT][IR(98)] == 9999
+
+    healthy = _coherent_battery_bank()  # true IR98 == 3005, otherwise identical → coherent physics
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+        assert plant.register_caches[_BATT][IR(98)] == 9999  # held one poll, not yet adopted
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=20))
+    assert plant.register_caches[_BATT][IR(98)] == 3005  # confirmed identical re-read → adopted
+    adopts = [r for r in caplog.records if "baseline was poisoned" in r.message and "0x33" in r.message]
+    assert len(adopts) == 1 and adopts[0].levelno == logging.INFO
+    assert not [r for r in caplog.records if "Rejected battery bank" in r.message]  # never a WARNING
+
+
+def test_splice_poisoned_scalar_immut_with_drift_self_heals_via_backstop(plant: Plant, caplog):
+    """A poisoned IR98 baseline that also trips physics self-heals via the backstop (#281).
+
+    The healthy polls carry the true IR98 *and* a sustained out-of-threshold cell delta, so the
+    coherent-physics escrow can't engage. The stable-signature streak forces a re-baseline at
+    the bound (6 polls @ 15 s = 90 s, well inside the 300 s stale window).
+    """
+    import logging
+
+    poisoned = _coherent_battery_bank({98: 9999})
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    healthy = _coherent_battery_bank({98: 3005, 60: 3600})  # IR60 +300 mV > 150 → 1 physics trip every poll
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        for n in range(1, 7):  # 6 polls @ 15 s
+            _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=15 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 3005  # whole bank adopted on the 6th poll
+    assert plant.register_caches[_BATT][IR(60)] == 3600
+    adopts = [
+        r
+        for r in caplog.records
+        if "stably disagreed" in r.message and "0x33" in r.message and r.levelno == logging.INFO
+    ]
+    assert len(adopts) == 1
+    rejects = [r for r in caplog.records if "physics drift" in r.message and "0x33" in r.message]
+    assert len(rejects) == 5  # polls 1-5 rejected, poll 6 adopted
+
+
+def test_splice_oscillating_scalar_immut_never_adopts(plant: Plant, caplog):
+    """Oscillating IR98 garbage never self-adopts — a changing signature resets the streak (#281)."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)  # clean seed: IR98 3005
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        for n in range(1, 13):  # 12 polls @ 15 s = 180 s, still < 300 s (no stale bypass)
+            garbage = _coherent_battery_bank({98: 9000 + (n % 2) * 500, 60: 3600})  # IR98 flips each poll
+            _feed_bank(plant, garbage, device_address=_BATT, received_at=_T0 + timedelta(seconds=15 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 3005  # last-good held; garbage never adopted
+    assert not [r for r in caplog.records if "baseline was poisoned" in r.message]
+    assert not [r for r in caplog.records if "stably disagreed" in r.message]
+
+
+def test_splice_serial_block_change_always_rejected(plant: Plant, caplog):
+    """A serial-block change is hard-rejected forever — wrong-pack / re-address protection (#281)."""
+    import logging
+
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    swapped = _coherent_battery_bank({110: 0x4248})  # serial first word BG.. → a different pack
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        for n in range(1, 25):  # 24 polls @ 15 s = 360 s; observation clock refreshes so bypass never fires
+            _feed_bank(plant, swapped, device_address=_BATT, received_at=_T0 + timedelta(seconds=15 * n))
+    assert plant.register_caches[_BATT][IR(110)] == 0x4247  # last-good serial held forever
+    serial_rejects = [r for r in caplog.records if "serial-block change" in r.message and "0x33" in r.message]
+    assert len(serial_rejects) == 24
+    assert not [r for r in caplog.records if "baseline was poisoned" in r.message]
+    assert not [r for r in caplog.records if "stably disagreed" in r.message]
 
 
 def test_splice_cell_and_temp_cohort_rejected(plant: Plant, caplog):
