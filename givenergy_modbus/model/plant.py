@@ -12,8 +12,7 @@ from givenergy_modbus.model.battery_splice import (
     BANK_BASE,
     IMMUTABLE_SCALAR,
     IMMUTABLE_SERIAL,
-    SCALAR_IMMUT_STREAK_POLLS,
-    SCALAR_IMMUT_STREAK_SECONDS,
+    SCALAR_IMMUT_HEAL_POLLS,
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
@@ -542,6 +541,14 @@ class Plant(GivEnergyBaseModel):
     splice_held_count: dict[int, int] = Field(default_factory=dict, exclude=True)
     retry_count: dict[int, int] = Field(default_factory=dict, exclude=True)
 
+    # How long (seconds) to hold last-good for a disputed *constant* battery register (num_cells,
+    # bms_firmware_version) before healing to a sustained new value (#286). Splice corruption that
+    # flips a constant register reverts within minutes (the bank is held meanwhile, protecting the
+    # co-corrupted physics like SOC), while a genuinely poisoned cold-start baseline — or a real
+    # firmware upgrade — persists indefinitely and heals after this long. Consumer-tunable via
+    # Client(splice_heal_seconds=…). Runtime config; excluded from model_dump.
+    splice_heal_seconds: float = Field(default=900.0, exclude=True)
+
     # Content-staleness tracker — the duration substrate for frozen-BMS-cache detection (#91).
     # Keyed identically to register_block_updated_at; each value is (content_hash, unchanged_since)
     # where unchanged_since is the ingestion time of the FIRST commit in the current
@@ -971,59 +978,39 @@ class Plant(GivEnergyBaseModel):
         phys: list[tuple[int, str, int, int]],
         now_ts: datetime,
     ) -> bool:
-        """Escrow / re-baseline a scalar-immutable (IR97/IR98) disagreement instead of rejecting (#281).
+        """Hold a scalar-immutable (IR97/IR98) disagreement; heal only after long insistence (#286).
 
-        A scalar immutable that reads the same incoming value identically across polls is the real
-        value — the cached baseline was poisoned by a corrupt cold-start frame, or the BMS firmware
-        was legitimately upgraded — so adopt it rather than rejecting forever (the bug this fixes).
-        Two paths share one streak counter keyed on the incoming signature:
+        Supersedes the #281 fast paths (coherent 2-read / 6-poll backstop), which adopted ongoing
+        corruption that happened to stay stable for a few polls.
 
-        * coherent physics (no other trips) — adopt on the second identical read (~2 polls), a
-          high-confidence poison signal;
-        * with physics drift — keep rejecting, but adopt once the same signature persists
-          ``SCALAR_IMMUT_STREAK_POLLS`` polls or ``SCALAR_IMMUT_STREAK_SECONDS`` seconds (whichever
-          first, both inside the 300 s stale window).
+        A constant register (num_cells, bms_firmware_version) changing is treated as corruption
+        until proven otherwise: ongoing splice corruption reverts within minutes, while a genuinely
+        poisoned cold-start baseline — or a real firmware upgrade — persists indefinitely. So every
+        poll holds the *whole* bank at last-good (return False), which also protects any
+        co-corrupted physics (e.g. SOC) riding in the same bank; the new value is adopted only once
+        the SAME incoming signature has been insisted upon, uninterrupted, for at least
+        ``SCALAR_IMMUT_HEAL_POLLS`` polls AND ``self.splice_heal_seconds`` seconds. A changing
+        signature or a clean (baseline-matching) poll resets the streak, so corruption — which
+        reverts well inside the heal window — never self-heals into the cache.
 
-        A *changing* signature (oscillating garbage) restarts the streak and never adopts, so genuine
-        corruption can't self-heal into the cache. Returns True to commit (adopt), False to hold.
+        Always a *recoverable hold* (INFO + ``splice_held_count``), never a WARNING reject. The hold
+        deliberately does not re-stamp the block's ingestion time, so ``block_age`` grows and a
+        consumer can see the data is cached/stale and decide what to do. Returns True to adopt
+        (heal), False to hold.
         """
         sig = tuple(sorted((ir_no, new_val) for ir_no, _name, _old, new_val in scalar_immut))
         streak = self._splice_immut_streak.get(device_address)
 
-        # Coherent physics: a single identical re-read is enough (high-confidence poison signal).
-        if not phys:
-            if streak is not None and streak[0] == sig:
-                self._splice_escrow.pop(device_address, None)
-                self._splice_immut_streak.pop(device_address, None)
-                _logger.info(
-                    "Battery bank for device 0x%02x: constant register(s) %s read identically twice "
-                    "with coherent physics — cold-start baseline was poisoned; adopting incoming as "
-                    "new baseline.",
-                    device_address,
-                    self._fmt_scalar_sig(scalar_immut),
-                )
-                return True
-            self._splice_immut_streak[device_address] = (sig, now_ts, 1)
-            self._bump(self.splice_held_count, device_address)
-            _logger.info(
-                "Battery bank for device 0x%02x: constant register(s) %s disagree with baseline "
-                "(coherent physics) — held one poll pending an identical re-read.",
-                device_address,
-                self._fmt_scalar_sig(scalar_immut),
-            )
-            return False
-
-        # Physics also drifted: less confident, so require a sustained stable streak before adopting.
         if streak is not None and streak[0] == sig:
             started, count = streak[1], streak[2] + 1
             elapsed = (now_ts - started).total_seconds()
-            if count >= SCALAR_IMMUT_STREAK_POLLS or elapsed >= SCALAR_IMMUT_STREAK_SECONDS:
+            if count >= SCALAR_IMMUT_HEAL_POLLS and elapsed >= self.splice_heal_seconds:
                 self._splice_escrow.pop(device_address, None)
                 self._splice_immut_streak.pop(device_address, None)
                 _logger.info(
-                    "Battery bank for device 0x%02x: constant register(s) %s stably disagreed with "
-                    "baseline for %d consecutive polls (%.0f s) — cold-start baseline was poisoned; "
-                    "adopting incoming as new baseline.",
+                    "Battery bank for device 0x%02x: constant register(s) %s held the same value for "
+                    "%d consecutive polls (%.0f s) — adopting as new baseline (poisoned baseline or "
+                    "firmware change).",
                     device_address,
                     self._fmt_scalar_sig(scalar_immut),
                     count,
@@ -1031,18 +1018,25 @@ class Plant(GivEnergyBaseModel):
                 )
                 return True
             self._splice_immut_streak[device_address] = (sig, started, count)
+            new_streak = False
         else:
             # New device, or the signature changed (oscillating garbage): (re)start the streak.
             self._splice_immut_streak[device_address] = (sig, now_ts, 1)
+            new_streak = True
 
         self._splice_escrow.pop(device_address, None)
-        self._bump(self.splice_reject_count, device_address)
-        _logger.warning(
-            "Rejected battery bank for device 0x%02x — sub-bus splice (constant-register change with "
-            "physics drift); keeping last-good. Trips: %s. Please report if seen.",
-            device_address,
-            self._format_splice_trips(scalar_immut + phys),
-        )
+        self._bump(self.splice_held_count, device_address)
+        if new_streak:
+            # Log once per insistence run (not every poll) to avoid spamming a long hold; the
+            # per-poll signal is splice_held_count + the growing block_age.
+            _logger.info(
+                "Battery bank for device 0x%02x: constant register(s) %s disagree with baseline — "
+                "holding last-good, will adopt only after %.0f s of sustained agreement. Trips: %s.",
+                device_address,
+                self._fmt_scalar_sig(scalar_immut),
+                self.splice_heal_seconds,
+                self._format_splice_trips(scalar_immut + phys),
+            )
         return False
 
     @staticmethod
