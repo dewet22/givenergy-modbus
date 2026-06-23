@@ -530,6 +530,18 @@ class Plant(GivEnergyBaseModel):
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
 
+    # Per-device comms-quality counters (#284): cumulative, monotonic event counts keyed by
+    # device_address, for a consumer to surface a plant's "noise floor" without grepping logs.
+    # Each counter mirrors a log event one-for-one (so logs and counters always agree) and only
+    # ever increments — splice_held_count counts *hold events*, not currently-held banks. In-memory
+    # and cumulative-since-construction (a reconnect re-instantiates the Plant; consumers track
+    # reset-aware deltas). Excluded from model_dump() like the bookkeeping above — they're runtime
+    # diagnostics, not dumpable plant state, but remain public gettable attributes.
+    crc_failure_count: dict[int, int] = Field(default_factory=dict, exclude=True)
+    splice_reject_count: dict[int, int] = Field(default_factory=dict, exclude=True)
+    splice_held_count: dict[int, int] = Field(default_factory=dict, exclude=True)
+    retry_count: dict[int, int] = Field(default_factory=dict, exclude=True)
+
     # Content-staleness tracker — the duration substrate for frozen-BMS-cache detection (#91).
     # Keyed identically to register_block_updated_at; each value is (content_hash, unchanged_since)
     # where unchanged_since is the ingestion time of the FIRST commit in the current
@@ -633,6 +645,15 @@ class Plant(GivEnergyBaseModel):
             }
         )
 
+    @staticmethod
+    def _bump(counter: dict[int, int], device_address: int) -> None:
+        """Increment a per-device comms-quality counter (#284)."""
+        counter[device_address] = counter.get(device_address, 0) + 1
+
+    def record_retry(self, device_address: int) -> None:
+        """Record a consumed read retry for a device (#284); called by the Client per retry."""
+        self._bump(self.retry_count, device_address)
+
     def update(self, pdu: ClientIncomingMessage, *, received_at: datetime | None = None):
         """Update the Plant state from a PDU message.
 
@@ -655,6 +676,7 @@ class Plant(GivEnergyBaseModel):
         # address and serial fields in the envelope, so those are untrusted on exactly the frames
         # that fail here — a corrupt 0x11 response must not clobber the stable inverter identity.
         if getattr(pdu, "crc_failed", False) and not getattr(pdu, "lenient_crc_commit", False):
+            self._bump(self.crc_failure_count, pdu.device_address)
             _logger.warning(
                 "Skipping CRC-failed response from 0x%02x (base=%d) — no Plant state updated",
                 pdu.device_address,
@@ -882,6 +904,7 @@ class Plant(GivEnergyBaseModel):
         if serial_immut or (len(phys) >= 2 and not scalar_immut):
             self._splice_escrow.pop(device_address, None)
             self._splice_immut_streak.pop(device_address, None)
+            self._bump(self.splice_reject_count, device_address)
             reason = "serial-block change" if serial_immut else ">=2 physics-impossible deltas"
             _logger.warning(
                 "Rejected battery bank for device 0x%02x — sub-bus splice (%s); keeping last-good. "
@@ -915,6 +938,7 @@ class Plant(GivEnergyBaseModel):
                 )
                 return True
             self._splice_escrow[device_address] = (ir_no, new_val)
+            self._bump(self.splice_held_count, device_address)
             # A lone out-of-threshold delta is the self-healing escrow path: held one poll, then
             # committed if it persists (genuine step) or dropped if it reverts (transient). It is
             # NOT confirmed corruption — the >=2/immutable REJECT above is — so it logs at INFO to
@@ -980,6 +1004,7 @@ class Plant(GivEnergyBaseModel):
                 )
                 return True
             self._splice_immut_streak[device_address] = (sig, now_ts, 1)
+            self._bump(self.splice_held_count, device_address)
             _logger.info(
                 "Battery bank for device 0x%02x: constant register(s) %s disagree with baseline "
                 "(coherent physics) — held one poll pending an identical re-read.",
@@ -1011,6 +1036,7 @@ class Plant(GivEnergyBaseModel):
             self._splice_immut_streak[device_address] = (sig, now_ts, 1)
 
         self._splice_escrow.pop(device_address, None)
+        self._bump(self.splice_reject_count, device_address)
         _logger.warning(
             "Rejected battery bank for device 0x%02x — sub-bus splice (constant-register change with "
             "physics drift); keeping last-good. Trips: %s. Please report if seen.",

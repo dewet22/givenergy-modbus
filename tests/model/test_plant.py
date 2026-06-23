@@ -2134,6 +2134,54 @@ def test_crc_failed_lenient_commit_allows_data(plant: Plant):
     assert plant.register_caches[0x32][IR(61)] == 7
 
 
+# --- comms-quality counters (#284) ------------------------------------------
+
+
+def test_comms_quality_counters_initialised_empty():
+    plant = Plant()
+    assert plant.crc_failure_count == {}
+    assert plant.splice_reject_count == {}
+    assert plant.splice_held_count == {}
+    assert plant.retry_count == {}
+
+
+def test_crc_failure_count_increments_per_device(plant: Plant):
+    """Each skipped CRC-failed response bumps crc_failure_count for that device."""
+    pdu = _make_ir_pdu({60: 0}, base_register=60, register_count=60)
+    pdu.crc_failed = True
+    setattr(pdu, "lenient_crc_commit", False)
+    plant.update(pdu)
+    plant.update(pdu)
+    assert plant.crc_failure_count == {0x32: 2}
+
+
+def test_splice_reject_count_increments_on_hard_reject(plant: Plant):
+    """A hard-rejected battery bank bumps splice_reject_count, not splice_held_count."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    corrupt = _coherent_battery_bank({76 + i: 0 for i in range(4)})  # 4 temp-zeros → >=2 physics
+    _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.splice_reject_count == {_BATT: 1}
+    assert plant.splice_held_count == {}
+
+
+def test_splice_held_count_increments_on_escrow(plant: Plant):
+    """A single-delta escrow hold bumps splice_held_count, not splice_reject_count."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    wild = _coherent_battery_bank({60: 3600})  # one out-of-threshold delta → hold one poll
+    _feed_bank(plant, wild, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.splice_held_count == {_BATT: 1}
+    assert plant.splice_reject_count == {}
+
+
+def test_splice_held_count_tracks_scalar_immutable_coherent_hold(plant: Plant):
+    """The #281 coherent scalar-immutable hold counts as a held event."""
+    poisoned = _coherent_battery_bank({98: 9999})
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)  # cold-start adopts (no count)
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+    assert plant.splice_held_count == {_BATT: 1}
+    assert plant.splice_reject_count == {}
+
+
 def test_content_unchanged_seconds_normalises_naive_now(plant: Plant):
     """A timezone-naive now is treated as UTC rather than raising TypeError (mirrors block_age)."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
