@@ -218,8 +218,12 @@ def test_serial_encode_decode_roundtrip():
     assert _decode_serial(cache, regs) == "HX2414G832"
 
 
-def test_make_device_serials_distinct_rewrites_only_collisions():
-    """Collided LV-pack serials become distinct (address-tailed); already-distinct ones are left."""
+def test_make_device_serials_distinct_rewrites_all_in_a_colliding_group():
+    """A re-tail must not recreate a collision with an already-distinct member (#288 review).
+
+    When a group collides, every populated member is re-tailed by its unique suffix — not just the
+    colliders — so the synthesized suffix can't land on a value an untouched member already holds.
+    """
     from givenergy_modbus.model.battery import BatteryRegisterGetter
     from givenergy_modbus.model.plant import Plant
     from givenergy_modbus.testing.mock_plant import (
@@ -230,15 +234,38 @@ def test_make_device_serials_distinct_rewrites_only_collisions():
 
     regs = BatteryRegisterGetter.registers_of("serial_number")  # IR(110-114)
     plant = Plant()
-    for addr in (0x33, 0x34):  # share an identical redacted serial → collision
+    for addr in (0x33, 0x34):  # collide on a redacted placeholder
         plant.register_caches[addr] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G000", len(regs)))))
-    plant.register_caches[0x35] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G999", len(regs)))))
+    # 0x35 is already distinct, but its serial ends in "34": re-tailing only 0x34 would mint
+    # "BG0000G034" and recreate a collision with 0x35. Rewriting all populated members avoids that.
+    plant.register_caches[0x35] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G034", len(regs)))))
 
     _make_device_serials_distinct(plant)
 
-    assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G033"
-    assert _decode_serial(plant.register_caches[0x34], regs) == "BG0000G034"
-    assert _decode_serial(plant.register_caches[0x35], regs) == "BG0000G999"  # distinct already → untouched
+    serials = [_decode_serial(plant.register_caches[a], regs) for a in (0x33, 0x34, 0x35)]
+    assert serials == ["BG0000G033", "BG0000G034", "BG0000G035"]
+    assert len(set(serials)) == 3  # crucially: no re-created collision
+
+
+def test_make_device_serials_distinct_leaves_a_fully_distinct_group_untouched():
+    """A group with no collision is left exactly as captured (#288)."""
+    from givenergy_modbus.model.battery import BatteryRegisterGetter
+    from givenergy_modbus.model.plant import Plant
+    from givenergy_modbus.testing.mock_plant import (
+        _decode_serial,
+        _encode_serial,
+        _make_device_serials_distinct,
+    )
+
+    regs = BatteryRegisterGetter.registers_of("serial_number")
+    plant = Plant()
+    plant.register_caches[0x33] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G111", len(regs)))))
+    plant.register_caches[0x34] = RegisterCache(dict(zip(regs, _encode_serial("BG0000G222", len(regs)))))
+
+    _make_device_serials_distinct(plant)
+
+    assert _decode_serial(plant.register_caches[0x33], regs) == "BG0000G111"  # untouched
+    assert _decode_serial(plant.register_caches[0x34], regs) == "BG0000G222"
 
 
 def test_aio_mock_serves_distinct_module_serials():
@@ -316,18 +343,23 @@ def test_make_device_serials_distinct_disambiguates_ems_managed_inverter_slots()
 
     plant = Plant()
     seed: dict = {}
-    for i in (1, 2):  # slots 1 & 2 share a redacted placeholder
+    for i in (1, 2):  # slots 1 & 2 collide on a redacted placeholder
         seed.update(dict(zip(slot_regs(i), _encode_serial("CE0000G000", 5))))
-    seed.update(dict(zip(slot_regs(3), _encode_serial("CE0000G999", 5))))  # already distinct; slot 4 absent
+    # slot 3 is distinct but ends in slot 1's index — re-tailing only the colliders would recreate a
+    # collision (slot 1 → CE0000G001 == slot 3); rewriting all slots by index avoids it (#288 review).
+    seed.update(dict(zip(slot_regs(3), _encode_serial("CE0000G001", 5))))
+    # slot 4 is empty but *space-padded* — must NOT be mistaken for a colliding serial / phantom
+    # inverter; decode strips whitespace → None (#288 review).
+    seed.update(dict(zip(slot_regs(4), _encode_serial("          ", 5))))
     plant.register_caches[0x11] = RegisterCache(seed)
 
     _make_device_serials_distinct(plant)
 
     cache = plant.register_caches[0x11]
-    assert _decode_serial(cache, slot_regs(1)) == "CE0000G001"
-    assert _decode_serial(cache, slot_regs(2)) == "CE0000G002"
-    assert _decode_serial(cache, slot_regs(3)) == "CE0000G999"  # already distinct → untouched
-    assert _decode_serial(cache, slot_regs(4)) is None  # absent slot ignored
+    serials = [_decode_serial(cache, slot_regs(i)) for i in (1, 2, 3)]
+    assert serials == ["CE0000G001", "CE0000G002", "CE0000G003"]  # all slots re-tailed by index
+    assert len(set(serials)) == 3  # slot 1 must not re-collide with slot 3
+    assert _decode_serial(cache, slot_regs(4)) is None  # space-padded empty slot → not a phantom
 
 
 def test_ems_mock_serves_distinct_managed_inverter_serials():
