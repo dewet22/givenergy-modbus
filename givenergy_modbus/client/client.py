@@ -325,7 +325,7 @@ class Client:
         tx_message_wait: float = 0.25,
         tx_jitter: float = 0.1,
         plant: Plant | None = None,
-        splice_heal_seconds: float = 900.0,
+        splice_heal_seconds: float | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -348,12 +348,14 @@ class Client:
         # multi-Client path is separate Plants + plant.add_direct_source().
         self.plant = plant if plant is not None else Plant()
         # How long to hold last-good for a disputed *constant* battery register (num_cells,
-        # bms_firmware_version) before healing to a sustained new value (#286). Applied whether the
-        # plant was injected or freshly created. Larger = more robust against ongoing splice
-        # corruption (which reverts in minutes); smaller = faster recovery from a genuinely poisoned
-        # cold-start baseline. Consumers can watch plant.splice_held_count + plant.block_age() to see
-        # when data is being held.
-        self.plant.splice_heal_seconds = splice_heal_seconds
+        # bms_firmware_version) before healing to a sustained new value (#286). Applied only when
+        # explicitly given, so an injected plant's own splice_heal_seconds isn't silently clobbered;
+        # otherwise the Plant field's own default (900 s) stands. Larger = more robust against
+        # ongoing splice corruption (which reverts in minutes); smaller = faster recovery from a
+        # genuinely poisoned cold-start baseline. Consumers can watch plant.splice_held_count +
+        # plant.block_age() to see when data is being held.
+        if splice_heal_seconds is not None:
+            self.plant.splice_heal_seconds = splice_heal_seconds
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
