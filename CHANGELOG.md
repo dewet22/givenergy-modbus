@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.2] - 2026-06-23
+
+### 🐛 Fixed
+
+- recover a poisoned scalar-immutable battery baseline (#281) (#282) ([5c2ff95](https://github.com/dewet22/givenergy-modbus/commit/5c2ff955fbf1a4412f65b7a15c583f4284e07196))
+
+### 🔧 Maintenance
+
+- cover write-register guards, heartbeat round-trip, command wrappers (#280) ([0960488](https://github.com/dewet22/givenergy-modbus/commit/09604883c291de3e087526d7aceadc3e3520f247))
+
 ## [2.5.1] - 2026-06-22
 
 ### 🐛 Fixed
