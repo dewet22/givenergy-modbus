@@ -1758,6 +1758,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.record_retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        record_retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.Plant.redact" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5512,6 +5523,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.record_retry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        record_retry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.Plant.redact" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8987,7 +9009,16 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
 <span class="normal">1475</span>
 <span class="normal">1476</span>
 <span class="normal">1477</span>
-<span class="normal">1478</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
+<span class="normal">1478</span>
+<span class="normal">1479</span>
+<span class="normal">1480</span>
+<span class="normal">1481</span>
+<span class="normal">1482</span>
+<span class="normal">1483</span>
+<span class="normal">1484</span>
+<span class="normal">1485</span>
+<span class="normal">1486</span>
+<span class="normal">1487</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Client</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.</span>
 
 <span class="sd">    Holds a long-lived connection drained by a single producer/consumer task pair.</span>
@@ -10193,11 +10224,17 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
                     <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-                <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span> <span class="ow">and</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="c1"># Discard the orphaned future so a late response from this attempt</span>
-                    <span class="c1"># doesn&#39;t accidentally resolve into the next attempt&#39;s future.</span>
-                    <span class="n">response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+                    <span class="c1"># Count the consumed retry (#284), but only where a response was genuinely</span>
+                    <span class="c1"># expected — absent-device detect probes pass warn_timeout=False and their</span>
+                    <span class="c1"># expected timeouts shouldn&#39;t pollute the per-device retry noise floor.</span>
+                    <span class="k">if</span> <span class="n">warn_timeout</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">record_retry</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># Discard the orphaned future so a late response from this attempt</span>
+                        <span class="c1"># doesn&#39;t accidentally resolve into the next attempt&#39;s future.</span>
+                        <span class="n">response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+                        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
                 <span class="k">continue</span>
             <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -10208,8 +10245,11 @@ polling loop calling <code>refresh_plant()</code> and entity-write handlers call
                 <span class="c1"># Unlike the timeout path above, no response_future.cancel() is needed here:</span>
                 <span class="c1"># the future is already resolved (we just called .result()), so cancel() would</span>
                 <span class="c1"># be a no-op, and the next attempt overwrites expected_responses[hash] anyway.</span>
-                <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span> <span class="ow">and</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">warn_timeout</span><span class="p">:</span>  <span class="c1"># count the consumed retry (#284); skip absent-device probes</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">record_retry</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
                 <span class="k">continue</span>
             <span class="k">return</span> <span class="n">response</span>
 
@@ -11488,7 +11528,16 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
 <span class="normal">1475</span>
 <span class="normal">1476</span>
 <span class="normal">1477</span>
-<span class="normal">1478</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
+<span class="normal">1478</span>
+<span class="normal">1479</span>
+<span class="normal">1480</span>
+<span class="normal">1481</span>
+<span class="normal">1482</span>
+<span class="normal">1483</span>
+<span class="normal">1484</span>
+<span class="normal">1485</span>
+<span class="normal">1486</span>
+<span class="normal">1487</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_request_and_await_response</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">request</span><span class="p">:</span> <span class="n">TransparentRequest</span><span class="p">,</span>
     <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -11561,11 +11610,17 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
                 <span class="sa">f</span><span class="s2">&quot;Timeout awaiting </span><span class="si">{</span><span class="n">expected_response</span><span class="si">}</span><span class="s2"> (future: </span><span class="si">{</span><span class="n">response_future</span><span class="si">}</span><span class="s2">), &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;attempting retry </span><span class="si">{</span><span class="n">tries</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">retries</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-            <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span> <span class="ow">and</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="c1"># Discard the orphaned future so a late response from this attempt</span>
-                <span class="c1"># doesn&#39;t accidentally resolve into the next attempt&#39;s future.</span>
-                <span class="n">response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+                <span class="c1"># Count the consumed retry (#284), but only where a response was genuinely</span>
+                <span class="c1"># expected — absent-device detect probes pass warn_timeout=False and their</span>
+                <span class="c1"># expected timeouts shouldn&#39;t pollute the per-device retry noise floor.</span>
+                <span class="k">if</span> <span class="n">warn_timeout</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">record_retry</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># Discard the orphaned future so a late response from this attempt</span>
+                    <span class="c1"># doesn&#39;t accidentally resolve into the next attempt&#39;s future.</span>
+                    <span class="n">response_future</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
             <span class="k">continue</span>
         <span class="n">response</span> <span class="o">=</span> <span class="n">response_future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -11576,8 +11631,11 @@ sensitive interactive commands) should pass <code>retry_delay=0</code>.</p>
             <span class="c1"># Unlike the timeout path above, no response_future.cancel() is needed here:</span>
             <span class="c1"># the future is already resolved (we just called .result()), so cancel() would</span>
             <span class="c1"># be a no-op, and the next attempt overwrites expected_responses[hash] anyway.</span>
-            <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span> <span class="ow">and</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">tries</span> <span class="o">&lt;=</span> <span class="n">retries</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">warn_timeout</span><span class="p">:</span>  <span class="c1"># count the consumed retry (#284); skip absent-device probes</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">plant</span><span class="o">.</span><span class="n">record_retry</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">retry_delay</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">retry_delay</span><span class="p">)</span>
             <span class="k">continue</span>
         <span class="k">return</span> <span class="n">response</span>
 
@@ -16059,7 +16117,33 @@ when it is most valuable to export energy.</p>
 <span class="normal">1519</span>
 <span class="normal">1520</span>
 <span class="normal">1521</span>
-<span class="normal">1522</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">1522</span>
+<span class="normal">1523</span>
+<span class="normal">1524</span>
+<span class="normal">1525</span>
+<span class="normal">1526</span>
+<span class="normal">1527</span>
+<span class="normal">1528</span>
+<span class="normal">1529</span>
+<span class="normal">1530</span>
+<span class="normal">1531</span>
+<span class="normal">1532</span>
+<span class="normal">1533</span>
+<span class="normal">1534</span>
+<span class="normal">1535</span>
+<span class="normal">1536</span>
+<span class="normal">1537</span>
+<span class="normal">1538</span>
+<span class="normal">1539</span>
+<span class="normal">1540</span>
+<span class="normal">1541</span>
+<span class="normal">1542</span>
+<span class="normal">1543</span>
+<span class="normal">1544</span>
+<span class="normal">1545</span>
+<span class="normal">1546</span>
+<span class="normal">1547</span>
+<span class="normal">1548</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -16082,6 +16166,18 @@ when it is most valuable to export energy.</p>
     <span class="c1"># skip-if-fresh path, #196) use block_age() to reason about freshness. Excluded from</span>
     <span class="c1"># model_dump(): it&#39;s ephemeral runtime bookkeeping, not part of the plant&#39;s dumpable state.</span>
     <span class="n">register_block_updated_at</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Per-device comms-quality counters (#284): cumulative, monotonic event counts keyed by</span>
+    <span class="c1"># device_address, for a consumer to surface a plant&#39;s &quot;noise floor&quot; without grepping logs.</span>
+    <span class="c1"># Each counter mirrors a log event one-for-one (so logs and counters always agree) and only</span>
+    <span class="c1"># ever increments — splice_held_count counts *hold events*, not currently-held banks. In-memory</span>
+    <span class="c1"># and cumulative-since-construction (a reconnect re-instantiates the Plant; consumers track</span>
+    <span class="c1"># reset-aware deltas). Excluded from model_dump() like the bookkeeping above — they&#39;re runtime</span>
+    <span class="c1"># diagnostics, not dumpable plant state, but remain public gettable attributes.</span>
+    <span class="n">crc_failure_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">splice_reject_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">splice_held_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">retry_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">exclude</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
     <span class="c1"># Content-staleness tracker — the duration substrate for frozen-BMS-cache detection (#91).</span>
     <span class="c1"># Keyed identically to register_block_updated_at; each value is (content_hash, unchanged_since)</span>
@@ -16186,6 +16282,15 @@ when it is most valuable to export energy.</p>
             <span class="p">}</span>
         <span class="p">)</span>
 
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bump</span><span class="p">(</span><span class="n">counter</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Increment a per-device comms-quality counter (#284).&quot;&quot;&quot;</span>
+        <span class="n">counter</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="n">counter</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a consumed read retry for a device (#284); called by the Client per retry.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.</span>
 
@@ -16208,6 +16313,7 @@ when it is most valuable to export energy.</p>
         <span class="c1"># address and serial fields in the envelope, so those are untrusted on exactly the frames</span>
         <span class="c1"># that fail here — a corrupt 0x11 response must not clobber the stable inverter identity.</span>
         <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="s2">&quot;crc_failed&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="s2">&quot;lenient_crc_commit&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">crc_failure_count</span><span class="p">,</span> <span class="n">pdu</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;Skipping CRC-failed response from 0x</span><span class="si">%02x</span><span class="s2"> (base=</span><span class="si">%d</span><span class="s2">) — no Plant state updated&quot;</span><span class="p">,</span>
                 <span class="n">pdu</span><span class="o">.</span><span class="n">device_address</span><span class="p">,</span>
@@ -16435,6 +16541,7 @@ when it is most valuable to export energy.</p>
         <span class="k">if</span> <span class="n">serial_immut</span> <span class="ow">or</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">phys</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">scalar_immut</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_immut_streak</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">splice_reject_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
             <span class="n">reason</span> <span class="o">=</span> <span class="s2">&quot;serial-block change&quot;</span> <span class="k">if</span> <span class="n">serial_immut</span> <span class="k">else</span> <span class="s2">&quot;&gt;=2 physics-impossible deltas&quot;</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
                 <span class="s2">&quot;Rejected battery bank for device 0x</span><span class="si">%02x</span><span class="s2"> — sub-bus splice (</span><span class="si">%s</span><span class="s2">); keeping last-good. &quot;</span>
@@ -16468,6 +16575,7 @@ when it is most valuable to export energy.</p>
                 <span class="p">)</span>
                 <span class="k">return</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ir_no</span><span class="p">,</span> <span class="n">new_val</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">splice_held_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
             <span class="c1"># A lone out-of-threshold delta is the self-healing escrow path: held one poll, then</span>
             <span class="c1"># committed if it persists (genuine step) or dropped if it reverts (transient). It is</span>
             <span class="c1"># NOT confirmed corruption — the &gt;=2/immutable REJECT above is — so it logs at INFO to</span>
@@ -16533,6 +16641,7 @@ when it is most valuable to export energy.</p>
                 <span class="p">)</span>
                 <span class="k">return</span> <span class="kc">True</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_immut_streak</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">now_ts</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">splice_held_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
             <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="s2">&quot;Battery bank for device 0x</span><span class="si">%02x</span><span class="s2">: constant register(s) </span><span class="si">%s</span><span class="s2"> disagree with baseline &quot;</span>
                 <span class="s2">&quot;(coherent physics) — held one poll pending an identical re-read.&quot;</span><span class="p">,</span>
@@ -16564,6 +16673,7 @@ when it is most valuable to export energy.</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">_splice_immut_streak</span><span class="p">[</span><span class="n">device_address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="n">now_ts</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_splice_escrow</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">device_address</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">splice_reject_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
         <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="s2">&quot;Rejected battery bank for device 0x</span><span class="si">%02x</span><span class="s2"> — sub-bus splice (constant-register change with &quot;</span>
             <span class="s2">&quot;physics drift); keeping last-good. Trips: </span><span class="si">%s</span><span class="s2">. Please report if seen.&quot;</span><span class="p">,</span>
@@ -17451,16 +17561,16 @@ Client pointing at one of the EMS-managed inverters; <code>inverters</code> and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1331</span>
-<span class="normal">1332</span>
-<span class="normal">1333</span>
-<span class="normal">1334</span>
-<span class="normal">1335</span>
-<span class="normal">1336</span>
-<span class="normal">1337</span>
-<span class="normal">1338</span>
-<span class="normal">1339</span>
-<span class="normal">1340</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1357</span>
+<span class="normal">1358</span>
+<span class="normal">1359</span>
+<span class="normal">1360</span>
+<span class="normal">1361</span>
+<span class="normal">1362</span>
+<span class="normal">1363</span>
+<span class="normal">1364</span>
+<span class="normal">1365</span>
+<span class="normal">1366</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store direct-inverter register caches for serial reconciliation (#106 Phase 3).</span>
 
 <span class="sd">    Caches are stored separately from ``register_caches`` to avoid the Modbus</span>
@@ -17498,32 +17608,32 @@ all-zero rejection (#206).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1051</span>
-<span class="normal">1052</span>
-<span class="normal">1053</span>
-<span class="normal">1054</span>
-<span class="normal">1055</span>
-<span class="normal">1056</span>
-<span class="normal">1057</span>
-<span class="normal">1058</span>
-<span class="normal">1059</span>
-<span class="normal">1060</span>
-<span class="normal">1061</span>
-<span class="normal">1062</span>
-<span class="normal">1063</span>
-<span class="normal">1064</span>
-<span class="normal">1065</span>
-<span class="normal">1066</span>
-<span class="normal">1067</span>
-<span class="normal">1068</span>
-<span class="normal">1069</span>
-<span class="normal">1070</span>
-<span class="normal">1071</span>
-<span class="normal">1072</span>
-<span class="normal">1073</span>
-<span class="normal">1074</span>
-<span class="normal">1075</span>
-<span class="normal">1076</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">block_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17579,34 +17689,34 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1141</span>
-<span class="normal">1142</span>
-<span class="normal">1143</span>
-<span class="normal">1144</span>
-<span class="normal">1145</span>
-<span class="normal">1146</span>
-<span class="normal">1147</span>
-<span class="normal">1148</span>
-<span class="normal">1149</span>
-<span class="normal">1150</span>
-<span class="normal">1151</span>
-<span class="normal">1152</span>
-<span class="normal">1153</span>
-<span class="normal">1154</span>
-<span class="normal">1155</span>
-<span class="normal">1156</span>
-<span class="normal">1157</span>
-<span class="normal">1158</span>
-<span class="normal">1159</span>
-<span class="normal">1160</span>
-<span class="normal">1161</span>
-<span class="normal">1162</span>
-<span class="normal">1163</span>
-<span class="normal">1164</span>
-<span class="normal">1165</span>
-<span class="normal">1166</span>
-<span class="normal">1167</span>
-<span class="normal">1168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1167</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">content_unchanged_seconds</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">reg_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -17656,13 +17766,40 @@ policy. See #91.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">577</span>
-<span class="normal">578</span>
-<span class="normal">579</span>
-<span class="normal">580</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">589</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">model_post_init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">__context</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Ensure a default register cache is always present.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span> <span class="o">=</span> <span class="p">{</span><span class="mh">0x32</span><span class="p">:</span> <span class="n">RegisterCache</span><span class="p">()}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="givenergy_modbus.model.plant.Plant.record_retry" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">record_retry</span><span class="p">(</span><span class="n">device_address</span><span class="p">)</span></code>
+
+<a href="#givenergy_modbus.model.plant.Plant.record_retry" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Record a consumed read retry for a device (#284); called by the Client per retry.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">record_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Record a consumed read retry for a device (#284); called by the Client per retry.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">retry_count</span><span class="p">,</span> <span class="n">device_address</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -17689,19 +17826,7 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">614</span>
-<span class="normal">615</span>
-<span class="normal">616</span>
-<span class="normal">617</span>
-<span class="normal">618</span>
-<span class="normal">619</span>
-<span class="normal">620</span>
-<span class="normal">621</span>
-<span class="normal">622</span>
-<span class="normal">623</span>
-<span class="normal">624</span>
-<span class="normal">625</span>
-<span class="normal">626</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">626</span>
 <span class="normal">627</span>
 <span class="normal">628</span>
 <span class="normal">629</span>
@@ -17709,7 +17834,19 @@ untouched (#212/#214 share-safe-export guarantee).</p>
 <span class="normal">631</span>
 <span class="normal">632</span>
 <span class="normal">633</span>
-<span class="normal">634</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">redact</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Plant&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a share-safe copy: every register cache redacted and the header serials cleared.</span>
 
 <span class="sd">    ``redact_serials()`` only covers the register caches; ``inverter_serial_number`` and</span>
@@ -17757,32 +17894,32 @@ model attribute's freshness.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1078</span>
-<span class="normal">1079</span>
-<span class="normal">1080</span>
-<span class="normal">1081</span>
-<span class="normal">1082</span>
-<span class="normal">1083</span>
-<span class="normal">1084</span>
-<span class="normal">1085</span>
-<span class="normal">1086</span>
-<span class="normal">1087</span>
-<span class="normal">1088</span>
-<span class="normal">1089</span>
-<span class="normal">1090</span>
-<span class="normal">1091</span>
-<span class="normal">1092</span>
-<span class="normal">1093</span>
-<span class="normal">1094</span>
-<span class="normal">1095</span>
-<span class="normal">1096</span>
-<span class="normal">1097</span>
-<span class="normal">1098</span>
-<span class="normal">1099</span>
-<span class="normal">1100</span>
-<span class="normal">1101</span>
-<span class="normal">1102</span>
-<span class="normal">1103</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1104</span>
+<span class="normal">1105</span>
+<span class="normal">1106</span>
+<span class="normal">1107</span>
+<span class="normal">1108</span>
+<span class="normal">1109</span>
+<span class="normal">1110</span>
+<span class="normal">1111</span>
+<span class="normal">1112</span>
+<span class="normal">1113</span>
+<span class="normal">1114</span>
+<span class="normal">1115</span>
+<span class="normal">1116</span>
+<span class="normal">1117</span>
+<span class="normal">1118</span>
+<span class="normal">1119</span>
+<span class="normal">1120</span>
+<span class="normal">1121</span>
+<span class="normal">1122</span>
+<span class="normal">1123</span>
+<span class="normal">1124</span>
+<span class="normal">1125</span>
+<span class="normal">1126</span>
+<span class="normal">1127</span>
+<span class="normal">1128</span>
+<span class="normal">1129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">register_age</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">device_address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
     <span class="n">register</span><span class="p">:</span> <span class="n">Register</span><span class="p">,</span>
@@ -17833,28 +17970,7 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">636</span>
-<span class="normal">637</span>
-<span class="normal">638</span>
-<span class="normal">639</span>
-<span class="normal">640</span>
-<span class="normal">641</span>
-<span class="normal">642</span>
-<span class="normal">643</span>
-<span class="normal">644</span>
-<span class="normal">645</span>
-<span class="normal">646</span>
-<span class="normal">647</span>
-<span class="normal">648</span>
-<span class="normal">649</span>
-<span class="normal">650</span>
-<span class="normal">651</span>
-<span class="normal">652</span>
-<span class="normal">653</span>
-<span class="normal">654</span>
-<span class="normal">655</span>
-<span class="normal">656</span>
-<span class="normal">657</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">657</span>
 <span class="normal">658</span>
 <span class="normal">659</span>
 <span class="normal">660</span>
@@ -17923,7 +18039,29 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
 <span class="normal">723</span>
 <span class="normal">724</span>
 <span class="normal">725</span>
-<span class="normal">726</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="normal">726</span>
+<span class="normal">727</span>
+<span class="normal">728</span>
+<span class="normal">729</span>
+<span class="normal">730</span>
+<span class="normal">731</span>
+<span class="normal">732</span>
+<span class="normal">733</span>
+<span class="normal">734</span>
+<span class="normal">735</span>
+<span class="normal">736</span>
+<span class="normal">737</span>
+<span class="normal">738</span>
+<span class="normal">739</span>
+<span class="normal">740</span>
+<span class="normal">741</span>
+<span class="normal">742</span>
+<span class="normal">743</span>
+<span class="normal">744</span>
+<span class="normal">745</span>
+<span class="normal">746</span>
+<span class="normal">747</span>
+<span class="normal">748</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pdu</span><span class="p">:</span> <span class="n">ClientIncomingMessage</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">received_at</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the Plant state from a PDU message.</span>
 
 <span class="sd">    ``received_at`` overrides the ingestion timestamp recorded for a committed</span>
@@ -17945,6 +18083,7 @@ current UTC time and is provided mainly for deterministic testing and replay.</p
     <span class="c1"># address and serial fields in the envelope, so those are untrusted on exactly the frames</span>
     <span class="c1"># that fail here — a corrupt 0x11 response must not clobber the stable inverter identity.</span>
     <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="s2">&quot;crc_failed&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pdu</span><span class="p">,</span> <span class="s2">&quot;lenient_crc_commit&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">crc_failure_count</span><span class="p">,</span> <span class="n">pdu</span><span class="o">.</span><span class="n">device_address</span><span class="p">)</span>
         <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
             <span class="s2">&quot;Skipping CRC-failed response from 0x</span><span class="si">%02x</span><span class="s2"> (base=</span><span class="si">%d</span><span class="s2">) — no Plant state updated&quot;</span><span class="p">,</span>
             <span class="n">pdu</span><span class="o">.</span><span class="n">device_address</span><span class="p">,</span>
