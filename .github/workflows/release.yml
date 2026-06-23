@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # For republish: check out the tagged commit so the build picks up
           # the exact pyproject.toml/uv.lock state that was originally released.
