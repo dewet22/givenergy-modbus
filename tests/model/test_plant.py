@@ -2587,6 +2587,30 @@ def test_splice_serial_block_change_always_rejected(plant: Plant, caplog):
     assert not [r for r in caplog.records if "stably disagreed" in r.message]
 
 
+def test_splice_backstop_streak_requires_uninterrupted_signature(plant: Plant, caplog):
+    """An interrupting poll with no scalar-immut trip resets the backstop streak (#281 review).
+
+    The backstop must require an *uninterrupted* stable scalar signature: 5 drift polls, then one
+    poll where IR98 momentarily matches the (still-poisoned) baseline — no scalar trip — then 5
+    more drift polls. Without the reset the streak would reach 6 and adopt on the first
+    post-interruption poll; with it the count restarts, so the poison baseline is NOT adopted.
+    """
+    import logging
+
+    poisoned = _coherent_battery_bank({98: 9999})
+    _feed_bank(plant, poisoned, device_address=_BATT, received_at=_T0)
+    drift = _coherent_battery_bank({98: 3005, 60: 3600})  # scalar trip (IR98) + 1 physics trip (IR60)
+    interrupt = _coherent_battery_bank({98: 9999, 60: 3600})  # IR98 == baseline → no scalar trip
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        for n in range(1, 6):  # polls 1-5: streak builds to 5 (need 6)
+            _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+        _feed_bank(plant, interrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=60))  # reset
+        for n in range(7, 12):  # polls 7-11: streak restarts 1-5, still short of 6
+            _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # never adopted — streak was interrupted
+    assert not [r for r in caplog.records if "stably disagreed" in r.message]
+
+
 def test_splice_cell_and_temp_cohort_rejected(plant: Plant, caplog):
     """Two independent physics trips (a cell + a temperature) are rejected outright (≥2-physics rule)."""
     import logging

@@ -896,6 +896,11 @@ class Plant(GivEnergyBaseModel):
         if scalar_immut:
             return self._handle_scalar_immutable(device_address, scalar_immut, phys, now_ts)
 
+        # No scalar-immutable trip this poll: any in-progress scalar disagreement is interrupted, so
+        # the backstop streak resets here — it requires an *uninterrupted* stable signature. Covers
+        # both the physics-singleton path below and the clean-transition path (#281 review).
+        self._splice_immut_streak.pop(device_address, None)
+
         if len(phys) == 1:
             ir_no, name, _old, new_val = phys[0]
             held = self._splice_escrow.get(device_address)
@@ -924,8 +929,7 @@ class Plant(GivEnergyBaseModel):
 
         # Clean transition (no trips): a previously-held step that snapped back lands here, so
         # drop any escrow and commit. Log the reversion so the held->resolved story is visible at
-        # one level (the hold is INFO too).
-        self._splice_immut_streak.pop(device_address, None)  # baseline no longer disputed (#281)
+        # one level (the hold is INFO too). The scalar-immut streak was already cleared above.
         reverted = self._splice_escrow.pop(device_address, None)
         if reverted is not None:
             _logger.info(
