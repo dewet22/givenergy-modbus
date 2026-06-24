@@ -58,6 +58,29 @@ async def test_single_phase_rejects_three_phase_register():
         await client.one_shot_command([req], dry_run=True)
 
 
+# HR 313/314 = BATTERY_*_LIMIT_AC — single-phase AC charge/discharge limits (#295). In
+# _InverterCommands.WRITE_SAFE_REGISTERS, removed from _ThreePhaseCommands (3ph remaps to
+# HR1110/1108, not routed yet).
+_AC_LIMIT_REGS = (313, 314)
+
+
+@pytest.mark.asyncio
+async def test_single_phase_ac_accepts_battery_limit_ac_writes():
+    """Single-phase AC may write HR313/314 (battery_*_limit_ac) — #295, the reporter's case."""
+    client = _client(_caps(Model.AC))
+    for reg in _AC_LIMIT_REGS:
+        await client.one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_three_phase_rejects_battery_limit_ac_writes():
+    """Three-phase must still reject HR313/314 — it remaps to HR1110/1108, not yet routed (#295)."""
+    client = _client(_caps(Model.HYBRID_3PH))
+    for reg in _AC_LIMIT_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await client.one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)
+
+
 # ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------

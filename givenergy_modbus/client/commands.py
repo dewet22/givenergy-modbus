@@ -815,17 +815,19 @@ class _InverterCommands:
     # Single-phase shape: contains HR(96/110/116) and single-phase slot pairs (94/95,
     # 31/32 charge; 56/57, 44/45 discharge). ThreePhaseInverter replaces these via
     # _ThreePhaseCommands.WRITE_SAFE_REGISTERS (defined below, overrides this per MRO).
-    # Also excludes 313/314 (BATTERY_*_LIMIT_AC): the *single-phase* AC charge/discharge
-    # limits, but ThreePhaseInverter remaps the read-backs to HR1110/1108, so read !=
-    # write on three-phase AC. A correct three-phase write needs per-model
-    # command-register selection (#75); until that lands they stay out of the
-    # universal write-safe set. Also excludes 318-320 (pause mode, firmware-gated),
+    # Includes 313/314 (BATTERY_*_LIMIT_AC) for single-phase AC (#295, GE app Control-tab
+    # confirmed writable, same bar as HR311). _ThreePhaseCommands removes them again: there
+    # the read-backs remap to HR1110/1108 (read != write), and the command builders don't
+    # route to those yet (the per-model command-register selection blocker, #75, has landed,
+    # so single-phase is now separable). Also excludes 318-320 (pause mode, firmware-gated),
     # 1078/1109/1111-1123 (native three-phase), and 2040/2062-2069 (EMS).
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
         {
             20,  # ENABLE_CHARGE_TARGET
             27,  # BATTERY_POWER_MODE
             311,  # EXPORT_PRIORITY (AC-coupled; confirmed writable via hass#52 portal observations)
+            313,  # BATTERY_CHARGE_LIMIT_AC (single-phase AC; app Control-tab confirmed writable, #295)
+            314,  # BATTERY_DISCHARGE_LIMIT_AC (single-phase AC; app Control-tab confirmed writable, #295)
             29,  # SOC_FORCE_ADJUST
             31,
             32,  # CHARGE_SLOT_2
@@ -1052,6 +1054,7 @@ class _ThreePhaseCommands:
             - {94, 95, 31, 32}  # charge slots 1-2
             - {56, 57, 44, 45}  # discharge slots 1-2
             - {96, 110, 116}  # ENABLE_CHARGE, BATTERY_SOC_RESERVE, CHARGE_TARGET_SOC
+            - {313, 314}  # BATTERY_*_LIMIT_AC: three-phase remaps to HR1110/1108, not routed yet (#295)
         )
         | {
             1078,  # BATTERY_RESERVE_SOC (three-phase only)
