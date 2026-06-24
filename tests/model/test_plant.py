@@ -2167,7 +2167,7 @@ def test_splice_reject_count_increments_on_hard_reject(plant: Plant):
 def test_splice_held_count_increments_on_escrow(plant: Plant):
     """A single-delta escrow hold bumps splice_held_count, not splice_reject_count."""
     _establish_baseline(plant, device_address=_BATT, received_at=_T0)
-    wild = _coherent_battery_bank({60: 3600})  # one out-of-threshold delta → hold one poll
+    wild = _coherent_battery_bank({60: 3700})  # one out-of-threshold delta (+400 > 300) → hold one poll
     _feed_bank(plant, wild, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
     assert plant.splice_held_count == {_BATT: 1}
     assert plant.splice_reject_count == {}
@@ -2763,7 +2763,7 @@ def test_splice_single_step_escrow_then_confirm(plant: Plant, caplog):
     _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
-    wild = _coherent_battery_bank({60: 3500})  # IR60: +200 mV > 150 threshold — one trip
+    wild = _coherent_battery_bank({60: 3700})  # IR60: +400 mV > 300 threshold — one trip
 
     # The singleton self-healing path is INFO, never WARNING (#256/hass#186).
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
@@ -2774,12 +2774,12 @@ def test_splice_single_step_escrow_then_confirm(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(60)] == 3300, "escrowed bank must not commit"
 
     caplog.clear()
-    # Re-read the same value: |3500 − 3500| = 0 ≤ 150 → value-consistent → confirm.
+    # Re-read the same value: |3700 − 3700| = 0 ≤ 300 → value-consistent → confirm.
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, wild, device_address=_BATT, received_at=t2)
     confirms = [r for r in caplog.records if "confirmed on re-read" in r.message and "0x33" in r.message]
     assert len(confirms) == 1, "confirmed step must emit one INFO log"
-    assert plant.register_caches[_BATT][IR(60)] == 3500, "confirmed step must commit"
+    assert plant.register_caches[_BATT][IR(60)] == 3700, "confirmed step must commit"
 
 
 def test_splice_single_step_escrow_then_snapback(plant: Plant, caplog):
@@ -2789,7 +2789,7 @@ def test_splice_single_step_escrow_then_snapback(plant: Plant, caplog):
     _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
-    wild = _coherent_battery_bank({60: 3500})
+    wild = _coherent_battery_bank({60: 3700})
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, wild, device_address=_BATT, received_at=t1)
     assert plant.register_caches[_BATT][IR(60)] == 3300
@@ -2814,16 +2814,39 @@ def test_splice_two_wild_values_in_a_row_held(plant: Plant, caplog):
     _establish_baseline(plant, device_address=_BATT, received_at=_T0)
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
-    # v1: IR60 → 3500 (|3500 − 3300| = 200 > 150) → escrow (IR60, 3500).
-    # v2: IR60 → 3700 (|3700 − 3500| = 200 > 150) → does NOT confirm → re-escrow (IR60, 3700).
-    v1 = _coherent_battery_bank({60: 3500})
-    v2 = _coherent_battery_bank({60: 3700})
+    # v1: IR60 → 3700 (|3700 − 3300| = 400 > 300) → escrow (IR60, 3700).
+    # v2: IR60 → 4200 (|4200 − 3700| = 500 > 300) → does NOT confirm → re-escrow (IR60, 4200).
+    v1 = _coherent_battery_bank({60: 3700})
+    v2 = _coherent_battery_bank({60: 4200})
     with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, v1, device_address=_BATT, received_at=t1)
         _feed_bank(plant, v2, device_address=_BATT, received_at=t2)
     holds = [r for r in caplog.records if "held one poll pending confirmation" in r.message and "0x33" in r.message]
     assert len(holds) == 2, "each wild read must emit its own 'held' INFO log"
     assert plant.register_caches[_BATT][IR(60)] == 3300, "neither wild value must have committed"
+
+
+def test_near_full_soc_knee_surge_commits(plant: Plant, caplog):
+    """A near-100%-SOC LiFePO4 knee surge commits in one poll, not hard-rejected (#299).
+
+    Field signature (device 0x33 topping out — ~18.5 min of rejections): two cells (IR65/IR68)
+    stepped ~198 mV and the pack terminal voltage IR(82–83) ~2.3 V in a single poll as the pack
+    entered the LiFePO4 charge knee. Pre-#299 thresholds (cell_mV 150, v_out 2000) counted three
+    physics trips (>=2) and hard-rejected the whole bank for the entire surge. Widened to 300 / 4000
+    the surge sits within threshold: zero trips → commits directly (no escrow, no rejection).
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    # IR65/IR68 +198 mV (150 < 198 < 300); v_out IR(82–83) +2263 mV (2000 < 2263 < 4000);
+    # v_cells_sum a coherent sub-threshold step. Pre-#299 this was 3 trips → reject.
+    knee = _coherent_battery_bank({65: 3498, 68: 3498, 80: 53200, 82: 0, 83: 55063})
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, knee, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[_BATT][IR(65)] == 3498, "knee surge must commit (cell)"
+    assert plant.register_caches[_BATT][IR(83)] == 55063, "knee surge must commit (v_out)"
+    assert plant.splice_reject_count == {}, "knee surge must not be rejected"
+    assert plant.splice_held_count == {}, "zero trips → committed directly, not escrowed"
 
 
 def test_cold_start_first_frame_held_pending(plant: Plant, caplog):
@@ -3002,11 +3025,11 @@ def test_splice_escrow_isolated_per_device(plant: Plant):
     t1 = _T0 + timedelta(seconds=30)
     t2 = _T0 + timedelta(seconds=60)
     # Hold 0x33 on IR60; hold 0x34 on IR61.
-    _feed_bank(plant, _coherent_battery_bank({60: 3500}), device_address=0x33, received_at=t1)
-    _feed_bank(plant, _coherent_battery_bank({61: 3500}), device_address=0x34, received_at=t1)
-    # Confirm 0x33 by re-reading IR60=3500.
-    _feed_bank(plant, _coherent_battery_bank({60: 3500}), device_address=0x33, received_at=t2)
-    assert plant.register_caches[0x33][IR(60)] == 3500, "0x33 confirmed and committed"
+    _feed_bank(plant, _coherent_battery_bank({60: 3700}), device_address=0x33, received_at=t1)
+    _feed_bank(plant, _coherent_battery_bank({61: 3700}), device_address=0x34, received_at=t1)
+    # Confirm 0x33 by re-reading IR60=3700.
+    _feed_bank(plant, _coherent_battery_bank({60: 3700}), device_address=0x33, received_at=t2)
+    assert plant.register_caches[0x33][IR(60)] == 3700, "0x33 confirmed and committed"
     assert plant.register_caches[0x34][IR(61)] == 3300, "0x34 still held; 0x33 confirm must not clear it"
 
 

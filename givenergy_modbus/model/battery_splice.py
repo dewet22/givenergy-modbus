@@ -25,14 +25,17 @@ few minutes). ``num_cells``, ``bms_firmware_version`` and the serial block are c
 ANY transient change is corruption on its own.
 
 The original Gen1-calibrated corpus separated cleanly, but field reports from higher-power
-hardware (hass#186, an AC3 + 2x Giv-Bat 5.2: a ~103 mV cell sag on a load step, a ~10 Ah
-capacity recalibration) showed legitimate per-poll deltas just past the ``cell_mV`` (100) and
-``cap_centiAh`` (1000) thresholds — caught by the singleton escrow but noisy. Both were widened
-(cell_mV->150, cap_centiAh->1500). This is safe because the corpus's *only* corruption signature
-is the temperature-zero cohort (>=2 temp registers -> rejected outright): no corruption has ever
-presented as a lone ``cell_mV`` or ``cap_centiAh`` delta, so widening exactly these two classes
-(temps untouched) cannot weaken detection, and any residual over-threshold singleton still
-escrows.
+hardware showed legitimate per-poll deltas exceeding the voltage/capacity thresholds. hass#186
+(an AC3 + 2x Giv-Bat 5.2) saw a ~103 mV cell sag on a load step and a ~10 Ah capacity
+recalibration just past ``cell_mV`` (100) and ``cap_centiAh`` (1000) — caught by the singleton
+escrow but noisy. #299 saw a worse case: as a pack enters the LiFePO4 charge knee near 100% SOC,
+cells surge ~150-200 mV/poll and the pack terminal voltage ~2.3 V/poll together — three
+simultaneous trips (>=2) hard-rejected the whole bank for the entire ~18 min surge. So ``cell_mV``
+was widened 100->150->300, ``cap_centiAh`` 1000->1500, and ``v_out_mV`` 2000->4000. This is safe
+because the corpus's *only* corruption signature is the temperature-zero cohort (>=2 temp registers
+-> rejected outright): no corruption has ever presented as a lone ``cell_mV``, ``v_out_mV`` or
+``cap_centiAh`` delta, so widening exactly these voltage/capacity classes (temps untouched) cannot
+weaken detection, and any residual over-threshold singleton still escrows.
 
 Indices throughout are **bank-relative** (``i`` == register ``IR(60 + i)``); the trips
 returned carry the **absolute** IR number for logging.
@@ -45,9 +48,12 @@ BANK_BASE = 60
 
 # (class name, bank-relative indices, threshold on |delta| in raw units).
 SCALAR_RULES: list[tuple[str, list[int], int]] = [
-    # IR(60-75) cells: ~10 mV/poll at idle, but a higher-power inverter (e.g. AC3) sags a cell
-    # ~100+ mV on a charge<->discharge load step (I×R) — see hass#186; 150 clears that with margin.
-    ("cell_mV", list(range(0, 16)), 150),
+    # IR(60-75) cells: ~10 mV/poll at idle, but an AC3 load step sags a cell ~100+ mV (I×R, hass#186)
+    # AND the LiFePO4 voltage knee near 100% SOC steps cells ~150-200+ mV/poll as the pack tops out
+    # (#299, field-observed at 154-198 mV). 300 clears both with margin. Safe to widen: cell_mV has
+    # never been a corruption signature — corruption always trips the temp-zero cohort (>=2 cell-mass
+    # temps -> 0), so widening cell_mV cannot weaken detection (re-validated against the corpus).
+    ("cell_mV", list(range(0, 16)), 300),
     ("cell_temp_deci", [16, 17, 18, 19, 43, 44], 50),  # IR(76-79,103,104): thermal mass
     ("mosfet_temp_deci", [21], 200),  # IR(81): junction-adjacent, steps with load
     ("v_cells_sum_mV", [20], 1600),  # IR(80)
@@ -58,7 +64,10 @@ SCALAR_RULES: list[tuple[str, list[int], int]] = [
 # cap_centiAh 1500: capacity recalibration (coulomb-count correction) can step ~10 Ah in one poll
 # on a larger pack — see hass#186.
 PAIR_RULES: list[tuple[str, tuple[int, int], int]] = [
-    ("v_out_mV", (22, 23), 2000),  # IR(82-83)
+    # IR(82-83): the pack output ~ sum of cells, so the near-full-SOC knee steps it ~2.3 V/poll as all
+    # cells surge together (#299, field-observed 2263 mV); 4000 clears that. Like cell_mV, never a
+    # corruption signature, so widening can't weaken detection (corpus-re-validated).
+    ("v_out_mV", (22, 23), 4000),
     ("cap_centiAh", (24, 25), 1500),  # IR(84-85) cap_calibrated
     ("cap_centiAh", (26, 27), 1500),  # IR(86-87) cap_design
     ("cap_centiAh", (28, 29), 1500),  # IR(88-89) cap_remaining

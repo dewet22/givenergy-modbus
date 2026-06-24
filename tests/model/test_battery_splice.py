@@ -62,10 +62,10 @@ def test_immutable_scalar_serial_partition_covers_immutable():
 def test_single_cell_voltage_step_is_one_physics_trip():
     base = _baseline()
     new = list(base)
-    new[5] = 3600  # +300 mV > 150 mV threshold
+    new[5] = 3700  # +400 mV > 300 mV threshold (#299)
     phys, immut = classify_transition(base, new)
     assert immut == []
-    assert phys == [(BANK_BASE + 5, "cell_mV", 3300, 3600)]
+    assert phys == [(BANK_BASE + 5, "cell_mV", 3300, 3700)]
 
 
 def test_within_threshold_jitter_does_not_trip():
@@ -106,7 +106,7 @@ def test_pair_rule_uses_assembled_uint32_value():
 def test_two_independent_physics_deltas_both_reported():
     base = _baseline()
     new = list(base)
-    new[14] = 3600  # a cell
+    new[14] = 3700  # a cell, +400 mV > 300 mV threshold (#299)
     new[43] = 0  # t_max to zero
     phys, immut = classify_transition(base, new)
     assert immut == []
