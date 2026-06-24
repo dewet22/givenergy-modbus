@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.6] - 2026-06-24
+
+### ✨ Added
+
+- enable battery_*_limit_ac (HR313/314) writes for single-phase AC (#295) (#296) ([3496d19](https://github.com/dewet22/givenergy-modbus/commit/3496d194698dae3e22d1f1b89c8b04c5f4dca8c8))
+
+### 🐛 Fixed
+
+- disambiguate serials in main() + deprecate `python -m` serve path (#292) ([649207c](https://github.com/dewet22/givenergy-modbus/commit/649207cf0dd80ae615778cade5cf6114852c2366))
+
 ## [2.5.5] - 2026-06-23
 
 ### ✨ Added
