@@ -8,7 +8,12 @@ from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from typing import Literal
 
-from givenergy_modbus.client.commands import _EmsCommands, _InverterCommands, _ThreePhaseCommands
+from givenergy_modbus.client.commands import (
+    _AC_CONFIG_WRITE_SAFE_REGISTERS,
+    _EmsCommands,
+    _InverterCommands,
+    _ThreePhaseCommands,
+)
 from givenergy_modbus.exceptions import (
     CommunicationError,
     ExceptionBase,
@@ -1210,6 +1215,12 @@ class Client:
             safe = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
         else:
             safe = _InverterCommands.WRITE_SAFE_REGISTERS
+        # HR(300-359) AC-output config-block writes (battery_*_limit_ac, #295) are gated on the
+        # capability, not the model class: only a model that exposes the block (Model.AC / AIO)
+        # accepts them — never a DC-coupled hybrid, a three-phase unit (it remaps to HR1110/1108),
+        # or an undetected client (#296 review).
+        if caps is not None and caps.has_ac_config_block and not caps.is_three_phase:
+            safe = safe | _AC_CONFIG_WRITE_SAFE_REGISTERS
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:
             if isinstance(req, WriteHoldingRegisterRequest) and req.register not in safe:

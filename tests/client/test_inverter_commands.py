@@ -59,6 +59,9 @@ def test_three_phase_inverter_inherits_mixin():
 
 def test_mixin_write_safe_registers_is_universal_subset():
     """Base allowlist should exclude registers that belong on model-specific mixins (three-phase, EMS, pause-mode)."""
+    # 313/314 (BATTERY_*_LIMIT_AC) are NOT in the universal set — they're gated on
+    # has_ac_config_block at the client boundary (#295/#296); 318-320 (pause mode) stay
+    # firmware-gated.
     excluded = {313, 314, 318, 319, 320, 1112, 1122, 1123, 2040, 2062, 2063, 2065, 2066, 2068, 2069}
     assert excluded.isdisjoint(_InverterCommands.WRITE_SAFE_REGISTERS)
     # Sanity: still substantial, includes the bread-and-butter ones.
@@ -167,8 +170,10 @@ def test_inverter_reset_discharge_slot_clears_both_endpoints():
         # EMS commands live on _EmsCommands → Ems only.
         "set_ems_plant",
         "set_export_slot",
-        # Still deferred pending wire data (HR 313/314 single-vs-three-phase write
-        # semantics; HR 318–320 firmware-gated) — these stay on commands.* only.
+        # Stay on commands.* only (not promoted to a model method): set_battery_charge_limit_ac
+        # is write-enabled for single-phase AC (#295) but a model method would inherit onto
+        # ThreePhaseInverter and write HR313/314 instead of the 3ph HR1110/1108 — so it waits on
+        # the three-phase remap. set_battery_pause_mode stays firmware-gated (#115/#268).
         "set_battery_charge_limit_ac",
         "set_battery_pause_mode",
     ],
@@ -362,6 +367,7 @@ def test_three_phase_write_safe_registers_excludes_single_phase_entries():
     assert RegisterMap.CHARGE_TARGET_SOC not in wsr  # 116 — replaced by 1111
     assert RegisterMap.BATTERY_SOC_RESERVE not in wsr  # 110 — replaced by 1109
     assert RegisterMap.ENABLE_CHARGE not in wsr  # 96 — replaced by AC_CHARGE_ENABLE
+    assert 313 not in wsr and 314 not in wsr  # BATTERY_*_LIMIT_AC — 3ph remaps to HR1110/1108 (#295)
     # single-phase slot pairs 1-2
     assert 94 not in wsr and 95 not in wsr  # charge slot 1
     assert 31 not in wsr and 32 not in wsr  # charge slot 2

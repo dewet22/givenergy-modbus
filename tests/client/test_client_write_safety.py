@@ -58,6 +58,57 @@ async def test_single_phase_rejects_three_phase_register():
         await client.one_shot_command([req], dry_run=True)
 
 
+# HR 313/314 = BATTERY_*_LIMIT_AC — HR(300-359) AC-output config-block registers (#295). Gated on
+# capabilities.has_ac_config_block at the client boundary, NOT the model-class allowlist: accepted
+# only on a model that exposes the block (AC / All-in-One) and is not three-phase.
+_AC_LIMIT_REGS = (313, 314)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.AC, Model.ALL_IN_ONE])
+async def test_ac_config_models_accept_battery_limit_ac_writes(model):
+    """Models that expose the HR(300-359) block (AC, AIO) may write HR313/314 (#295)."""
+    client = _client(_caps(model))
+    for reg in _AC_LIMIT_REGS:
+        await client.one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "model",
+    [
+        Model.HYBRID_GEN1,  # DC-coupled hybrid — lacks the AC-config block (reads time out)
+        Model.AC_3PH,  # has the block but is three-phase → remaps to HR1110/1108 (not routed yet)
+        Model.HYBRID_3PH,  # three-phase, no AC-config block
+    ],
+)
+async def test_non_ac_config_models_reject_battery_limit_ac_writes(model):
+    """HR313/314 must be rejected unless has_ac_config_block and not three-phase (#296 review)."""
+    client = _client(_caps(model))
+    for reg in _AC_LIMIT_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await client.one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_undetected_rejects_battery_limit_ac_writes():
+    """An undetected client (no capabilities) must reject HR313/314 — conservative fallback (#296 review)."""
+    client = _client(None)
+    for reg in _AC_LIMIT_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await client.one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)
+
+
+def test_battery_limit_ac_commands_encode():
+    """The battery AC-limit command builders produce requests that encode cleanly (Gemini #296 review)."""
+    from givenergy_modbus.client.commands import set_battery_charge_limit_ac, set_battery_discharge_limit_ac
+
+    for req in set_battery_charge_limit_ac(50):
+        req.encode()
+    for req in set_battery_discharge_limit_ac(50):
+        req.encode()
+
+
 # ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------

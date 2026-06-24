@@ -781,6 +781,19 @@ def set_mode_storage(
     return ret
 
 
+# HR(300-359) AC-output config-block writes that are gated on capabilities.has_ac_config_block
+# rather than the model-class allowlist — one_shot_command unions these into the safe set only when
+# the detected model exposes the block (Model.AC / All-in-One), never for a DC-coupled hybrid or an
+# undetected client (#295/#296 review). Currently just the AC charge/discharge limits; HR311/317
+# (also HR300-359) predate the gate and stay in the universal set pending a separate cleanup.
+_AC_CONFIG_WRITE_SAFE_REGISTERS: frozenset[int] = frozenset(
+    {
+        RegisterMap.BATTERY_CHARGE_LIMIT_AC,  # 313
+        RegisterMap.BATTERY_DISCHARGE_LIMIT_AC,  # 314
+    }
+)
+
+
 class _InverterCommands:
     """Commands every inverter supports, mixed into Inverter model classes.
 
@@ -815,12 +828,14 @@ class _InverterCommands:
     # Single-phase shape: contains HR(96/110/116) and single-phase slot pairs (94/95,
     # 31/32 charge; 56/57, 44/45 discharge). ThreePhaseInverter replaces these via
     # _ThreePhaseCommands.WRITE_SAFE_REGISTERS (defined below, overrides this per MRO).
-    # Also excludes 313/314 (BATTERY_*_LIMIT_AC): the *single-phase* AC charge/discharge
-    # limits, but ThreePhaseInverter remaps the read-backs to HR1110/1108, so read !=
-    # write on three-phase AC. A correct three-phase write needs per-model
-    # command-register selection (#75); until that lands they stay out of the
-    # universal write-safe set. Also excludes 318-320 (pause mode, firmware-gated),
-    # 1078/1109/1111-1123 (native three-phase), and 2040/2062-2069 (EMS).
+    # Excludes 313/314 (BATTERY_*_LIMIT_AC): these belong to the HR(300-359) AC-output config
+    # block, absent (reads time out) on DC-coupled hybrids, so they are gated on
+    # capabilities.has_ac_config_block at the client boundary instead — one_shot_command unions
+    # _AC_CONFIG_WRITE_SAFE_REGISTERS in for Model.AC/AIO only, never a DC hybrid or an undetected
+    # client (#295/#296 review). (HR311/317 are also HR300-359 registers but predate this and stay
+    # in the universal set; folding them into the same gate is a separate cleanup.) Also excludes
+    # 318-320 (pause mode, firmware-gated), 1078/1109/1111-1123 (native three-phase), and
+    # 2040/2062-2069 (EMS).
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
         {
             20,  # ENABLE_CHARGE_TARGET
