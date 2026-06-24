@@ -327,18 +327,30 @@ def set_charge_target_soc_3ph(target_soc: int) -> list[TransparentRequest]:
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery charge power limit as a percentage of rated charge power (0–50)."""
+    """Set the battery charge power limit as a percentage of rated charge power (0-100).
+
+    This is a %-of-rated ceiling, not a current command: the BMS/firmware clamp it to the battery
+    subsystem's actual rating. On DC-coupled hybrids that subsystem is often ~50% of inverter rating
+    (Gen1: 2600 W of 5000 W), which is why GivTCP and older versions capped at 50. But the GE app
+    itself writes >50 (field-tested writing 62% to HR(111) / 59% to HR(112) on a Gen1, both accepted)
+    and the ~50% is model-specific, so we accept 0-100 and let the firmware clamp per-model rather
+    than hard-cap and wrongly reject valid values on hybrids with a larger battery subsystem.
+    """
     val = _as_int(val, "val")
-    if not 0 <= val <= 50:
-        raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-50]%")
+    if not 0 <= val <= 100:
+        raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, val)]
 
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery discharge power limit as a percentage of rated discharge power (0–50)."""
+    """Set the battery discharge power limit as a percentage of rated discharge power (0-100).
+
+    See :func:`set_battery_charge_limit` for why this accepts 0-100 (firmware clamps per-model)
+    rather than the historical [0-50].
+    """
     val = _as_int(val, "val")
-    if not 0 <= val <= 50:
-        raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-50]%")
+    if not 0 <= val <= 100:
+        raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, val)]
 
 
@@ -394,18 +406,18 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
-    """Set the battery AC charge power limit as a percentage."""
+    """Set the battery AC charge power limit as a percentage (0-100; 0 disables AC charge)."""
     val = _as_int(val, "val")
-    if not 1 <= val <= 100:
-        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
+    if not 0 <= val <= 100:
+        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, val)]
 
 
 def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
-    """Set the battery AC discharge power limit as a percentage."""
+    """Set the battery AC discharge power limit as a percentage (0-100; 0 disables AC discharge)."""
     val = _as_int(val, "val")
-    if not 1 <= val <= 100:
-        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
+    if not 0 <= val <= 100:
+        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [0-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
 
 
@@ -978,11 +990,11 @@ class _InverterCommands:
         return set_battery_soc_reserve(val)
 
     def set_battery_charge_limit(self, val: int) -> list[TransparentRequest]:
-        """Set the battery charge power limit as a percentage of the rated charge power (0-50)."""
+        """Set the battery charge power limit as a percentage of the rated charge power (0-100)."""
         return set_battery_charge_limit(val)
 
     def set_battery_discharge_limit(self, val: int) -> list[TransparentRequest]:
-        """Set the battery discharge power limit as a percentage of the rated discharge power (0-50)."""
+        """Set the battery discharge power limit as a percentage of the rated discharge power (0-100)."""
         return set_battery_discharge_limit(val)
 
     def set_battery_power_reserve(self, val: int) -> list[TransparentRequest]:
