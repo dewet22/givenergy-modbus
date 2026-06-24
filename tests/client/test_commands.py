@@ -359,10 +359,17 @@ async def test_set_charge_and_discharge_limits():
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 50, device_address=0x11),
     ]
 
-    with pytest.raises(ValueError, match=r"Specified Charge Limit \(51%\) is not in \[0-50\]\%"):
-        commands.set_battery_charge_limit(51)
-    with pytest.raises(ValueError, match=r"Specified Discharge Limit \(51%\) is not in \[0-50\]\%"):
-        commands.set_battery_discharge_limit(51)
+    # Widened 0-50 -> 0-100: 51 and 100 now commit (firmware clamps per-model); 101 is the new ceiling.
+    assert commands.set_battery_charge_limit(51) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, 51),
+    ]
+    assert commands.set_battery_discharge_limit(100) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 100),
+    ]
+    with pytest.raises(ValueError, match=r"Specified Charge Limit \(101%\) is not in \[0-100\]\%"):
+        commands.set_battery_charge_limit(101)
+    with pytest.raises(ValueError, match=r"Specified Discharge Limit \(101%\) is not in \[0-100\]\%"):
+        commands.set_battery_discharge_limit(101)
 
 
 async def test_set_system_time():
@@ -432,9 +439,14 @@ async def test_set_battery_charge_limit_ac():
     assert commands.set_battery_charge_limit_ac(50) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 50)
     ]
-    with pytest.raises(ValueError, match="AC Charge Limit"):
-        commands.set_battery_charge_limit_ac(0)
-    with pytest.raises(ValueError, match="AC Charge Limit"):
+    # 0 now commits (disables AC charge; was rejected pre-widen); 100 is max; 101 rejects.
+    assert commands.set_battery_charge_limit_ac(0) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 0)
+    ]
+    assert commands.set_battery_charge_limit_ac(100) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 100)
+    ]
+    with pytest.raises(ValueError, match=r"AC Charge Limit \(101%\) is not in \[0-100\]\%"):
         commands.set_battery_charge_limit_ac(101)
 
 
@@ -442,9 +454,14 @@ async def test_set_battery_discharge_limit_ac():
     assert commands.set_battery_discharge_limit_ac(50) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 50)
     ]
-    with pytest.raises(ValueError, match="AC Discharge Limit"):
-        commands.set_battery_discharge_limit_ac(0)
-    with pytest.raises(ValueError, match="AC Discharge Limit"):
+    # 0 now commits (disables AC discharge; was rejected pre-widen); 100 is max; 101 rejects.
+    assert commands.set_battery_discharge_limit_ac(0) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 0)
+    ]
+    assert commands.set_battery_discharge_limit_ac(100) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 100)
+    ]
+    with pytest.raises(ValueError, match=r"AC Discharge Limit \(101%\) is not in \[0-100\]\%"):
         commands.set_battery_discharge_limit_ac(101)
 
 
