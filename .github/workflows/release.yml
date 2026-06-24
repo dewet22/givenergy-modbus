@@ -134,45 +134,13 @@ jobs:
         with:
           skip-existing: true
 
-      - name: Wait for PyPI to index the new version
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # pypa/gh-action-pypi-publish returns once PyPI accepts the upload, but
-          # there is a brief eventual-consistency window before the new version
-          # is resolvable by `pip install` / `uv lock`. Downstream bump workflows
-          # firing inside that window fail to resolve the version. Poll until the
-          # JSON API confirms the version is indexed.
-          URL="https://pypi.org/pypi/givenergy-modbus/$VERSION/json"
-          for attempt in $(seq 1 60); do
-            if curl -fsSL "$URL" > /dev/null 2>&1; then
-              echo "PyPI has indexed $VERSION (attempt $attempt)"
-              exit 0
-            fi
-            echo "Attempt $attempt/60: $VERSION not yet resolvable, sleeping 10s..."
-            sleep 10
-          done
-          echo "::error::PyPI did not index $VERSION within 10 minutes — downstream notification would race"
-          exit 1
-
-      - name: Notify downstream consumers
-        env:
-          # Fine-grained PAT with `Contents: write` on dewet22/givenergy-cli
-          # and dewet22/givenergy-hass. If unset, the step skips with a warning
-          # so the release flow doesn't break before the secret is configured.
-          GH_TOKEN: ${{ secrets.DOWNSTREAM_DISPATCH_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::warning::DOWNSTREAM_DISPATCH_TOKEN not set; skipping downstream notification"
-            exit 0
-          fi
-          for repo in dewet22/givenergy-cli dewet22/givenergy-hass; do
-            echo "Dispatching givenergy-modbus-release event to ${repo}"
-            jq -nc --arg v "$VERSION" \
-              '{event_type: "givenergy-modbus-release", client_payload: {version: $v}}' \
-              | gh api -X POST "repos/${repo}/dispatches" --input -
-          done
+      # Downstream consumers (givenergy-cli, givenergy-hass) are notified of new
+      # releases via maintainer-side coordinator messaging, NOT an automated
+      # repository_dispatch. The old auto-notify raced PyPI's eventual-consistency
+      # window — the JSON index API would report the version while the file CDN uv
+      # resolves against was still stale, so the downstream `uv lock` refresh failed
+      # intermittently (observed on hass for 2.5.7). The agent now confirms PyPI
+      # genuinely serves the version before asking each consumer to bump its pin.
 
       # Skip docs publishing for prereleases (site stays pinned to latest stable)
       # and for republish runs (re-publishing an old tag must not roll the live
