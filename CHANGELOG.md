@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.8] - 2026-06-24
+
+### ✨ Added
+
+- widen battery power-limit bounds to 0-100% (HR111/112, HR313/314) (#301) ([64dbd40](https://github.com/dewet22/givenergy-modbus/commit/64dbd406d5d8dea6ca33b1b47b63f088b595adec))
+
+### 🔧 Maintenance
+
+- drop automated downstream notify in favour of coordinator messaging ([21c3d24](https://github.com/dewet22/givenergy-modbus/commit/21c3d2433386d25336bd1c033adfba57365091e1))
+
 ## [2.5.7] - 2026-06-24
 
 ### 🐛 Fixed
