@@ -781,6 +781,19 @@ def set_mode_storage(
     return ret
 
 
+# HR(300-359) AC-output config-block writes that are gated on capabilities.has_ac_config_block
+# rather than the model-class allowlist — one_shot_command unions these into the safe set only when
+# the detected model exposes the block (Model.AC / All-in-One), never for a DC-coupled hybrid or an
+# undetected client (#295/#296 review). Currently just the AC charge/discharge limits; HR311/317
+# (also HR300-359) predate the gate and stay in the universal set pending a separate cleanup.
+_AC_CONFIG_WRITE_SAFE_REGISTERS: frozenset[int] = frozenset(
+    {
+        RegisterMap.BATTERY_CHARGE_LIMIT_AC,  # 313
+        RegisterMap.BATTERY_DISCHARGE_LIMIT_AC,  # 314
+    }
+)
+
+
 class _InverterCommands:
     """Commands every inverter supports, mixed into Inverter model classes.
 
@@ -815,19 +828,19 @@ class _InverterCommands:
     # Single-phase shape: contains HR(96/110/116) and single-phase slot pairs (94/95,
     # 31/32 charge; 56/57, 44/45 discharge). ThreePhaseInverter replaces these via
     # _ThreePhaseCommands.WRITE_SAFE_REGISTERS (defined below, overrides this per MRO).
-    # Includes 313/314 (BATTERY_*_LIMIT_AC) for single-phase AC (#295, GE app Control-tab
-    # confirmed writable, same bar as HR311). _ThreePhaseCommands removes them again: there
-    # the read-backs remap to HR1110/1108 (read != write), and the command builders don't
-    # route to those yet (the per-model command-register selection blocker, #75, has landed,
-    # so single-phase is now separable). Also excludes 318-320 (pause mode, firmware-gated),
-    # 1078/1109/1111-1123 (native three-phase), and 2040/2062-2069 (EMS).
+    # Excludes 313/314 (BATTERY_*_LIMIT_AC): these belong to the HR(300-359) AC-output config
+    # block, absent (reads time out) on DC-coupled hybrids, so they are gated on
+    # capabilities.has_ac_config_block at the client boundary instead — one_shot_command unions
+    # _AC_CONFIG_WRITE_SAFE_REGISTERS in for Model.AC/AIO only, never a DC hybrid or an undetected
+    # client (#295/#296 review). (HR311/317 are also HR300-359 registers but predate this and stay
+    # in the universal set; folding them into the same gate is a separate cleanup.) Also excludes
+    # 318-320 (pause mode, firmware-gated), 1078/1109/1111-1123 (native three-phase), and
+    # 2040/2062-2069 (EMS).
     WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
         {
             20,  # ENABLE_CHARGE_TARGET
             27,  # BATTERY_POWER_MODE
             311,  # EXPORT_PRIORITY (AC-coupled; confirmed writable via hass#52 portal observations)
-            313,  # BATTERY_CHARGE_LIMIT_AC (single-phase AC; app Control-tab confirmed writable, #295)
-            314,  # BATTERY_DISCHARGE_LIMIT_AC (single-phase AC; app Control-tab confirmed writable, #295)
             29,  # SOC_FORCE_ADJUST
             31,
             32,  # CHARGE_SLOT_2
@@ -1054,7 +1067,6 @@ class _ThreePhaseCommands:
             - {94, 95, 31, 32}  # charge slots 1-2
             - {56, 57, 44, 45}  # discharge slots 1-2
             - {96, 110, 116}  # ENABLE_CHARGE, BATTERY_SOC_RESERVE, CHARGE_TARGET_SOC
-            - {313, 314}  # BATTERY_*_LIMIT_AC: three-phase remaps to HR1110/1108, not routed yet (#295)
         )
         | {
             1078,  # BATTERY_RESERVE_SOC (three-phase only)

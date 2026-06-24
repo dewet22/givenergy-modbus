@@ -59,15 +59,15 @@ def test_three_phase_inverter_inherits_mixin():
 
 def test_mixin_write_safe_registers_is_universal_subset():
     """Base allowlist should exclude registers that belong on model-specific mixins (three-phase, EMS, pause-mode)."""
-    # 313/314 (BATTERY_*_LIMIT_AC) are now IN the single-phase set (#295) — excluded only on
-    # three-phase (which remaps to HR1110/1108); 318-320 (pause mode) stay firmware-gated.
-    excluded = {318, 319, 320, 1112, 1122, 1123, 2040, 2062, 2063, 2065, 2066, 2068, 2069}
+    # 313/314 (BATTERY_*_LIMIT_AC) are NOT in the universal set — they're gated on
+    # has_ac_config_block at the client boundary (#295/#296); 318-320 (pause mode) stay
+    # firmware-gated.
+    excluded = {313, 314, 318, 319, 320, 1112, 1122, 1123, 2040, 2062, 2063, 2065, 2066, 2068, 2069}
     assert excluded.isdisjoint(_InverterCommands.WRITE_SAFE_REGISTERS)
     # Sanity: still substantial, includes the bread-and-butter ones.
     assert 20 in _InverterCommands.WRITE_SAFE_REGISTERS  # ENABLE_CHARGE_TARGET
     assert 96 in _InverterCommands.WRITE_SAFE_REGISTERS  # ENABLE_CHARGE
     assert 116 in _InverterCommands.WRITE_SAFE_REGISTERS  # CHARGE_TARGET_SOC
-    assert {313, 314} <= _InverterCommands.WRITE_SAFE_REGISTERS  # BATTERY_*_LIMIT_AC, single-phase (#295)
 
 
 def test_mixin_classvar_does_not_leak_into_model_dump():
