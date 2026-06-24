@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.7] - 2026-06-24
+
+### 🐛 Fixed
+
+- widen cell_mV/v_out thresholds for the near-full-SOC knee (#299) (#300) ([67096d3](https://github.com/dewet22/givenergy-modbus/commit/67096d361bcac445b510c5f3d1bfbd0f11915a16))
+
 ## [2.5.6] - 2026-06-24
 
 ### ✨ Added
