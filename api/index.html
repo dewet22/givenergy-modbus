@@ -2260,6 +2260,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_self_consumption_today
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_self_consumption_total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.enable_standard_self_consumption_logic" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6018,6 +6040,28 @@
     <span class="md-ellipsis">
       
         e_inverter_out_total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_self_consumption_today
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_self_consumption_total
       
     </span>
   </a>
@@ -21136,7 +21180,52 @@ in later 2.x minors — see #75.</p>
 <span class="normal">1006</span>
 <span class="normal">1007</span>
 <span class="normal">1008</span>
-<span class="normal">1009</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">1009</span>
+<span class="normal">1010</span>
+<span class="normal">1011</span>
+<span class="normal">1012</span>
+<span class="normal">1013</span>
+<span class="normal">1014</span>
+<span class="normal">1015</span>
+<span class="normal">1016</span>
+<span class="normal">1017</span>
+<span class="normal">1018</span>
+<span class="normal">1019</span>
+<span class="normal">1020</span>
+<span class="normal">1021</span>
+<span class="normal">1022</span>
+<span class="normal">1023</span>
+<span class="normal">1024</span>
+<span class="normal">1025</span>
+<span class="normal">1026</span>
+<span class="normal">1027</span>
+<span class="normal">1028</span>
+<span class="normal">1029</span>
+<span class="normal">1030</span>
+<span class="normal">1031</span>
+<span class="normal">1032</span>
+<span class="normal">1033</span>
+<span class="normal">1034</span>
+<span class="normal">1035</span>
+<span class="normal">1036</span>
+<span class="normal">1037</span>
+<span class="normal">1038</span>
+<span class="normal">1039</span>
+<span class="normal">1040</span>
+<span class="normal">1041</span>
+<span class="normal">1042</span>
+<span class="normal">1043</span>
+<span class="normal">1044</span>
+<span class="normal">1045</span>
+<span class="normal">1046</span>
+<span class="normal">1047</span>
+<span class="normal">1048</span>
+<span class="normal">1049</span>
+<span class="normal">1050</span>
+<span class="normal">1051</span>
+<span class="normal">1052</span>
+<span class="normal">1053</span>
+<span class="normal">1054</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -21319,6 +21408,51 @@ in later 2.x minors — see #75.</p>
         <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_in</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">,</span> <span class="n">ac_charge</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">pv</span> <span class="o">+</span> <span class="n">grid_in</span> <span class="o">-</span> <span class="n">grid_out</span> <span class="o">-</span> <span class="n">ac_charge</span>
+
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_self_consumption_today</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Self-consumption energy today (kWh): PV generation used on-site (GivTCP parity).</span>
+
+<span class="sd">        DERIVED: PV generation today − grid export today, clamped at ≥ 0.</span>
+
+<span class="sd">        Two limitations to be aware of:</span>
+<span class="sd">        - Battery-to-grid export is counted in grid_out, so this slightly under-counts</span>
+<span class="sd">          true self-consumption when the battery discharges to grid. GivTCP accepts this</span>
+<span class="sd">          approximation; we match it here.</span>
+<span class="sd">        - NOT monotonically increasing: when battery exports to grid, grid_out rises</span>
+<span class="sd">          without pv_generation rising, causing the difference to dip. Consumers that</span>
+<span class="sd">          use state_class TOTAL_INCREASING (e.g. HA energy dashboard) MUST apply their</span>
+<span class="sd">          own monotonic clamp rather than consuming the raw value directly.</span>
+
+<span class="sd">        Returns None if any input is unavailable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_today</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">grid_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_grid_out_day</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">pv</span> <span class="o">-</span> <span class="n">grid_out</span><span class="p">)</span>
+
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_self_consumption_total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lifetime self-consumption energy (kWh): PV generation used on-site (GivTCP parity).</span>
+
+<span class="sd">        DERIVED: PV generation total − grid export total, clamped at ≥ 0.</span>
+
+<span class="sd">        Same battery-to-grid under-count and non-monotonicity caveats as</span>
+<span class="sd">        e_self_consumption_today: the difference of two running counters is not</span>
+<span class="sd">        guaranteed to increase monotonically. Consumers using state_class</span>
+<span class="sd">        TOTAL_INCREASING MUST apply a monotonic clamp (e.g. HA&#39;s monotonic=True</span>
+<span class="sd">        sensor path) rather than consuming the raw value directly.</span>
+
+<span class="sd">        Returns None if any input is unavailable.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_total</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">grid_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_grid_out_total</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">pv</span> <span class="o">-</span> <span class="n">grid_out</span><span class="p">)</span>
 
     <span class="c1"># Plain @property (not @computed_field) so the deprecated alias doesn&#39;t</span>
     <span class="c1"># appear in model_dump() output. See #84 — renamed to work_time_total_hours</span>
@@ -21640,6 +21774,67 @@ Returns None if any input is unavailable.</p>
     <div class="doc doc-contents ">
 
         <p>Deprecated alias for <code>e_pv_generation_total</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_today" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_self_consumption_today</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_today" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Self-consumption energy today (kWh): PV generation used on-site (GivTCP parity).</p>
+<p>DERIVED: PV generation today − grid export today, clamped at ≥ 0.</p>
+<p>Two limitations to be aware of:
+- Battery-to-grid export is counted in grid_out, so this slightly under-counts
+  true self-consumption when the battery discharges to grid. GivTCP accepts this
+  approximation; we match it here.
+- NOT monotonically increasing: when battery exports to grid, grid_out rises
+  without pv_generation rising, causing the difference to dip. Consumers that
+  use state_class TOTAL_INCREASING (e.g. HA energy dashboard) MUST apply their
+  own monotonic clamp rather than consuming the raw value directly.</p>
+<p>Returns None if any input is unavailable.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_total" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_self_consumption_total</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_total" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Lifetime self-consumption energy (kWh): PV generation used on-site (GivTCP parity).</p>
+<p>DERIVED: PV generation total − grid export total, clamped at ≥ 0.</p>
+<p>Same battery-to-grid under-count and non-monotonicity caveats as
+e_self_consumption_today: the difference of two running counters is not
+guaranteed to increase monotonically. Consumers using state_class
+TOTAL_INCREASING MUST apply a monotonic clamp (e.g. HA's monotonic=True
+sensor path) rather than consuming the raw value directly.</p>
+<p>Returns None if any input is unavailable.</p>
 
     </div>
 
