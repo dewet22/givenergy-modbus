@@ -2849,6 +2849,168 @@ def test_near_full_soc_knee_surge_commits(plant: Plant, caplog):
     assert plant.splice_held_count == {}, "zero trips → committed directly, not escrowed"
 
 
+def test_splice_sustained_step_rejected_when_heal_disabled(plant: Plant):
+    """With the heal off (default), a sustained >=2-physics step still hard-rejects forever (#299).
+
+    Two cells surge >300 mV above the frozen baseline (>=2 cell_mV trips each poll), evolving
+    smoothly. Without ``splice_reject_heal_seconds`` set the >=2-physics path stays terminal — the
+    bank is held at last-good every poll. This pins the opt-in default: zero behaviour change.
+    """
+    assert plant.splice_reject_heal_seconds is None  # default: heal disabled
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)  # cells @ 3300
+    for n in range(1, 11):
+        v = 3700 + 20 * (n - 1)  # 3700, 3720, ... 3880 — smooth, in range, >300 above baseline
+        surge = _coherent_battery_bank({60: v, 65: v})
+        _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * n))
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # baseline held — never healed
+    assert plant.splice_reject_count[_BATT] == 10  # hard-rejected each poll
+
+
+def test_splice_sustained_step_heals_when_enabled(plant: Plant, caplog):
+    """An opted-in sustained, smooth, in-range voltage surge heals after N polls / T seconds (#299).
+
+    The near-full-SOC charge knee: two cells climb >300 mV above the frozen baseline (>=2 cell_mV
+    trips vs baseline → reject bucket each poll) but only ~20 mV/poll vs the previous incoming
+    (smooth). With the heal enabled, the streak advances each smooth poll and adopts the latest frame
+    once it has run >= SPLICE_REJECT_HEAL_POLLS (10) AND >= splice_reject_heal_seconds (300). After
+    the heal the new baseline makes the settling drift commit clean.
+    """
+    import logging
+
+    plant.splice_reject_heal_seconds = 300.0  # opt in
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        for n in range(1, 11):  # polls 1..10 @ 35 s → poll 10 at 350 s; count 10, elapsed 315 >= 300
+            v = 3700 + 20 * (n - 1)
+            surge = _coherent_battery_bank({60: v, 65: v})
+            _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * n))
+            if n < 10:
+                assert plant.register_caches[_BATT][IR(60)] == 3300, f"held at poll {n}, not yet healed"
+    assert plant.register_caches[_BATT][IR(60)] == 3880  # healed to the latest surge frame
+    assert plant.register_caches[_BATT][IR(65)] == 3880
+    assert plant.splice_reject_count == {}, "a held-then-healed surge is never a reject"
+    assert plant.splice_held_count[_BATT] == 9  # polls 1-9 held; poll 10 healed (no bump)
+    adopts = [r for r in caplog.records if "adopting as new baseline" in r.message and "0x33" in r.message]
+    assert len(adopts) == 1 and adopts[0].levelno == logging.INFO
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING and "0x33" in r.message]
+    # Post-heal settling: cells drift back ~10 mV/poll vs the new 3880 baseline → clean → commits.
+    settle = _coherent_battery_bank({60: 3870, 65: 3870})
+    _feed_bank(plant, settle, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * 11))
+    assert plant.register_caches[_BATT][IR(60)] == 3870, "settling commits clean against the healed baseline"
+
+
+def test_splice_temp_step_never_heal_eligible_even_when_enabled(plant: Plant):
+    """A temp-zero ≥2 reject (incl. the IR103/104 pair) stays terminal even with the heal on (#299).
+
+    The class restriction is the safety spine: heal-eligibility is limited to voltage/capacity-class
+    surges. The corpus's IR(103) t_max / IR(104) t_min temp-zero corruption is 2 physics trips that
+    ``is_corruption_cohort`` (IR76-79 only) does NOT catch — but it's ``cell_temp_deci`` class, so it
+    is never heal-eligible and stays hard-rejected no matter how long it persists.
+    """
+    plant.splice_reject_heal_seconds = 300.0  # heal enabled
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)  # t_max 250, t_min 240
+    for n in range(1, 13):  # 12 polls @ 35 s = 420 s — past both gates, yet must never heal
+        corrupt = _coherent_battery_bank({103: 0, 104: 11})  # the corpus IR103/104 temp-zero shape
+        _feed_bank(plant, corrupt, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * n))
+    assert plant.register_caches[_BATT][IR(103)] == 250  # held — never adopted
+    assert plant.splice_reject_count[_BATT] == 12  # hard-rejected every poll (class restriction)
+
+
+def test_splice_out_of_range_surge_never_healed(plant: Plant):
+    """A smooth voltage-class walk at a physically impossible value never heals (range gate, #299)."""
+    plant.splice_reject_heal_seconds = 300.0
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    for n in range(1, 13):  # smooth + in cell_mV class, but >5.0 V (raw >5000) → out of absolute range
+        v = 5200 + 10 * (n - 1)
+        surge = _coherent_battery_bank({60: v, 65: v})
+        _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * n))
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # never adopted — impossible value
+    assert plant.splice_reject_count[_BATT] == 12
+
+
+def test_splice_non_smooth_surge_never_heals(plant: Plant):
+    """A jumpy (non-smooth) in-range ≥2 surge never heals — the streak restarts every poll (#299)."""
+    plant.splice_reject_heal_seconds = 1.0  # make the 10-poll floor the operative gate
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    for n in range(1, 15):  # alternate 3700/4200: |delta| 500 > 300 vs previous incoming → not smooth
+        v = 3700 if n % 2 else 4200
+        surge = _coherent_battery_bank({60: v, 65: v})
+        _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * n))
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # streak never reaches 10 — held throughout
+
+
+def test_splice_surge_reverting_to_baseline_resets_streak(plant: Plant):
+    """A surge that reverts to baseline (corruption signature) clears the streak — no heal (#299)."""
+    plant.splice_reject_heal_seconds = 1.0  # 10-poll floor operative
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    for n in range(1, 6):  # 5 smooth surge polls — streak builds to 5
+        v = 3700 + 20 * (n - 1)
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({60: v, 65: v}),
+            device_address=_BATT,
+            received_at=_T0 + timedelta(seconds=35 * n),
+        )
+    # reverts to the exact baseline → clean transition → streak popped
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=35 * 6))
+    assert plant.register_caches[_BATT][IR(60)] == 3300
+    # a fresh single surge poll: streak restarts at 1, far short of 10 → still held
+    _feed_bank(
+        plant,
+        _coherent_battery_bank({60: 3700, 65: 3700}),
+        device_address=_BATT,
+        received_at=_T0 + timedelta(seconds=35 * 7),
+    )
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # held — the revert reset the streak
+
+
+def test_splice_surge_streak_popped_on_stale_bypass(plant: Plant):
+    """A >STALE_BYPASS_SECONDS gap mid-surge: the stale-bypass governs and the streak is popped (#299)."""
+    plant.splice_reject_heal_seconds = 300.0
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    for n in range(1, 4):  # 3 surge polls — streak building, last observed at 105 s
+        v = 3700 + 20 * (n - 1)
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({60: v, 65: v}),
+            device_address=_BATT,
+            received_at=_T0 + timedelta(seconds=35 * n),
+        )
+    # 400 s gap (> 300 s) → next frame hits the stale-bypass and adopts outright (non-cohort).
+    after_gap = _coherent_battery_bank({60: 3760, 65: 3760})
+    _feed_bank(plant, after_gap, device_address=_BATT, received_at=_T0 + timedelta(seconds=105 + 400))
+    assert plant.register_caches[_BATT][IR(60)] == 3760  # stale-bypass adopted; streak did not gate it
+
+
+def test_splice_phys_heal_eligible_resets_scalar_immut_streak(plant: Plant):
+    """A heal-eligible >=2-physics frame clears the scalar-immutable streak, interrupting the count (#299).
+
+    Without the fix, the scalar streak survived the >=2-physics pass and could satisfy its
+    "uninterrupted" count/time gates despite the interruption — allowing a poison baseline to heal
+    sooner than intended (or at all when the count was nearly at the threshold).
+    """
+    plant.splice_heal_seconds = 1.0  # make the 10-poll floor the operative gate for scalar heal
+    plant.splice_reject_heal_seconds = 300.0  # enable the >=2-physics heal path
+    poisoned = _coherent_battery_bank({98: 9999})  # IR98 bms_firmware_version poison in baseline
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
+    drift = _coherent_battery_bank({98: 3005, 60: 3600})  # scalar trip (IR98) + 1 physics (IR60)
+    for n in range(1, 10):  # 9 drift polls: scalar-immut streak reaches count=9 (one short of 10)
+        _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # still holding the poison
+
+    # >=2-physics heal-eligible frame: cell_mV surges on two cells vs the frozen baseline.
+    # IR98 must match the baseline (9999) so there is no scalar_immut trip — pure >=2-physics.
+    # This must clear _splice_immut_streak, resetting the scalar streak to zero.
+    surge = _coherent_battery_bank({60: 3880, 65: 3880, 98: 9999})  # 580 mV surge > 300 mV threshold, in-range
+    _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=100))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # still holding; streak interrupted, not adopted
+
+    # 9 more scalar-immut drift polls: streak must restart from 1 (not resume from 9), so no heal.
+    for n in range(11, 20):
+        _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # never adopted — streak was reset by the interrupt
+
+
 def test_cold_start_first_frame_held_pending(plant: Plant, caplog):
     """The first bank against an empty cache is held pending a corroborating read, not adopted (#289).
 

@@ -13,9 +13,11 @@ from givenergy_modbus.model.battery_splice import (
     IMMUTABLE_SCALAR,
     IMMUTABLE_SERIAL,
     SCALAR_IMMUT_HEAL_POLLS,
+    SPLICE_REJECT_HEAL_POLLS,
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
+    heal_eligible,
     is_corruption_cohort,
 )
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
@@ -554,6 +556,17 @@ class Plant(GivEnergyBaseModel):
     # Client(splice_heal_seconds=…). Runtime config; excluded from model_dump.
     splice_heal_seconds: float = Field(default=900.0, exclude=True)
 
+    # How long (seconds) a sustained *legitimate* >=2-physics battery step must persist, evolving
+    # smoothly and in-range, before the terminal hard-reject heals to it (#299). ``None`` (default)
+    # DISABLES the heal — the >=2-physics path stays terminal, zero behaviour change. A float opts
+    # in (recommended 300, = STALE_BYPASS_SECONDS; never set below it). Separate from
+    # splice_heal_seconds: that defends scalar poison which persists indefinitely (long window),
+    # this a transient charge-knee surge (short window). The positive (heal-fires) path can't be
+    # validated against the existing corpus, so it ships off by default until a real near-full-SOC
+    # knee capture confirms the smoothness assumption. Consumer-tunable via
+    # Client(splice_reject_heal_seconds=…). Runtime config; excluded from model_dump.
+    splice_reject_heal_seconds: float | None = Field(default=None, exclude=True)
+
     # Content-staleness tracker — the duration substrate for frozen-BMS-cache detection (#91).
     # Keyed identically to register_block_updated_at; each value is (content_hash, unchanged_since)
     # where unchanged_since is the ingestion time of the FIRST commit in the current
@@ -601,6 +614,17 @@ class Plant(GivEnergyBaseModel):
     _splice_immut_streak: dict[int, tuple[tuple[tuple[int, int], ...], datetime, int]] = PrivateAttr(
         default_factory=dict
     )
+
+    # Sustained-step heal streak (#299): per battery device address, (prev_incoming_frame,
+    # started_at, consecutive_count). When a >=2-physics reject is heal-eligible (voltage/cap-class
+    # trips, in absolute range — see battery_splice.heal_eligible) and the heal is enabled, the bank
+    # is held but the incoming frames are tracked here. The streak advances only while each new frame
+    # is a SMOOTH continuation of the *previous incoming* frame (classify_transition between
+    # consecutive incomings is clean), so a legitimate charge-knee surge — which drifts smoothly —
+    # accumulates, while corruption (which reverts or jumps) restarts the count. After
+    # SPLICE_REJECT_HEAL_POLLS smooth polls AND splice_reject_heal_seconds, the latest frame is
+    # adopted as the new baseline. Ephemeral; not serialised.
+    _splice_reject_streak: dict[int, tuple[list[int], datetime, int]] = PrivateAttr(default_factory=dict)
 
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
@@ -944,6 +968,7 @@ class Plant(GivEnergyBaseModel):
                 return False
             self._splice_escrow.pop(device_address, None)
             self._splice_immut_streak.pop(device_address, None)
+            self._splice_reject_streak.pop(device_address, None)
             _logger.info(
                 "Battery bank for device 0x%02x: %.0f s since the last observed bank — splice guard "
                 "bypassed (stale baseline); adopting as new baseline.",
@@ -961,30 +986,54 @@ class Plant(GivEnergyBaseModel):
         serial_immut = [t for t in immut if t[0] in IMMUTABLE_SERIAL]
         scalar_immut = [t for t in immut if t[0] in IMMUTABLE_SCALAR]
 
-        # Hard reject: a serial-block change (wrong pack / re-address), OR >=2 physics deltas with no
-        # recoverable scalar immutable (the temp-zero corruption cohort) — neither ever self-adopts.
-        if serial_immut or (len(phys) >= 2 and not scalar_immut):
+        # Hard reject: a serial-block change (wrong pack / re-address) never self-adopts.
+        if serial_immut:
             self._splice_escrow.pop(device_address, None)
             self._splice_immut_streak.pop(device_address, None)
+            self._splice_reject_streak.pop(device_address, None)
             self._bump(self.splice_reject_count, device_address)
-            reason = "serial-block change" if serial_immut else ">=2 physics-impossible deltas"
             _logger.warning(
-                "Rejected battery bank for device 0x%02x — sub-bus splice (%s); keeping last-good. "
-                "Trips: %s. Please report if seen.",
+                "Rejected battery bank for device 0x%02x — sub-bus splice (serial-block change); "
+                "keeping last-good. Trips: %s. Please report if seen.",
                 device_address,
-                reason,
                 self._format_splice_trips(serial_immut + phys),
             )
             return False
 
+        # >=2 physics deltas with no recoverable scalar immutable: corruption (the temp-zero cohort,
+        # incl. the IR103/104 t_max/t_min pair) OR — rarely — a legitimate sustained step (the
+        # near-full-SOC charge knee, #299). When the heal is enabled (opt-in) AND the bank is
+        # heal-eligible (every trip a voltage/cap-class surge in absolute range, so it can't be any
+        # corruption shape the corpus contains), hand off to the smooth-streak heal: hold now, adopt
+        # only after a sustained smooth in-range run. Otherwise terminal reject, as before.
+        if len(phys) >= 2 and not scalar_immut:
+            self._splice_escrow.pop(device_address, None)
+            self._splice_immut_streak.pop(device_address, None)
+            if self.splice_reject_heal_seconds is not None and heal_eligible(phys):
+                return self._handle_reject_streak(device_address, new, present, phys, now_ts)
+            self._splice_reject_streak.pop(device_address, None)
+            self._bump(self.splice_reject_count, device_address)
+            _logger.warning(
+                "Rejected battery bank for device 0x%02x — sub-bus splice (>=2 physics-impossible "
+                "deltas); keeping last-good. Trips: %s. Please report if seen.",
+                device_address,
+                self._format_splice_trips(phys),
+            )
+            return False
+
         # Scalar-immutable change (no serial trip): escrow + re-baseline rather than reject (#281).
+        # A scalar disagreement isn't the sustained-step path, so any heal streak is interrupted.
         if scalar_immut:
+            self._splice_reject_streak.pop(device_address, None)
             return self._handle_scalar_immutable(device_address, scalar_immut, phys, now_ts)
 
         # No scalar-immutable trip this poll: any in-progress scalar disagreement is interrupted, so
         # the backstop streak resets here — it requires an *uninterrupted* stable signature. Covers
-        # both the physics-singleton path below and the clean-transition path (#281 review).
+        # both the physics-singleton path below and the clean-transition path (#281 review). The
+        # sustained-step heal streak (#299) likewise needs an uninterrupted >=2 run, so a frame that
+        # falls to <=1 trip (singleton/clean) breaks and resets it here too.
         self._splice_immut_streak.pop(device_address, None)
+        self._splice_reject_streak.pop(device_address, None)
 
         if len(phys) == 1:
             ir_no, name, _old, new_val = phys[0]
@@ -1151,6 +1200,79 @@ class Plant(GivEnergyBaseModel):
                 self._fmt_scalar_sig(scalar_immut),
                 self.splice_heal_seconds,
                 self._format_splice_trips(scalar_immut + phys),
+            )
+        return False
+
+    def _handle_reject_streak(
+        self,
+        device_address: int,
+        new: list[int],
+        present: set[int] | None,
+        phys: list[tuple[int, str, int, int]],
+        now_ts: datetime,
+    ) -> bool:
+        """Hold a heal-eligible >=2-physics step; adopt after a sustained smooth in-range run (#299).
+
+        Reached only when the heal is enabled (``splice_reject_heal_seconds`` set) AND the bank is
+        heal-eligible (:func:`~givenergy_modbus.model.battery_splice.heal_eligible`: every trip a
+        voltage/capacity-class surge in absolute range, so it can't be any corruption shape the
+        corpus contains). The terminal >=2-physics reject otherwise has no recovery, so a legitimate
+        sustained step — the near-full-SOC charge knee, which trips >=2 voltage rules against the
+        frozen baseline — freezes telemetry until it settles (#299).
+
+        The discriminator is *smoothness across consecutive incoming frames*, NOT the value-equality
+        the #286 scalar heal uses — a real surge drifts (3644->3631->3622...), so its signature never
+        stabilises. A legitimate surge evolves smoothly poll-to-poll (``classify_transition`` between
+        consecutive incomings is clean); corruption reverts or jumps. So the streak advances only on
+        a smooth continuation and adopts the latest frame after ``SPLICE_REJECT_HEAL_POLLS`` polls
+        AND ``splice_reject_heal_seconds``. Until then it's a recoverable hold (INFO +
+        ``splice_held_count``), serving last-good with a growing ``block_age``. The frozen baseline is
+        used only to compute ``phys`` (the eligibility gate, by the caller), never for the streak.
+        Returns True to adopt (heal), False to hold.
+        """
+        heal_seconds = self.splice_reject_heal_seconds
+        assert heal_seconds is not None  # the caller only delegates here when the heal is enabled
+        streak = self._splice_reject_streak.get(device_address)
+        if streak is not None:
+            prev_incoming, started = streak[0], streak[1]
+            step_phys, step_immut = classify_transition(prev_incoming, new, present)
+            if not step_phys and not step_immut:
+                # Smooth continuation of the previous incoming frame — advance the streak.
+                count = streak[2] + 1
+                elapsed = (now_ts - started).total_seconds()
+                if count >= SPLICE_REJECT_HEAL_POLLS and elapsed >= heal_seconds:
+                    self._splice_reject_streak.pop(device_address, None)
+                    _logger.info(
+                        "Battery bank for device 0x%02x: sustained step evolved smoothly and in-range "
+                        "for %d consecutive polls (%.0f s) — adopting as new baseline (legitimate "
+                        "surge, e.g. near-full-SOC charge knee). Trips: %s.",
+                        device_address,
+                        count,
+                        elapsed,
+                        self._format_splice_trips(phys),
+                    )
+                    return True
+                self._splice_reject_streak[device_address] = (new, started, count)
+                new_streak = False
+            else:
+                # Reverted or jumped — not a smooth continuation; restart from this frame.
+                self._splice_reject_streak[device_address] = (new, now_ts, 1)
+                new_streak = True
+        else:
+            # First heal-eligible reject for this device — start the streak.
+            self._splice_reject_streak[device_address] = (new, now_ts, 1)
+            new_streak = True
+
+        self._bump(self.splice_held_count, device_address)
+        if new_streak:
+            # Log once per insistence run (not every poll), like the #286 scalar hold.
+            _logger.info(
+                "Battery bank for device 0x%02x: >=2-physics step is heal-eligible (voltage/capacity "
+                "surge in range) — holding last-good, will adopt only after %.0f s of smooth in-range "
+                "evolution. Trips: %s.",
+                device_address,
+                heal_seconds,
+                self._format_splice_trips(phys),
             )
         return False
 
