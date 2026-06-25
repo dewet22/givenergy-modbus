@@ -132,16 +132,16 @@ class State(IntEnum):
 class ExportPriority(IntEnum):
     """Dispatch priority for surplus power on AC-coupled inverters.
 
-    The *register* HR(311) was identified as Export Priority via hass#52 wire
-    captures (portal writes of values 0/1/2 round-tripped to HR(311)), but the
-    integer↔label mapping below is provisional and has not been ground-truthed
-    against the portal. A field reporter has flagged a likely 2↔0 swap between
-    ``BATTERY_FIRST`` and ``LOAD_FIRST``; see #303 for the verification task.
+    HR(311) was identified as Export Priority via hass#52 wire captures. The integer↔label mapping
+    is tester-confirmed (hass#218, #303): cycling the GE portal and reading the round-tripped raw
+    value gave ``0 = Load First``, ``1 = Battery First``, ``2 = Grid First``. (The earlier
+    provisional mapping had all three rotated — it guessed a 2↔0 swap, but the field data showed a
+    full rotation.)
     """
 
-    BATTERY_FIRST = 0
-    GRID_FIRST = 1
-    LOAD_FIRST = 2
+    LOAD_FIRST = 0
+    BATTERY_FIRST = 1
+    GRID_FIRST = 2
 
 
 class BatteryPauseMode(IntEnum):
