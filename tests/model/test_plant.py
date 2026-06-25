@@ -3003,6 +3003,27 @@ def test_splice_short_read_skips_guard(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(76)] == 0  # committed
 
 
+def test_splice_short_read_refuses_temp_zero_cohort(plant: Plant, caplog):
+    """A short read carrying the temp-zero cohort (>=2 cell-mass temps at 0) is held, not committed (#294).
+
+    The short-read fast-path commits a partial bank without a physics comparison, so a spliced
+    short read that zeroes >=2 temps would otherwise seed an unrecoverable poisoned baseline. The
+    cohort is refused (held last-good); a lone temp-zero (<2) still commits as before.
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, {76: 0, 77: 0}, device_address=_BATT, count=20, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[_BATT][IR(76)] == 250  # held — baseline temp, not the zeroed cohort
+    assert plant.splice_reject_count == {_BATT: 1}
+    assert [r for r in caplog.records if "corruption cohort" in r.message and "0x33" in r.message]
+
+    # A lone temp-zero is not the cohort — short read still commits (recoverable single trip).
+    _feed_bank(plant, {76: 0}, device_address=_BATT, count=1, received_at=_T0 + timedelta(seconds=60))
+    assert plant.register_caches[_BATT][IR(76)] == 0
+
+
 def test_splice_non_battery_device_skips_guard(plant: Plant, caplog):
     """On a bare Plant, 0x32 → inverter getter; the splice guard is not applied there."""
     import logging
@@ -3069,6 +3090,30 @@ def test_splice_stale_baseline_bypass(plant: Plant, caplog):
     assert len(infos) == 1 and infos[0].levelno == logging.INFO
     warns = [r for r in caplog.records if "Rejected battery bank" in r.message]
     assert not warns
+
+
+def test_splice_stale_bypass_refuses_temp_zero_cohort(plant: Plant, caplog):
+    """The stale-baseline bypass must not adopt the temp-zero corruption cohort post-gap (#294).
+
+    A gap > STALE_BYPASS_SECONDS normally adopts the next bank unconditionally, but the temp-zero
+    cohort would seed an unrecoverable poisoned baseline. It's held instead; crucially the bypass
+    stays armed (the observation clock is not consumed) so the next healthy frame still recovers.
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    cohort = _coherent_battery_bank({76: 0, 77: 0, 78: 0, 79: 0})  # temp-zero cohort
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, cohort, device_address=_BATT, received_at=_T0 + timedelta(seconds=400))
+    assert plant.register_caches[_BATT][IR(76)] == 250  # held — not adopted
+    assert plant.splice_reject_count == {_BATT: 1}
+    assert [r for r in caplog.records if "corruption cohort post-gap" in r.message and "0x33" in r.message]
+
+    # Bypass stayed armed: a healthy frame one poll later still sees the gap and adopts.
+    healthy = _coherent_battery_bank({60: 3400})
+    _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=430))
+    assert plant.register_caches[_BATT][IR(60)] == 3400  # recovered via bypass
+    assert plant.register_caches[_BATT][IR(76)] == 250
 
 
 def test_splice_sustained_corruption_never_bypassed(plant: Plant, caplog):
