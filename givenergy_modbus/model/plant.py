@@ -1007,10 +1007,10 @@ class Plant(GivEnergyBaseModel):
         # corruption shape the corpus contains), hand off to the smooth-streak heal: hold now, adopt
         # only after a sustained smooth in-range run. Otherwise terminal reject, as before.
         if len(phys) >= 2 and not scalar_immut:
-            if self.splice_reject_heal_seconds is not None and heal_eligible(phys):
-                return self._handle_reject_streak(device_address, new, present, phys, now_ts)
             self._splice_escrow.pop(device_address, None)
             self._splice_immut_streak.pop(device_address, None)
+            if self.splice_reject_heal_seconds is not None and heal_eligible(phys):
+                return self._handle_reject_streak(device_address, new, present, phys, now_ts)
             self._splice_reject_streak.pop(device_address, None)
             self._bump(self.splice_reject_count, device_address)
             _logger.warning(

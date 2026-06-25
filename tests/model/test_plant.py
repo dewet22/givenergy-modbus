@@ -2982,6 +2982,35 @@ def test_splice_surge_streak_popped_on_stale_bypass(plant: Plant):
     assert plant.register_caches[_BATT][IR(60)] == 3760  # stale-bypass adopted; streak did not gate it
 
 
+def test_splice_phys_heal_eligible_resets_scalar_immut_streak(plant: Plant):
+    """A heal-eligible >=2-physics frame clears the scalar-immutable streak, interrupting the count (#299).
+
+    Without the fix, the scalar streak survived the >=2-physics pass and could satisfy its
+    "uninterrupted" count/time gates despite the interruption — allowing a poison baseline to heal
+    sooner than intended (or at all when the count was nearly at the threshold).
+    """
+    plant.splice_heal_seconds = 1.0  # make the 10-poll floor the operative gate for scalar heal
+    plant.splice_reject_heal_seconds = 300.0  # enable the >=2-physics heal path
+    poisoned = _coherent_battery_bank({98: 9999})  # IR98 bms_firmware_version poison in baseline
+    _establish_baseline(plant, poisoned, device_address=_BATT, received_at=_T0)
+    drift = _coherent_battery_bank({98: 3005, 60: 3600})  # scalar trip (IR98) + 1 physics (IR60)
+    for n in range(1, 10):  # 9 drift polls: scalar-immut streak reaches count=9 (one short of 10)
+        _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # still holding the poison
+
+    # >=2-physics heal-eligible frame: cell_mV surges on two cells vs the frozen baseline.
+    # IR98 must match the baseline (9999) so there is no scalar_immut trip — pure >=2-physics.
+    # This must clear _splice_immut_streak, resetting the scalar streak to zero.
+    surge = _coherent_battery_bank({60: 3880, 65: 3880, 98: 9999})  # 580 mV surge > 300 mV threshold, in-range
+    _feed_bank(plant, surge, device_address=_BATT, received_at=_T0 + timedelta(seconds=100))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # still holding; streak interrupted, not adopted
+
+    # 9 more scalar-immut drift polls: streak must restart from 1 (not resume from 9), so no heal.
+    for n in range(11, 20):
+        _feed_bank(plant, drift, device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * n))
+    assert plant.register_caches[_BATT][IR(98)] == 9999  # never adopted — streak was reset by the interrupt
+
+
 def test_cold_start_first_frame_held_pending(plant: Plant, caplog):
     """The first bank against an empty cache is held pending a corroborating read, not adopted (#289).
 
