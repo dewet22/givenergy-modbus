@@ -866,18 +866,13 @@ class Plant(GivEnergyBaseModel):
         a gap of more than ``STALE_BYPASS_SECONDS`` since the last *observed* full bank — a
         genuine polling outage, not a rejection streak — is too stale for per-poll thresholds
         to apply (legitimate multi-field drift over the gap would trip them) — all three fall
-        through as a no-op commit so the cache self-heals without manual recovery.
+        through as a no-op commit so the cache self-heals without manual recovery. The one
+        exception is the temp-zero corruption cohort, which is held (never adopted) on every
+        path, not just cold start (#294).
         """
-        if register_count < 60:
-            return True
         now_ts = now if now is not None else datetime.now(UTC)
         if now_ts.tzinfo is None:
             now_ts = now_ts.replace(tzinfo=UTC)
-        # Record this observation up front — a rejected bank is still an observation, so the gap
-        # computed below measures time since we last *saw* a full bank, not since we last accepted
-        # one. This is what separates a real outage from a sustained corruption run (see below).
-        prev_seen = self._splice_last_seen.get(device_address)
-        self._splice_last_seen[device_address] = now_ts
 
         cache = self.register_caches[device_address]
         prev = [0] * 60
@@ -894,6 +889,29 @@ class Plant(GivEnergyBaseModel):
                 incoming_present.add(i)
                 if cached is not None:
                     present.add(i)
+
+        # Short read: a partial bank can't be physics-classified, so it commits directly — EXCEPT the
+        # temp-zero corruption cohort (>=2 cell-mass temps at 0), which would seed an unrecoverable
+        # poisoned baseline (#294 — the same hole #289 closed for cold start). A short read is not a
+        # full observation, so this returns before the _splice_last_seen update below (it must not
+        # advance the stale-bypass clock).
+        if register_count < 60:
+            if is_corruption_cohort(new, incoming_present):
+                self._bump(self.splice_reject_count, device_address)
+                _logger.warning(
+                    "Rejected short battery bank for device 0x%02x — temp-zero corruption cohort; "
+                    "keeping last-good. Please report if seen.",
+                    device_address,
+                )
+                return False
+            return True
+
+        # Record this observation up front — a rejected bank is still an observation, so the gap
+        # computed below measures time since we last *saw* a full bank, not since we last accepted
+        # one. This is what separates a real outage from a sustained corruption run (see below).
+        prev_seen = self._splice_last_seen.get(device_address)
+        self._splice_last_seen[device_address] = now_ts
+
         if not present:
             # Cold start: no last-good to compare against. Don't adopt the first frame blindly — a
             # transient splice would poison the baseline (#289). Hold it until a second poll
@@ -911,6 +929,19 @@ class Plant(GivEnergyBaseModel):
         # keeps arriving and being rejected each poll, ageing the last *commit* past the window —
         # but prev_seen stays ~one poll old, so this does NOT fire and the corruption stays rejected.
         if prev_seen is not None and (now_ts - prev_seen).total_seconds() > STALE_BYPASS_SECONDS:
+            if is_corruption_cohort(new, incoming_present):
+                # Don't adopt the corruption cohort even post-gap (#294). Hold last-good and keep the
+                # bypass armed for the next healthy frame: restore the observation clock to prev_seen
+                # so the gap is still seen next poll — otherwise a healthy recovery frame would be
+                # rejected against the stale baseline, re-pinning the very thing the bypass avoids.
+                self._splice_last_seen[device_address] = prev_seen
+                self._bump(self.splice_reject_count, device_address)
+                _logger.warning(
+                    "Battery bank for device 0x%02x: stale-baseline bypass blocked — temp-zero "
+                    "corruption cohort post-gap; holding last-good for a healthy read. Please report if seen.",
+                    device_address,
+                )
+                return False
             self._splice_escrow.pop(device_address, None)
             self._splice_immut_streak.pop(device_address, None)
             _logger.info(
