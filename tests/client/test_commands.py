@@ -418,14 +418,26 @@ async def test_set_export_priority():
     assert commands.set_export_priority(ExportPriority.GRID_FIRST) == [
         WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.GRID_FIRST)
     ]
-    # Raw int that maps to a valid member is coerced.
+    # Raw int that maps to a valid member is coerced (2 = Grid First, tester-confirmed #303).
     assert commands.set_export_priority(2) == [
-        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.LOAD_FIRST)
+        WriteHoldingRegisterRequest(RegisterMap.EXPORT_PRIORITY, ExportPriority.GRID_FIRST)
     ]
     with pytest.raises(ValueError, match="Invalid export priority"):
         commands.set_export_priority(99)
     # HR311 must be in the lower-level PDU allowlist, or encode() raises InvalidPduState.
     commands.set_export_priority(ExportPriority.BATTERY_FIRST)[0].encode()
+
+
+def test_export_priority_raw_int_mapping():
+    """Pin the tester-confirmed HR(311) raw->label mapping (hass#218, #303).
+
+    The enum value IS the raw register value (set_export_priority writes it directly; decode reads
+    ExportPriority(raw)), so a rotation here silently mislabels every consumer. 0/1/2 must stay
+    Load/Battery/Grid First.
+    """
+    assert ExportPriority.LOAD_FIRST == 0
+    assert ExportPriority.BATTERY_FIRST == 1
+    assert ExportPriority.GRID_FIRST == 2
 
 
 async def test_set_enable_eps():
@@ -904,7 +916,7 @@ def test_numeric_arguments_reject_non_integral_and_str():
 def test_set_export_priority_rejects_bool():
     """set_export_priority rejects bool before the enum conversion (audit L1 follow-up).
 
-    ExportPriority(True) resolves to GRID_FIRST (1) and would pass as an IntEnum — silently
+    ExportPriority(True) resolves to BATTERY_FIRST (1) and would pass as an IntEnum — silently
     selecting a write mode. A bool here is a caller error and must fail loudly. Valid enum
     members (and their int values) still work.
     """

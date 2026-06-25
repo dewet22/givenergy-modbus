@@ -369,7 +369,13 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 
 def set_active_power_rate(target: int) -> list[TransparentRequest]:
-    """Set the inverter's active power output as a percentage of its rated capacity."""
+    """Set the inverter's active power output as a percentage of its rated capacity.
+
+    On an EMS-managed inverter this per-inverter write (HR50) is a silent no-op: it is accepted at
+    the modbus layer (no error, unlike the AC-limit registers) but the EMS controller re-asserts its
+    own value, so the change does not stick. There is no EMS-controller active-power-rate command to
+    target instead (the EMS register block has none). See #304.
+    """
     target = _as_int(target, "target")
     if not 0 <= target <= 100:
         raise ValueError(f"Active power rate ({target}) must be in [0-100]%")
@@ -387,7 +393,7 @@ def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
     Determines where surplus energy goes: battery first, grid first, or load first.
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
-    # bool subclasses int, so ExportPriority(True) would resolve to GRID_FIRST and pass as an
+    # bool subclasses int, so ExportPriority(True) would resolve to BATTERY_FIRST (1) and pass as an
     # IntEnum — silently selecting a write mode. Reject it before the enum conversion (audit L1).
     if isinstance(priority, bool):
         raise ValueError(f"Export priority must be an ExportPriority, not bool (got {priority!r})")
