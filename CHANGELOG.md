@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.11] - 2026-06-25
+
+### ✨ Added
+
+- opt-in heal-adopt for sustained legitimate >=2-physics step (#299) (#310) ([5a84b65](https://github.com/dewet22/givenergy-modbus/commit/5a84b65c3f9afb63657c43c089b161c079e11de5))
+
 ## [2.5.10] - 2026-06-25
 
 ### 🐛 Fixed
