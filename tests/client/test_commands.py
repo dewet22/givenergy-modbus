@@ -436,32 +436,32 @@ async def test_set_enable_eps():
 
 
 async def test_set_battery_charge_limit_ac():
-    assert commands.set_battery_charge_limit_ac(50) == [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 50)
-    ]
-    # 0 now commits (disables AC charge; was rejected pre-widen); 100 is max; 101 rejects.
-    assert commands.set_battery_charge_limit_ac(0) == [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 0)
+    assert commands.set_battery_charge_limit_ac(1) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 1)
     ]
     assert commands.set_battery_charge_limit_ac(100) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, 100)
     ]
-    with pytest.raises(ValueError, match=r"AC Charge Limit \(101%\) is not in \[0-100\]\%"):
+    # 0 ERRORs on AC hardware (field-confirmed, #302) — reject client-side rather than let a hardware
+    # ERROR + write timeout happen. The 0-floor is DC-specific (the DC pair legitimately accepts 0).
+    with pytest.raises(ValueError, match=r"AC Charge Limit \(0%\) is not in \[1-100\]\%"):
+        commands.set_battery_charge_limit_ac(0)
+    with pytest.raises(ValueError, match=r"AC Charge Limit \(101%\) is not in \[1-100\]\%"):
         commands.set_battery_charge_limit_ac(101)
 
 
 async def test_set_battery_discharge_limit_ac():
-    assert commands.set_battery_discharge_limit_ac(50) == [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 50)
-    ]
-    # 0 now commits (disables AC discharge; was rejected pre-widen); 100 is max; 101 rejects.
-    assert commands.set_battery_discharge_limit_ac(0) == [
-        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 0)
+    assert commands.set_battery_discharge_limit_ac(1) == [
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 1)
     ]
     assert commands.set_battery_discharge_limit_ac(100) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, 100)
     ]
-    with pytest.raises(ValueError, match=r"AC Discharge Limit \(101%\) is not in \[0-100\]\%"):
+    # 0 ERRORs on AC hardware (field-confirmed, #302) — reject client-side rather than let a hardware
+    # ERROR + write timeout happen. The 0-floor is DC-specific (the DC pair legitimately accepts 0).
+    with pytest.raises(ValueError, match=r"AC Discharge Limit \(0%\) is not in \[1-100\]\%"):
+        commands.set_battery_discharge_limit_ac(0)
+    with pytest.raises(ValueError, match=r"AC Discharge Limit \(101%\) is not in \[1-100\]\%"):
         commands.set_battery_discharge_limit_ac(101)
 
 

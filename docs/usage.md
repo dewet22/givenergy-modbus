@@ -266,7 +266,7 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `disable_charge_target()` | Remove SOC limit, target 100% | |
 | `set_enable_charge(enabled)` | Enable or disable charging | |
 | `set_battery_charge_limit(val)` | Charge power limit (0–100%; firmware expected to clamp per-model) | |
-| `set_battery_charge_limit_ac(val)` | AC charge power limit (0–100%) | ⛔ commands-only |
+| `set_battery_charge_limit_ac(val)` | AC charge power limit (1–100%; 0 errors on hardware) | ⛔ commands-only |
 | `set_shallow_charge(val)` | Set shallow charge threshold (deprecated — use `set_battery_soc_reserve`) | ⛔ commands-only |
 
 ### Discharging
@@ -275,7 +275,7 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 |---|---|---|
 | `set_enable_discharge(enabled)` | Enable or disable discharging | |
 | `set_battery_discharge_limit(val)` | Discharge power limit (0–100%; firmware expected to clamp per-model) | |
-| `set_battery_discharge_limit_ac(val)` | AC discharge power limit (0–100%) | ⛔ commands-only |
+| `set_battery_discharge_limit_ac(val)` | AC discharge power limit (1–100%; 0 errors on hardware) | ⛔ commands-only |
 | `set_battery_soc_reserve(val)` | Minimum SOC to maintain (4–100%) | |
 | `set_battery_power_reserve(val)` | Battery power reserve (4–100%) | |
 

@@ -407,28 +407,32 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 
 
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
-    """Set the battery AC charge power limit as a percentage (0-100).
+    """Set the battery AC charge power limit as a percentage (1-100).
 
-    The GE app exposes 0-100 for this control; 0 is expected to disable AC charge but is not yet
-    field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and
-    HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)
+    The floor is 1: writing 0 to HR313/314 ERRORs on an AC inverter (hardware-confirmed via a
+    single-phase AC tester — WriteHoldingRegisterResponse(ERROR) then a write timeout), so the 2.5.8
+    "0 disables" widening was wrong and is reverted here. The 0-floor is DC-specific — the DC pair
+    :func:`set_battery_charge_limit` legitimately accepts 0; writing 1 here drives the battery to
+    near-zero.
     """
     val = _as_int(val, "val")
-    if not 0 <= val <= 100:
-        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [0-100]%")
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC, val)]
 
 
 def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
-    """Set the battery AC discharge power limit as a percentage (0-100).
+    """Set the battery AC discharge power limit as a percentage (1-100).
 
-    The GE app exposes 0-100 for this control; 0 is expected to disable AC discharge but is not yet
-    field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and
-    HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)
+    The floor is 1: writing 0 to HR313/314 ERRORs on an AC inverter (hardware-confirmed via a
+    single-phase AC tester — WriteHoldingRegisterResponse(ERROR) then a write timeout), so the 2.5.8
+    "0 disables" widening was wrong and is reverted here. The 0-floor is DC-specific — the DC pair
+    :func:`set_battery_discharge_limit` legitimately accepts 0; writing 1 here drives the battery to
+    near-zero.
     """
     val = _as_int(val, "val")
-    if not 0 <= val <= 100:
-        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [0-100]%")
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
 
 
