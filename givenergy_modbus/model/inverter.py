@@ -949,6 +949,51 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             return None
         return pv + grid_in - grid_out - ac_charge
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_self_consumption_today(self) -> float | None:
+        """Self-consumption energy today (kWh): PV generation used on-site (GivTCP parity).
+
+        DERIVED: PV generation today − grid export today, clamped at ≥ 0.
+
+        Two limitations to be aware of:
+        - Battery-to-grid export is counted in grid_out, so this slightly under-counts
+          true self-consumption when the battery discharges to grid. GivTCP accepts this
+          approximation; we match it here.
+        - NOT monotonically increasing: when battery exports to grid, grid_out rises
+          without pv_generation rising, causing the difference to dip. Consumers that
+          use state_class TOTAL_INCREASING (e.g. HA energy dashboard) MUST apply their
+          own monotonic clamp rather than consuming the raw value directly.
+
+        Returns None if any input is unavailable.
+        """
+        pv = self.e_pv_generation_today  # type: ignore[attr-defined]
+        grid_out = self.e_grid_out_day  # type: ignore[attr-defined]
+        if None in (pv, grid_out):
+            return None
+        return max(0.0, pv - grid_out)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_self_consumption_total(self) -> float | None:
+        """Lifetime self-consumption energy (kWh): PV generation used on-site (GivTCP parity).
+
+        DERIVED: PV generation total − grid export total, clamped at ≥ 0.
+
+        Same battery-to-grid under-count and non-monotonicity caveats as
+        e_self_consumption_today: the difference of two running counters is not
+        guaranteed to increase monotonically. Consumers using state_class
+        TOTAL_INCREASING MUST apply a monotonic clamp (e.g. HA's monotonic=True
+        sensor path) rather than consuming the raw value directly.
+
+        Returns None if any input is unavailable.
+        """
+        pv = self.e_pv_generation_total  # type: ignore[attr-defined]
+        grid_out = self.e_grid_out_total  # type: ignore[attr-defined]
+        if None in (pv, grid_out):
+            return None
+        return max(0.0, pv - grid_out)
+
     # Plain @property (not @computed_field) so the deprecated alias doesn't
     # appear in model_dump() output. See #84 — renamed to work_time_total_hours
     # to put the unit at the call site.
