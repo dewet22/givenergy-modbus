@@ -17,6 +17,8 @@ be ineligible.
 
 from pathlib import Path
 
+import pytest
+
 from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.model.battery_splice import BANK_BASE, classify_transition, heal_eligible
 from givenergy_modbus.pdu import ReadInputRegistersResponse
@@ -37,6 +39,7 @@ def _rx_frames(path: Path) -> list[bytes]:
     return frames
 
 
+@pytest.mark.timeout(15)
 async def test_no_corpus_corruption_transition_is_heal_eligible():
     """Every >=2-physics corruption transition in the corpus must be ineligible to heal (#299)."""
     framer = ClientFramer()
