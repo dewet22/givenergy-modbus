@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.10] - 2026-06-25
+
+### 🐛 Fixed
+
+- gate temp-zero cohort on stale-bypass and short-read adopt paths (#294) ([f6f61af](https://github.com/dewet22/givenergy-modbus/commit/f6f61affbb71481b62f7bcceb425429548f7fa56))
+
+### 🔧 Maintenance
+
+- lock in IR(1061-1099) grid-block decode from the lamztib capture (#141) (#309) ([85dd4d6](https://github.com/dewet22/givenergy-modbus/commit/85dd4d6037c53d8c9632b3b898f5e6b1c0c18d8a))
+
 ## [2.5.9] - 2026-06-25
 
 ### 🐛 Fixed
