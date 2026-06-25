@@ -132,9 +132,11 @@ class State(IntEnum):
 class ExportPriority(IntEnum):
     """Dispatch priority for surplus power on AC-coupled inverters.
 
-    Confirmed writable on Model.AC via direct portal observations (hass#52):
-    HR(311) was written with values 0/1/2 while the portal's "Export Priority"
-    control was cycled through its three options.
+    The *register* HR(311) was identified as Export Priority via hass#52 wire
+    captures (portal writes of values 0/1/2 round-tripped to HR(311)), but the
+    integer↔label mapping below is provisional and has not been ground-truthed
+    against the portal. A field reporter has flagged a likely 2↔0 swap between
+    ``BATTERY_FIRST`` and ``LOAD_FIRST``; see #303 for the verification task.
     """
 
     BATTERY_FIRST = 0
