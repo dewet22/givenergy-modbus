@@ -117,6 +117,8 @@ def test_inverter():
             "e_grid_in_total": None,
             "e_ac_charge_today": None,
             "e_consumption_today": None,
+            "e_self_consumption_today": None,
+            "e_self_consumption_total": None,
             "e_battery_charge_today_alt1": None,
             "e_battery_discharge_today_alt1": None,
             "countdown": None,
@@ -529,6 +531,10 @@ def test_from_registers(register_cache):
         # computed: e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
         #         = 8.1 + 20.9 − 0.0 − 9.3
         "e_consumption_today": 19.7,
+        # computed: max(0, e_pv_generation_today − e_grid_out_day) = max(0, 8.1 − 0.0)
+        "e_self_consumption_today": 8.1,
+        # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 93.0 − 0.6)
+        "e_self_consumption_total": 92.4,
         "e_battery_charge_today_alt1": 9.0,  # IR(36)
         "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
@@ -877,6 +883,10 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         # computed: e_pv_generation_today + e_grid_in_day − e_grid_out_day − e_ac_charge_today
         #         = 3.8 + 19.8 − 0.0 − 9.3
         "e_consumption_today": 14.3,
+        # computed: max(0, e_pv_generation_today − e_grid_out_day) = max(0, 3.8 − 0.0)
+        "e_self_consumption_today": 3.8,
+        # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 172.5 − 0.9)
+        "e_self_consumption_total": 171.6,
         "e_battery_charge_today_alt1": 9.1,  # IR(36)
         "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
@@ -1385,6 +1395,68 @@ def test_e_consumption_today_computed_formula():
     # Missing any input → None (no partial guess).
     partial = SinglePhaseInverter.from_register_cache(RegisterCache({IR(26): 209, IR(25): 0, IR(35): 93}))
     assert partial.e_consumption_today is None  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "pv_today, grid_out_day, pv_total, grid_out_total, expected_today, expected_total",
+    [
+        # Normal: PV > export → positive self-consumption
+        (8.1, 0.0, 93.0, 0.6, 8.1, 92.4),
+        # Clamp: export exceeds PV (battery-to-grid) → floor at 0
+        (1.0, 3.0, 10.0, 15.0, 0.0, 0.0),
+        # Exact zero: export equals PV
+        (5.0, 5.0, 50.0, 50.0, 0.0, 0.0),
+    ],
+)
+def test_e_self_consumption_computed_formula(
+    pv_today, grid_out_day, pv_total, grid_out_total, expected_today, expected_total
+):
+    """Self-consumption = max(0, PV − grid_export); battery-to-grid clamps at 0.
+
+    Both fields are @computed_field on SinglePhaseInverter; today uses IR(44) and
+    IR(25), total uses IR(45/46) and IR(21/22).
+    """
+    from givenergy_modbus.model.register import IR
+
+    # uint32 fields span two registers (hi word, lo word); hi=0 for small values.
+    # e_grid_out_total → IR(21)=hi, IR(22)=lo; e_pv_generation_total → IR(45)=hi, IR(46)=lo.
+    inv = SinglePhaseInverter.from_register_cache(
+        RegisterCache(
+            {
+                IR(44): round(pv_today * 10),  # e_pv_generation_today (deci)
+                IR(25): round(grid_out_day * 10),  # e_grid_out_day (deci)
+                IR(45): 0,
+                IR(46): round(pv_total * 10),  # e_pv_generation_total lo word
+                IR(21): 0,
+                IR(22): round(grid_out_total * 10),  # e_grid_out_total lo word
+            }
+        )
+    )
+    assert inv.e_self_consumption_today == pytest.approx(expected_today)  # type: ignore[attr-defined]
+    assert inv.e_self_consumption_total == pytest.approx(expected_total)  # type: ignore[attr-defined]
+    assert "e_self_consumption_today" in inv.model_dump()
+    assert "e_self_consumption_total" in inv.model_dump()
+
+
+def test_e_self_consumption_none_when_any_input_missing():
+    """Returns None when any input register is absent — no partial guessing."""
+    from givenergy_modbus.model.register import IR
+
+    # today: missing pv → None
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(25): 0}))
+    assert inv.e_self_consumption_today is None  # type: ignore[attr-defined]
+
+    # today: missing grid_out → None
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(44): 81}))
+    assert inv.e_self_consumption_today is None  # type: ignore[attr-defined]
+
+    # total: missing pv → None
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(21): 0, IR(22): 6}))
+    assert inv.e_self_consumption_total is None  # type: ignore[attr-defined]
+
+    # total: missing grid_out → None
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(45): 0, IR(46): 930}))
+    assert inv.e_self_consumption_total is None  # type: ignore[attr-defined]
 
 
 def test_three_phase_has_no_computed_consumption_and_native_ac_charge():
