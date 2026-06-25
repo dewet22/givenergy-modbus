@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.9] - 2026-06-25
+
+### 🐛 Fixed
+
+- restore the 1-floor on AC battery-limit setters (HR313/314) (#306) ([640304d](https://github.com/dewet22/givenergy-modbus/commit/640304df6c42867faa430e354ae6629fdda07b4d))
+- correct ExportPriority HR311 mapping (#303); note HR50 EMS no-op (#304) (#307) ([f777dba](https://github.com/dewet22/givenergy-modbus/commit/f777dba13baada8a36fd56670a8ec283ba1b3382))
+
+### 🔧 Maintenance
+
+- soften ExportPriority mapping claim (#303) (#305) ([c52c07d](https://github.com/dewet22/givenergy-modbus/commit/c52c07d4017611fd374e73679900ebb7c4c1e740))
+
 ## [2.5.8] - 2026-06-24
 
 ### ✨ Added
