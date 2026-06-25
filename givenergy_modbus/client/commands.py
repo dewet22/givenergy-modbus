@@ -409,11 +409,12 @@ def set_enable_eps(enabled: bool) -> list[TransparentRequest]:
 def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC charge power limit as a percentage (1-100).
 
-    The floor is 1: writing 0 to HR313/314 ERRORs on an AC inverter (hardware-confirmed via a
-    single-phase AC tester — WriteHoldingRegisterResponse(ERROR) then a write timeout), so the 2.5.8
-    "0 disables" widening was wrong and is reverted here. The 0-floor is DC-specific — the DC pair
-    :func:`set_battery_charge_limit` legitimately accepts 0; writing 1 here drives the battery to
-    near-zero.
+    The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on
+    (at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:
+    WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean
+    ValueError rather than a doomed write; the 2.5.8 "0 disables" widening trusted the app range and was
+    wrong. The 0-floor is AC-specific — the DC pair :func:`set_battery_charge_limit` legitimately
+    accepts 0; writing 1 here drives the battery to near-zero.
     """
     val = _as_int(val, "val")
     if not 1 <= val <= 100:
@@ -424,11 +425,12 @@ def set_battery_charge_limit_ac(val: int) -> list[TransparentRequest]:
 def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
     """Set the battery AC discharge power limit as a percentage (1-100).
 
-    The floor is 1: writing 0 to HR313/314 ERRORs on an AC inverter (hardware-confirmed via a
-    single-phase AC tester — WriteHoldingRegisterResponse(ERROR) then a write timeout), so the 2.5.8
-    "0 disables" widening was wrong and is reverted here. The 0-floor is DC-specific — the DC pair
-    :func:`set_battery_discharge_limit` legitimately accepts 0; writing 1 here drives the battery to
-    near-zero.
+    The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on
+    (at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:
+    WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean
+    ValueError rather than a doomed write; the 2.5.8 "0 disables" widening trusted the app range and was
+    wrong. The 0-floor is AC-specific — the DC pair :func:`set_battery_discharge_limit` legitimately
+    accepts 0; writing 1 here drives the battery to near-zero.
     """
     val = _as_int(val, "val")
     if not 1 <= val <= 100:
