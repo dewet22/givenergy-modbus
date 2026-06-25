@@ -86,3 +86,54 @@ def test_three_phase_hv_bcu_decode_from_capture(replayed_plant: Plant):
     assert bcu.battery_soc_min == 68  # type: ignore[attr-defined]
     assert bcu.battery_voltage == pytest.approx(470.3)  # type: ignore[attr-defined]
     assert bcu.battery_soh == 95  # type: ignore[attr-defined]
+
+
+@pytest.mark.timeout(15)
+def test_three_phase_grid_block_decode_from_capture(replayed_plant: Plant):
+    """Three-phase grid-block IR(1061-1099) decodes against the lamztib capture.
+
+    The inverter is idle at capture time (``p_inverter_out == 0``, ``p_battery ~ 0``,
+    ``system_mode == NORMAL``), so the topology question in #141 (does IR30 aggregate
+    per-phase, or stay a distinct external-CT reading on 3-phase?) is not settled here —
+    a capture with meaningful grid flow is still needed. What this test locks in is the
+    decode path itself for the registers that *are* populated and well-formed on a real
+    three-phase wire.
+    """
+    inv = ThreePhaseInverter.from_register_cache(replayed_plant.register_caches[0x11])
+
+    # Per-phase grid voltages / currents / frequency — all populated and within bounds.
+    assert inv.v_ac1 == pytest.approx(405.4)  # type: ignore[attr-defined]
+    assert inv.v_ac2 == pytest.approx(406.6)  # type: ignore[attr-defined]
+    assert inv.v_ac3 == pytest.approx(406.3)  # type: ignore[attr-defined]
+    assert inv.i_ac1 == pytest.approx(0.9)  # type: ignore[attr-defined]
+    assert inv.i_ac2 == pytest.approx(0.8)  # type: ignore[attr-defined]
+    assert inv.i_ac3 == pytest.approx(0.9)  # type: ignore[attr-defined]
+    assert inv.f_ac1 == pytest.approx(50.02)  # type: ignore[attr-defined]
+
+    # Aggregates: at-capture-time idle on the inverter side, a little export at the meter.
+    assert inv.p_inverter_out == pytest.approx(0.0)  # type: ignore[attr-defined]
+    assert inv.p_meter_import == pytest.approx(0.0)  # type: ignore[attr-defined]
+    assert inv.p_meter_export == pytest.approx(4.0)  # type: ignore[attr-defined]
+    assert inv.p_grid_apparent == pytest.approx(652.0)  # type: ignore[attr-defined]
+    assert inv.p_load_all == pytest.approx(339.0)  # type: ignore[attr-defined]
+
+    # Per-phase inverter output — all zero on this idle capture.
+    assert inv.p_out_ac1 == pytest.approx(0.0)  # type: ignore[attr-defined]
+    assert inv.p_out_ac2 == pytest.approx(0.0)  # type: ignore[attr-defined]
+    assert inv.p_out_ac3 == pytest.approx(0.0)  # type: ignore[attr-defined]
+
+    # Inherited single-phase grid nodes — IR(30) p_grid_out reads as 0 on 3-phase. With the
+    # inverter idle here we can't tell whether 3ph firmware ever populates it; #141 stays
+    # open pending a capture with meaningful grid flow.
+    assert inv.p_grid_out == 0  # type: ignore[attr-defined]
+    assert inv.p_grid_out_ph1 == 0  # type: ignore[attr-defined]
+
+    # Per-phase loads IR(1083-1085) — IR(1083) raw=65456 and IR(1084) raw=65351 silently
+    # decode to ``None`` because the current ``Def(C.deci, ...)`` uses unsigned uint16 and
+    # the values fall outside the (0, 6500) bounds. Read as int16 they're -8.0 W / -18.5 W
+    # respectively, which would make sense as net per-phase load on an exporting house.
+    # Calling that out here rather than asserting either interpretation; tracked as a
+    # follow-up because confirming wants an active-grid 3-phase capture.
+    assert inv.p_load_ac1 is None  # type: ignore[attr-defined]
+    assert inv.p_load_ac2 is None  # type: ignore[attr-defined]
+    assert inv.p_load_ac3 == pytest.approx(26.9)  # type: ignore[attr-defined]
