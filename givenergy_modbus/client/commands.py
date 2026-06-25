@@ -369,7 +369,13 @@ def set_battery_power_reserve(val: int) -> list[TransparentRequest]:
 
 
 def set_active_power_rate(target: int) -> list[TransparentRequest]:
-    """Set the inverter's active power output as a percentage of its rated capacity."""
+    """Set the inverter's active power output as a percentage of its rated capacity.
+
+    On an EMS-managed inverter this per-inverter write (HR50) is a silent no-op: it is accepted at
+    the modbus layer (no error, unlike the AC-limit registers) but the EMS controller re-asserts its
+    own value, so the change does not stick. There is no EMS-controller active-power-rate command to
+    target instead (the EMS register block has none). See #304.
+    """
     target = _as_int(target, "target")
     if not 0 <= target <= 100:
         raise ValueError(f"Active power rate ({target}) must be in [0-100]%")
