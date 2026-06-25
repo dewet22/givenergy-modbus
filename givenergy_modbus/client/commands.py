@@ -393,7 +393,7 @@ def set_export_priority(priority: ExportPriority) -> list[TransparentRequest]:
     Determines where surplus energy goes: battery first, grid first, or load first.
     Confirmed writable on Model.AC via direct portal observations (hass#52).
     """
-    # bool subclasses int, so ExportPriority(True) would resolve to GRID_FIRST and pass as an
+    # bool subclasses int, so ExportPriority(True) would resolve to BATTERY_FIRST (1) and pass as an
     # IntEnum — silently selecting a write mode. Reject it before the enum conversion (audit L1).
     if isinstance(priority, bool):
         raise ValueError(f"Export priority must be an ExportPriority, not bool (got {priority!r})")
