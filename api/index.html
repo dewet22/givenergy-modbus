@@ -12742,9 +12742,9 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">679</span>
-<span class="normal">680</span>
-<span class="normal">681</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">691</span>
+<span class="normal">692</span>
+<span class="normal">693</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset charge slot to zero/disabled by index (1-based).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span> <span class="o">+</span> <span class="n">set_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -12769,10 +12769,10 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">702</span>
-<span class="normal">703</span>
-<span class="normal">704</span>
-<span class="normal">705</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_charge_slot(1, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">714</span>
+<span class="normal">715</span>
+<span class="normal">716</span>
+<span class="normal">717</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_charge_slot(1, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reset_charge_slot_1</span><span class="p">(</span><span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use reset_charge_slot(1, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">reset_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -12798,10 +12798,10 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">714</span>
-<span class="normal">715</span>
-<span class="normal">716</span>
-<span class="normal">717</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_charge_slot(2, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">726</span>
+<span class="normal">727</span>
+<span class="normal">728</span>
+<span class="normal">729</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_charge_slot(2, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reset_charge_slot_2</span><span class="p">(</span><span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use reset_charge_slot(2, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">reset_charge_slot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -12827,9 +12827,9 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">691</span>
-<span class="normal">692</span>
-<span class="normal">693</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">703</span>
+<span class="normal">704</span>
+<span class="normal">705</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Reset discharge slot to zero/disabled by index (1-based).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span> <span class="o">+</span> <span class="n">set_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -12854,10 +12854,10 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">726</span>
-<span class="normal">727</span>
-<span class="normal">728</span>
-<span class="normal">729</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_discharge_slot(1, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">738</span>
+<span class="normal">739</span>
+<span class="normal">740</span>
+<span class="normal">741</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_discharge_slot(1, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reset_discharge_slot_1</span><span class="p">(</span><span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use reset_discharge_slot(1, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">reset_discharge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -12883,10 +12883,10 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">738</span>
-<span class="normal">739</span>
-<span class="normal">740</span>
-<span class="normal">741</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_discharge_slot(2, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">750</span>
+<span class="normal">751</span>
+<span class="normal">752</span>
+<span class="normal">753</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use reset_discharge_slot(2, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">reset_discharge_slot_2</span><span class="p">(</span><span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use reset_discharge_slot(2, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">reset_discharge_slot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -12912,9 +12912,9 @@ than rebuild the unsafe blind poll.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">480</span>
-<span class="normal">481</span>
-<span class="normal">482</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ac_charge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ac_charge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable AC charging on three-phase inverters.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">AC_CHARGE_ENABLE</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">enabled</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -12935,6 +12935,10 @@ than rebuild the unsafe blind poll.</p>
     <div class="doc doc-contents ">
 
         <p>Set the inverter's active power output as a percentage of its rated capacity.</p>
+<p>On an EMS-managed inverter this per-inverter write (HR50) is a silent no-op: it is accepted at
+the modbus layer (no error, unlike the AC-limit registers) but the EMS controller re-asserts its
+own value, so the change does not stick. There is no EMS-controller active-power-rate command to
+target instead (the EMS register block has none). See #304.</p>
 
 
             <details class="mkdocstrings-source">
@@ -12944,8 +12948,20 @@ than rebuild the unsafe blind poll.</p>
 <span class="normal">373</span>
 <span class="normal">374</span>
 <span class="normal">375</span>
-<span class="normal">376</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_active_power_rate</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the inverter&#39;s active power output as a percentage of its rated capacity.&quot;&quot;&quot;</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_active_power_rate</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the inverter&#39;s active power output as a percentage of its rated capacity.</span>
+
+<span class="sd">    On an EMS-managed inverter this per-inverter write (HR50) is a silent no-op: it is accepted at</span>
+<span class="sd">    the modbus layer (no error, unlike the AC-limit registers) but the EMS controller re-asserts its</span>
+<span class="sd">    own value, so the change does not stick. There is no EMS-controller active-power-rate command to</span>
+<span class="sd">    target instead (the EMS register block has none). See #304.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">target</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="s2">&quot;target&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">target</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Active power rate (</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">) must be in [0-100]%&quot;</span><span class="p">)</span>
@@ -13025,34 +13041,43 @@ the real rating is the expectation) is not yet field-verified.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Set the battery AC charge power limit as a percentage (0-100).</p>
-<p>The GE app exposes 0-100 for this control; 0 is expected to disable AC charge but is not yet
-field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and
-HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)</p>
+        <p>Set the battery AC charge power limit as a percentage (1-100).</p>
+<p>The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on
+(at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:
+WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean
+ValueError rather than a doomed write; the 2.5.8 "0 disables" widening trusted the app range and was
+wrong. The 0-floor is AC-specific — the DC pair :func:<code>set_battery_charge_limit</code> legitimately
+accepts 0; writing 1 here drives the battery to near-zero.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">409</span>
-<span class="normal">410</span>
-<span class="normal">411</span>
-<span class="normal">412</span>
-<span class="normal">413</span>
-<span class="normal">414</span>
-<span class="normal">415</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">415</span>
 <span class="normal">416</span>
 <span class="normal">417</span>
 <span class="normal">418</span>
-<span class="normal">419</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_charge_limit_ac</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery AC charge power limit as a percentage (0-100).</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_charge_limit_ac</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery AC charge power limit as a percentage (1-100).</span>
 
-<span class="sd">    The GE app exposes 0-100 for this control; 0 is expected to disable AC charge but is not yet</span>
-<span class="sd">    field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and</span>
-<span class="sd">    HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)</span>
+<span class="sd">    The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on</span>
+<span class="sd">    (at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:</span>
+<span class="sd">    WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean</span>
+<span class="sd">    ValueError rather than a doomed write; the 2.5.8 &quot;0 disables&quot; widening trusted the app range and was</span>
+<span class="sd">    wrong. The 0-floor is AC-specific — the DC pair :func:`set_battery_charge_limit` legitimately</span>
+<span class="sd">    accepts 0; writing 1 here drives the battery to near-zero.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">val</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Specified AC Charge Limit (</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">%) is not in [0-100]%&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Specified AC Charge Limit (</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">%) is not in [1-100]%&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">BATTERY_CHARGE_LIMIT_AC</span><span class="p">,</span> <span class="n">val</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -13114,34 +13139,43 @@ rather than the historical [0-50].</p>
 
     <div class="doc doc-contents ">
 
-        <p>Set the battery AC discharge power limit as a percentage (0-100).</p>
-<p>The GE app exposes 0-100 for this control; 0 is expected to disable AC discharge but is not yet
-field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and
-HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)</p>
+        <p>Set the battery AC discharge power limit as a percentage (1-100).</p>
+<p>The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on
+(at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:
+WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean
+ValueError rather than a doomed write; the 2.5.8 "0 disables" widening trusted the app range and was
+wrong. The 0-floor is AC-specific — the DC pair :func:<code>set_battery_discharge_limit</code> legitimately
+accepts 0; writing 1 here drives the battery to near-zero.</p>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">422</span>
-<span class="normal">423</span>
-<span class="normal">424</span>
-<span class="normal">425</span>
-<span class="normal">426</span>
-<span class="normal">427</span>
-<span class="normal">428</span>
-<span class="normal">429</span>
-<span class="normal">430</span>
-<span class="normal">431</span>
-<span class="normal">432</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_discharge_limit_ac</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery AC discharge power limit as a percentage (0-100).</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_discharge_limit_ac</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery AC discharge power limit as a percentage (1-100).</span>
 
-<span class="sd">    The GE app exposes 0-100 for this control; 0 is expected to disable AC discharge but is not yet</span>
-<span class="sd">    field-confirmed on AC hardware. (The v4.1.6 register doc lists 1-100, but it is hybrid-scoped and</span>
-<span class="sd">    HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questionable authority.)</span>
+<span class="sd">    The GE app exposes 0-100 for this control, but writing 0 to HR313/314 does NOT work in practice on</span>
+<span class="sd">    (at least) the AC models tested — it ERRORs (hardware-confirmed via a single-phase AC tester:</span>
+<span class="sd">    WriteHoldingRegisterResponse(ERROR) then a write timeout). So the floor is 1 and a 0 raises a clean</span>
+<span class="sd">    ValueError rather than a doomed write; the 2.5.8 &quot;0 disables&quot; widening trusted the app range and was</span>
+<span class="sd">    wrong. The 0-floor is AC-specific — the DC pair :func:`set_battery_discharge_limit` legitimately</span>
+<span class="sd">    accepts 0; writing 1 here drives the battery to near-zero.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">val</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="s2">&quot;val&quot;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Specified AC Discharge Limit (</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">%) is not in [0-100]%&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Specified AC Discharge Limit (</span><span class="si">{</span><span class="n">val</span><span class="si">}</span><span class="s2">%) is not in [1-100]%&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">BATTERY_DISCHARGE_LIMIT_AC</span><span class="p">,</span> <span class="n">val</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -13165,9 +13199,9 @@ HR313/314 are AC-coupled registers absent on hybrids, so its bound is of questio
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">435</span>
-<span class="normal">436</span>
-<span class="normal">437</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_pause_mode</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="n">BatteryPauseMode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_battery_pause_mode</span><span class="p">(</span><span class="n">val</span><span class="p">:</span> <span class="n">BatteryPauseMode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery pause mode.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">BATTERY_PAUSE_MODE</span><span class="p">,</span> <span class="n">val</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -13401,11 +13435,11 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">672</span>
-<span class="normal">673</span>
-<span class="normal">674</span>
-<span class="normal">675</span>
-<span class="normal">676</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set charge slot start &amp; end times by index (1-based).&quot;&quot;&quot;</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">timeslot</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">timeslot</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="n">end</span> <span class="o">=</span> <span class="n">timeslot</span><span class="o">.</span><span class="n">end</span> <span class="k">if</span> <span class="n">timeslot</span> <span class="k">else</span> <span class="kc">None</span>
@@ -13432,10 +13466,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">696</span>
-<span class="normal">697</span>
-<span class="normal">698</span>
-<span class="normal">699</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_charge_slot(1, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">708</span>
+<span class="normal">709</span>
+<span class="normal">710</span>
+<span class="normal">711</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_charge_slot(1, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_1</span><span class="p">(</span><span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use set_charge_slot(1, timeslot, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -13461,10 +13495,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">708</span>
-<span class="normal">709</span>
-<span class="normal">710</span>
-<span class="normal">711</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_charge_slot(2, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">720</span>
+<span class="normal">721</span>
+<span class="normal">722</span>
+<span class="normal">723</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_charge_slot(2, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_2</span><span class="p">(</span><span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use set_charge_slot(2, timeslot, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_charge_slot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -13490,10 +13524,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">654</span>
-<span class="normal">655</span>
-<span class="normal">656</span>
-<span class="normal">657</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of a charge slot by index (1-based), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">hr_end</span> <span class="o">=</span> <span class="n">_resolve_slot_registers</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_end</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -13519,10 +13553,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">648</span>
-<span class="normal">649</span>
-<span class="normal">650</span>
-<span class="normal">651</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of a charge slot by index (1-based), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">hr_start</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_resolve_slot_registers</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_start</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -13826,11 +13860,11 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">684</span>
-<span class="normal">685</span>
-<span class="normal">686</span>
-<span class="normal">687</span>
-<span class="normal">688</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">696</span>
+<span class="normal">697</span>
+<span class="normal">698</span>
+<span class="normal">699</span>
+<span class="normal">700</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set discharge slot start &amp; end times by index (1-based).&quot;&quot;&quot;</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">timeslot</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">timeslot</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="n">end</span> <span class="o">=</span> <span class="n">timeslot</span><span class="o">.</span><span class="n">end</span> <span class="k">if</span> <span class="n">timeslot</span> <span class="k">else</span> <span class="kc">None</span>
@@ -13857,10 +13891,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">720</span>
-<span class="normal">721</span>
-<span class="normal">722</span>
-<span class="normal">723</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_discharge_slot(1, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">732</span>
+<span class="normal">733</span>
+<span class="normal">734</span>
+<span class="normal">735</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_discharge_slot(1, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_1</span><span class="p">(</span><span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use set_discharge_slot(1, timeslot, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_discharge_slot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -13886,10 +13920,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">732</span>
-<span class="normal">733</span>
-<span class="normal">734</span>
-<span class="normal">735</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_discharge_slot(2, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">744</span>
+<span class="normal">745</span>
+<span class="normal">746</span>
+<span class="normal">747</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@deprecated</span><span class="p">(</span><span class="s2">&quot;use set_discharge_slot(2, timeslot, slot_map) instead&quot;</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_2</span><span class="p">(</span><span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span> <span class="o">=</span> <span class="n">SINGLE_PHASE_SLOTS</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated: use set_discharge_slot(2, timeslot, slot_map).&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_discharge_slot</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
@@ -13915,10 +13949,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">666</span>
-<span class="normal">667</span>
-<span class="normal">668</span>
-<span class="normal">669</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of a discharge slot by index (1-based), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">hr_end</span> <span class="o">=</span> <span class="n">_resolve_slot_registers</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_end</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -13944,10 +13978,10 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">660</span>
-<span class="normal">661</span>
-<span class="normal">662</span>
-<span class="normal">663</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">:</span> <span class="n">SlotMap</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of a discharge slot by index (1-based), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">hr_start</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_resolve_slot_registers</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">slot_map</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_start</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -13973,11 +14007,11 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">535</span>
-<span class="normal">536</span>
-<span class="normal">537</span>
-<span class="normal">538</span>
-<span class="normal">539</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">547</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set an EMS plant charge time slot by index (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">timeslot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">reset_charge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
@@ -14004,9 +14038,9 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">547</span>
-<span class="normal">548</span>
-<span class="normal">549</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of EMS plant charge slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_charge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14031,9 +14065,9 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">542</span>
-<span class="normal">543</span>
-<span class="normal">544</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of EMS plant charge slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_charge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14058,14 +14092,14 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">569</span>
-<span class="normal">570</span>
-<span class="normal">571</span>
-<span class="normal">572</span>
-<span class="normal">573</span>
-<span class="normal">574</span>
-<span class="normal">575</span>
-<span class="normal">576</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">581</span>
+<span class="normal">582</span>
+<span class="normal">583</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_charge_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the SoC target (0-100%) for EMS plant charge slot idx (1-3).&quot;&quot;&quot;</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;idx&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
@@ -14095,11 +14129,11 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">552</span>
-<span class="normal">553</span>
-<span class="normal">554</span>
-<span class="normal">555</span>
-<span class="normal">556</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set an EMS plant discharge time slot by index (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">timeslot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">reset_discharge_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
@@ -14126,9 +14160,9 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">564</span>
-<span class="normal">565</span>
-<span class="normal">566</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of EMS plant discharge slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_discharge_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14153,9 +14187,9 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">559</span>
-<span class="normal">560</span>
-<span class="normal">561</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of EMS plant discharge slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_discharge_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">EMS_SLOTS</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14180,16 +14214,16 @@ assumption until a portal capture contradicts it.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">579</span>
-<span class="normal">580</span>
-<span class="normal">581</span>
-<span class="normal">582</span>
-<span class="normal">583</span>
-<span class="normal">584</span>
-<span class="normal">585</span>
-<span class="normal">586</span>
-<span class="normal">587</span>
-<span class="normal">588</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">591</span>
+<span class="normal">592</span>
+<span class="normal">593</span>
+<span class="normal">594</span>
+<span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
+<span class="normal">598</span>
+<span class="normal">599</span>
+<span class="normal">600</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_discharge_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the SoC target (0-100%) for EMS plant discharge slot idx (1-3).&quot;&quot;&quot;</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;idx&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
@@ -14223,16 +14257,16 @@ here rather than later at PDU-encode time as InvalidPduState.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">621</span>
-<span class="normal">622</span>
-<span class="normal">623</span>
-<span class="normal">624</span>
-<span class="normal">625</span>
-<span class="normal">626</span>
-<span class="normal">627</span>
-<span class="normal">628</span>
-<span class="normal">629</span>
-<span class="normal">630</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_power_limit</span><span class="p">(</span><span class="n">watts</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_power_limit</span><span class="p">(</span><span class="n">watts</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the EMS plant export power limit in watts.</span>
 
 <span class="sd">    Bounded to a 16-bit holding register (0-65535) so an out-of-range value fails</span>
@@ -14267,14 +14301,14 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">591</span>
-<span class="normal">592</span>
-<span class="normal">593</span>
-<span class="normal">594</span>
-<span class="normal">595</span>
-<span class="normal">596</span>
-<span class="normal">597</span>
-<span class="normal">598</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">603</span>
+<span class="normal">604</span>
+<span class="normal">605</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span>
+<span class="normal">609</span>
+<span class="normal">610</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timeslot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set an EMS plant export time slot by index (1-3), or clear it if None.</span>
 
 <span class="sd">    EMS export slots are the same HR(2062-2069) registers as `set_export_slot`</span>
@@ -14304,9 +14338,9 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">606</span>
-<span class="normal">607</span>
-<span class="normal">608</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">618</span>
+<span class="normal">619</span>
+<span class="normal">620</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of EMS plant export slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_export_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14331,9 +14365,9 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">601</span>
-<span class="normal">602</span>
-<span class="normal">603</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">613</span>
+<span class="normal">614</span>
+<span class="normal">615</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of EMS plant export slot idx (1-3), or clear it if None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">set_export_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14358,14 +14392,14 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">611</span>
-<span class="normal">612</span>
-<span class="normal">613</span>
-<span class="normal">614</span>
-<span class="normal">615</span>
-<span class="normal">616</span>
-<span class="normal">617</span>
-<span class="normal">618</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_export_target_soc</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">target_soc</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the SoC target (0-100%) for EMS plant export slot idx (1-3).&quot;&quot;&quot;</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;idx&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">3</span><span class="p">:</span>
@@ -14395,9 +14429,9 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">495</span>
-<span class="normal">496</span>
-<span class="normal">497</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_plant</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">507</span>
+<span class="normal">508</span>
+<span class="normal">509</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_ems_plant</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable EMS plant control.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">EMS_PLANT_ENABLE</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">enabled</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -14477,12 +14511,12 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">401</span>
-<span class="normal">402</span>
-<span class="normal">403</span>
-<span class="normal">404</span>
-<span class="normal">405</span>
-<span class="normal">406</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_enable_eps</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_enable_eps</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable or disable Emergency Power Supply (EPS) mode on AC-coupled inverters.</span>
 
 <span class="sd">    Confirmed writable on Model.AC via direct portal observations (hass#52).</span>
@@ -14510,9 +14544,9 @@ the EMS-named alias for parity with <code>set_ems_charge_slot</code>/<code>set_e
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">379</span>
-<span class="normal">380</span>
-<span class="normal">381</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_enable_rtc</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_enable_rtc</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable the Real Time Clock register to persist settings to EEPROM.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">ENABLE_RTC</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">enabled</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -14539,13 +14573,7 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">384</span>
-<span class="normal">385</span>
-<span class="normal">386</span>
-<span class="normal">387</span>
-<span class="normal">388</span>
-<span class="normal">389</span>
-<span class="normal">390</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">390</span>
 <span class="normal">391</span>
 <span class="normal">392</span>
 <span class="normal">393</span>
@@ -14553,13 +14581,19 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 <span class="normal">395</span>
 <span class="normal">396</span>
 <span class="normal">397</span>
-<span class="normal">398</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_priority</span><span class="p">(</span><span class="n">priority</span><span class="p">:</span> <span class="n">ExportPriority</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_priority</span><span class="p">(</span><span class="n">priority</span><span class="p">:</span> <span class="n">ExportPriority</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the export priority for surplus power on AC-coupled inverters.</span>
 
 <span class="sd">    Determines where surplus energy goes: battery first, grid first, or load first.</span>
 <span class="sd">    Confirmed writable on Model.AC via direct portal observations (hass#52).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># bool subclasses int, so ExportPriority(True) would resolve to GRID_FIRST and pass as an</span>
+    <span class="c1"># bool subclasses int, so ExportPriority(True) would resolve to BATTERY_FIRST (1) and pass as an</span>
     <span class="c1"># IntEnum — silently selecting a write mode. Reject it before the enum conversion (audit L1).</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">priority</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Export priority must be an ExportPriority, not bool (got </span><span class="si">{</span><span class="n">priority</span><span class="si">!r}</span><span class="s2">)&quot;</span><span class="p">)</span>
@@ -14590,12 +14624,12 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">519</span>
-<span class="normal">520</span>
-<span class="normal">521</span>
-<span class="normal">522</span>
-<span class="normal">523</span>
-<span class="normal">524</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set an export time slot by index (1–3), or clear it if slot is None.&quot;&quot;&quot;</span>
     <span class="n">_export_slot_registers</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>  <span class="c1"># index validation</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">slot</span> <span class="k">else</span> <span class="kc">None</span>
@@ -14623,10 +14657,10 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">513</span>
-<span class="normal">514</span>
-<span class="normal">515</span>
-<span class="normal">516</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of an export time slot by index (1–3), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">_</span><span class="p">,</span> <span class="n">hr_end</span> <span class="o">=</span> <span class="n">_export_slot_registers</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_end</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -14652,10 +14686,10 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">507</span>
-<span class="normal">508</span>
-<span class="normal">509</span>
-<span class="normal">510</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">519</span>
+<span class="normal">520</span>
+<span class="normal">521</span>
+<span class="normal">522</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_export_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of an export time slot by index (1–3), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">hr_start</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">_export_slot_registers</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">hr_start</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
@@ -14681,9 +14715,9 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">485</span>
-<span class="normal">486</span>
-<span class="normal">487</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_force_charge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_force_charge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable forced battery charging on three-phase inverters.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">FORCE_CHARGE_ENABLE</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">enabled</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -14708,9 +14742,9 @@ Confirmed writable on Model.AC via direct portal observations (hass#52).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">490</span>
-<span class="normal">491</span>
-<span class="normal">492</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_force_discharge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_force_discharge</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable forced battery discharging on three-phase inverters.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="p">[</span><span class="n">WriteHoldingRegisterRequest</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">FORCE_DISCHARGE_ENABLE</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">enabled</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)]</span>
 </code></pre></div></td></tr></table></div>
@@ -14766,16 +14800,16 @@ and minimise the amount of energy drawn from the grid.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">760</span>
-<span class="normal">761</span>
-<span class="normal">762</span>
-<span class="normal">763</span>
-<span class="normal">764</span>
-<span class="normal">765</span>
-<span class="normal">766</span>
-<span class="normal">767</span>
-<span class="normal">768</span>
-<span class="normal">769</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_mode_dynamic</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">772</span>
+<span class="normal">773</span>
+<span class="normal">774</span>
+<span class="normal">775</span>
+<span class="normal">776</span>
+<span class="normal">777</span>
+<span class="normal">778</span>
+<span class="normal">779</span>
+<span class="normal">780</span>
+<span class="normal">781</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_mode_dynamic</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set system to Dynamic / Eco mode.</span>
 
 <span class="sd">    This mode is designed to maximise use of solar generation. The battery will charge from excess solar</span>
@@ -14815,19 +14849,7 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">772</span>
-<span class="normal">773</span>
-<span class="normal">774</span>
-<span class="normal">775</span>
-<span class="normal">776</span>
-<span class="normal">777</span>
-<span class="normal">778</span>
-<span class="normal">779</span>
-<span class="normal">780</span>
-<span class="normal">781</span>
-<span class="normal">782</span>
-<span class="normal">783</span>
-<span class="normal">784</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">784</span>
 <span class="normal">785</span>
 <span class="normal">786</span>
 <span class="normal">787</span>
@@ -14847,7 +14869,19 @@ when it is most valuable to export energy.</p>
 <span class="normal">801</span>
 <span class="normal">802</span>
 <span class="normal">803</span>
-<span class="normal">804</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_mode_storage</span><span class="p">(</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_mode_storage</span><span class="p">(</span>
     <span class="n">discharge_slot_1</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">=</span> <span class="n">TimeSlot</span><span class="o">.</span><span class="n">from_repr</span><span class="p">(</span><span class="mi">1600</span><span class="p">,</span> <span class="mi">700</span><span class="p">),</span>
     <span class="n">discharge_slot_2</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">discharge_for_export</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -14902,11 +14936,11 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">450</span>
-<span class="normal">451</span>
-<span class="normal">452</span>
-<span class="normal">453</span>
-<span class="normal">454</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot</span><span class="p">(</span><span class="n">slot</span><span class="p">:</span> <span class="n">TimeSlot</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the battery pause time slot, or clear it if slot is None.&quot;&quot;&quot;</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">slot</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="n">end</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">end</span> <span class="k">if</span> <span class="n">slot</span> <span class="k">else</span> <span class="kc">None</span>
@@ -14933,9 +14967,9 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">445</span>
-<span class="normal">446</span>
-<span class="normal">447</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot_end</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot_end</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the end of the battery pause slot, or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">BATTERY_PAUSE_SLOT_END</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -14960,9 +14994,9 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">440</span>
-<span class="normal">441</span>
-<span class="normal">442</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot_start</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_pause_slot_start</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set just the start of the battery pause slot, or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">_set_slot_endpoint</span><span class="p">(</span><span class="n">RegisterMap</span><span class="o">.</span><span class="n">BATTERY_PAUSE_SLOT_START</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
@@ -15016,11 +15050,11 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">473</span>
-<span class="normal">474</span>
-<span class="normal">475</span>
-<span class="normal">476</span>
-<span class="normal">477</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="s2">&quot;TimeSlot | None&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="s2">&quot;TimeSlot | None&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set Smart Load slot *idx* (1-based, 1–10) atomically, or clear it if slot is None.&quot;&quot;&quot;</span>
     <span class="n">start</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">start</span> <span class="k">if</span> <span class="n">slot</span> <span class="k">else</span> <span class="kc">None</span>
     <span class="n">end</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">end</span> <span class="k">if</span> <span class="n">slot</span> <span class="k">else</span> <span class="kc">None</span>
@@ -15047,12 +15081,12 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">465</span>
-<span class="normal">466</span>
-<span class="normal">467</span>
-<span class="normal">468</span>
-<span class="normal">469</span>
-<span class="normal">470</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot_end</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the end time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;idx&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">):</span>
@@ -15080,12 +15114,12 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">457</span>
-<span class="normal">458</span>
-<span class="normal">459</span>
-<span class="normal">460</span>
-<span class="normal">461</span>
-<span class="normal">462</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_smart_load_slot_start</span><span class="p">(</span><span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">dt_time</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the start time of Smart Load slot *idx* (1-based, 1–10), or clear it if t is None.&quot;&quot;&quot;</span>
     <span class="n">idx</span> <span class="o">=</span> <span class="n">_as_int</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="s2">&quot;idx&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">idx</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="p">):</span>
@@ -15113,20 +15147,20 @@ when it is most valuable to export energy.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/client/commands.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">744</span>
-<span class="normal">745</span>
-<span class="normal">746</span>
-<span class="normal">747</span>
-<span class="normal">748</span>
-<span class="normal">749</span>
-<span class="normal">750</span>
-<span class="normal">751</span>
-<span class="normal">752</span>
-<span class="normal">753</span>
-<span class="normal">754</span>
-<span class="normal">755</span>
-<span class="normal">756</span>
-<span class="normal">757</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_system_date_time</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">756</span>
+<span class="normal">757</span>
+<span class="normal">758</span>
+<span class="normal">759</span>
+<span class="normal">760</span>
+<span class="normal">761</span>
+<span class="normal">762</span>
+<span class="normal">763</span>
+<span class="normal">764</span>
+<span class="normal">765</span>
+<span class="normal">766</span>
+<span class="normal">767</span>
+<span class="normal">768</span>
+<span class="normal">769</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">set_system_date_time</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">TransparentRequest</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Set the date &amp; time of the inverter.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">dt</span><span class="o">.</span><span class="n">year</span> <span class="o">&lt;</span> <span class="mi">2000</span><span class="p">:</span>
         <span class="c1"># The year register stores `year - 2000`; a pre-2000 year underflows to a negative</span>
@@ -22775,9 +22809,7 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">160</span>
 <span class="normal">161</span>
 <span class="normal">162</span>
 <span class="normal">163</span>
@@ -22785,7 +22817,9 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 <span class="normal">165</span>
 <span class="normal">166</span>
 <span class="normal">167</span>
-<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery maintenance mode.&quot;&quot;&quot;</span>
 
     <span class="n">OFF</span> <span class="o">=</span> <span class="mi">0</span>
@@ -22848,9 +22882,7 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">147</span>
 <span class="normal">148</span>
 <span class="normal">149</span>
 <span class="normal">150</span>
@@ -22858,7 +22890,9 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 <span class="normal">152</span>
 <span class="normal">153</span>
 <span class="normal">154</span>
-<span class="normal">155</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery pause mode.&quot;&quot;&quot;</span>
 
     <span class="n">DISABLED</span> <span class="o">=</span> <span class="mi">0</span>
@@ -23122,9 +23156,11 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
 
         <p>Dispatch priority for surplus power on AC-coupled inverters.</p>
-<p>Confirmed writable on Model.AC via direct portal observations (hass#52):
-HR(311) was written with values 0/1/2 while the portal's "Export Priority"
-control was cycled through its three options.</p>
+<p>HR(311) was identified as Export Priority via hass#52 wire captures. The integer↔label mapping
+is tester-confirmed (hass#218, #303): cycling the GE portal and reading the round-tripped raw
+value gave <code>0 = Load First</code>, <code>1 = Battery First</code>, <code>2 = Grid First</code>. (The earlier
+provisional mapping had all three rotated — it guessed a 2↔0 swap, but the field data showed a
+full rotation.)</p>
 
 
 
@@ -23145,17 +23181,21 @@ control was cycled through its three options.</p>
 <span class="normal">139</span>
 <span class="normal">140</span>
 <span class="normal">141</span>
-<span class="normal">142</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch priority for surplus power on AC-coupled inverters.</span>
 
-<span class="sd">    Confirmed writable on Model.AC via direct portal observations (hass#52):</span>
-<span class="sd">    HR(311) was written with values 0/1/2 while the portal&#39;s &quot;Export Priority&quot;</span>
-<span class="sd">    control was cycled through its three options.</span>
+<span class="sd">    HR(311) was identified as Export Priority via hass#52 wire captures. The integer↔label mapping</span>
+<span class="sd">    is tester-confirmed (hass#218, #303): cycling the GE portal and reading the round-tripped raw</span>
+<span class="sd">    value gave ``0 = Load First``, ``1 = Battery First``, ``2 = Grid First``. (The earlier</span>
+<span class="sd">    provisional mapping had all three rotated — it guessed a 2↔0 swap, but the field data showed a</span>
+<span class="sd">    full rotation.)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">BATTERY_FIRST</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="n">GRID_FIRST</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">LOAD_FIRST</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">LOAD_FIRST</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">BATTERY_FIRST</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">GRID_FIRST</span> <span class="o">=</span> <span class="mi">2</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
