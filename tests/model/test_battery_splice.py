@@ -172,3 +172,35 @@ def test_is_corruption_cohort_skips_absent_temps():
     present = set(range(60)) - {16, 17}
     frame[16] = frame[17] = 0
     assert not is_corruption_cohort(frame, present)
+
+
+def test_heal_eligible_accepts_in_range_voltage_cap_trips():
+    """A bank whose trips are all voltage/cap-class surges in absolute range is heal-eligible (#299)."""
+    from givenergy_modbus.model.battery_splice import heal_eligible
+
+    # cell_mV (3800, in 1000-5000) + v_out_mV (56000, in 16000-80000): both eligible, in range.
+    assert heal_eligible([(60, "cell_mV", 3300, 3800), (82, "v_out_mV", 52800, 56000)])
+    assert heal_eligible([(84, "cap_centiAh", 16000, 18000)])
+    assert not heal_eligible([])  # nothing to heal
+
+
+def test_heal_eligible_rejects_temp_soc_energy_classes():
+    """Any temp/SOC/energy trip makes a bank ineligible — the class-restriction safety spine (#299).
+
+    Covers the IR(103/104) t_max/t_min temp-zero corruption shape that ``is_corruption_cohort``
+    (IR76-79 only) does not catch: it's ``cell_temp_deci`` class, so it can never heal.
+    """
+    from givenergy_modbus.model.battery_splice import heal_eligible
+
+    assert not heal_eligible([(60, "cell_mV", 3300, 3800), (103, "cell_temp_deci", 250, 0)])
+    assert not heal_eligible([(81, "mosfet_temp_deci", 260, 800)])
+    assert not heal_eligible([(100, "soc_pct", 55, 95)])
+    assert not heal_eligible([(105, "e_total_deci", 1000, 2000)])
+
+
+def test_heal_eligible_rejects_out_of_range_value():
+    """A voltage-class trip at a physically impossible value is not heal-eligible (range gate, #299)."""
+    from givenergy_modbus.model.battery_splice import heal_eligible
+
+    assert not heal_eligible([(60, "cell_mV", 3300, 5200), (65, "cell_mV", 3300, 5200)])  # >5.0 V
+    assert not heal_eligible([(60, "cell_mV", 3300, 500)])  # <1.0 V

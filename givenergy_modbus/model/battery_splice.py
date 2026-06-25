@@ -122,6 +122,28 @@ STALE_BYPASS_SECONDS: int = 300
 #: seconds bound dominates. A changing signature or a clean poll resets the streak.
 SCALAR_IMMUT_HEAL_POLLS: int = 10
 
+#: Minimum consecutive smoothly-evolving polls before a sustained *legitimate* >=2-physics step is
+#: healed (#299) — the poll-count companion to ``Plant.splice_reject_heal_seconds``. Its own
+#: constant (NOT reused from ``SCALAR_IMMUT_HEAL_POLLS``): that path defends scalar poison that can
+#: persist indefinitely (long heal window), this one a *transient* charge-knee surge (short window),
+#: so the two want independent tuning. Same degenerate-cadence-floor role as its sibling.
+SPLICE_REJECT_HEAL_POLLS: int = 10
+
+#: Absolute raw-unit bounds (mirrored from the ``Battery`` model) for the voltage/capacity classes a
+#: #299 heal may adopt. The KEYS are also the *only* trip classes a heal is eligible for: every
+#: corruption signature in the corpus is a temp-zero cohort (cell-mass IR76-79, mosfet IR81,
+#: t_max/t_min IR103-104) or a constant-register flip — NEVER a cell_mV/v_out/v_cells_sum/cap surge.
+#: So restricting heal-eligibility to these classes can't adopt any corruption shape the corpus
+#: contains, and the absolute bound additionally rejects a smooth-but-impossible spliced value (the
+#: blind spot of a purely relative smoothness test). cap upper is a generous ~500 Ah sanity ceiling
+#: (a real LV pack is ~160-190 Ah) that still excludes the windowed-splice cap garbage (e.g. 0xED00).
+RANGE_BY_CLASS: dict[str, tuple[int, int]] = {
+    "cell_mV": (1000, 5000),  # Battery v_cell 1.0-5.0 V
+    "v_out_mV": (16000, 80000),  # Battery v_out 16-80 V
+    "v_cells_sum_mV": (16000, 80000),  # Battery v_cells_sum 16-80 V
+    "cap_centiAh": (0, 50000),
+}
+
 #: A single trip: (absolute IR number, class name, old comparable value, new comparable value).
 #: For pair rules the comparable values are the assembled uint32s, not the high word alone.
 Trip = tuple[int, str, int, int]
@@ -187,3 +209,28 @@ def is_corruption_cohort(frame: list[int], present: set[int] | None = None) -> b
     """
     zeros = sum(1 for i in CELL_TEMP_IDXS if (present is None or i in present) and frame[i] == 0)
     return zeros >= 2
+
+
+def heal_eligible(phys: list[Trip]) -> bool:
+    """True if every physics trip is a voltage/capacity-class surge within absolute range (#299).
+
+    The terminal >=2-physics hard-reject becomes recoverable ONLY for a sustained *legitimate*
+    step — the near-full-SOC charge knee, which is a pure cell_mV / v_out / v_cells_sum surge. This
+    is the safety spine of that recovery: a bank is heal-eligible only when *all* its trips are the
+    voltage/capacity classes in :data:`RANGE_BY_CLASS` AND each tripping value is physically
+    possible. Any temp/SOC/energy trip (``cell_temp_deci``, ``mosfet_temp_deci``, ``soc_pct``,
+    ``e_total_deci``) — the classes every corpus corruption signature lives in, including the
+    IR(103/104) t_max/t_min temp-zero pair that ``is_corruption_cohort`` does not catch — keeps the
+    bank on the terminal path. So the heal cannot adopt any corruption shape the corpus contains,
+    which is provable against the corpus offline.
+    """
+    if not phys:
+        return False
+    for _ir_no, name, _old, new_val in phys:
+        bounds = RANGE_BY_CLASS.get(name)
+        if bounds is None:
+            return False  # a temp/SOC/energy trip — not a recoverable surge class
+        lo, hi = bounds
+        if not (lo <= new_val <= hi):
+            return False  # smooth but physically impossible — refuse
+    return True

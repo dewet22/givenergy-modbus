@@ -579,6 +579,24 @@ def test_client_forwards_splice_heal_seconds():
     )
 
 
+def test_client_forwards_splice_reject_heal_seconds():
+    """Client(splice_reject_heal_seconds=…) overrides the plant's value only when given (#299)."""
+    from givenergy_modbus.model.plant import Plant
+
+    assert Client(host="foo", port=4321).plant.splice_reject_heal_seconds is None  # default: disabled
+    assert Client(host="foo", port=4321, splice_reject_heal_seconds=300.0).plant.splice_reject_heal_seconds == 300.0
+    # An injected plant's own value is preserved when the Client param is omitted (not clobbered).
+    injected = Plant(splice_reject_heal_seconds=600.0)
+    assert Client(host="foo", port=4321, plant=injected).plant.splice_reject_heal_seconds == 600.0
+    # An explicit Client param still wins over an injected plant's value.
+    assert (
+        Client(
+            host="foo", port=4321, plant=Plant(splice_reject_heal_seconds=600.0), splice_reject_heal_seconds=300.0
+        ).plant.splice_reject_heal_seconds
+        == 300.0
+    )
+
+
 async def test_send_request_sleeps_between_retries_on_timeout():
     """A retry_delay > 0 must impose a sleep between a timed-out attempt and the next.
 

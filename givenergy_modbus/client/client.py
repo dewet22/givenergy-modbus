@@ -331,6 +331,7 @@ class Client:
         tx_jitter: float = 0.1,
         plant: Plant | None = None,
         splice_heal_seconds: float | None = None,
+        splice_reject_heal_seconds: float | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -361,6 +362,14 @@ class Client:
         # plant.block_age() to see when data is being held.
         if splice_heal_seconds is not None:
             self.plant.splice_heal_seconds = splice_heal_seconds
+        # Opt-in recovery for a sustained *legitimate* >=2-physics battery step — the near-full-SOC
+        # charge knee, which otherwise hard-rejects and freezes telemetry until it settles (#299).
+        # None (default) leaves it disabled (the >=2-physics reject stays terminal); a float (e.g.
+        # 300) enables the heal with that time bound. Off by default because the positive path can't
+        # be validated against the existing corpus — opt in on a pack that tops out regularly.
+        # Applied only when explicitly given, so an injected plant's own value isn't clobbered.
+        if splice_reject_heal_seconds is not None:
+            self.plant.splice_reject_heal_seconds = splice_reject_heal_seconds
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
