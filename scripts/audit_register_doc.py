@@ -386,7 +386,11 @@ def _facts_row(r: DocRegister) -> dict:
 def load_app_inventory(path: Path) -> dict[int, dict]:
     """Load an app-derived inventory's holding_registers block as {addr: row}."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    return {r["addr"]: r for r in data.get("holding_registers", []) if isinstance(r, dict) and "addr" in r}
+    rows = [r for r in data.get("holding_registers", []) if isinstance(r, dict) and "addr" in r]
+    addrs = [r["addr"] for r in rows]
+    if len(addrs) != len(set(addrs)):
+        raise ValueError(f"Duplicate addr values in {path}")
+    return {r["addr"]: r for r in rows}
 
 
 def _name_tokens(s: str) -> set[str]:
