@@ -437,3 +437,190 @@ def test_three_phase_factory_reset_requires_confirm():
 
     with pytest.raises(ValueError, match="confirm=True"):
         three_phase_factory_reset()
+
+
+def test_three_phase_factory_reset_with_confirm():
+    from givenergy_modbus.client.commands import three_phase_factory_reset
+
+    reqs = three_phase_factory_reset(confirm=True)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 1
+
+
+def test_enable_black_start_with_confirm():
+    from givenergy_modbus.client.commands import enable_black_start
+
+    reqs = enable_black_start(confirm=True)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 1
+
+
+# --- Boolean enable installer wrappers ---
+
+
+@pytest.mark.parametrize(
+    "fn_name,reg",
+    [
+        ("set_anti_islanding_detection", 115),
+        ("set_grid_import_limit_enabled", 102),
+        ("set_enable_plant_mode", 300),
+        ("set_enable_micro_grid", 332),
+        ("set_enable_ev_charger", 333),
+        ("set_enable_generator", 343),
+        ("set_enable_smart_load", 540),
+        ("set_enable_export_limit_3ph", 1103),
+        ("set_enable_import_limit_3ph", 1131),
+        ("set_peak_shaving_export_limit_enabled", 20000),
+        ("set_peak_shaving_enabled", 20002),
+    ],
+)
+def test_boolean_enable_installer_wrappers(fn_name, reg):
+    import givenergy_modbus.client.commands as cmds
+
+    fn = getattr(cmds, fn_name)
+    for enabled in (True, False):
+        reqs = fn(enabled)
+        assert len(reqs) == 1
+        assert reqs[0].installer
+        assert reqs[0].value == int(enabled)
+        assert reqs[0].register == reg
+
+
+# --- Integer installer wrappers ---
+
+
+def test_set_battery_nominal_power():
+    from givenergy_modbus.client.commands import set_battery_nominal_power
+
+    reqs = set_battery_nominal_power(5000)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 5000
+
+
+def test_set_battery_nominal_current():
+    from givenergy_modbus.client.commands import set_battery_nominal_current
+
+    reqs = set_battery_nominal_current(100)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 100
+
+
+# --- Bounded installer wrappers not yet covered ---
+
+
+def test_set_ev_charger_soc_limit_valid():
+    from givenergy_modbus.client.commands import set_ev_charger_soc_limit
+
+    reqs = set_ev_charger_soc_limit(80)
+    assert reqs[0].installer and reqs[0].value == 80
+
+
+def test_set_ev_charger_soc_limit_out_of_range():
+    from givenergy_modbus.client.commands import set_ev_charger_soc_limit
+
+    with pytest.raises(ValueError, match="0"):
+        set_ev_charger_soc_limit(101)
+
+
+def test_set_generator_start_soc_valid():
+    from givenergy_modbus.client.commands import set_generator_start_soc
+
+    reqs = set_generator_start_soc(20)
+    assert reqs[0].installer and reqs[0].value == 20
+
+
+def test_set_generator_start_soc_out_of_range():
+    from givenergy_modbus.client.commands import set_generator_start_soc
+
+    with pytest.raises(ValueError, match="0"):
+        set_generator_start_soc(101)
+
+
+def test_set_generator_stop_soc_valid():
+    from givenergy_modbus.client.commands import set_generator_stop_soc
+
+    reqs = set_generator_stop_soc(80)
+    assert reqs[0].installer and reqs[0].value == 80
+
+
+def test_set_generator_stop_soc_out_of_range():
+    from givenergy_modbus.client.commands import set_generator_stop_soc
+
+    with pytest.raises(ValueError, match="0"):
+        set_generator_stop_soc(101)
+
+
+def test_set_general_load_control_soc_valid():
+    from givenergy_modbus.client.commands import set_general_load_control_soc
+
+    reqs = set_general_load_control_soc(75)
+    assert reqs[0].installer and reqs[0].value == 75
+
+
+def test_set_general_load_control_soc_out_of_range():
+    from givenergy_modbus.client.commands import set_general_load_control_soc
+
+    with pytest.raises(ValueError, match="50"):
+        set_general_load_control_soc(40)
+
+
+# --- installer_command() model-variant paths ---
+
+
+@pytest.mark.asyncio
+async def test_installer_command_ems_model():
+    """installer_command() uses EMS register set for EMS model."""
+    client = _client(_caps(Model.EMS))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    await client.installer_command([req], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_installer_command_three_phase_model():
+    """installer_command() uses three-phase register set for three-phase models."""
+    client = _client(_caps(Model.HYBRID_3PH))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    await client.installer_command([req], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_installer_command_ac_config_model():
+    """installer_command() unions AC-config registers for AC-capable non-three-phase models."""
+    client = _client(_caps(Model.AC))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    await client.installer_command([req], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_installer_command_dry_run_false_calls_execute(monkeypatch):
+    """When dry_run=False and all registers valid, execute() is called."""
+    client = _client(_caps(Model.HYBRID_GEN1))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    calls = []
+
+    async def fake_execute(requests, timeout, retries, retry_delay):
+        calls.append(requests)
+
+    monkeypatch.setattr(client, "execute", fake_execute)
+    await client.installer_command([req])
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_installer_command_rejects_installer_register_without_flag():
+    """installer_command() rejects an installer register if installer=True is not set.
+
+    Without the flag, effective_safe = model_safe (which lacks HR308), so the
+    request is rejected before any PDU validation.
+    """
+    client = _client(_caps(Model.HYBRID_GEN1))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000)  # installer=False (default)
+    with pytest.raises(InvalidPduState, match=r"HR\(308\)"):
+        await client.installer_command([req], dry_run=True)
+
+
+# --- PDU: installer=True but register not in INSTALLER_WRITE_REGISTERS ---
+
+
+def test_installer_request_wrong_register_raises():
+    """ensure_valid_state raises if installer=True but register is not in INSTALLER_WRITE_REGISTERS."""
+    # HR 96 is in WRITE_SAFE_REGISTERS, not INSTALLER_WRITE_REGISTERS
+    req = WriteHoldingRegisterRequest(_SINGLE_PHASE_REG, 1, installer=True)
+    with pytest.raises(InvalidPduState, match="installer register set"):
+        req.ensure_valid_state()
