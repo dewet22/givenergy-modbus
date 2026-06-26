@@ -1,0 +1,2907 @@
+{
+  "source": "GivEnergy Android app 4.0.7 (com.mobile.givenergy, build 5907)",
+  "extracted": "2026-06-26",
+  "method": "blutter Dart-AOT decompilation of libapp.so; register names/types/ranges read from Map<int,String>/Fyb literals in the object pool",
+  "note": "Writable holding-register surface (the app's Direct Control tab). Names are the app's own labels. type/min/max/unit are the app's input-widget metadata; absent min/max means the app imposes no explicit bound beyond the type default.",
+  "function_codes": {
+    "readCoils": 1,
+    "readDiscreteInputs": 2,
+    "readHoldingRegisters": 3,
+    "readInputRegisters": 4,
+    "writeSingleRegister": 6,
+    "writeMultipleCoils": 15,
+    "writeMultipleRegisters": 16
+  },
+  "telemetry_kinds": [
+    "unknown",
+    "lowVoltage",
+    "highVoltage",
+    "gateway"
+  ],
+  "holding_registers": [
+    {
+      "addr": 0,
+      "hex": "0x0",
+      "name": "Inverter Model",
+      "type": "number"
+    },
+    {
+      "addr": 1,
+      "hex": "0x1",
+      "name": "Disable Safety Checks",
+      "type": "number"
+    },
+    {
+      "addr": 2,
+      "hex": "0x2",
+      "name": "Inverter Safety Standard & Output Power",
+      "type": "number"
+    },
+    {
+      "addr": 3,
+      "hex": "0x3",
+      "name": "Inverter Tracker Output Phase",
+      "type": "number"
+    },
+    {
+      "addr": 5,
+      "hex": "0x5",
+      "name": "Inverter Nominal Power",
+      "type": "number"
+    },
+    {
+      "addr": 7,
+      "hex": "0x7",
+      "name": "Enable Meters",
+      "type": "number"
+    },
+    {
+      "addr": 8,
+      "hex": "0x8",
+      "name": "Battery Serial Number Characters 1 & 2",
+      "type": "number"
+    },
+    {
+      "addr": 9,
+      "hex": "0x9",
+      "name": "Battery Serial Number Characters 3 & 4",
+      "type": "number"
+    },
+    {
+      "addr": 10,
+      "hex": "0xa",
+      "name": "Battery Serial Number Characters 5 & 6",
+      "type": "number"
+    },
+    {
+      "addr": 11,
+      "hex": "0xb",
+      "name": "Battery Serial Number Characters 7 & 8",
+      "type": "number"
+    },
+    {
+      "addr": 12,
+      "hex": "0xc",
+      "name": "Battery Serial Number Characters 9 & 10",
+      "type": "number"
+    },
+    {
+      "addr": 13,
+      "hex": "0xd",
+      "name": "Inverter Serial Number Characters 1 & 2",
+      "type": "number"
+    },
+    {
+      "addr": 14,
+      "hex": "0xe",
+      "name": "Inverter Serial Number Characters 3 & 4",
+      "type": "number"
+    },
+    {
+      "addr": 15,
+      "hex": "0xf",
+      "name": "Inverter Serial Number Characters 5 & 6",
+      "type": "number"
+    },
+    {
+      "addr": 16,
+      "hex": "0x10",
+      "name": "Inverter Serial Number Characters 7 & 8",
+      "type": "number"
+    },
+    {
+      "addr": 17,
+      "hex": "0x11",
+      "name": "Inverter Serial Number Characters 9 & 10",
+      "type": "number"
+    },
+    {
+      "addr": 18,
+      "hex": "0x12",
+      "name": "Master Battery Firmware Version",
+      "type": "number"
+    },
+    {
+      "addr": 19,
+      "hex": "0x13",
+      "name": "DSP Firmware Version",
+      "type": "number"
+    },
+    {
+      "addr": 20,
+      "hex": "0x14",
+      "name": "Enable AC Charge Upper % Limit",
+      "type": "boolean"
+    },
+    {
+      "addr": 21,
+      "hex": "0x15",
+      "name": "ARM Firmware Version",
+      "type": "number"
+    },
+    {
+      "addr": 22,
+      "hex": "0x16",
+      "name": "USB Port Device",
+      "type": "number"
+    },
+    {
+      "addr": 23,
+      "hex": "0x17",
+      "name": "Chip Select",
+      "type": "number"
+    },
+    {
+      "addr": 24,
+      "hex": "0x18",
+      "name": "Variable Address",
+      "type": "number"
+    },
+    {
+      "addr": 25,
+      "hex": "0x19",
+      "name": "Variable Value",
+      "type": "number"
+    },
+    {
+      "addr": 26,
+      "hex": "0x1a",
+      "name": "Grid Export Limit",
+      "type": "number"
+    },
+    {
+      "addr": 27,
+      "hex": "0x1b",
+      "name": "Enable Eco Mode",
+      "type": "boolean"
+    },
+    {
+      "addr": 28,
+      "hex": "0x1c",
+      "name": "Frequency Mode",
+      "type": "number"
+    },
+    {
+      "addr": 29,
+      "hex": "0x1d",
+      "name": "Battery SOC Calibration",
+      "type": "number"
+    },
+    {
+      "addr": 30,
+      "hex": "0x1e",
+      "name": "Device Address",
+      "type": "number"
+    },
+    {
+      "addr": 31,
+      "hex": "0x1f",
+      "name": "AC Charge 2 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 32,
+      "hex": "0x20",
+      "name": "AC Charge 2 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 33,
+      "hex": "0x21",
+      "name": "Company Code",
+      "type": "number"
+    },
+    {
+      "addr": 34,
+      "hex": "0x22",
+      "name": "Modbus Version",
+      "type": "number"
+    },
+    {
+      "addr": 35,
+      "hex": "0x23",
+      "name": "System Time Year",
+      "type": "number"
+    },
+    {
+      "addr": 36,
+      "hex": "0x24",
+      "name": "System Time Month",
+      "type": "number"
+    },
+    {
+      "addr": 37,
+      "hex": "0x25",
+      "name": "System Time Day",
+      "type": "number"
+    },
+    {
+      "addr": 38,
+      "hex": "0x26",
+      "name": "System Time Hour",
+      "type": "number"
+    },
+    {
+      "addr": 39,
+      "hex": "0x27",
+      "name": "System Time Minute",
+      "type": "number"
+    },
+    {
+      "addr": 40,
+      "hex": "0x28",
+      "name": "System Time Second",
+      "type": "number"
+    },
+    {
+      "addr": 41,
+      "hex": "0x29",
+      "name": "Enable Inverter DRM",
+      "type": "number"
+    },
+    {
+      "addr": 42,
+      "hex": "0x2a",
+      "name": "CT Direction",
+      "type": "number"
+    },
+    {
+      "addr": 43,
+      "hex": "0x2b",
+      "name": "Charge & Discharge SOC",
+      "type": "number"
+    },
+    {
+      "addr": 44,
+      "hex": "0x2c",
+      "name": "DC Discharge 2 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 45,
+      "hex": "0x2d",
+      "name": "DC Discharge 2 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 46,
+      "hex": "0x2e",
+      "name": "BMS Version",
+      "type": "number"
+    },
+    {
+      "addr": 47,
+      "hex": "0x2f",
+      "name": "Meter Type",
+      "type": "number"
+    },
+    {
+      "addr": 48,
+      "hex": "0x30",
+      "name": "115 Meter Direction",
+      "type": "number"
+    },
+    {
+      "addr": 49,
+      "hex": "0x31",
+      "name": "418 Meter Direction",
+      "type": "number"
+    },
+    {
+      "addr": 50,
+      "hex": "0x32",
+      "name": "Inverter Max Output Active Power Percent",
+      "type": "percent"
+    },
+    {
+      "addr": 51,
+      "hex": "0x33",
+      "name": "Inverter Max Output Reactive Power Percent",
+      "type": "number"
+    },
+    {
+      "addr": 52,
+      "hex": "0x34",
+      "name": "Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 53,
+      "hex": "0x35",
+      "name": "On/Off State",
+      "type": "number"
+    },
+    {
+      "addr": 54,
+      "hex": "0x36",
+      "name": "Battery Type",
+      "type": "number"
+    },
+    {
+      "addr": 55,
+      "hex": "0x37",
+      "name": "Battery Capacity",
+      "type": "number"
+    },
+    {
+      "addr": 56,
+      "hex": "0x38",
+      "name": "DC Discharge 1 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 57,
+      "hex": "0x39",
+      "name": "DC Discharge 1 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 58,
+      "hex": "0x3a",
+      "name": "Auto Read Battery Type",
+      "type": "number"
+    },
+    {
+      "addr": 59,
+      "hex": "0x3b",
+      "name": "Enable DC Discharge",
+      "type": "boolean"
+    },
+    {
+      "addr": 60,
+      "hex": "0x3c",
+      "name": "PV Startup Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 61,
+      "hex": "0x3d",
+      "name": "Startup Time",
+      "type": "number"
+    },
+    {
+      "addr": 62,
+      "hex": "0x3e",
+      "name": "Restart Delay After Fault",
+      "type": "number"
+    },
+    {
+      "addr": 63,
+      "hex": "0x3f",
+      "name": "AC Undervoltage Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 64,
+      "hex": "0x40",
+      "name": "AC Overvoltage Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 65,
+      "hex": "0x41",
+      "name": "AC Underfrequency Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 66,
+      "hex": "0x42",
+      "name": "AC Overfrequency Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 67,
+      "hex": "0x43",
+      "name": "AC Undervoltage 1 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 68,
+      "hex": "0x44",
+      "name": "AC Overvoltage 1 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 69,
+      "hex": "0x45",
+      "name": "AC Underfrequency 1 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 70,
+      "hex": "0x46",
+      "name": "AC Overfrequency 1 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 71,
+      "hex": "0x47",
+      "name": "AC Undervoltage Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 72,
+      "hex": "0x48",
+      "name": "AC Overvoltage Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 73,
+      "hex": "0x49",
+      "name": "AC Underfrequency Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 74,
+      "hex": "0x4a",
+      "name": "AC Overfrequency Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 75,
+      "hex": "0x4b",
+      "name": "AC Undervoltage 2 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 76,
+      "hex": "0x4c",
+      "name": "AC Overvoltage 2 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 77,
+      "hex": "0x4d",
+      "name": "AC Underfrequency 2 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 78,
+      "hex": "0x4e",
+      "name": "AC Overfrequency 2 Protection Time",
+      "type": "number"
+    },
+    {
+      "addr": 79,
+      "hex": "0x4f",
+      "name": "AC Undervoltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 80,
+      "hex": "0x50",
+      "name": "AC Overvoltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 81,
+      "hex": "0x51",
+      "name": "AC Underfrequency Limit",
+      "type": "number"
+    },
+    {
+      "addr": 82,
+      "hex": "0x52",
+      "name": "AC Overfrequency Limit",
+      "type": "number"
+    },
+    {
+      "addr": 83,
+      "hex": "0x53",
+      "name": "AC Voltage Protection 10 Minute Average",
+      "type": "number"
+    },
+    {
+      "addr": 94,
+      "hex": "0x5e",
+      "name": "AC Charge 1 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 95,
+      "hex": "0x5f",
+      "name": "AC Charge 1 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 96,
+      "hex": "0x60",
+      "name": "AC Charge Enable",
+      "type": "boolean"
+    },
+    {
+      "addr": 97,
+      "hex": "0x61",
+      "name": "Battery Undervoltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 98,
+      "hex": "0x62",
+      "name": "Battery Overvoltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 101,
+      "hex": "0x65",
+      "name": "Grid Import Limit",
+      "type": "number"
+    },
+    {
+      "addr": 102,
+      "hex": "0x66",
+      "name": "Grid Import Limit Enabled",
+      "type": "number"
+    },
+    {
+      "addr": 103,
+      "hex": "0x67",
+      "name": "Enable LoRa",
+      "type": "number"
+    },
+    {
+      "addr": 104,
+      "hex": "0x68",
+      "name": "Enable Battery Self-Heating",
+      "type": "boolean"
+    },
+    {
+      "addr": 108,
+      "hex": "0x6c",
+      "name": "Battery Low Forced Charge Time",
+      "type": "number"
+    },
+    {
+      "addr": 109,
+      "hex": "0x6d",
+      "name": "Auto Read BMS",
+      "type": "number"
+    },
+    {
+      "addr": 110,
+      "hex": "0x6e",
+      "name": "Battery Reserve % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 111,
+      "hex": "0x6f",
+      "name": "Battery Charge Power",
+      "type": "percent"
+    },
+    {
+      "addr": 112,
+      "hex": "0x70",
+      "name": "Battery Discharge Power",
+      "type": "percent"
+    },
+    {
+      "addr": 113,
+      "hex": "0x71",
+      "name": "Enable Beep",
+      "type": "number"
+    },
+    {
+      "addr": 114,
+      "hex": "0x72",
+      "name": "Battery Cutoff % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 115,
+      "hex": "0x73",
+      "name": "Anti-Islanding Detection",
+      "type": "number"
+    },
+    {
+      "addr": 116,
+      "hex": "0x74",
+      "name": "AC Charge Upper % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 117,
+      "hex": "0x75",
+      "name": "AC Charge 2 Charge % Limit",
+      "type": "number"
+    },
+    {
+      "addr": 118,
+      "hex": "0x76",
+      "name": "DC Discharge 2 Discharge % Limit",
+      "type": "number"
+    },
+    {
+      "addr": 119,
+      "hex": "0x77",
+      "name": "AC Charge 1 Charge % Limit",
+      "type": "number"
+    },
+    {
+      "addr": 120,
+      "hex": "0x78",
+      "name": "DC Discharge 1 Discharge % Limit",
+      "type": "number"
+    },
+    {
+      "addr": 162,
+      "hex": "0xa2",
+      "name": "Reset Energy Totals",
+      "type": "number"
+    },
+    {
+      "addr": 163,
+      "hex": "0xa3",
+      "name": "Restart Inverter",
+      "type": "number"
+    },
+    {
+      "addr": 164,
+      "hex": "0xa4",
+      "name": "Enable Firmware Update Flag",
+      "type": "number"
+    },
+    {
+      "addr": 165,
+      "hex": "0xa5",
+      "name": "USB Transfer Mode",
+      "type": "number"
+    },
+    {
+      "addr": 166,
+      "hex": "0xa6",
+      "name": "Real-Time Control",
+      "type": "boolean"
+    },
+    {
+      "addr": 172,
+      "hex": "0xac",
+      "name": "Enable Manual Battery Heater",
+      "type": "boolean"
+    },
+    {
+      "addr": 174,
+      "hex": "0xae",
+      "name": "Wake Battery",
+      "type": "number"
+    },
+    {
+      "addr": 175,
+      "hex": "0xaf",
+      "name": "Activate Battery",
+      "type": "number"
+    },
+    {
+      "addr": 177,
+      "hex": "0xb1",
+      "name": "Enable 0 Second EPS Countdown",
+      "type": "boolean"
+    },
+    {
+      "addr": 178,
+      "hex": "0xb2",
+      "name": "Enable Export Limit (G100)",
+      "type": "number"
+    },
+    {
+      "addr": 179,
+      "hex": "0xb3",
+      "name": "Enable Impedance Alarm",
+      "type": "number"
+    },
+    {
+      "addr": 192,
+      "hex": "0xc0",
+      "name": "Ignore External Generation Meter",
+      "type": "number"
+    },
+    {
+      "addr": 199,
+      "hex": "0xc7",
+      "name": "Enable Inverter Parallel Mode",
+      "type": "boolean"
+    },
+    {
+      "addr": 201,
+      "hex": "0xc9",
+      "name": "Restart Battery",
+      "type": "number"
+    },
+    {
+      "addr": 242,
+      "hex": "0xf2",
+      "name": "AC Charge 1 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 243,
+      "hex": "0xf3",
+      "name": "AC Charge 2 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 244,
+      "hex": "0xf4",
+      "name": "AC Charge 2 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 245,
+      "hex": "0xf5",
+      "name": "AC Charge 2 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 246,
+      "hex": "0xf6",
+      "name": "AC Charge 3 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 247,
+      "hex": "0xf7",
+      "name": "AC Charge 3 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 248,
+      "hex": "0xf8",
+      "name": "AC Charge 3 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 249,
+      "hex": "0xf9",
+      "name": "AC Charge 4 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 250,
+      "hex": "0xfa",
+      "name": "AC Charge 4 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 251,
+      "hex": "0xfb",
+      "name": "AC Charge 4 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 252,
+      "hex": "0xfc",
+      "name": "AC Charge 5 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 253,
+      "hex": "0xfd",
+      "name": "AC Charge 5 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 254,
+      "hex": "0xfe",
+      "name": "AC Charge 5 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 255,
+      "hex": "0xff",
+      "name": "AC Charge 6 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 256,
+      "hex": "0x100",
+      "name": "AC Charge 6 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 257,
+      "hex": "0x101",
+      "name": "AC Charge 6 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 258,
+      "hex": "0x102",
+      "name": "AC Charge 7 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 259,
+      "hex": "0x103",
+      "name": "AC Charge 7 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 260,
+      "hex": "0x104",
+      "name": "AC Charge 7 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 261,
+      "hex": "0x105",
+      "name": "AC Charge 8 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 262,
+      "hex": "0x106",
+      "name": "AC Charge 8 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 263,
+      "hex": "0x107",
+      "name": "AC Charge 8 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 264,
+      "hex": "0x108",
+      "name": "AC Charge 9 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 265,
+      "hex": "0x109",
+      "name": "AC Charge 9 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 266,
+      "hex": "0x10a",
+      "name": "AC Charge 9 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 267,
+      "hex": "0x10b",
+      "name": "AC Charge 10 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 268,
+      "hex": "0x10c",
+      "name": "AC Charge 10 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 269,
+      "hex": "0x10d",
+      "name": "AC Charge 10 Upper SOC % Limit",
+      "type": "percent"
+    },
+    {
+      "addr": 272,
+      "hex": "0x110",
+      "name": "DC Discharge 1 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 275,
+      "hex": "0x113",
+      "name": "DC Discharge 2 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 276,
+      "hex": "0x114",
+      "name": "DC Discharge 3 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 277,
+      "hex": "0x115",
+      "name": "DC Discharge 3 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 278,
+      "hex": "0x116",
+      "name": "DC Discharge 3 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 279,
+      "hex": "0x117",
+      "name": "DC Discharge 4 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 280,
+      "hex": "0x118",
+      "name": "DC Discharge 4 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 281,
+      "hex": "0x119",
+      "name": "DC Discharge 4 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 282,
+      "hex": "0x11a",
+      "name": "DC Discharge 5 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 283,
+      "hex": "0x11b",
+      "name": "DC Discharge 5 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 284,
+      "hex": "0x11c",
+      "name": "DC Discharge 5 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 285,
+      "hex": "0x11d",
+      "name": "DC Discharge 6 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 286,
+      "hex": "0x11e",
+      "name": "DC Discharge 6 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 287,
+      "hex": "0x11f",
+      "name": "DC Discharge 6 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 288,
+      "hex": "0x120",
+      "name": "DC Discharge 7 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 289,
+      "hex": "0x121",
+      "name": "DC Discharge 7 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 290,
+      "hex": "0x122",
+      "name": "DC Discharge 7 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 291,
+      "hex": "0x123",
+      "name": "DC Discharge 8 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 292,
+      "hex": "0x124",
+      "name": "DC Discharge 8 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 293,
+      "hex": "0x125",
+      "name": "DC Discharge 8 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 294,
+      "hex": "0x126",
+      "name": "DC Discharge 9 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 295,
+      "hex": "0x127",
+      "name": "DC Discharge 9 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 296,
+      "hex": "0x128",
+      "name": "DC Discharge 9 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 297,
+      "hex": "0x129",
+      "name": "DC Discharge 10 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 298,
+      "hex": "0x12a",
+      "name": "DC Discharge 10 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 299,
+      "hex": "0x12b",
+      "name": "DC Discharge 10 Lower SOC % Limit",
+      "type": "percent",
+      "min": 4,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 300,
+      "hex": "0x12c",
+      "name": "Enable Plant Mode",
+      "type": "number"
+    },
+    {
+      "addr": 301,
+      "hex": "0x12d",
+      "name": "Plant Master/Slave",
+      "type": "number"
+    },
+    {
+      "addr": 302,
+      "hex": "0x12e",
+      "name": "Plant Meters",
+      "type": "number"
+    },
+    {
+      "addr": 303,
+      "hex": "0x12f",
+      "name": "Overfrequency Load Drop Recovery Delay",
+      "type": "number"
+    },
+    {
+      "addr": 305,
+      "hex": "0x131",
+      "name": "MPPT Operating Mode",
+      "type": "number"
+    },
+    {
+      "addr": 306,
+      "hex": "0x132",
+      "name": "Connection Loading Slope",
+      "type": "number"
+    },
+    {
+      "addr": 307,
+      "hex": "0x133",
+      "name": "EPS Nominal Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 308,
+      "hex": "0x134",
+      "name": "Battery Nominal Power",
+      "type": "number"
+    },
+    {
+      "addr": 309,
+      "hex": "0x135",
+      "name": "Battery Nominal Current",
+      "type": "number"
+    },
+    {
+      "addr": 310,
+      "hex": "0x136",
+      "name": "Battery Max Charge %",
+      "type": "percent",
+      "min": 20,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 311,
+      "hex": "0x137",
+      "name": "Export Power Priority",
+      "type": "number"
+    },
+    {
+      "addr": 312,
+      "hex": "0x138",
+      "name": "Underfrequency Add Load Delay",
+      "type": "number"
+    },
+    {
+      "addr": 313,
+      "hex": "0x139",
+      "name": "Inverter Charge Power Percentage",
+      "type": "percent"
+    },
+    {
+      "addr": 314,
+      "hex": "0x13a",
+      "name": "Inverter Discharge Power Percentage",
+      "type": "percent"
+    },
+    {
+      "addr": 315,
+      "hex": "0x13b",
+      "name": "EN50549 Zero-Current Static Lower Voltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 316,
+      "hex": "0x13c",
+      "name": "EN50549 Zero-Current Static Upper Voltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 317,
+      "hex": "0x13d",
+      "name": "Enable EPS",
+      "type": "boolean"
+    },
+    {
+      "addr": 318,
+      "hex": "0x13e",
+      "name": "Pause Battery",
+      "type": "boolean"
+    },
+    {
+      "addr": 319,
+      "hex": "0x13f",
+      "name": "Pause Battery Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 320,
+      "hex": "0x140",
+      "name": "Pause Battery End Time",
+      "type": "time"
+    },
+    {
+      "addr": 321,
+      "hex": "0x141",
+      "name": "Overfrequency Derating Start Point",
+      "type": "number"
+    },
+    {
+      "addr": 322,
+      "hex": "0x142",
+      "name": "Enable Tariff Pricing Battery Logic",
+      "type": "number"
+    },
+    {
+      "addr": 323,
+      "hex": "0x143",
+      "name": "Import Price Battery Discharge Threshold",
+      "type": "number"
+    },
+    {
+      "addr": 324,
+      "hex": "0x144",
+      "name": "Import Price Battery Charge Threshold",
+      "type": "number"
+    },
+    {
+      "addr": 325,
+      "hex": "0x145",
+      "name": "Export Price Battery Discharge Threshold",
+      "type": "number"
+    },
+    {
+      "addr": 326,
+      "hex": "0x146",
+      "name": "Underfrequency Derating Start Point",
+      "type": "number"
+    },
+    {
+      "addr": 327,
+      "hex": "0x147",
+      "name": "Underfrequency Loading Slope",
+      "type": "number"
+    },
+    {
+      "addr": 328,
+      "hex": "0x148",
+      "name": "Overfrequency Derating Stop Point",
+      "type": "number"
+    },
+    {
+      "addr": 329,
+      "hex": "0x149",
+      "name": "Enable BMS OCV Calibration",
+      "type": "number"
+    },
+    {
+      "addr": 330,
+      "hex": "0x14a",
+      "name": "Gateway Power Off Setting",
+      "type": "number"
+    },
+    {
+      "addr": 331,
+      "hex": "0x14b",
+      "name": "Force Off Grid",
+      "type": "boolean"
+    },
+    {
+      "addr": 332,
+      "hex": "0x14c",
+      "name": "Enable Micro Grid",
+      "type": "number"
+    },
+    {
+      "addr": 333,
+      "hex": "0x14d",
+      "name": "EV Charger Enable",
+      "type": "number"
+    },
+    {
+      "addr": 334,
+      "hex": "0x14e",
+      "name": "EV Charger Import Limit",
+      "type": "number"
+    },
+    {
+      "addr": 335,
+      "hex": "0x14f",
+      "name": "EV Charger Reconnection Wait Time",
+      "type": "number"
+    },
+    {
+      "addr": 336,
+      "hex": "0x150",
+      "name": "EV Charger SOC Limit",
+      "type": "number"
+    },
+    {
+      "addr": 337,
+      "hex": "0x151",
+      "name": "Enable Fan",
+      "type": "number"
+    },
+    {
+      "addr": 338,
+      "hex": "0x152",
+      "name": "Fan Speed",
+      "type": "number"
+    },
+    {
+      "addr": 339,
+      "hex": "0x153",
+      "name": "Enable Gateway",
+      "type": "number"
+    },
+    {
+      "addr": 340,
+      "hex": "0x154",
+      "name": "BMS Communication Mode",
+      "type": "number"
+    },
+    {
+      "addr": 341,
+      "hex": "0x155",
+      "name": "N-PE Relay Toggle",
+      "type": "number"
+    },
+    {
+      "addr": 342,
+      "hex": "0x156",
+      "name": "AFCI Setting",
+      "type": "number"
+    },
+    {
+      "addr": 343,
+      "hex": "0x157",
+      "name": "Enable Generator",
+      "type": "number"
+    },
+    {
+      "addr": 344,
+      "hex": "0x158",
+      "name": "Generator Start SOC",
+      "type": "number"
+    },
+    {
+      "addr": 345,
+      "hex": "0x159",
+      "name": "Generator Stop SOC",
+      "type": "number"
+    },
+    {
+      "addr": 346,
+      "hex": "0x15a",
+      "name": "Generator Charge Power",
+      "type": "number"
+    },
+    {
+      "addr": 347,
+      "hex": "0x15b",
+      "name": "Disable LEDs",
+      "type": "number"
+    },
+    {
+      "addr": 348,
+      "hex": "0x15c",
+      "name": "LCD Screen Idle Timeout",
+      "type": "number"
+    },
+    {
+      "addr": 349,
+      "hex": "0x15d",
+      "name": "Lead Acid Battery Calibration Upper Limit",
+      "type": "number"
+    },
+    {
+      "addr": 350,
+      "hex": "0x15e",
+      "name": "Lead Acid Battery Calibration Lower Limit",
+      "type": "number"
+    },
+    {
+      "addr": 351,
+      "hex": "0x15f",
+      "name": "Inverter Operating Mode",
+      "type": "number"
+    },
+    {
+      "addr": 479,
+      "hex": "0x1df",
+      "name": "DC Wind CVT Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 499,
+      "hex": "0x1f3",
+      "name": "DC Cabinet Count",
+      "type": "number"
+    },
+    {
+      "addr": 500,
+      "hex": "0x1f4",
+      "name": "Racks Per DC Cabinet",
+      "type": "number"
+    },
+    {
+      "addr": 501,
+      "hex": "0x1f5",
+      "name": "Batteries Per Rack",
+      "type": "number"
+    },
+    {
+      "addr": 502,
+      "hex": "0x1f6",
+      "name": "Cells Per Battery",
+      "type": "number"
+    },
+    {
+      "addr": 503,
+      "hex": "0x1f7",
+      "name": "Total Cell Count",
+      "type": "number"
+    },
+    {
+      "addr": 504,
+      "hex": "0x1f8",
+      "name": "Temperature Sensors Per Battery",
+      "type": "number"
+    },
+    {
+      "addr": 505,
+      "hex": "0x1f9",
+      "name": "Total Temperature Sensor Count",
+      "type": "number"
+    },
+    {
+      "addr": 506,
+      "hex": "0x1fa",
+      "name": "Max PCS Output Power",
+      "type": "number"
+    },
+    {
+      "addr": 507,
+      "hex": "0x1fb",
+      "name": "Max DC Charge Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 508,
+      "hex": "0x1fc",
+      "name": "Min DC Discharge Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 509,
+      "hex": "0x1fd",
+      "name": "Max Charge Current",
+      "type": "number"
+    },
+    {
+      "addr": 510,
+      "hex": "0x1fe",
+      "name": "Parallel System Count",
+      "type": "number"
+    },
+    {
+      "addr": 540,
+      "hex": "0x21c",
+      "name": "Enable Smart Load",
+      "type": "boolean"
+    },
+    {
+      "addr": 541,
+      "hex": "0x21d",
+      "name": "Smart Load Control SOC",
+      "type": "percent",
+      "min": 50,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 542,
+      "hex": "0x21e",
+      "name": "Enable General Load",
+      "type": "number"
+    },
+    {
+      "addr": 543,
+      "hex": "0x21f",
+      "name": "General Load Control SOC",
+      "type": "percent",
+      "min": 50,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 544,
+      "hex": "0x220",
+      "name": "Generator Control SOC",
+      "type": "percent",
+      "min": 10,
+      "max": 90,
+      "unit": "%"
+    },
+    {
+      "addr": 545,
+      "hex": "0x221",
+      "name": "Generator Voltage Min",
+      "type": "number"
+    },
+    {
+      "addr": 546,
+      "hex": "0x222",
+      "name": "Generator Voltage Max",
+      "type": "number"
+    },
+    {
+      "addr": 547,
+      "hex": "0x223",
+      "name": "Generator Frequency Min",
+      "type": "number"
+    },
+    {
+      "addr": 548,
+      "hex": "0x224",
+      "name": "Generator Frequency Max",
+      "type": "number"
+    },
+    {
+      "addr": 552,
+      "hex": "0x228",
+      "name": "Smart Load Export Power",
+      "type": "number"
+    },
+    {
+      "addr": 553,
+      "hex": "0x229",
+      "name": "Smart Load Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 554,
+      "hex": "0x22a",
+      "name": "Smart Load Start Time 1",
+      "type": "time"
+    },
+    {
+      "addr": 555,
+      "hex": "0x22b",
+      "name": "Smart Load End Time 1",
+      "type": "time"
+    },
+    {
+      "addr": 556,
+      "hex": "0x22c",
+      "name": "Smart Load Start Time 2",
+      "type": "time"
+    },
+    {
+      "addr": 557,
+      "hex": "0x22d",
+      "name": "Smart Load End Time 2",
+      "type": "time"
+    },
+    {
+      "addr": 558,
+      "hex": "0x22e",
+      "name": "Smart Load Start Time 3",
+      "type": "time"
+    },
+    {
+      "addr": 559,
+      "hex": "0x22f",
+      "name": "Smart Load End Time 3",
+      "type": "time"
+    },
+    {
+      "addr": 560,
+      "hex": "0x230",
+      "name": "Smart Load Start Time 4",
+      "type": "time"
+    },
+    {
+      "addr": 561,
+      "hex": "0x231",
+      "name": "Smart Load End Time 4",
+      "type": "time"
+    },
+    {
+      "addr": 562,
+      "hex": "0x232",
+      "name": "Smart Load Start Time 5",
+      "type": "time"
+    },
+    {
+      "addr": 563,
+      "hex": "0x233",
+      "name": "Smart Load End Time 5",
+      "type": "time"
+    },
+    {
+      "addr": 564,
+      "hex": "0x234",
+      "name": "Smart Load Start Time 6",
+      "type": "time"
+    },
+    {
+      "addr": 565,
+      "hex": "0x235",
+      "name": "Smart Load End Time 6",
+      "type": "time"
+    },
+    {
+      "addr": 566,
+      "hex": "0x236",
+      "name": "Smart Load Start Time 7",
+      "type": "time"
+    },
+    {
+      "addr": 567,
+      "hex": "0x237",
+      "name": "Smart Load End Time 7",
+      "type": "time"
+    },
+    {
+      "addr": 568,
+      "hex": "0x238",
+      "name": "Smart Load Start Time 8",
+      "type": "time"
+    },
+    {
+      "addr": 569,
+      "hex": "0x239",
+      "name": "Smart Load End Time 8",
+      "type": "time"
+    },
+    {
+      "addr": 570,
+      "hex": "0x23a",
+      "name": "Smart Load Start Time 9",
+      "type": "time"
+    },
+    {
+      "addr": 571,
+      "hex": "0x23b",
+      "name": "Smart Load End Time 9",
+      "type": "time"
+    },
+    {
+      "addr": 572,
+      "hex": "0x23c",
+      "name": "Smart Load Start Time 10",
+      "type": "time"
+    },
+    {
+      "addr": 573,
+      "hex": "0x23d",
+      "name": "Smart Load End Time 10",
+      "type": "time"
+    },
+    {
+      "addr": 1000,
+      "hex": "0x3e8",
+      "name": "System Enable",
+      "type": "number"
+    },
+    {
+      "addr": 1001,
+      "hex": "0x3e9",
+      "name": "Enable/Disable Command Save",
+      "type": "number"
+    },
+    {
+      "addr": 1002,
+      "hex": "0x3ea",
+      "name": "Active Rate Order",
+      "type": "number"
+    },
+    {
+      "addr": 1003,
+      "hex": "0x3eb",
+      "name": "Reactive Rate Order",
+      "type": "number"
+    },
+    {
+      "addr": 1004,
+      "hex": "0x3ec",
+      "name": "Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 1005,
+      "hex": "0x3ed",
+      "name": "Real-Time Control",
+      "type": "boolean"
+    },
+    {
+      "addr": 1007,
+      "hex": "0x3ef",
+      "name": "Grid Connect Time",
+      "type": "number"
+    },
+    {
+      "addr": 1008,
+      "hex": "0x3f0",
+      "name": "Grid Reconnect Time",
+      "type": "number"
+    },
+    {
+      "addr": 1009,
+      "hex": "0x3f1",
+      "name": "On Grid Connect Slope",
+      "type": "number"
+    },
+    {
+      "addr": 1010,
+      "hex": "0x3f2",
+      "name": "Select Com Baud Rate",
+      "type": "number"
+    },
+    {
+      "addr": 1011,
+      "hex": "0x3f3",
+      "name": "On Grid Reconnect Slope",
+      "type": "number"
+    },
+    {
+      "addr": 1012,
+      "hex": "0x3f4",
+      "name": "Inverter Model, Battery Type, Battery Power & Special Functions",
+      "type": "number"
+    },
+    {
+      "addr": 1013,
+      "hex": "0x3f5",
+      "name": "Factory, Device Type & Grid Safety Standard",
+      "type": "number"
+    },
+    {
+      "addr": 1016,
+      "hex": "0x3f8",
+      "name": "Three Phase Factory Reset Without Meter Reset",
+      "type": "number"
+    },
+    {
+      "addr": 1017,
+      "hex": "0x3f9",
+      "name": "Calculate Load by Inverter During Meter Comms Error",
+      "type": "number"
+    },
+    {
+      "addr": 1018,
+      "hex": "0x3fa",
+      "name": "Grid Voltage Low Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 1019,
+      "hex": "0x3fb",
+      "name": "Grid Voltage High Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 1020,
+      "hex": "0x3fc",
+      "name": "Grid Frequency Low Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 1021,
+      "hex": "0x3fd",
+      "name": "Grid Frequency High Limit 1",
+      "type": "number"
+    },
+    {
+      "addr": 1022,
+      "hex": "0x3fe",
+      "name": "Grid Voltage Low Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 1023,
+      "hex": "0x3ff",
+      "name": "Grid Voltage High Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 1024,
+      "hex": "0x400",
+      "name": "Grid Frequency Low Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 1025,
+      "hex": "0x401",
+      "name": "Grid Frequency High Limit 2",
+      "type": "number"
+    },
+    {
+      "addr": 1026,
+      "hex": "0x402",
+      "name": "Grid Voltage Low Limit 3",
+      "type": "number"
+    },
+    {
+      "addr": 1027,
+      "hex": "0x403",
+      "name": "Grid Voltage High Limit 3",
+      "type": "number"
+    },
+    {
+      "addr": 1028,
+      "hex": "0x404",
+      "name": "Grid Frequency Low Limit 3",
+      "type": "number"
+    },
+    {
+      "addr": 1029,
+      "hex": "0x405",
+      "name": "Grid Frequency High Limit 3",
+      "type": "number"
+    },
+    {
+      "addr": 1030,
+      "hex": "0x406",
+      "name": "Grid Voltage Low Limit - Grid Connection",
+      "type": "number"
+    },
+    {
+      "addr": 1031,
+      "hex": "0x407",
+      "name": "Grid Voltage High Limit - Grid Connection",
+      "type": "number"
+    },
+    {
+      "addr": 1032,
+      "hex": "0x408",
+      "name": "Grid Frequency Low Limit - Grid Connection",
+      "type": "number"
+    },
+    {
+      "addr": 1033,
+      "hex": "0x409",
+      "name": "Grid Frequency High Limit - Grid Connection",
+      "type": "number"
+    },
+    {
+      "addr": 1034,
+      "hex": "0x40a",
+      "name": "Grid Voltage Low Limit - Protection Time 1",
+      "type": "number"
+    },
+    {
+      "addr": 1035,
+      "hex": "0x40b",
+      "name": "Grid Voltage High Limit - Protection Time 1",
+      "type": "number"
+    },
+    {
+      "addr": 1036,
+      "hex": "0x40c",
+      "name": "Grid Voltage Low Limit - Protection Time 2",
+      "type": "number"
+    },
+    {
+      "addr": 1037,
+      "hex": "0x40d",
+      "name": "Grid Voltage High Limit - Protection Time 2",
+      "type": "number"
+    },
+    {
+      "addr": 1038,
+      "hex": "0x40e",
+      "name": "Grid Frequency Low Limit - Protection Time 1",
+      "type": "number"
+    },
+    {
+      "addr": 1039,
+      "hex": "0x40f",
+      "name": "Grid Frequency High Limit - Protection Time 1",
+      "type": "number"
+    },
+    {
+      "addr": 1040,
+      "hex": "0x410",
+      "name": "Grid Frequency Low Limit - Protection Time 2",
+      "type": "number"
+    },
+    {
+      "addr": 1041,
+      "hex": "0x411",
+      "name": "Grid Frequency High Limit - Protection Time 2",
+      "type": "number"
+    },
+    {
+      "addr": 1042,
+      "hex": "0x412",
+      "name": "Volt Protection for 10 Minutes",
+      "type": "number"
+    },
+    {
+      "addr": 1043,
+      "hex": "0x413",
+      "name": "Power Factor - Functional",
+      "type": "number"
+    },
+    {
+      "addr": 1045,
+      "hex": "0x415",
+      "name": "Over Frequency Derat Start Point",
+      "type": "number"
+    },
+    {
+      "addr": 1046,
+      "hex": "0x416",
+      "name": "Over Frequency Derat Slope",
+      "type": "number"
+    },
+    {
+      "addr": 1047,
+      "hex": "0x417",
+      "name": "Q Lock In Power",
+      "type": "number"
+    },
+    {
+      "addr": 1048,
+      "hex": "0x418",
+      "name": "Q Lock Out Power",
+      "type": "number"
+    },
+    {
+      "addr": 1049,
+      "hex": "0x419",
+      "name": "Power Factor Lock In Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1050,
+      "hex": "0x41a",
+      "name": "Power Factor Lock Out Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1051,
+      "hex": "0x41b",
+      "name": "Under Frequency Derat Slope",
+      "type": "number"
+    },
+    {
+      "addr": 1052,
+      "hex": "0x41c",
+      "name": "Voltage-Reactive Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 1053,
+      "hex": "0x41d",
+      "name": "Over Frequency Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 1054,
+      "hex": "0x41e",
+      "name": "PF Limit Line Point 1 Load Percentage",
+      "type": "number"
+    },
+    {
+      "addr": 1055,
+      "hex": "0x41f",
+      "name": "PF Limit Line Point 1 Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 1056,
+      "hex": "0x420",
+      "name": "PF Limit Line Point 2 Load Percentage",
+      "type": "number"
+    },
+    {
+      "addr": 1057,
+      "hex": "0x421",
+      "name": "PF Limit Line Point 2 Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 1058,
+      "hex": "0x422",
+      "name": "PF Limit Line Point 3 Load Percentage",
+      "type": "number"
+    },
+    {
+      "addr": 1059,
+      "hex": "0x423",
+      "name": "PF Limit Line Point 3 Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 1060,
+      "hex": "0x424",
+      "name": "PF Limit Line Point 4 Load Percentage",
+      "type": "number"
+    },
+    {
+      "addr": 1061,
+      "hex": "0x425",
+      "name": "PF Limit Line Point 4 Power Factor",
+      "type": "number"
+    },
+    {
+      "addr": 1063,
+      "hex": "0x427",
+      "name": "Export Limit Power",
+      "type": "number"
+    },
+    {
+      "addr": 1064,
+      "hex": "0x428",
+      "name": "Under Frequency Derat Start Time",
+      "type": "number"
+    },
+    {
+      "addr": 1065,
+      "hex": "0x429",
+      "name": "Under Frequency Derat End Point",
+      "type": "number"
+    },
+    {
+      "addr": 1066,
+      "hex": "0x42a",
+      "name": "Over Frequency Derat End Point",
+      "type": "number"
+    },
+    {
+      "addr": 1067,
+      "hex": "0x42b",
+      "name": "Under Frequency Derat Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 1069,
+      "hex": "0x42d",
+      "name": "Over Frequency Derat Stop Point",
+      "type": "number"
+    },
+    {
+      "addr": 1070,
+      "hex": "0x42e",
+      "name": "Over Frequency Derat Recovery Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 1071,
+      "hex": "0x42f",
+      "name": "Zero Current Static Low Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1072,
+      "hex": "0x430",
+      "name": "Zero Current Static High Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1073,
+      "hex": "0x431",
+      "name": "Power On Frequency Recovery Point",
+      "type": "number"
+    },
+    {
+      "addr": 1074,
+      "hex": "0x432",
+      "name": "Under Frequency Derat Stop Point",
+      "type": "number"
+    },
+    {
+      "addr": 1075,
+      "hex": "0x433",
+      "name": "Under Frequency Derat Recovery Delay Time",
+      "type": "number"
+    },
+    {
+      "addr": 1077,
+      "hex": "0x435",
+      "name": "PV Input Mode",
+      "type": "number"
+    },
+    {
+      "addr": 1078,
+      "hex": "0x436",
+      "name": "Battery Reserve %",
+      "type": "number"
+    },
+    {
+      "addr": 1079,
+      "hex": "0x437",
+      "name": "AC High Active Power Derat Delay",
+      "type": "number"
+    },
+    {
+      "addr": 1080,
+      "hex": "0x438",
+      "name": "Battery Type",
+      "type": "number"
+    },
+    {
+      "addr": 1081,
+      "hex": "0x439",
+      "name": "QU Curve Volt High Point 1",
+      "type": "number"
+    },
+    {
+      "addr": 1082,
+      "hex": "0x43a",
+      "name": "QU Curve Volt High Point 2",
+      "type": "number"
+    },
+    {
+      "addr": 1083,
+      "hex": "0x43b",
+      "name": "QU Curve Volt Low Point 1",
+      "type": "number"
+    },
+    {
+      "addr": 1084,
+      "hex": "0x43c",
+      "name": "QU Curve Volt Low Point 2",
+      "type": "number"
+    },
+    {
+      "addr": 1085,
+      "hex": "0x43d",
+      "name": "Voltage Reactive Power Percentage",
+      "type": "number"
+    },
+    {
+      "addr": 1086,
+      "hex": "0x43e",
+      "name": "QU Curve Maximum Inductive Reactive Power",
+      "type": "number"
+    },
+    {
+      "addr": 1087,
+      "hex": "0x43f",
+      "name": "QU Curve Maximum Capacitive Reactive Power",
+      "type": "number"
+    },
+    {
+      "addr": 1088,
+      "hex": "0x440",
+      "name": "Lead-Acid Battery Max Charge Current",
+      "type": "number"
+    },
+    {
+      "addr": 1089,
+      "hex": "0x441",
+      "name": "Lead-Acid Battery Low Voltage Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1090,
+      "hex": "0x442",
+      "name": "Lead-Acid Battery Constant Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1091,
+      "hex": "0x443",
+      "name": "Lead-Acid Battery Number",
+      "type": "number"
+    },
+    {
+      "addr": 1093,
+      "hex": "0x445",
+      "name": "Enable Inverter DRM",
+      "type": "number"
+    },
+    {
+      "addr": 1098,
+      "hex": "0x44a",
+      "name": "Enable Aging Test Command",
+      "type": "number"
+    },
+    {
+      "addr": 1100,
+      "hex": "0x44c",
+      "name": "Enable Bypass Mode",
+      "type": "number"
+    },
+    {
+      "addr": 1101,
+      "hex": "0x44d",
+      "name": "Enable N-PE Relay",
+      "type": "number"
+    },
+    {
+      "addr": 1102,
+      "hex": "0x44e",
+      "name": "Export Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1103,
+      "hex": "0x44f",
+      "name": "Enable Export Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1104,
+      "hex": "0x450",
+      "name": "Enable Three-phase Unbalance",
+      "type": "number"
+    },
+    {
+      "addr": 1105,
+      "hex": "0x451",
+      "name": "Enable Off Grid",
+      "type": "number"
+    },
+    {
+      "addr": 1106,
+      "hex": "0x452",
+      "name": "Off Grid Nominal Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1107,
+      "hex": "0x453",
+      "name": "Off Grid Nominal Frequency",
+      "type": "number"
+    },
+    {
+      "addr": 1108,
+      "hex": "0x454",
+      "name": "Discharge Power Rate",
+      "type": "percent",
+      "min": 1,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 1109,
+      "hex": "0x455",
+      "name": "Discharge Down To %",
+      "type": "percent",
+      "min": 1,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 1110,
+      "hex": "0x456",
+      "name": "Charge Power Rate",
+      "type": "percent",
+      "min": 1,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 1111,
+      "hex": "0x457",
+      "name": "Charge Up To %",
+      "type": "percent",
+      "min": 1,
+      "max": 100,
+      "unit": "%"
+    },
+    {
+      "addr": 1112,
+      "hex": "0x458",
+      "name": "Enable AC Charge",
+      "type": "boolean"
+    },
+    {
+      "addr": 1113,
+      "hex": "0x459",
+      "name": "AC Charge 1 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 1114,
+      "hex": "0x45a",
+      "name": "AC Charge 1 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 1115,
+      "hex": "0x45b",
+      "name": "AC Charge 2 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 1116,
+      "hex": "0x45c",
+      "name": "AC Charge 2 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 1117,
+      "hex": "0x45d",
+      "name": "Enable Load Reactive Power Compensation",
+      "type": "number"
+    },
+    {
+      "addr": 1118,
+      "hex": "0x45e",
+      "name": "DC Discharge 1 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 1119,
+      "hex": "0x45f",
+      "name": "DC Discharge 1 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 1120,
+      "hex": "0x460",
+      "name": "DC Discharge 2 Start Time",
+      "type": "time"
+    },
+    {
+      "addr": 1121,
+      "hex": "0x461",
+      "name": "DC Discharge 2 End Time",
+      "type": "time"
+    },
+    {
+      "addr": 1122,
+      "hex": "0x462",
+      "name": "Enable Force Discharge",
+      "type": "boolean"
+    },
+    {
+      "addr": 1123,
+      "hex": "0x463",
+      "name": "Enable Force Charge",
+      "type": "boolean"
+    },
+    {
+      "addr": 1124,
+      "hex": "0x464",
+      "name": "Enable Battery Maintenance Mode",
+      "type": "number"
+    },
+    {
+      "addr": 1125,
+      "hex": "0x465",
+      "name": "Enable LoRa",
+      "type": "number"
+    },
+    {
+      "addr": 1126,
+      "hex": "0x466",
+      "name": "Meter CT Direction",
+      "type": "number"
+    },
+    {
+      "addr": 1127,
+      "hex": "0x467",
+      "name": "Load Shedding Voltage Upper Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1128,
+      "hex": "0x468",
+      "name": "Load Shedding Voltage Lower Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1129,
+      "hex": "0x469",
+      "name": "Load Shedding Minimum Active Power %",
+      "type": "number"
+    },
+    {
+      "addr": 1130,
+      "hex": "0x46a",
+      "name": "Import Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1131,
+      "hex": "0x46b",
+      "name": "Enable Import Limit",
+      "type": "number"
+    },
+    {
+      "addr": 1144,
+      "hex": "0x478",
+      "name": "Enable Meter Wiring Detection",
+      "type": "number"
+    },
+    {
+      "addr": 1149,
+      "hex": "0x47d",
+      "name": "Meter Wiring Detection State",
+      "type": "number"
+    },
+    {
+      "addr": 1156,
+      "hex": "0x484",
+      "name": "Safety Function Control Word",
+      "type": "number"
+    },
+    {
+      "addr": 1158,
+      "hex": "0x486",
+      "name": "Active Power Per Thousand Ratio",
+      "type": "number"
+    },
+    {
+      "addr": 1159,
+      "hex": "0x487",
+      "name": "High Active Power High Point",
+      "type": "number"
+    },
+    {
+      "addr": 1160,
+      "hex": "0x488",
+      "name": "High Active Power Low Point",
+      "type": "number"
+    },
+    {
+      "addr": 1161,
+      "hex": "0x489",
+      "name": "Low Active Power High Point",
+      "type": "number"
+    },
+    {
+      "addr": 1162,
+      "hex": "0x48a",
+      "name": "Low Active Power Low Point",
+      "type": "number"
+    },
+    {
+      "addr": 1163,
+      "hex": "0x48b",
+      "name": "Qp Lock In Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1164,
+      "hex": "0x48c",
+      "name": "Qp Lock Out Voltage",
+      "type": "number"
+    },
+    {
+      "addr": 1165,
+      "hex": "0x48d",
+      "name": "Minimum Power Factor Setting",
+      "type": "number"
+    },
+    {
+      "addr": 2040,
+      "hex": "0x7f8",
+      "name": "Enable Plant EMS Control",
+      "type": "boolean"
+    },
+    {
+      "addr": 2041,
+      "hex": "0x7f9",
+      "name": "Inverter Count",
+      "type": "number"
+    },
+    {
+      "addr": 2042,
+      "hex": "0x7fa",
+      "name": "Meter Count",
+      "type": "number"
+    },
+    {
+      "addr": 2043,
+      "hex": "0x7fb",
+      "name": "EV Charger Count",
+      "type": "number"
+    },
+    {
+      "addr": 2044,
+      "hex": "0x7fc",
+      "name": "Discharge Start Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2045,
+      "hex": "0x7fd",
+      "name": "Discharge End Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2046,
+      "hex": "0x7fe",
+      "name": "Discharge SOC % Limit 1",
+      "type": "percent"
+    },
+    {
+      "addr": 2047,
+      "hex": "0x7ff",
+      "name": "Discharge Start Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2048,
+      "hex": "0x800",
+      "name": "Discharge End Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2049,
+      "hex": "0x801",
+      "name": "Discharge SOC % Limit 2",
+      "type": "percent"
+    },
+    {
+      "addr": 2050,
+      "hex": "0x802",
+      "name": "Discharge Start Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2051,
+      "hex": "0x803",
+      "name": "Discharge End Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2052,
+      "hex": "0x804",
+      "name": "Discharge SOC % Limit 3",
+      "type": "percent"
+    },
+    {
+      "addr": 2053,
+      "hex": "0x805",
+      "name": "Charge Start Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2054,
+      "hex": "0x806",
+      "name": "Charge End Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2055,
+      "hex": "0x807",
+      "name": "Charge SOC % Limit 1",
+      "type": "percent"
+    },
+    {
+      "addr": 2056,
+      "hex": "0x808",
+      "name": "Charge Start Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2057,
+      "hex": "0x809",
+      "name": "Charge End Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2058,
+      "hex": "0x80a",
+      "name": "Charge SOC % Limit 2",
+      "type": "percent"
+    },
+    {
+      "addr": 2059,
+      "hex": "0x80b",
+      "name": "Charge Start Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2060,
+      "hex": "0x80c",
+      "name": "Charge End Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2061,
+      "hex": "0x80d",
+      "name": "Charge SOC % Limit 3",
+      "type": "percent"
+    },
+    {
+      "addr": 2062,
+      "hex": "0x80e",
+      "name": "Export Start Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2063,
+      "hex": "0x80f",
+      "name": "Export End Time Slot 1",
+      "type": "time"
+    },
+    {
+      "addr": 2064,
+      "hex": "0x810",
+      "name": "Export SOC % Limit 1",
+      "type": "percent"
+    },
+    {
+      "addr": 2065,
+      "hex": "0x811",
+      "name": "Export Start Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2066,
+      "hex": "0x812",
+      "name": "Export End Time Slot 2",
+      "type": "time"
+    },
+    {
+      "addr": 2067,
+      "hex": "0x813",
+      "name": "Export SOC % Limit 2",
+      "type": "percent"
+    },
+    {
+      "addr": 2068,
+      "hex": "0x814",
+      "name": "Export Start Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2069,
+      "hex": "0x815",
+      "name": "Export End Time Slot 3",
+      "type": "time"
+    },
+    {
+      "addr": 2070,
+      "hex": "0x816",
+      "name": "Export SOC % Limit 3",
+      "type": "percent"
+    },
+    {
+      "addr": 2071,
+      "hex": "0x817",
+      "name": "Grid Export Power Limit",
+      "type": "number"
+    },
+    {
+      "addr": 2072,
+      "hex": "0x818",
+      "name": "EV Charger Mode",
+      "type": "number"
+    },
+    {
+      "addr": 2073,
+      "hex": "0x819",
+      "name": "EV Charger Fast Charge Amount",
+      "type": "number"
+    },
+    {
+      "addr": 2074,
+      "hex": "0x81a",
+      "name": "Plant Battery Charge Compensation",
+      "type": "number"
+    },
+    {
+      "addr": 2075,
+      "hex": "0x81b",
+      "name": "Plant Battery Discharge Compensation",
+      "type": "number"
+    },
+    {
+      "addr": 4001,
+      "hex": "0xfa1",
+      "name": "Dual Grid Supply Operational Mode",
+      "type": "number"
+    },
+    {
+      "addr": 5002,
+      "hex": "0x138a",
+      "name": "Send Wake Up Signal",
+      "type": "number"
+    },
+    {
+      "addr": 5003,
+      "hex": "0x138b",
+      "name": "Enable Black Start",
+      "type": "number"
+    },
+    {
+      "addr": 5004,
+      "hex": "0x138c",
+      "name": "Restore Factory Defaults",
+      "type": "number"
+    },
+    {
+      "addr": 5005,
+      "hex": "0x138d",
+      "name": "Enable PV Meter Preset",
+      "type": "number"
+    },
+    {
+      "addr": 5006,
+      "hex": "0x138e",
+      "name": "Enable AC Meter Preset",
+      "type": "number"
+    },
+    {
+      "addr": 5007,
+      "hex": "0x138f",
+      "name": "Enable N-PE",
+      "type": "number"
+    },
+    {
+      "addr": 5008,
+      "hex": "0x1390",
+      "name": "Enable CT Auto Configuration",
+      "type": "number"
+    },
+    {
+      "addr": 5009,
+      "hex": "0x1391",
+      "name": "Enable Auto Address Configuration",
+      "type": "number"
+    },
+    {
+      "addr": 5010,
+      "hex": "0x1392",
+      "name": "Restart Hardware",
+      "type": "number"
+    },
+    {
+      "addr": 5011,
+      "hex": "0x1393",
+      "name": "Grid Power Limit",
+      "type": "number"
+    },
+    {
+      "addr": 5012,
+      "hex": "0x1394",
+      "name": "AC Over Current Limit",
+      "type": "number"
+    },
+    {
+      "addr": 5014,
+      "hex": "0x1396",
+      "name": "Enable Calculated Load",
+      "type": "number"
+    },
+    {
+      "addr": 5018,
+      "hex": "0x139a",
+      "name": "General Load Current K",
+      "type": "number"
+    },
+    {
+      "addr": 5019,
+      "hex": "0x139b",
+      "name": "General Load Current B",
+      "type": "number"
+    },
+    {
+      "addr": 5020,
+      "hex": "0x139c",
+      "name": "Smart Load Current K",
+      "type": "number"
+    },
+    {
+      "addr": 5021,
+      "hex": "0x139d",
+      "name": "Smart Load Current B",
+      "type": "number"
+    },
+    {
+      "addr": 5022,
+      "hex": "0x139e",
+      "name": "Critical Load Current K",
+      "type": "number"
+    },
+    {
+      "addr": 5023,
+      "hex": "0x139f",
+      "name": "Critical Load Current B",
+      "type": "number"
+    },
+    {
+      "addr": 20000,
+      "hex": "0x4e20",
+      "name": "Enable Grid Export Limit",
+      "type": "number"
+    },
+    {
+      "addr": 20001,
+      "hex": "0x4e21",
+      "name": "Grid Export Limit",
+      "type": "number"
+    },
+    {
+      "addr": 20002,
+      "hex": "0x4e22",
+      "name": "Enable Peak Shaving",
+      "type": "number"
+    },
+    {
+      "addr": 20003,
+      "hex": "0x4e23",
+      "name": "Peak Shaving Threshold",
+      "type": "number"
+    },
+    {
+      "addr": 20020,
+      "hex": "0x4e34",
+      "name": "Enable Import Limit",
+      "type": "number"
+    },
+    {
+      "addr": 20021,
+      "hex": "0x4e35",
+      "name": "Import Limit Threshold",
+      "type": "number"
+    },
+    {
+      "addr": 20050,
+      "hex": "0x4e52",
+      "name": "Peak Shaving Power",
+      "type": "number"
+    },
+    {
+      "addr": 20051,
+      "hex": "0x4e53",
+      "name": "Valley Filling Power",
+      "type": "number"
+    }
+  ],
+  "model_codes": {
+    "2001": "GEN1/2/3 5KW",
+    "2002": "GEN1/2/3 4.6KW",
+    "2003": "GEN1/2/3 3.6KW",
+    "2101": "ALPS HY6.0k-GL/PZ8000 5KW",
+    "2102": "ALPS HY6.0k-GL/PZ8000 4.6KW",
+    "2103": "ALPS HY6.0k-GL/PZ8000 3.6KW",
+    "2104": "ALPS HY6.0k-GL/PZ8000 6KW",
+    "2105": "ALPS HY6.0k-GL/PZ8000 7KW",
+    "2106": "ALPS HY6.0k-GL/PZ8000 8KW",
+    "2201": "HY-6.0-G3 PLUS 5KW",
+    "2202": "HY-6.0-G3 PLUS 4.6KW",
+    "2203": "HY-6.0-G3 PLUS 3.6KW",
+    "2204": "HY-6.0-G3 PLUS 6KW",
+    "2205": "HY-6.0-G3 PLUS 7KW",
+    "2206": "HY-6.0-G3 PLUS 8KW",
+    "2301": "GIV-PV-G3 5KW",
+    "2302": "GIV-PV-G3 4.6KW",
+    "2303": "GIV-PV-G3 3.6KW",
+    "2304": "GIV-PV-G3 6KW",
+    "2401": "ALPS-CUBE-HY5.0 5KW",
+    "2402": "ALPS-CUBE-HY5.0 4.6KW",
+    "2403": "ALPS-CUBE-HY5.0 3.6KW",
+    "2404": "ALPS-CUBE-HY5.0 6KW",
+    "2405": "ALPS-CUBE-HY5.0 7KW",
+    "2406": "ALPS-CUBE-HY5.0 8KW",
+    "2501": "POL-HY-8.0-GL 5KW",
+    "2502": "POL-HY-8.0-GL 4.6KW",
+    "2503": "POL-HY-8.0-GL 3.6KW",
+    "2504": "POL-HY-8.0-GL 6KW",
+    "2505": "POL-HY-8.0-GL 7KW",
+    "2506": "POL-HY-8.0-GL 8KW",
+    "3001": "AC3.0 3KW",
+    "3002": "AC3.0 3.6KW",
+    "4001": "GIV-3HY-11-HV 6KW",
+    "4002": "GIV-3HY-20-HV 8KW",
+    "4003": "GIV-3HY-20-HV 10KW",
+    "4004": "GIV-3HY-20-HV 11KW",
+    "4005": "GIV-3HY-20-HV 15KW",
+    "4006": "GIV-3HY-20-HV 20KW",
+    "4007": "GIV-PM-30/50 5KW",
+    "4101": "GIV-PM-30/50 30KW",
+    "4103": "GIV-PM-30/50 50KW",
+    "6001": "AcCouple 6KW",
+    "6002": "AcCouple 8KW",
+    "6003": "AcCouple 10KW",
+    "6004": "AcCouple 11KW",
+    "6005": "AcCouple 15KW",
+    "6006": "AcCouple 20KW",
+    "7001": "Gateway GW1",
+    "7002": "Gateway GW2",
+    "8001": "All in One 6KW",
+    "8002": "All in One 3.6KW",
+    "8003": "All in One 5KW",
+    "8101": "GIV-HY-10.0-G3-HV 6KW",
+    "8102": "GIV-HY-10.0-G3-HV 8KW",
+    "8103": "GIV-HY-10.0-G3-HV 10KW",
+    "8201": "All in One-HY 6KW",
+    "8202": "All in One-HY 8KW",
+    "8203": "All in One-HY 10KW",
+    "8204": "All in One-HY 12KW",
+    "8205": "All in One-HY 11KW",
+    "8301": "Battery Ready 3.6KW",
+    "8302": "Battery Ready 4.6KW",
+    "8303": "Battery Ready 5KW",
+    "8304": "Battery Ready 6KW"
+  }
+}

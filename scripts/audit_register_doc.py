@@ -374,10 +374,88 @@ def _facts_row(r: DocRegister) -> dict:
     }
 
 
+# --- App-source reconciliation ---------------------------------------------
+#
+# The GivEnergy mobile app embeds the manufacturer's own writable holding-register
+# map; it is extracted (via blutter, from the Dart AOT snapshot) into a committed
+# inventory at docs/reference/registers/app_<ver>_inventory.json. This diff
+# reconciles that authoritative map against the library's HR definitions so gaps
+# and name divergences surface as a repeatable check rather than a one-off script.
+
+
+def load_app_inventory(path: Path) -> dict[int, dict]:
+    """Load an app-derived inventory's holding_registers block as {addr: row}."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {r["addr"]: r for r in data.get("holding_registers", [])}
+
+
+def _name_tokens(s: str) -> set[str]:
+    """Word tokens of a register name/attr, for low-overlap divergence detection."""
+    return set(re.sub(r"[%/&_.]", " ", s.lower()).split())
+
+
+def diff_app_source(
+    app_hr: dict[int, dict],
+    code_regs: dict[tuple[str, int], CodeRegister],
+    write_safe: set[int],
+) -> dict:
+    """Reconcile an app-derived HR map against the library's HR definitions.
+
+    Returns matched/gap/code-only counts, the gap list (app-writable HRs with no
+    library Def — flagged when already write-safe, i.e. write-only), the set of
+    matched HRs whose app label shares no token with any library attr name, and
+    write-safety coverage both ways.
+    """
+    code_hr = {idx: cr for (rtype, idx), cr in code_regs.items() if rtype == "HR"}
+    app_set, code_set, ws = set(app_hr), set(code_hr), set(write_safe)
+    matched = sorted(app_set & code_set)
+
+    name_divergence = []
+    for a in matched:
+        lib_tokens: set[str] = set()
+        for attr in code_hr[a].attrs:
+            lib_tokens |= _name_tokens(attr.split(".", 1)[1])
+        if not (_name_tokens(app_hr[a]["name"]) & lib_tokens):
+            name_divergence.append({"addr": a, "app_name": app_hr[a]["name"], "code_attrs": sorted(code_hr[a].attrs)})
+
+    return {
+        "app_hr_count": len(app_set),
+        "code_hr_count": len(code_set),
+        "matched_count": len(matched),
+        "app_only_count": len(app_set - code_set),
+        "app_only": [
+            {"addr": a, "name": app_hr[a]["name"], "in_write_safe": a in ws} for a in sorted(app_set - code_set)
+        ],
+        "code_only": sorted(code_set - app_set),
+        "name_divergence": name_divergence,
+        "write_safe_coverage": {
+            "app_writable_in_write_safe": sorted(app_set & ws),
+            "write_safe_not_in_app": sorted(ws - app_set),
+        },
+    }
+
+
+def run_app_reconciliation(app_source: Path, json_out: Path | None) -> int:
+    """Reconcile the library's HR map against an app-derived inventory; print the diff."""
+    code_regs, write_safe, _ = introspect_code()
+    report = diff_app_source(load_app_inventory(app_source), code_regs, write_safe)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    if json_out:
+        json_out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(f"\nWrote app-reconciliation report to {json_out}", file=sys.stderr)
+    return 0
+
+
 def main() -> int:
     """Parse the doc, diff against the library, print a JSON report."""
     ap = argparse.ArgumentParser()
-    ap.add_argument("doc", type=Path)
+    ap.add_argument("doc", type=Path, nargs="?", default=None)
+    ap.add_argument(
+        "--app-source",
+        type=Path,
+        default=None,
+        help="Reconcile against an app-derived inventory JSON instead of the protocol doc.",
+    )
     ap.add_argument("--json", type=Path, default=None)
     ap.add_argument(
         "--facts-only",
@@ -387,7 +465,18 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    doc_regs = parse_doc(args.doc)
+    if args.app_source is not None:
+        return run_app_reconciliation(args.app_source, args.json)
+
+    if args.doc is None:
+        ap.error("a protocol-doc path or --app-source is required")
+
+    return run_doc_audit(args.doc, args.json, args.facts_only)
+
+
+def run_doc_audit(doc: Path, json_out: Path | None, facts_only: bool) -> int:
+    """Diff the protocol doc against the library's register map; print the report."""
+    doc_regs = parse_doc(doc)
     code_regs, write_safe, by_getter = introspect_code()
 
     # Build doc HR/IR address sets from the inverter sections.
@@ -494,14 +583,14 @@ def main() -> int:
 
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
-    if args.json:
-        registers = [_facts_row(r) for r in doc_regs] if args.facts_only else [asdict(r) for r in doc_regs]
-        args.json.write_text(
-            json.dumps({"doc_registers": registers, "report": report}, indent=2, ensure_ascii=not args.facts_only),
+    if json_out:
+        registers = [_facts_row(r) for r in doc_regs] if facts_only else [asdict(r) for r in doc_regs]
+        json_out.write_text(
+            json.dumps({"doc_registers": registers, "report": report}, indent=2, ensure_ascii=not facts_only),
             encoding="utf-8",
         )
-        kind = "facts-only" if args.facts_only else "full"
-        print(f"\nWrote {kind} inventory to {args.json}", file=sys.stderr)
+        kind = "facts-only" if facts_only else "full"
+        print(f"\nWrote {kind} inventory to {json_out}", file=sys.stderr)
     return 0
 
 
