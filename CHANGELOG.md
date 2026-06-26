@@ -9,12 +9,52 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### ✨ Added
 
-- installer-tier write surface (INSTALLER_WRITE_REGISTERS + installer_command) (#315) ([06e1bf0](https://github.com/dewet22/givenergy-modbus/commit/06e1bf02f3c92288077e73e46aa391747070ebb6))
-- decode gap registers — HR63-83, HR308-310, 3ph HR1000/1005/1048/1077; gated-off HV cabinet and peak-shaving blocks (#316) ([780cd54](https://github.com/dewet22/givenergy-modbus/commit/780cd540fd53e5130c37ff0d22b2da72815a2405))
+- **Installer-tier write surface** (`INSTALLER_WRITE_REGISTERS` + `installer_command()`) (#315) ([06e1bf0](https://github.com/dewet22/givenergy-modbus/commit/06e1bf02f3c92288077e73e46aa391747070ebb6))
+
+  A dedicated write path for grid-safety and factory registers that the GivEnergy
+  app gates behind an installer login. These are kept strictly separate from the
+  normal `one_shot_command()` path — both at the PDU validation layer and at the
+  client layer — so installer registers can never be written accidentally via the
+  standard API. The tier covers grid protection limits, EV charger config,
+  generator settings, smart-load controls, and battery nominal parameters.
+  Destructive operations (factory reset, black-start, energy-total reset) are
+  admitted but require an explicit `confirm=True` argument. The motivation: with
+  GivEnergy in administration, there is no longer a field engineer path to correct
+  factory misconfiguration — this is now the only viable route for affected users.
+
+- **Decode gap registers** (#316) ([780cd54](https://github.com/dewet22/givenergy-modbus/commit/780cd540fd53e5130c37ff0d22b2da72815a2405))
+
+  Adds `Def` entries for holding registers that were already in live poll ranges
+  but had no decode — extending the model without any new polling overhead:
+
+  - **HR(63–83)** — AC grid protection: three-level voltage/frequency trip limits
+    and trip-time windows (`v_ac_low/high_limit_N`, `f_ac_low/high_limit_N`,
+    `t_ac_low/high_voltage/freq_N`, `v_ac_10min_protect`). Converters inferred
+    from the three-phase parallel block (HR1018–1042); unverified on live
+    single-phase hardware — marked for revision if a future capture disagrees.
+  - **HR(308–310)** — battery topology: rated power (W), rated current (A), and
+    max charge percentage. Register addresses extracted from the GE app 4.0.7
+    binary; scale unconfirmed on live hardware.
+  - **HR(1000), HR(1005), HR(1048), HR(1077)** (three-phase) — `system_enable`,
+    `real_time_control`, `q_lock_out_power`, `pv_input_mode`; gaps in the
+    existing 1000–1124 three-phase block.
+
+  Two unpollable blocks are pre-staged with Defs and gated-off capability flags
+  (defaulting to no-poll for every current model, following the smart-load
+  precedent):
+
+  - **HR(499–510)** — HV cabinet topology (`has_hv_cabinet_block`)
+  - **HR(20000–20051)** — peak-shaving configuration (`has_peak_shaving_block`)
+
+  These will become live once a confirming capture arrives and a model is added
+  to the capability set.
 
 ### 🔧 Maintenance
 
-- add app 4.0.7 register inventory and audit reconciliation baseline (#314) ([fa12d33](https://github.com/dewet22/givenergy-modbus/commit/fa12d3385290ec2ed402cb2bc3ea85c6f37aba07))
+- Add GivEnergy app 4.0.7 register inventory and audit reconciliation baseline (#314) ([fa12d33](https://github.com/dewet22/givenergy-modbus/commit/fa12d3385290ec2ed402cb2bc3ea85c6f37aba07))
+
+  Reconciliation now runs as a regression test in CI; matched count improved from
+  292 → 340 as gap registers were decoded in #316.
 
 ## [2.5.13] - 2026-06-26
 
