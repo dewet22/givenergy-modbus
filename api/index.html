@@ -2260,6 +2260,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_pv_direct_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_pv_direct_today
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_self_consumption_today" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6040,6 +6051,17 @@
     <span class="md-ellipsis">
       
         e_inverter_out_total
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_pv_direct_today" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e_pv_direct_today
       
     </span>
   </a>
@@ -21225,7 +21247,57 @@ in later 2.x minors — see #75.</p>
 <span class="normal">1051</span>
 <span class="normal">1052</span>
 <span class="normal">1053</span>
-<span class="normal">1054</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">1054</span>
+<span class="normal">1055</span>
+<span class="normal">1056</span>
+<span class="normal">1057</span>
+<span class="normal">1058</span>
+<span class="normal">1059</span>
+<span class="normal">1060</span>
+<span class="normal">1061</span>
+<span class="normal">1062</span>
+<span class="normal">1063</span>
+<span class="normal">1064</span>
+<span class="normal">1065</span>
+<span class="normal">1066</span>
+<span class="normal">1067</span>
+<span class="normal">1068</span>
+<span class="normal">1069</span>
+<span class="normal">1070</span>
+<span class="normal">1071</span>
+<span class="normal">1072</span>
+<span class="normal">1073</span>
+<span class="normal">1074</span>
+<span class="normal">1075</span>
+<span class="normal">1076</span>
+<span class="normal">1077</span>
+<span class="normal">1078</span>
+<span class="normal">1079</span>
+<span class="normal">1080</span>
+<span class="normal">1081</span>
+<span class="normal">1082</span>
+<span class="normal">1083</span>
+<span class="normal">1084</span>
+<span class="normal">1085</span>
+<span class="normal">1086</span>
+<span class="normal">1087</span>
+<span class="normal">1088</span>
+<span class="normal">1089</span>
+<span class="normal">1090</span>
+<span class="normal">1091</span>
+<span class="normal">1092</span>
+<span class="normal">1093</span>
+<span class="normal">1094</span>
+<span class="normal">1095</span>
+<span class="normal">1096</span>
+<span class="normal">1097</span>
+<span class="normal">1098</span>
+<span class="normal">1099</span>
+<span class="normal">1100</span>
+<span class="normal">1101</span>
+<span class="normal">1102</span>
+<span class="normal">1103</span>
+<span class="normal">1104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -21453,6 +21525,56 @@ in later 2.x minors — see #75.</p>
         <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">):</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">pv</span> <span class="o">-</span> <span class="n">grid_out</span><span class="p">)</span>
+
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">e_pv_direct_today</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;PV energy used directly by load today (kWh): solar bypassing battery and grid.</span>
+
+<span class="sd">        DERIVED: (pv_generation − grid_export) − pv_to_battery, clamped to [0, pv − grid_export],</span>
+<span class="sd">        where pv_to_battery = max(0, battery_charge − ac_charge).</span>
+
+<span class="sd">        e_battery_charge lumps PV-sourced and AC-sourced charge into one counter, so the</span>
+<span class="sd">        PV portion that went to the battery is battery_charge − ac_charge — subtracting it</span>
+<span class="sd">        leaves the PV that reached load directly. Without the ac_charge term the figure</span>
+<span class="sd">        would under-count by the day&#39;s AC-charge energy on time-of-use tariffs (Octopus Go</span>
+<span class="sd">        / Predbat); for pure-solar systems ac_charge is 0 and it&#39;s a no-op.</span>
+
+<span class="sd">        Both bounds matter. The lower clamp (≥ 0) handles export exceeding PV. The upper</span>
+<span class="sd">        clamp (≤ pv − grid_export, via flooring pv_to_battery at 0) handles AC→DC</span>
+<span class="sd">        conversion loss / counter skew making ac_charge momentarily exceed battery_charge:</span>
+<span class="sd">        without it, direct PV could exceed total on-site PV self-consumption, which is</span>
+<span class="sd">        nonsensical (a subset can&#39;t beat its superset) — Codex review on #313.</span>
+
+<span class="sd">        Restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One units the</span>
+<span class="sd">        PV-generation registers (IR44/45-46) are mislabelled — they read non-zero on</span>
+<span class="sd">        battery-only hardware (#293) — so the field returns None there rather than a</span>
+<span class="sd">        confident wrong value. In practice e_battery_charge_today only routes on</span>
+<span class="sd">        HYBRID_GEN1 today (see _BATTERY_ENERGY_SOURCE / #184), so the field is currently</span>
+<span class="sd">        GEN1-effective and returns None on other DC models until that map widens.</span>
+
+<span class="sd">        Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which</span>
+<span class="sd">        single-phase firmware does not expose (three-phase only, IR1378/9).</span>
+
+<span class="sd">        NOT monotonically increasing intraday — a grid-export burst can dip it — so</span>
+<span class="sd">        consumers using state_class TOTAL_INCREASING MUST apply their own monotonic clamp</span>
+<span class="sd">        (e.g. HA&#39;s monotonic=True path). Returns None if any input is unavailable or the</span>
+<span class="sd">        model is ineligible.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ac_coupled</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="n">Model</span><span class="o">.</span><span class="n">ALL_IN_ONE</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">pv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv_generation_today</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">grid_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_grid_out_day</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">battery_charge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_battery_charge_today</span>
+        <span class="n">ac_charge</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_ac_charge_today</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">pv</span><span class="p">,</span> <span class="n">grid_out</span><span class="p">,</span> <span class="n">battery_charge</span><span class="p">,</span> <span class="n">ac_charge</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># PV that charged the battery, floored at 0: AC→DC conversion loss / counter skew</span>
+        <span class="c1"># can push ac_charge above battery_charge, which would otherwise make this negative</span>
+        <span class="c1"># and inflate direct PV beyond total on-site PV. Round to the inputs&#39; native 0.1 kWh</span>
+        <span class="c1"># resolution — a deci-scaled difference accrues float noise that 1dp removes losslessly.</span>
+        <span class="n">pv_to_battery</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">battery_charge</span> <span class="o">-</span> <span class="n">ac_charge</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">pv</span> <span class="o">-</span> <span class="n">grid_out</span> <span class="o">-</span> <span class="n">pv_to_battery</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
 
     <span class="c1"># Plain @property (not @computed_field) so the deprecated alias doesn&#39;t</span>
     <span class="c1"># appear in model_dump() output. See #84 — renamed to work_time_total_hours</span>
@@ -21774,6 +21896,52 @@ Returns None if any input is unavailable.</p>
     <div class="doc doc-contents ">
 
         <p>Deprecated alias for <code>e_pv_generation_total</code>.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.inverter.SinglePhaseInverter.e_pv_direct_today" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">e_pv_direct_today</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.inverter.SinglePhaseInverter.e_pv_direct_today" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>PV energy used directly by load today (kWh): solar bypassing battery and grid.</p>
+<p>DERIVED: (pv_generation − grid_export) − pv_to_battery, clamped to [0, pv − grid_export],
+where pv_to_battery = max(0, battery_charge − ac_charge).</p>
+<p>e_battery_charge lumps PV-sourced and AC-sourced charge into one counter, so the
+PV portion that went to the battery is battery_charge − ac_charge — subtracting it
+leaves the PV that reached load directly. Without the ac_charge term the figure
+would under-count by the day's AC-charge energy on time-of-use tariffs (Octopus Go
+/ Predbat); for pure-solar systems ac_charge is 0 and it's a no-op.</p>
+<p>Both bounds matter. The lower clamp (≥ 0) handles export exceeding PV. The upper
+clamp (≤ pv − grid_export, via flooring pv_to_battery at 0) handles AC→DC
+conversion loss / counter skew making ac_charge momentarily exceed battery_charge:
+without it, direct PV could exceed total on-site PV self-consumption, which is
+nonsensical (a subset can't beat its superset) — Codex review on #313.</p>
+<p>Restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One units the
+PV-generation registers (IR44/45-46) are mislabelled — they read non-zero on
+battery-only hardware (#293) — so the field returns None there rather than a
+confident wrong value. In practice e_battery_charge_today only routes on
+HYBRID_GEN1 today (see _BATTERY_ENERGY_SOURCE / #184), so the field is currently
+GEN1-effective and returns None on other DC models until that map widens.</p>
+<p>Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which
+single-phase firmware does not expose (three-phase only, IR1378/9).</p>
+<p>NOT monotonically increasing intraday — a grid-export burst can dip it — so
+consumers using state_class TOTAL_INCREASING MUST apply their own monotonic clamp
+(e.g. HA's monotonic=True path). Returns None if any input is unavailable or the
+model is ineligible.</p>
 
     </div>
 
