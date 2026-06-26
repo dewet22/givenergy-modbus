@@ -112,6 +112,34 @@ class RegisterMap:
     EXPORT_SLOT_3_END = 2069
     EMS_EXPORT_TARGET_SOC_3 = 2070
     EMS_EXPORT_POWER_LIMIT = 2071
+    # --- Installer-tier registers (accessible only via Client.installer_command()) ---
+    ANTI_ISLANDING_DETECTION = 115
+    RESET_ENERGY_TOTALS = 162
+    GRID_IMPORT_LIMIT = 101
+    GRID_IMPORT_LIMIT_ENABLED = 102
+    BATTERY_NOMINAL_POWER = 308
+    BATTERY_NOMINAL_CURRENT = 309
+    BATTERY_MAX_CHARGE_PCT = 310
+    ENABLE_PLANT_MODE = 300
+    ENABLE_MICRO_GRID = 332
+    ENABLE_EV_CHARGER = 333
+    EV_CHARGER_SOC_LIMIT = 336
+    ENABLE_GENERATOR = 343
+    GENERATOR_START_SOC = 344
+    GENERATOR_STOP_SOC = 345
+    ENABLE_SMART_LOAD = 540
+    SMART_LOAD_CONTROL_SOC = 541
+    GENERAL_LOAD_CONTROL_SOC = 543
+    GENERATOR_CONTROL_SOC = 544
+    ENABLE_EXPORT_LIMIT_3PH = 1103
+    ENABLE_IMPORT_LIMIT_3PH = 1131
+    PEAK_SHAVING_EXPORT_LIMIT_ENABLED = 20000
+    PEAK_SHAVING_EXPORT_LIMIT = 20001
+    PEAK_SHAVING_ENABLED = 20002
+    PEAK_SHAVING_THRESHOLD = 20003
+    THREE_PHASE_FACTORY_RESET = 1016
+    ENABLE_BLACK_START = 5003
+    RESTORE_FACTORY_DEFAULTS = 5004
 
 
 def _as_int(val: int, name: str) -> int:
@@ -814,6 +842,191 @@ def set_mode_storage(
     else:
         ret.extend(reset_discharge_slot(2, slot_map))
     return ret
+
+
+# ---------------------------------------------------------------------------
+# Installer-tier command helpers
+# These return WriteHoldingRegisterRequest instances with installer=True.
+# Pass them to Client.installer_command(), never to one_shot_command().
+# Destructive wrappers require an explicit confirm=True.
+# ---------------------------------------------------------------------------
+
+
+def set_battery_nominal_power(power: int) -> list[WriteHoldingRegisterRequest]:
+    """Set battery nominal power (HR308). Installer-tier.
+
+    No explicit app range — accepts any uint16. Consult battery hardware spec.
+    """
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_NOMINAL_POWER, _as_int(power, "power"), installer=True)]
+
+
+def set_battery_nominal_current(current: int) -> list[WriteHoldingRegisterRequest]:
+    """Set battery nominal current (HR309). Installer-tier.
+
+    No explicit app range — accepts any uint16. Consult battery hardware spec.
+    """
+    val = _as_int(current, "current")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_NOMINAL_CURRENT, val, installer=True)]
+
+
+def set_battery_max_charge_pct(pct: int) -> list[WriteHoldingRegisterRequest]:
+    """Set battery maximum charge percentage (HR310). Installer-tier. App range: 20–100."""
+    val = _as_int(pct, "pct")
+    if not (20 <= val <= 100):
+        raise ValueError(f"Battery max charge % must be 20–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_MAX_CHARGE_PCT, val, installer=True)]
+
+
+def set_anti_islanding_detection(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable anti-islanding detection (HR115). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ANTI_ISLANDING_DETECTION, int(enabled), installer=True)]
+
+
+def set_grid_import_limit_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable the grid import limit (HR102). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.GRID_IMPORT_LIMIT_ENABLED, int(enabled), installer=True)]
+
+
+def set_enable_plant_mode(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable plant mode (HR300). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_PLANT_MODE, int(enabled), installer=True)]
+
+
+def set_enable_micro_grid(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable micro grid mode (HR332). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_MICRO_GRID, int(enabled), installer=True)]
+
+
+def set_enable_ev_charger(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable the EV charger (HR333). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EV_CHARGER, int(enabled), installer=True)]
+
+
+def set_ev_charger_soc_limit(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set EV charger SOC limit (HR336). Installer-tier. Range: 0–100 %."""
+    val = _as_int(soc, "soc")
+    if not (0 <= val <= 100):
+        raise ValueError(f"EV charger SOC limit must be 0–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.EV_CHARGER_SOC_LIMIT, val, installer=True)]
+
+
+def set_enable_generator(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable the generator (HR343). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_GENERATOR, int(enabled), installer=True)]
+
+
+def set_generator_start_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set generator start SOC threshold (HR344). Installer-tier. Range: 0–100 %."""
+    val = _as_int(soc, "soc")
+    if not (0 <= val <= 100):
+        raise ValueError(f"Generator start SOC must be 0–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.GENERATOR_START_SOC, val, installer=True)]
+
+
+def set_generator_stop_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set generator stop SOC threshold (HR345). Installer-tier. Range: 0–100 %."""
+    val = _as_int(soc, "soc")
+    if not (0 <= val <= 100):
+        raise ValueError(f"Generator stop SOC must be 0–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.GENERATOR_STOP_SOC, val, installer=True)]
+
+
+def set_enable_smart_load(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable smart load (HR540). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_SMART_LOAD, int(enabled), installer=True)]
+
+
+def set_smart_load_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set smart load control SOC (HR541). Installer-tier. App range: 50–100 %."""
+    val = _as_int(soc, "soc")
+    if not (50 <= val <= 100):
+        raise ValueError(f"Smart load control SOC must be 50–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.SMART_LOAD_CONTROL_SOC, val, installer=True)]
+
+
+def set_general_load_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set general load control SOC (HR543). Installer-tier. App range: 50–100 %."""
+    val = _as_int(soc, "soc")
+    if not (50 <= val <= 100):
+        raise ValueError(f"General load control SOC must be 50–100, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.GENERAL_LOAD_CONTROL_SOC, val, installer=True)]
+
+
+def set_generator_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
+    """Set generator control SOC (HR544). Installer-tier. App range: 10–90 %."""
+    val = _as_int(soc, "soc")
+    if not (10 <= val <= 90):
+        raise ValueError(f"Generator control SOC must be 10–90, got {val}")
+    return [WriteHoldingRegisterRequest(RegisterMap.GENERATOR_CONTROL_SOC, val, installer=True)]
+
+
+def set_enable_export_limit_3ph(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable export limit on three-phase inverters (HR1103). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EXPORT_LIMIT_3PH, int(enabled), installer=True)]
+
+
+def set_enable_import_limit_3ph(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable import limit on three-phase inverters (HR1131). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_IMPORT_LIMIT_3PH, int(enabled), installer=True)]
+
+
+def set_peak_shaving_export_limit_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable peak-shaving grid export limit (HR20000). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_EXPORT_LIMIT_ENABLED, int(enabled), installer=True)]
+
+
+def set_peak_shaving_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
+    """Enable or disable peak shaving (HR20002). Installer-tier."""
+    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_ENABLED, int(enabled), installer=True)]
+
+
+# --- Destructive installer commands — require confirm=True ---
+
+
+def reset_energy_totals(*, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Reset all lifetime energy counters (HR162). Irreversible.
+
+    This clears the lifetime import/export/charge/discharge totals stored in
+    the inverter. Cannot be undone. Pass confirm=True to proceed.
+    """
+    if not confirm:
+        raise ValueError("reset_energy_totals() is irreversible — pass confirm=True to proceed")
+    return [WriteHoldingRegisterRequest(RegisterMap.RESET_ENERGY_TOTALS, 1, installer=True)]
+
+
+def three_phase_factory_reset(*, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Trigger three-phase factory reset without meter reset (HR1016). Irreversible.
+
+    Resets inverter configuration to factory defaults, excluding meter data.
+    Pass confirm=True to proceed.
+    """
+    if not confirm:
+        raise ValueError("three_phase_factory_reset() is irreversible — pass confirm=True to proceed")
+    return [WriteHoldingRegisterRequest(RegisterMap.THREE_PHASE_FACTORY_RESET, 1, installer=True)]
+
+
+def enable_black_start(*, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Enable EPS black-start mode (HR5003). Use with care.
+
+    Activates black-start capability on EPS-capable inverters. Incorrect use can
+    cause the inverter to energise an island without grid synchronisation.
+    Pass confirm=True to proceed.
+    """
+    if not confirm:
+        raise ValueError("enable_black_start() requires confirm=True")
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_BLACK_START, 1, installer=True)]
+
+
+def restore_factory_defaults(*, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Restore factory defaults (HR5004). Irreversible — wipes all installer config.
+
+    Resets the inverter to factory defaults, including all installer-configured
+    grid-safety limits, battery settings, and operating modes. Pass confirm=True
+    to proceed.
+    """
+    if not confirm:
+        raise ValueError("restore_factory_defaults() is irreversible — pass confirm=True to proceed")
+    return [WriteHoldingRegisterRequest(RegisterMap.RESTORE_FACTORY_DEFAULTS, 1, installer=True)]
 
 
 # HR(300-359) AC-output config-block writes that are gated on capabilities.has_ac_config_block

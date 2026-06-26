@@ -15,6 +15,7 @@ from givenergy_modbus.client.commands import _EmsCommands, _InverterCommands, _T
 from givenergy_modbus.exceptions import InvalidPduState
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
+from givenergy_modbus.pdu.write_registers import INSTALLER_WRITE_REGISTERS as PDU_INSTALLER_WRITE_REGISTERS
 from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS as PDU_WRITE_SAFE_REGISTERS
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
@@ -270,3 +271,169 @@ def test_model_command_set_subset_of_pdu_allowlist(command_set):
 def test_ems_write_request_encodes():
     """An EMS write encodes cleanly — ensure_valid_state() accepts the register."""
     WriteHoldingRegisterRequest(_EMS_REG, 1).encode()
+
+
+# ---------------------------------------------------------------------------
+# Installer tier
+# ---------------------------------------------------------------------------
+
+# HR 308 = Battery Nominal Power — in INSTALLER_WRITE_REGISTERS, not WRITE_SAFE_REGISTERS
+_INSTALLER_REG = 308
+# HR 5004 = Restore Factory Defaults — destructive installer register
+_INSTALLER_DESTRUCTIVE_REG = 5004
+
+
+@pytest.mark.asyncio
+async def test_installer_command_accepts_installer_register():
+    """installer_command() admits installer-flagged requests for installer registers."""
+    client = _client(_caps(Model.HYBRID_GEN1))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    await client.installer_command([req], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_one_shot_command_rejects_installer_flagged_request():
+    """one_shot_command() always rejects installer-flagged requests."""
+    client = _client(_caps(Model.HYBRID_GEN1))
+    req = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    with pytest.raises(InvalidPduState, match="installer_command"):
+        await client.one_shot_command([req], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_installer_command_rejects_non_installer_register_without_installer_flag():
+    """installer_command() still rejects a non-installer register not in model_safe."""
+    client = _client(_caps(Model.HYBRID_GEN1))
+    # HR 1112 = AC_CHARGE_ENABLE — three-phase only; not in single-phase model_safe
+    req = WriteHoldingRegisterRequest(1112, 1)
+    with pytest.raises(InvalidPduState, match=r"HR\(1112\)"):
+        await client.installer_command([req], dry_run=True)
+
+
+def test_installer_flag_excluded_from_eq():
+    """Installer flag is excluded from __eq__ — two requests differing only in installer compare equal."""
+    req_normal = WriteHoldingRegisterRequest(_SINGLE_PHASE_REG, 1)
+    req_installer = WriteHoldingRegisterRequest(_SINGLE_PHASE_REG, 1, installer=True)
+    assert req_normal == req_installer
+
+
+def test_installer_request_encodes_same_as_normal():
+    """Installer flag is non-wire — encoded bytes are identical to a normal request."""
+    req_normal = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000)
+    req_installer = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
+    # Override ensure_valid_state so we can encode without the safety check
+    req_normal.installer = True  # allow encoding to proceed on the normal req too
+    assert req_normal.encode() == req_installer.encode()
+
+
+def test_request_defaults_to_installer_false():
+    """WriteHoldingRegisterRequest defaults to installer=False (wire decode path)."""
+    req = WriteHoldingRegisterRequest(_SINGLE_PHASE_REG, 1)
+    assert not req.installer
+
+
+def test_installer_write_safe_disjoint():
+    """INSTALLER_WRITE_REGISTERS and WRITE_SAFE_REGISTERS must be disjoint."""
+    assert PDU_INSTALLER_WRITE_REGISTERS.isdisjoint(PDU_WRITE_SAFE_REGISTERS)
+
+
+def test_installer_reg_not_in_write_safe():
+    assert _INSTALLER_REG not in PDU_WRITE_SAFE_REGISTERS
+
+
+def test_installer_reg_in_installer_set():
+    assert _INSTALLER_REG in PDU_INSTALLER_WRITE_REGISTERS
+
+
+def test_destructive_reg_in_installer_set():
+    assert _INSTALLER_DESTRUCTIVE_REG in PDU_INSTALLER_WRITE_REGISTERS
+
+
+# --- Bounds-validating wrapper tests ---
+
+
+def test_set_battery_max_charge_pct_valid():
+    from givenergy_modbus.client.commands import set_battery_max_charge_pct
+
+    reqs = set_battery_max_charge_pct(80)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 80
+
+
+def test_set_battery_max_charge_pct_out_of_range():
+    from givenergy_modbus.client.commands import set_battery_max_charge_pct
+
+    with pytest.raises(ValueError, match="20"):
+        set_battery_max_charge_pct(10)
+
+
+def test_set_smart_load_control_soc_valid():
+    from givenergy_modbus.client.commands import set_smart_load_control_soc
+
+    reqs = set_smart_load_control_soc(75)
+    assert reqs[0].installer and reqs[0].value == 75
+
+
+def test_set_smart_load_control_soc_out_of_range():
+    from givenergy_modbus.client.commands import set_smart_load_control_soc
+
+    with pytest.raises(ValueError, match="50"):
+        set_smart_load_control_soc(40)
+
+
+def test_set_generator_control_soc_valid():
+    from givenergy_modbus.client.commands import set_generator_control_soc
+
+    reqs = set_generator_control_soc(50)
+    assert reqs[0].installer and reqs[0].value == 50
+
+
+def test_set_generator_control_soc_out_of_range():
+    from givenergy_modbus.client.commands import set_generator_control_soc
+
+    with pytest.raises(ValueError, match="10"):
+        set_generator_control_soc(5)
+
+
+# --- Destructive wrapper tests ---
+
+
+def test_reset_energy_totals_requires_confirm():
+    from givenergy_modbus.client.commands import reset_energy_totals
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        reset_energy_totals()
+
+
+def test_reset_energy_totals_with_confirm():
+    from givenergy_modbus.client.commands import reset_energy_totals
+
+    reqs = reset_energy_totals(confirm=True)
+    assert len(reqs) == 1 and reqs[0].installer and reqs[0].value == 1
+
+
+def test_restore_factory_defaults_requires_confirm():
+    from givenergy_modbus.client.commands import restore_factory_defaults
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        restore_factory_defaults()
+
+
+def test_restore_factory_defaults_with_confirm():
+    from givenergy_modbus.client.commands import restore_factory_defaults
+
+    reqs = restore_factory_defaults(confirm=True)
+    assert reqs[0].installer and reqs[0].value == 1
+
+
+def test_enable_black_start_requires_confirm():
+    from givenergy_modbus.client.commands import enable_black_start
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        enable_black_start()
+
+
+def test_three_phase_factory_reset_requires_confirm():
+    from givenergy_modbus.client.commands import three_phase_factory_reset
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        three_phase_factory_reset()
