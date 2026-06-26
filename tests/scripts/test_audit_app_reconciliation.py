@@ -18,6 +18,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 # scripts/ isn't a package; make audit_register_doc.py importable by filename.
 _REPO = Path(__file__).resolve().parents[2]
 _SCRIPTS_DIR = _REPO / "scripts"
@@ -31,22 +33,22 @@ _INVENTORY = _REGISTERS / "app_4.0.7_inventory.json"
 _BASELINE = _REGISTERS / "app_4.0.7_reconciliation.json"
 
 
-def _live_report() -> dict:
+@pytest.fixture(scope="module")
+def live_report() -> dict:
     code_regs, write_safe, _ = audit.introspect_code()
     app_hr = audit.load_app_inventory(_INVENTORY)
     return audit.diff_app_source(app_hr, code_regs, write_safe)
 
 
-def test_reconciliation_matches_committed_baseline():
+def test_reconciliation_matches_committed_baseline(live_report):
     """The live app-vs-code diff equals the committed reconciliation report."""
-    assert _live_report() == json.loads(_BASELINE.read_text(encoding="utf-8"))
+    assert live_report == json.loads(_BASELINE.read_text(encoding="utf-8"))
 
 
-def test_library_not_over_permissive():
+def test_library_not_over_permissive(live_report):
     """Every write-safe HR is in the app's writable surface (no over-permission).
 
     This is an invariant, not a baseline number: nothing should be writable in
     the library that the manufacturer's app does not also expose as writable.
     """
-    report = _live_report()
-    assert report["write_safe_coverage"]["write_safe_not_in_app"] == []
+    assert live_report["write_safe_coverage"]["write_safe_not_in_app"] == []

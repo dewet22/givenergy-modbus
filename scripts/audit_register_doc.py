@@ -386,11 +386,13 @@ def _facts_row(r: DocRegister) -> dict:
 def load_app_inventory(path: Path) -> dict[int, dict]:
     """Load an app-derived inventory's holding_registers block as {addr: row}."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    return {r["addr"]: r for r in data.get("holding_registers", [])}
+    return {r["addr"]: r for r in data.get("holding_registers", []) if isinstance(r, dict) and "addr" in r}
 
 
 def _name_tokens(s: str) -> set[str]:
     """Word tokens of a register name/attr, for low-overlap divergence detection."""
+    if not isinstance(s, str):
+        return set()
     return set(re.sub(r"[%/&_.]", " ", s.lower()).split())
 
 
@@ -441,7 +443,7 @@ def run_app_reconciliation(app_source: Path, json_out: Path | None) -> int:
     report = diff_app_source(load_app_inventory(app_source), code_regs, write_safe)
     print(json.dumps(report, indent=2, ensure_ascii=False))
     if json_out:
-        json_out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        json_out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"\nWrote app-reconciliation report to {json_out}", file=sys.stderr)
     return 0
 
