@@ -42,7 +42,7 @@ from givenergy_modbus.pdu import (
     TransparentResponse,
     WriteHoldingRegisterResponse,
 )
-from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
+from givenergy_modbus.pdu.write_registers import INSTALLER_WRITE_REGISTERS, WriteHoldingRegisterRequest
 
 _logger = logging.getLogger(__name__)
 
@@ -1232,10 +1232,55 @@ class Client:
             safe = safe | _AC_CONFIG_WRITE_SAFE_REGISTERS
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:
-            if isinstance(req, WriteHoldingRegisterRequest) and req.register not in safe:
-                raise InvalidPduState(f"HR({req.register}) is not permitted for {model_label} inverter", req)
+            if isinstance(req, WriteHoldingRegisterRequest):
+                if req.installer:
+                    raise InvalidPduState(
+                        f"HR({req.register}) is an installer-tier request; use installer_command() instead",
+                        req,
+                    )
+                if req.register not in safe:
+                    raise InvalidPduState(f"HR({req.register}) is not permitted for {model_label} inverter", req)
             # Run the same PDU-level validation encode() runs (value bounds, global
             # safe-register set), so dry-run and live paths reject identically.
+            req.ensure_valid_state()
+        if not dry_run:
+            await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)
+
+    async def installer_command(
+        self,
+        requests: list[TransparentRequest],
+        timeout: float = 1.5,
+        retries: int = 0,
+        retry_delay: float = 0.5,
+        dry_run: bool = False,
+    ) -> None:
+        """Execute installer-tier write requests.
+
+        Like one_shot_command() but admits registers from INSTALLER_WRITE_REGISTERS.
+        Requests must be constructed with installer=True via the dedicated helpers in
+        client.commands (e.g. set_battery_nominal_power, restore_factory_defaults).
+
+        one_shot_command() always rejects installer-flagged requests — the two methods
+        are non-overlapping by design (dual-gate separation).
+
+        If dry_run is True, validates but does not transmit.
+        """
+        caps = self.plant.capabilities
+        if caps is not None and caps.is_ems:
+            model_safe = _EmsCommands.WRITE_SAFE_REGISTERS
+        elif caps is not None and caps.is_three_phase:
+            model_safe = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+        else:
+            model_safe = _InverterCommands.WRITE_SAFE_REGISTERS
+        if caps is not None and caps.has_ac_config_block and not caps.is_three_phase:
+            model_safe = model_safe | _AC_CONFIG_WRITE_SAFE_REGISTERS
+        installer_safe = model_safe | INSTALLER_WRITE_REGISTERS
+        model_label = caps.device_type.name if caps is not None else "undetected"
+        for req in requests:
+            if isinstance(req, WriteHoldingRegisterRequest):
+                effective_safe = installer_safe if req.installer else model_safe
+                if req.register not in effective_safe:
+                    raise InvalidPduState(f"HR({req.register}) is not permitted for {model_label} inverter", req)
             req.ensure_valid_state()
         if not dry_run:
             await self.execute(requests, timeout=timeout, retries=retries, retry_delay=retry_delay)

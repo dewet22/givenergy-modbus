@@ -173,6 +173,162 @@ WRITE_SAFE_REGISTERS = {
     #    with no range guard or set_* wrapper; admit only with a validating command.
 }
 
+# Installer-tier registers: grid-safety, factory-config, and destructive operations.
+# Disjoint from WRITE_SAFE_REGISTERS — only accessible via Client.installer_command().
+# Gate 1 (client): installer_command() validates against WRITE_SAFE_REGISTERS | INSTALLER_WRITE_REGISTERS.
+# Gate 2 (PDU): ensure_valid_state() on an installer-flagged WriteHoldingRegisterRequest
+#               checks this set instead of WRITE_SAFE_REGISTERS.
+# Source: GivEnergy Android app 4.0.7 "Direct Control" installer-login register surface.
+INSTALLER_WRITE_REGISTERS: frozenset[int] = frozenset(
+    {
+        # --- AC grid protection: voltage/frequency limits (two-level trip + hold) ---
+        63,  # AC Undervoltage Limit 1
+        64,  # AC Overvoltage Limit 1
+        65,  # AC Underfrequency Limit 1
+        66,  # AC Overfrequency Limit 1
+        67,  # AC Undervoltage 1 Protection Time
+        68,  # AC Overvoltage 1 Protection Time
+        69,  # AC Underfrequency 1 Protection Time
+        70,  # AC Overfrequency 1 Protection Time
+        71,  # AC Undervoltage Limit 2
+        72,  # AC Overvoltage Limit 2
+        73,  # AC Underfrequency Limit 2
+        74,  # AC Overfrequency Limit 2
+        75,  # AC Undervoltage 2 Protection Time
+        76,  # AC Overvoltage 2 Protection Time
+        77,  # AC Underfrequency 2 Protection Time
+        78,  # AC Overfrequency 2 Protection Time
+        79,  # AC Undervoltage Limit
+        80,  # AC Overvoltage Limit
+        81,  # AC Underfrequency Limit
+        82,  # AC Overfrequency Limit
+        83,  # AC Voltage Protection 10 Minute Average
+        # --- Grid import limits ---
+        101,  # Grid Import Limit
+        102,  # Grid Import Limit Enabled (boolean)
+        115,  # Anti-Islanding Detection (boolean)
+        # --- Battery commissioning ---
+        174,  # Wake Battery
+        201,  # Restart Battery
+        308,  # Battery Nominal Power
+        309,  # Battery Nominal Current
+        310,  # Battery Max Charge % (app range 20–100)
+        # --- Plant / inverter operating config ---
+        300,  # Enable Plant Mode (boolean)
+        302,  # Plant Meters
+        303,  # Overfrequency Load Drop Recovery Delay
+        305,  # MPPT Operating Mode
+        306,  # Connection Loading Slope
+        307,  # EPS Nominal Voltage
+        312,  # Underfrequency Add Load Delay
+        315,  # EN50549 Zero-Current Static Lower Voltage Limit
+        316,  # EN50549 Zero-Current Static Upper Voltage Limit
+        321,  # Overfrequency Derating Start Point
+        322,  # Enable Tariff Pricing Battery Logic (boolean)
+        323,  # Import Price Battery Discharge Threshold
+        324,  # Import Price Battery Charge Threshold
+        325,  # Export Price Battery Discharge Threshold
+        326,  # Underfrequency Derating Start Point
+        327,  # Underfrequency Loading Slope
+        328,  # Overfrequency Derating Stop Point
+        329,  # Enable BMS OCV Calibration (boolean)
+        330,  # Gateway Power Off Setting
+        332,  # Enable Micro Grid (boolean)
+        347,  # Disable LEDs (boolean)
+        348,  # LCD Screen Idle Timeout
+        349,  # Lead Acid Battery Calibration Upper Limit
+        350,  # Lead Acid Battery Calibration Lower Limit
+        351,  # Inverter Operating Mode
+        # --- EV charger ---
+        333,  # EV Charger Enable (boolean)
+        334,  # EV Charger Import Limit
+        335,  # EV Charger Reconnection Wait Time
+        336,  # EV Charger SOC Limit
+        # --- Fan and gateway ---
+        337,  # Enable Fan (boolean)
+        338,  # Fan Speed
+        339,  # Enable Gateway (boolean)
+        340,  # BMS Communication Mode
+        341,  # N-PE Relay Toggle
+        342,  # AFCI Setting
+        # --- Generator ---
+        343,  # Enable Generator (boolean)
+        344,  # Generator Start SOC (0–100 %)
+        345,  # Generator Stop SOC (0–100 %)
+        346,  # Generator Charge Power
+        # --- Smart load non-slot controls ---
+        540,  # Enable Smart Load (boolean)
+        541,  # Smart Load Control SOC (app range 50–100 %)
+        542,  # Enable General Load (boolean)
+        543,  # General Load Control SOC (app range 50–100 %)
+        544,  # Generator Control SOC (app range 10–90 %)
+        545,  # Generator Voltage Min
+        546,  # Generator Voltage Max
+        547,  # Generator Frequency Min
+        548,  # Generator Frequency Max
+        552,  # Smart Load Export Power
+        553,  # Smart Load Delay Time
+        # --- Three-phase grid/power quality ---
+        1048,  # Q Lock Out Power
+        1077,  # PV Input Mode
+        1081,  # QU Curve Volt High Point 1
+        1082,  # QU Curve Volt High Point 2
+        1083,  # QU Curve Volt Low Point 1
+        1084,  # QU Curve Volt Low Point 2
+        1085,  # Voltage Reactive Power Percentage
+        1086,  # QU Curve Maximum Inductive Reactive Power
+        1087,  # QU Curve Maximum Capacitive Reactive Power
+        1102,  # Export Limit (three-phase)
+        1103,  # Enable Export Limit (three-phase; boolean)
+        1125,  # Enable LoRa (three-phase)
+        1126,  # Meter CT Direction
+        1127,  # Load Shedding Voltage Upper Limit
+        1128,  # Load Shedding Voltage Lower Limit
+        1129,  # Load Shedding Minimum Active Power %
+        1130,  # Import Limit (three-phase)
+        1131,  # Enable Import Limit (three-phase; boolean)
+        1144,  # Enable Meter Wiring Detection (boolean)
+        1149,  # Meter Wiring Detection State
+        1156,  # Safety Function Control Word
+        1158,  # Active Power Per Thousand Ratio
+        1159,  # High Active Power High Point
+        1160,  # High Active Power Low Point
+        1161,  # Low Active Power High Point
+        1162,  # Low Active Power Low Point
+        1163,  # Qp Lock In Voltage
+        1164,  # Qp Lock Out Voltage
+        1165,  # Minimum Power Factor Setting
+        # --- Plant / dual-grid ---
+        4001,  # Dual Grid Supply Operational Mode
+        # --- Special commands (non-destructive) ---
+        5002,  # Send Wake Up Signal
+        5005,  # Enable PV Meter Preset
+        5006,  # Enable AC Meter Preset
+        5007,  # Enable N-PE
+        5008,  # Enable CT Auto Configuration
+        5009,  # Enable Auto Address Configuration
+        5011,  # Grid Power Limit
+        5012,  # AC Over Current Limit
+        # --- Peak shaving / export-import control (EMS installer) ---
+        20000,  # Enable Grid Export Limit
+        20001,  # Grid Export Limit
+        20002,  # Enable Peak Shaving
+        20003,  # Peak Shaving Threshold
+        20020,  # Enable Import Limit
+        20021,  # Import Limit Threshold
+        20050,  # Peak Shaving Power
+        20051,  # Valley Filling Power
+        # -----------------------------------------------------------------------
+        # DESTRUCTIVE — these registers trigger irreversible actions.
+        # The corresponding set_* helpers require confirm=True.
+        # -----------------------------------------------------------------------
+        162,  # Reset Energy Totals — clears all lifetime energy counters
+        1016,  # Three Phase Factory Reset Without Meter Reset
+        5003,  # Enable Black Start — activates EPS black-start mode
+        5004,  # Restore Factory Defaults — wipes all installer config
+    }
+)
+
 
 class WriteHoldingRegister(TransparentMessage, ABC):
     """Request & Response PDUs for function #6/Write Holding Register."""
@@ -251,10 +407,24 @@ class WriteHoldingRegister(TransparentMessage, ABC):
 class WriteHoldingRegisterRequest(WriteHoldingRegister, TransparentRequest):
     """Concrete PDU implementation for handling function #6/Write Holding Register request messages."""
 
+    # Non-wire class-level default: installer=False is the normal path.
+    # Only set as an instance attribute when True so that wire-decoded instances
+    # (built via decode_transparent_function without the kwarg) leave installer
+    # absent from __dict__, which keeps the existing __dict__ equality tests intact.
+    installer: bool = False
+
+    def __init__(self, register: int, value: int, installer: bool = False, **kwargs):
+        super().__init__(register, value, **kwargs)
+        if installer:
+            self.installer = installer
+
     def ensure_valid_state(self):
         """Sanity check our internal state."""
         super().ensure_valid_state()
-        if self.register not in WRITE_SAFE_REGISTERS:
+        if self.installer:
+            if self.register not in INSTALLER_WRITE_REGISTERS:
+                raise InvalidPduState(f"HR({self.register}) is not in the installer register set", self)
+        elif self.register not in WRITE_SAFE_REGISTERS:
             raise InvalidPduState(f"HR({self.register}) is not safe to write to", self)
 
     def expected_response(self):
@@ -269,8 +439,9 @@ class WriteHoldingRegisterResponse(WriteHoldingRegister, TransparentResponse):
     def ensure_valid_state(self):
         """Sanity check our internal state."""
         super().ensure_valid_state()
-        if self.register not in WRITE_SAFE_REGISTERS and not self.error:
+        known = WRITE_SAFE_REGISTERS | INSTALLER_WRITE_REGISTERS
+        if self.register not in known and not self.error:
             _logger.warning(f"{self} is not safe for writing")
 
 
-__all__ = ()
+__all__ = ("INSTALLER_WRITE_REGISTERS",)
