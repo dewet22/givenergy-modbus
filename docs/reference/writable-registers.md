@@ -69,12 +69,12 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 20 | `enable_ac_charge_upper_soc` | Enable AC charge upper % limit | bool |
 | 96 | `enable_charge` | Enable battery charging | bool |
 | 59 | `enable_discharge` | Enable battery discharging | bool |
-| 116 | `charge_upper_soc` | AC charge upper SOC % limit | 0–100 % |
+| 116 | `charge_upper_soc` | AC charge upper SOC % limit | 4–100 % |
 | 110 | `battery_soc_reserve` | Discharge floor / SOC reserve | 4–100 % |
 | 111 | `battery_charge_limit` | Battery charge power limit | 0–100 % of rated |
 | 112 | `battery_discharge_limit` | Battery discharge power limit | 0–100 % of rated |
-| 114 | `battery_discharge_min_power_reserve` | Minimum discharge power reserve | — |
-| 29 | `battery_soc_force_adjust` | SOC force-adjust | 0–100 |
+| 114 | `battery_discharge_min_power_reserve` | Minimum discharge power reserve | 4–100 % |
+| 29 | `battery_soc_force_adjust` | SOC force-adjust | 0 (Stop), 1 (Start), 3 (Charge Only) |
 
 ### Charge slots 1–10
 
@@ -112,7 +112,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 |---|---|---|---|
 | 27 | `enable_eco_mode` | Enable eco mode | bool |
 | 50 | `active_power_rate` | Active power rate | 0–100 % |
-| 163 | `reboot_inverter` | Restart inverter | write 1; non-damaging |
+| 163 | `reboot_inverter` | Restart inverter | write 100; non-damaging |
 | 166 | `real_time_control` | Real-time control | bool |
 | 199 | `enable_inverter_parallel_mode` | Enable parallel mode | bool |
 | 299 | `dc_discharge_10_lower_soc` | DC discharge 10 lower SOC % limit | 0–100 % |
