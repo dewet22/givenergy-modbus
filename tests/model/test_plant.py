@@ -1244,7 +1244,8 @@ def test_from_actual():
         "e_self_consumption_today": 35.6,
         # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 1698.7 − 163.9)
         "e_self_consumption_total": 1534.8,
-        # computed: max(0, pv − grid_out − battery_charge + ac_charge) = max(0, 38.0 − 2.4 − 5.7 + 4.3)
+        # computed: max(0, (pv − grid_out) − max(0, battery_charge − ac_charge))
+        #         = max(0, 38.0 − 2.4 − max(0, 5.7 − 4.3)) = max(0, 35.6 − 1.4) = 34.2
         "e_pv_direct_today": 34.2,
         "e_battery_charge_today_alt1": 5.7,  # IR(36)
         "e_battery_discharge_today_alt1": 5.9,  # IR(37)

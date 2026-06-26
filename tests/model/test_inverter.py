@@ -536,8 +536,9 @@ def test_from_registers(register_cache):
         "e_self_consumption_today": 8.1,
         # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 93.0 − 0.6)
         "e_self_consumption_total": 92.4,
-        # computed: max(0, pv − grid_out − battery_charge + ac_charge) = max(0, 8.1 − 0.0 − 9.0 + 9.3)
-        "e_pv_direct_today": 8.4,
+        # computed: max(0, (pv − grid_out) − max(0, battery_charge − ac_charge))
+        #         = max(0, 8.1 − 0.0 − max(0, 9.0 − 9.3)) = 8.1 (all charge was AC → no PV-to-battery)
+        "e_pv_direct_today": 8.1,
         "e_battery_charge_today_alt1": 9.0,  # IR(36)
         "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
@@ -890,8 +891,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_self_consumption_today": 3.8,
         # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 172.5 − 0.9)
         "e_self_consumption_total": 171.6,
-        # computed: max(0, pv − grid_out − battery_charge + ac_charge) = max(0, 3.8 − 0.0 − 9.1 + 9.3)
-        "e_pv_direct_today": 4.0,
+        # computed: max(0, (pv − grid_out) − max(0, battery_charge − ac_charge))
+        #         = max(0, 3.8 − 0.0 − max(0, 9.1 − 9.3)) = 3.8 (all charge was AC → no PV-to-battery)
+        "e_pv_direct_today": 3.8,
         "e_battery_charge_today_alt1": 9.1,  # IR(36)
         "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
@@ -1487,27 +1489,34 @@ def _gen1_pv_direct_cache(pv_today, grid_out_day, battery_charge, ac_charge):
 @pytest.mark.parametrize(
     "pv_today, grid_out_day, battery_charge, ac_charge, expected",
     [
-        # PV 10, export 1, battery_charge 7 (3 PV + 4 AC), ac_charge 4 → 10−1−7+4 = 6
+        # PV 10, export 1, battery_charge 7 (3 PV + 4 AC), ac_charge 4 → pv_to_batt 3 → 10−1−3 = 6
         (10.0, 1.0, 7.0, 4.0, 6.0),
-        # pure-solar (no AC charge): ac_charge term is a no-op → 10−1−3+0 = 6
+        # pure-solar (no AC charge): pv_to_batt = battery_charge → 10−1−3 = 6
         (10.0, 1.0, 3.0, 0.0, 6.0),
-        # export-heavy: difference goes negative → clamped at 0
+        # export-heavy: difference goes negative → clamped at 0 (lower bound)
         (5.0, 8.0, 0.0, 0.0, 0.0),
         # all PV straight to load (no charge, no export) → 9
         (9.0, 0.0, 0.0, 0.0, 9.0),
+        # AC-charge overcompensation: ac_charge (9.3) > battery_charge (9.0) — conversion
+        # loss / counter skew. pv_to_batt floors at 0, so result is clamped to pv − export
+        # (8.1), NOT inflated to 8.4 (upper bound — Codex review on #313).
+        (8.1, 0.0, 9.0, 9.3, 8.1),
     ],
 )
 def test_e_pv_direct_today_formula(pv_today, grid_out_day, battery_charge, ac_charge, expected):
-    """PV-direct = max(0, pv − export − battery_charge + ac_charge) on a DC hybrid (GEN1).
+    """PV-direct = max(0, (pv − export) − max(0, battery_charge − ac_charge)) on a GEN1 hybrid.
 
-    The + ac_charge term nets out grid-sourced battery charging that e_battery_charge
-    lumps in; the clamp keeps it ≥ 0 when export exceeds available PV.
+    The ac_charge term nets out grid-sourced battery charging that e_battery_charge lumps
+    in; the lower clamp keeps it ≥ 0 when export exceeds PV; flooring pv_to_battery at 0
+    keeps direct PV ≤ total on-site PV when ac_charge overshoots battery_charge.
     """
     inv = SinglePhaseInverter.from_register_cache(
         _gen1_pv_direct_cache(pv_today, grid_out_day, battery_charge, ac_charge)
     )
     assert inv.e_pv_direct_today == pytest.approx(expected)  # type: ignore[attr-defined]
     assert "e_pv_direct_today" in inv.model_dump()
+    # Invariant: direct PV is a subset of on-site PV self-consumption, never larger.
+    assert inv.e_pv_direct_today <= inv.e_self_consumption_today + 1e-9  # type: ignore[attr-defined]
 
 
 def test_e_pv_direct_today_none_on_ineligible_models():
