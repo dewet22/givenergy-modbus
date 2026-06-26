@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-06-26
+
+### ✨ Added
+
+- installer-tier write surface (INSTALLER_WRITE_REGISTERS + installer_command) (#315) ([06e1bf0](https://github.com/dewet22/givenergy-modbus/commit/06e1bf02f3c92288077e73e46aa391747070ebb6))
+- decode gap registers — HR63-83, HR308-310, 3ph HR1000/1005/1048/1077; gated-off HV cabinet and peak-shaving blocks (#316) ([780cd54](https://github.com/dewet22/givenergy-modbus/commit/780cd540fd53e5130c37ff0d22b2da72815a2405))
+
+### 🔧 Maintenance
+
+- add app 4.0.7 register inventory and audit reconciliation baseline (#314) ([fa12d33](https://github.com/dewet22/givenergy-modbus/commit/fa12d3385290ec2ed402cb2bc3ea85c6f37aba07))
+
 ## [2.5.13] - 2026-06-26
 
 ### ✨ Added
