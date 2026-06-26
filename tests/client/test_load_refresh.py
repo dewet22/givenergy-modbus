@@ -1,6 +1,6 @@
 """Tests for Client.load_config() and Client.refresh() request dispatch."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
@@ -89,6 +89,62 @@ async def test_load_config_hybrid_gen1_does_not_poll_smart_load():
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _hr(540, 60) not in _reqs(mock_exec)
+
+
+async def test_load_config_no_model_polls_hv_cabinet():
+    """HR(499-510) HV cabinet topology block is never polled — gate set is empty.
+
+    The block is defined from the GE app 4.0.7 binary but no model has been confirmed to
+    respond to the read on real hardware. When a model is confirmed, add it to
+    _HV_CABINET_MODELS; this test will need updating at that point.
+    """
+    for model in (Model.HYBRID_GEN1, Model.HYBRID_3PH, Model.AC, Model.ALL_IN_ONE, Model.EMS):
+        client = _client_with_caps(model)
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+        assert _hr(499, 12) not in _reqs(mock_exec), f"{model}: should not poll HV cabinet block"
+
+
+async def test_load_config_no_model_polls_peak_shaving():
+    """HR(20000-20051) peak-shaving block is never polled — gate set is empty.
+
+    The block is defined from the GE app 4.0.7 binary but no model has been confirmed to
+    respond to the read on real hardware. When a model is confirmed, add it to
+    _PEAK_SHAVING_MODELS; this test will need updating at that point.
+    """
+    for model in (Model.HYBRID_GEN1, Model.HYBRID_3PH, Model.AC, Model.ALL_IN_ONE, Model.EMS):
+        client = _client_with_caps(model)
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+        assert _hr(20000, 52) not in _reqs(mock_exec), f"{model}: should not poll peak-shaving block"
+
+
+async def test_load_config_polls_hv_cabinet_when_capable():
+    """When has_hv_cabinet_block is True, HR(499-510) is included in load_config().
+
+    Exercises the True branch of the gate; in production this fires once a real
+    hardware capture confirms the block responds and a model is added to _HV_CABINET_MODELS.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    caps_cls = type(client.plant.capabilities)
+    with patch.object(caps_cls, "has_hv_cabinet_block", new_callable=PropertyMock, return_value=True):
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+    assert _hr(499, 12) in _reqs(mock_exec)
+
+
+async def test_load_config_polls_peak_shaving_when_capable():
+    """When has_peak_shaving_block is True, HR(20000-20051) is included in load_config().
+
+    Exercises the True branch of the gate; in production this fires once a real
+    hardware capture confirms the block responds and a model is added to _PEAK_SHAVING_MODELS.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    caps_cls = type(client.plant.capabilities)
+    with patch.object(caps_cls, "has_peak_shaving_block", new_callable=PropertyMock, return_value=True):
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+    assert _hr(20000, 52) in _reqs(mock_exec)
 
 
 async def test_load_config_three_phase():

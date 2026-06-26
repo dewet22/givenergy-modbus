@@ -1325,6 +1325,50 @@ def test_from_actual():
         "e_battery_charge_total_alt1": 946.6,  # IR(181)
         "e_battery_discharge_today_alt2": 5.9,  # IR(182)
         "e_battery_charge_today_alt2": 5.7,  # IR(183)
+        "v_ac_low_limit_1": 184.0,
+        "v_ac_high_limit_1": 274.0,
+        "f_ac_low_limit_1": 47.0,
+        "f_ac_high_limit_1": 51.98,
+        "t_ac_low_voltage_1": 1.26,
+        "t_ac_high_voltage_1": 0.27,
+        "t_ac_low_freq_1": 0.24,
+        "t_ac_high_freq_1": 0.28,
+        "v_ac_low_limit_2": 184.0,
+        "v_ac_high_limit_2": 262.0,
+        "f_ac_low_limit_2": 47.45,
+        "f_ac_high_limit_2": 52.0,
+        "t_ac_low_voltage_2": 1.26,
+        "t_ac_high_voltage_2": 0.52,
+        "t_ac_low_freq_2": 0.01,
+        "t_ac_high_freq_2": 0.28,
+        "v_ac_low_limit_3": 175.5,
+        "v_ac_high_limit_3": 283.7,
+        "f_ac_low_limit_3": 47.0,
+        "f_ac_high_limit_3": 52.0,
+        "v_ac_10min_protect": 274.0,
+        "battery_nominal_power": None,
+        "battery_nominal_current": None,
+        "battery_max_charge_pct": None,
+        "hv_cabinet_count": None,
+        "hv_racks_per_cabinet": None,
+        "hv_batteries_per_rack": None,
+        "hv_cells_per_battery": None,
+        "hv_total_cells": None,
+        "hv_temp_sensors_per_battery": None,
+        "hv_total_temp_sensors": None,
+        "hv_max_pcs_power": None,
+        "hv_max_charge_voltage": None,
+        "hv_min_discharge_voltage": None,
+        "hv_max_charge_current": None,
+        "hv_parallel_count": None,
+        "peak_shaving_export_limit_enabled": None,
+        "peak_shaving_export_limit": None,
+        "peak_shaving_enabled": None,
+        "peak_shaving_threshold": None,
+        "peak_shaving_import_limit_enabled": None,
+        "peak_shaving_import_limit": None,
+        "peak_shaving_power": None,
+        "valley_filling_power": None,
         "p_combined_generation": None,
         "grid_import_power": 39,  # p_grid_out=-39 → importing
         "grid_export_power": 0,
@@ -1959,6 +2003,46 @@ class TestPlantCapabilitiesProperties:
             Model.GATEWAY,
         ):
             assert not self._caps(m).has_smart_load_block, f"{m} should not have the Smart Load block"
+
+    def test_has_hv_cabinet_block_empty_for_all_models(self):
+        """No model carries a confirmed readable HR(499-510) HV cabinet topology block yet.
+
+        The gate set is deliberately empty pending live-hardware confirmation. When a
+        model is confirmed, add it to _HV_CABINET_MODELS and assert it here.
+        """
+        for m in (
+            Model.HYBRID,
+            Model.HYBRID_GEN1,
+            Model.HYBRID_GEN3,
+            Model.HYBRID_GEN4,
+            Model.AC,
+            Model.AC_3PH,
+            Model.ALL_IN_ONE,
+            Model.HYBRID_3PH,
+            Model.EMS,
+            Model.GATEWAY,
+        ):
+            assert not self._caps(m).has_hv_cabinet_block, f"{m} should not have the HV cabinet block"
+
+    def test_has_peak_shaving_block_empty_for_all_models(self):
+        """No model carries a confirmed readable HR(20000-20051) peak-shaving block yet.
+
+        The gate set is deliberately empty pending live-hardware confirmation. When a
+        model is confirmed, add it to _PEAK_SHAVING_MODELS and assert it here.
+        """
+        for m in (
+            Model.HYBRID,
+            Model.HYBRID_GEN1,
+            Model.HYBRID_GEN3,
+            Model.HYBRID_GEN4,
+            Model.AC,
+            Model.AC_3PH,
+            Model.ALL_IN_ONE,
+            Model.HYBRID_3PH,
+            Model.EMS,
+            Model.GATEWAY,
+        ):
+            assert not self._caps(m).has_peak_shaving_block, f"{m} should not have the peak-shaving block"
 
     def test_is_ems_true(self):
         """EMS and EMS_COMMERCIAL report is_ems True."""

@@ -118,6 +118,16 @@ _AC_CONFIG_BLOCK_MODELS: frozenset[Model] = frozenset(
 # smart_load_slot_* decode Defs and set_smart_load_slot_* write helpers are unaffected.
 _SMART_LOAD_CAPABLE_MODELS: frozenset[Model] = frozenset()
 
+# Models with a readable HV cabinet topology block at HR(499-510). Deliberately empty:
+# no model has been confirmed to return data on real hardware. Gate off until a capture
+# confirms the block responds; the hv_* decode Defs are unaffected.
+_HV_CABINET_MODELS: frozenset[Model] = frozenset()
+
+# Models with a readable peak-shaving block at HR(20000-20051). Deliberately empty:
+# no model has been confirmed to return data on real hardware. Gate off until a capture
+# confirms the block responds; the peak_shaving_* decode Defs are unaffected.
+_PEAK_SHAVING_MODELS: frozenset[Model] = frozenset()
+
 
 _CAPABILITIES_LEGACY_ALIASES = {
     "inverter_slave": "inverter_address",
@@ -482,6 +492,24 @@ class PlantCapabilities(BaseModel):
         `_SMART_LOAD_CAPABLE_MODELS` (#179).
         """
         return self.device_type in _SMART_LOAD_CAPABLE_MODELS
+
+    @property
+    def has_hv_cabinet_block(self) -> bool:
+        """Return True if this system exposes a readable HR(499–510) HV cabinet topology block.
+
+        Currently False for every model: no inverter has been confirmed to answer the read on
+        real hardware. See `_HV_CABINET_MODELS` (#265).
+        """
+        return self.device_type in _HV_CABINET_MODELS
+
+    @property
+    def has_peak_shaving_block(self) -> bool:
+        """Return True if this system exposes a readable HR(20000–20051) peak-shaving block.
+
+        Currently False for every model: no inverter has been confirmed to answer the read on
+        real hardware. See `_PEAK_SHAVING_MODELS`.
+        """
+        return self.device_type in _PEAK_SHAVING_MODELS
 
     @property
     def is_ems(self) -> bool:

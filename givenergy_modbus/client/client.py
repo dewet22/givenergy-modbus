@@ -995,6 +995,19 @@ class Client:
             # set_smart_load_slot_* write helpers are unaffected. Unmodelled registers in
             # 540-553 and 574-599 are silently ignored by Plant.update(). (#48, #179)
             reqs.append(ReadHoldingRegistersRequest(base_register=540, register_count=60, device_address=inverter))
+        if caps.has_hv_cabinet_block:
+            # HR(499-510) — HV cabinet topology (12 registers: counts, ratings). Gated
+            # because the block was extracted from the GE app 4.0.7 binary and no model
+            # has been confirmed to answer a live read. The gate set is empty until a
+            # capture confirms the block responds. (#265)
+            reqs.append(ReadHoldingRegistersRequest(base_register=499, register_count=12, device_address=inverter))
+        if caps.has_peak_shaving_block:
+            # HR(20000-20051) — peak-shaving / valley-filling (sparse: 20000-20003,
+            # 20020-20021, 20050-20051). Gated because the block was extracted from the
+            # GE app 4.0.7 binary and no model has been confirmed to answer a live read.
+            # The 52-register window covers all defined offsets; undefined registers in
+            # the middle are silently ignored by Plant.update().
+            reqs.append(ReadHoldingRegistersRequest(base_register=20000, register_count=52, device_address=inverter))
         if caps.has_ac_config_block:
             # HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac
             # (HR313/314), enable_eps (HR317), pause mode/slot (HR318-320). Present on

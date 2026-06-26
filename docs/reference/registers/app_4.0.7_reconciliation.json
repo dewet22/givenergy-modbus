@@ -1,8 +1,8 @@
 {
   "app_hr_count": 460,
-  "code_hr_count": 320,
-  "matched_count": 292,
-  "app_only_count": 168,
+  "code_hr_count": 368,
+  "matched_count": 340,
+  "app_only_count": 120,
   "app_only": [
     {
       "addr": 5,
@@ -32,111 +32,6 @@
     {
       "addr": 12,
       "name": "Battery Serial Number Characters 9 & 10",
-      "in_write_safe": false
-    },
-    {
-      "addr": 63,
-      "name": "AC Undervoltage Limit 1",
-      "in_write_safe": false
-    },
-    {
-      "addr": 64,
-      "name": "AC Overvoltage Limit 1",
-      "in_write_safe": false
-    },
-    {
-      "addr": 65,
-      "name": "AC Underfrequency Limit 1",
-      "in_write_safe": false
-    },
-    {
-      "addr": 66,
-      "name": "AC Overfrequency Limit 1",
-      "in_write_safe": false
-    },
-    {
-      "addr": 67,
-      "name": "AC Undervoltage 1 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 68,
-      "name": "AC Overvoltage 1 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 69,
-      "name": "AC Underfrequency 1 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 70,
-      "name": "AC Overfrequency 1 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 71,
-      "name": "AC Undervoltage Limit 2",
-      "in_write_safe": false
-    },
-    {
-      "addr": 72,
-      "name": "AC Overvoltage Limit 2",
-      "in_write_safe": false
-    },
-    {
-      "addr": 73,
-      "name": "AC Underfrequency Limit 2",
-      "in_write_safe": false
-    },
-    {
-      "addr": 74,
-      "name": "AC Overfrequency Limit 2",
-      "in_write_safe": false
-    },
-    {
-      "addr": 75,
-      "name": "AC Undervoltage 2 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 76,
-      "name": "AC Overvoltage 2 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 77,
-      "name": "AC Underfrequency 2 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 78,
-      "name": "AC Overfrequency 2 Protection Time",
-      "in_write_safe": false
-    },
-    {
-      "addr": 79,
-      "name": "AC Undervoltage Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 80,
-      "name": "AC Overvoltage Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 81,
-      "name": "AC Underfrequency Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 82,
-      "name": "AC Overfrequency Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 83,
-      "name": "AC Voltage Protection 10 Minute Average",
       "in_write_safe": false
     },
     {
@@ -232,21 +127,6 @@
     {
       "addr": 307,
       "name": "EPS Nominal Voltage",
-      "in_write_safe": false
-    },
-    {
-      "addr": 308,
-      "name": "Battery Nominal Power",
-      "in_write_safe": false
-    },
-    {
-      "addr": 309,
-      "name": "Battery Nominal Current",
-      "in_write_safe": false
-    },
-    {
-      "addr": 310,
-      "name": "Battery Max Charge %",
       "in_write_safe": false
     },
     {
@@ -425,66 +305,6 @@
       "in_write_safe": false
     },
     {
-      "addr": 499,
-      "name": "DC Cabinet Count",
-      "in_write_safe": false
-    },
-    {
-      "addr": 500,
-      "name": "Racks Per DC Cabinet",
-      "in_write_safe": false
-    },
-    {
-      "addr": 501,
-      "name": "Batteries Per Rack",
-      "in_write_safe": false
-    },
-    {
-      "addr": 502,
-      "name": "Cells Per Battery",
-      "in_write_safe": false
-    },
-    {
-      "addr": 503,
-      "name": "Total Cell Count",
-      "in_write_safe": false
-    },
-    {
-      "addr": 504,
-      "name": "Temperature Sensors Per Battery",
-      "in_write_safe": false
-    },
-    {
-      "addr": 505,
-      "name": "Total Temperature Sensor Count",
-      "in_write_safe": false
-    },
-    {
-      "addr": 506,
-      "name": "Max PCS Output Power",
-      "in_write_safe": false
-    },
-    {
-      "addr": 507,
-      "name": "Max DC Charge Voltage",
-      "in_write_safe": false
-    },
-    {
-      "addr": 508,
-      "name": "Min DC Discharge Voltage",
-      "in_write_safe": false
-    },
-    {
-      "addr": 509,
-      "name": "Max Charge Current",
-      "in_write_safe": false
-    },
-    {
-      "addr": 510,
-      "name": "Parallel System Count",
-      "in_write_safe": false
-    },
-    {
       "addr": 540,
       "name": "Enable Smart Load",
       "in_write_safe": false
@@ -540,16 +360,6 @@
       "in_write_safe": false
     },
     {
-      "addr": 1000,
-      "name": "System Enable",
-      "in_write_safe": false
-    },
-    {
-      "addr": 1005,
-      "name": "Real-Time Control",
-      "in_write_safe": true
-    },
-    {
       "addr": 1012,
       "name": "Inverter Model, Battery Type, Battery Power & Special Functions",
       "in_write_safe": false
@@ -562,16 +372,6 @@
     {
       "addr": 1016,
       "name": "Three Phase Factory Reset Without Meter Reset",
-      "in_write_safe": false
-    },
-    {
-      "addr": 1048,
-      "name": "Q Lock Out Power",
-      "in_write_safe": false
-    },
-    {
-      "addr": 1077,
-      "name": "PV Input Mode",
       "in_write_safe": false
     },
     {
@@ -802,46 +602,6 @@
     {
       "addr": 5023,
       "name": "Critical Load Current B",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20000,
-      "name": "Enable Grid Export Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20001,
-      "name": "Grid Export Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20002,
-      "name": "Enable Peak Shaving",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20003,
-      "name": "Peak Shaving Threshold",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20020,
-      "name": "Enable Import Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20021,
-      "name": "Import Limit Threshold",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20050,
-      "name": "Peak Shaving Power",
-      "in_write_safe": false
-    },
-    {
-      "addr": 20051,
-      "name": "Valley Filling Power",
       "in_write_safe": false
     }
   ],
