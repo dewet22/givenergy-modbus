@@ -119,6 +119,7 @@ def test_inverter():
             "e_consumption_today": None,
             "e_self_consumption_today": None,
             "e_self_consumption_total": None,
+            "e_pv_direct_today": None,
             "e_battery_charge_today_alt1": None,
             "e_battery_discharge_today_alt1": None,
             "countdown": None,
@@ -535,6 +536,8 @@ def test_from_registers(register_cache):
         "e_self_consumption_today": 8.1,
         # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 93.0 − 0.6)
         "e_self_consumption_total": 92.4,
+        # computed: max(0, pv − grid_out − battery_charge + ac_charge) = max(0, 8.1 − 0.0 − 9.0 + 9.3)
+        "e_pv_direct_today": 8.4,
         "e_battery_charge_today_alt1": 9.0,  # IR(36)
         "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
@@ -887,6 +890,8 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_self_consumption_today": 3.8,
         # computed: max(0, e_pv_generation_total − e_grid_out_total) = max(0, 172.5 − 0.9)
         "e_self_consumption_total": 171.6,
+        # computed: max(0, pv − grid_out − battery_charge + ac_charge) = max(0, 3.8 − 0.0 − 9.1 + 9.3)
+        "e_pv_direct_today": 4.0,
         "e_battery_charge_today_alt1": 9.1,  # IR(36)
         "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
@@ -1457,6 +1462,97 @@ def test_e_self_consumption_none_when_any_input_missing():
     # total: missing grid_out → None
     inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(45): 0, IR(46): 930}))
     assert inv.e_self_consumption_total is None  # type: ignore[attr-defined]
+
+
+def _gen1_pv_direct_cache(pv_today, grid_out_day, battery_charge, ac_charge):
+    """A HYBRID_GEN1 register cache populated for the e_pv_direct_today inputs.
+
+    GEN1 routes e_battery_charge_today → alt2 (IR183); ac_charge is IR(35).
+    All energy registers are deci-scaled (0.1 kWh).
+    """
+    from givenergy_modbus.model.register import HR, IR
+
+    return RegisterCache(
+        {
+            HR(0): 0x2001,  # HYBRID_GEN1
+            HR(21): 449,
+            IR(44): round(pv_today * 10),  # e_pv_generation_today
+            IR(25): round(grid_out_day * 10),  # e_grid_out_day
+            IR(183): round(battery_charge * 10),  # e_battery_charge_today (GEN1 alt2)
+            IR(35): round(ac_charge * 10),  # e_ac_charge_today
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "pv_today, grid_out_day, battery_charge, ac_charge, expected",
+    [
+        # PV 10, export 1, battery_charge 7 (3 PV + 4 AC), ac_charge 4 → 10−1−7+4 = 6
+        (10.0, 1.0, 7.0, 4.0, 6.0),
+        # pure-solar (no AC charge): ac_charge term is a no-op → 10−1−3+0 = 6
+        (10.0, 1.0, 3.0, 0.0, 6.0),
+        # export-heavy: difference goes negative → clamped at 0
+        (5.0, 8.0, 0.0, 0.0, 0.0),
+        # all PV straight to load (no charge, no export) → 9
+        (9.0, 0.0, 0.0, 0.0, 9.0),
+    ],
+)
+def test_e_pv_direct_today_formula(pv_today, grid_out_day, battery_charge, ac_charge, expected):
+    """PV-direct = max(0, pv − export − battery_charge + ac_charge) on a DC hybrid (GEN1).
+
+    The + ac_charge term nets out grid-sourced battery charging that e_battery_charge
+    lumps in; the clamp keeps it ≥ 0 when export exceeds available PV.
+    """
+    inv = SinglePhaseInverter.from_register_cache(
+        _gen1_pv_direct_cache(pv_today, grid_out_day, battery_charge, ac_charge)
+    )
+    assert inv.e_pv_direct_today == pytest.approx(expected)  # type: ignore[attr-defined]
+    assert "e_pv_direct_today" in inv.model_dump()
+
+
+def test_e_pv_direct_today_none_on_ineligible_models():
+    """AC-coupled and All-in-One return None — their PV registers are mislabelled (#293).
+
+    Both have e_battery_charge_today resolving (AC/AIO route today→alt1), so a plain
+    None-guard would let them through; the explicit topology gate is what blocks them.
+    """
+    from givenergy_modbus.model.register import HR, IR
+
+    # AC-coupled (0x3001): every input present, but is_ac_coupled gates it out.
+    ac = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x3001, HR(21): 282, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
+    )
+    assert ac.is_ac_coupled is True  # type: ignore[attr-defined]
+    assert ac.e_battery_charge_today == 7.0  # resolves (today→alt1) — so the gate, not None-prop, blocks
+    assert ac.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+    # All-in-One (0x8001): PV register is non-PV here (#293) → gated out.
+    aio = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x8001, HR(21): 612, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
+    )
+    assert aio.e_battery_charge_today == 7.0
+    assert aio.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+
+def test_e_pv_direct_today_none_when_battery_charge_unavailable():
+    """A DC model with no battery-charge routing (e.g. GEN3) → None, not a wrong value.
+
+    e_battery_charge_today only routes on HYBRID_GEN1 among DC models, so GEN3 returns
+    None and the field propagates that rather than treating charge as zero.
+    """
+    from givenergy_modbus.model.register import HR, IR
+
+    gen3 = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x2003, HR(21): 303, IR(44): 100, IR(25): 10, IR(35): 40})
+    )
+    assert gen3.e_battery_charge_today is None
+    assert gen3.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+    # Missing ac_charge (IR35) on an otherwise-eligible GEN1 → None (no partial guess).
+    no_ac = SinglePhaseInverter.from_register_cache(
+        RegisterCache({HR(0): 0x2001, HR(21): 449, IR(44): 100, IR(25): 10, IR(183): 70})
+    )
+    assert no_ac.e_pv_direct_today is None  # type: ignore[attr-defined]
 
 
 def test_three_phase_has_no_computed_consumption_and_native_ac_charge():
