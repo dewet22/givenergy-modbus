@@ -879,27 +879,27 @@ def set_battery_max_charge_pct(pct: int) -> list[WriteHoldingRegisterRequest]:
 
 def set_anti_islanding_detection(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable anti-islanding detection (HR115). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ANTI_ISLANDING_DETECTION, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ANTI_ISLANDING_DETECTION, 1 if enabled else 0, installer=True)]
 
 
 def set_grid_import_limit_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable the grid import limit (HR102). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.GRID_IMPORT_LIMIT_ENABLED, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.GRID_IMPORT_LIMIT_ENABLED, 1 if enabled else 0, installer=True)]
 
 
 def set_enable_plant_mode(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable plant mode (HR300). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_PLANT_MODE, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_PLANT_MODE, 1 if enabled else 0, installer=True)]
 
 
 def set_enable_micro_grid(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable micro grid mode (HR332). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_MICRO_GRID, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_MICRO_GRID, 1 if enabled else 0, installer=True)]
 
 
 def set_enable_ev_charger(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable the EV charger (HR333). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EV_CHARGER, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EV_CHARGER, 1 if enabled else 0, installer=True)]
 
 
 def set_ev_charger_soc_limit(soc: int) -> list[WriteHoldingRegisterRequest]:
@@ -912,7 +912,7 @@ def set_ev_charger_soc_limit(soc: int) -> list[WriteHoldingRegisterRequest]:
 
 def set_enable_generator(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable the generator (HR343). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_GENERATOR, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_GENERATOR, 1 if enabled else 0, installer=True)]
 
 
 def set_generator_start_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
@@ -933,7 +933,7 @@ def set_generator_stop_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
 
 def set_enable_smart_load(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable smart load (HR540). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_SMART_LOAD, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_SMART_LOAD, 1 if enabled else 0, installer=True)]
 
 
 def set_smart_load_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
@@ -962,22 +962,23 @@ def set_generator_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
 
 def set_enable_export_limit_3ph(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable export limit on three-phase inverters (HR1103). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EXPORT_LIMIT_3PH, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_EXPORT_LIMIT_3PH, 1 if enabled else 0, installer=True)]
 
 
 def set_enable_import_limit_3ph(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable import limit on three-phase inverters (HR1131). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_IMPORT_LIMIT_3PH, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_IMPORT_LIMIT_3PH, 1 if enabled else 0, installer=True)]
 
 
 def set_peak_shaving_export_limit_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable peak-shaving grid export limit (HR20000). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_EXPORT_LIMIT_ENABLED, int(enabled), installer=True)]
+    val = 1 if enabled else 0
+    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_EXPORT_LIMIT_ENABLED, val, installer=True)]
 
 
 def set_peak_shaving_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable peak shaving (HR20002). Installer-tier."""
-    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_ENABLED, int(enabled), installer=True)]
+    return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_ENABLED, 1 if enabled else 0, installer=True)]
 
 
 # --- Destructive installer commands — require confirm=True ---

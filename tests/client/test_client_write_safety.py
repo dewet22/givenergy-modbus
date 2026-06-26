@@ -317,12 +317,11 @@ def test_installer_flag_excluded_from_eq():
     assert req_normal == req_installer
 
 
-def test_installer_request_encodes_same_as_normal():
+def test_installer_request_encodes_same_as_normal(monkeypatch):
     """Installer flag is non-wire — encoded bytes are identical to a normal request."""
-    req_normal = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000)
+    monkeypatch.setattr(WriteHoldingRegisterRequest, "ensure_valid_state", lambda self: None)
+    req_normal = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=False)
     req_installer = WriteHoldingRegisterRequest(_INSTALLER_REG, 5000, installer=True)
-    # Override ensure_valid_state so we can encode without the safety check
-    req_normal.installer = True  # allow encoding to proceed on the normal req too
     assert req_normal.encode() == req_installer.encode()
 
 
