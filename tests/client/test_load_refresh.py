@@ -1,6 +1,6 @@
 """Tests for Client.load_config() and Client.refresh() request dispatch."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
@@ -117,6 +117,34 @@ async def test_load_config_no_model_polls_peak_shaving():
         with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
             await client.load_config()
         assert _hr(20000, 52) not in _reqs(mock_exec), f"{model}: should not poll peak-shaving block"
+
+
+async def test_load_config_polls_hv_cabinet_when_capable():
+    """When has_hv_cabinet_block is True, HR(499-510) is included in load_config().
+
+    Exercises the True branch of the gate; in production this fires once a real
+    hardware capture confirms the block responds and a model is added to _HV_CABINET_MODELS.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    caps_cls = type(client.plant.capabilities)
+    with patch.object(caps_cls, "has_hv_cabinet_block", new_callable=PropertyMock, return_value=True):
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+    assert _hr(499, 12) in _reqs(mock_exec)
+
+
+async def test_load_config_polls_peak_shaving_when_capable():
+    """When has_peak_shaving_block is True, HR(20000-20051) is included in load_config().
+
+    Exercises the True branch of the gate; in production this fires once a real
+    hardware capture confirms the block responds and a model is added to _PEAK_SHAVING_MODELS.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN1)
+    caps_cls = type(client.plant.capabilities)
+    with patch.object(caps_cls, "has_peak_shaving_block", new_callable=PropertyMock, return_value=True):
+        with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+            await client.load_config()
+    assert _hr(20000, 52) in _reqs(mock_exec)
 
 
 async def test_load_config_three_phase():
