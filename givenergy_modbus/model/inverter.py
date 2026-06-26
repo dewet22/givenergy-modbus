@@ -994,6 +994,56 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             return None
         return max(0.0, pv - grid_out)
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_pv_direct_today(self) -> float | None:
+        """PV energy used directly by load today (kWh): solar bypassing battery and grid.
+
+        DERIVED: (pv_generation − grid_export) − pv_to_battery, clamped to [0, pv − grid_export],
+        where pv_to_battery = max(0, battery_charge − ac_charge).
+
+        e_battery_charge lumps PV-sourced and AC-sourced charge into one counter, so the
+        PV portion that went to the battery is battery_charge − ac_charge — subtracting it
+        leaves the PV that reached load directly. Without the ac_charge term the figure
+        would under-count by the day's AC-charge energy on time-of-use tariffs (Octopus Go
+        / Predbat); for pure-solar systems ac_charge is 0 and it's a no-op.
+
+        Both bounds matter. The lower clamp (≥ 0) handles export exceeding PV. The upper
+        clamp (≤ pv − grid_export, via flooring pv_to_battery at 0) handles AC→DC
+        conversion loss / counter skew making ac_charge momentarily exceed battery_charge:
+        without it, direct PV could exceed total on-site PV self-consumption, which is
+        nonsensical (a subset can't beat its superset) — Codex review on #313.
+
+        Restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One units the
+        PV-generation registers (IR44/45-46) are mislabelled — they read non-zero on
+        battery-only hardware (#293) — so the field returns None there rather than a
+        confident wrong value. In practice e_battery_charge_today only routes on
+        HYBRID_GEN1 today (see _BATTERY_ENERGY_SOURCE / #184), so the field is currently
+        GEN1-effective and returns None on other DC models until that map widens.
+
+        Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which
+        single-phase firmware does not expose (three-phase only, IR1378/9).
+
+        NOT monotonically increasing intraday — a grid-export burst can dip it — so
+        consumers using state_class TOTAL_INCREASING MUST apply their own monotonic clamp
+        (e.g. HA's monotonic=True path). Returns None if any input is unavailable or the
+        model is ineligible.
+        """
+        if self.is_ac_coupled or self.model is Model.ALL_IN_ONE:  # type: ignore[attr-defined]
+            return None
+        pv = self.e_pv_generation_today  # type: ignore[attr-defined]
+        grid_out = self.e_grid_out_day  # type: ignore[attr-defined]
+        battery_charge = self.e_battery_charge_today
+        ac_charge = self.e_ac_charge_today  # type: ignore[attr-defined]
+        if None in (pv, grid_out, battery_charge, ac_charge):
+            return None
+        # PV that charged the battery, floored at 0: AC→DC conversion loss / counter skew
+        # can push ac_charge above battery_charge, which would otherwise make this negative
+        # and inflate direct PV beyond total on-site PV. Round to the inputs' native 0.1 kWh
+        # resolution — a deci-scaled difference accrues float noise that 1dp removes losslessly.
+        pv_to_battery = max(0.0, battery_charge - ac_charge)
+        return round(max(0.0, pv - grid_out - pv_to_battery), 1)
+
     # Plain @property (not @computed_field) so the deprecated alias doesn't
     # appear in model_dump() output. See #84 — renamed to work_time_total_hours
     # to put the unit at the call site.
