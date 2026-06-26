@@ -191,12 +191,14 @@ def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
 # When merged with InverterRegisterGetter.REGISTER_LUT these entries win (dict update semantics).
 _THREE_PHASE_LUT = {
     #
-    # Holding Registers 1001–1124 — Three-Phase configuration
+    # Holding Registers 1000–1124 — Three-Phase configuration
     #
+    "system_enable": Def(C.bool, None, HR(1000)),
     "set_command_save": Def(C.bool, None, HR(1001)),
     "active_rate": Def(C.uint16, None, HR(1002)),
     "reactive_rate": Def(C.uint16, None, HR(1003)),
     "set_power_factor": Def(C.uint16, None, HR(1004)),
+    "real_time_control": Def(C.bool, None, HR(1005)),
     "grid_connect_time": Def(C.uint16, None, HR(1007)),
     "grid_reconnect_time": Def(C.uint16, None, HR(1008)),
     "grid_connect_slope": Def(C.deci, None, HR(1009)),
@@ -240,6 +242,7 @@ _THREE_PHASE_LUT = {
     "f_over_derate_slope": Def(C.uint16, None, HR(1046)),
     # HR(1047-1061) — reactive power / derating detail
     "q_lockin_power": Def(C.uint16, None, HR(1047)),
+    "q_lock_out_power": Def(C.uint16, None, HR(1048)),
     "pf_lock_in_voltage": Def(C.deci, None, HR(1049), min=0.0, max=500.0),
     "pf_lock_out_voltage": Def(C.deci, None, HR(1050), min=0.0, max=500.0),
     "f_under_derate_slope": Def(C.milli, None, HR(1051)),
@@ -265,6 +268,7 @@ _THREE_PHASE_LUT = {
     "f_power_on_recovery": Def(C.centi, None, HR(1073), min=40.0, max=70.0),
     "f_under_derate_stop": Def(C.centi, None, HR(1074), min=40.0, max=70.0),
     "f_under_derate_recovery_delay": Def(C.centi, None, HR(1075)),
+    "pv_input_mode": Def(C.uint16, None, HR(1077)),
     "p_export_limit": Def(C.deci, None, HR(1063), max=6500),
     "battery_reserve_soc": Def(C.uint16, None, HR(1078)),
     "ac_power_derate_delay": Def(C.centi, None, HR(1079)),

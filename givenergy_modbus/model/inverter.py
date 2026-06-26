@@ -475,7 +475,33 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "v_pv_start": Def(C.uint16, C.deci, HR(60), min=0.0, max=2000.0),
         "start_countdown_timer": Def(C.uint16, None, HR(61)),
         "restart_delay_time": Def(C.uint16, None, HR(62)),
-        # skip protection settings HR(63-93)
+        # AC grid protection — voltage/frequency limits and trip-time settings.
+        # Names aligned with the three-phase equivalents in inverter_threephase.py.
+        # Converters inferred from the 3ph parallel block (HR1018-1042); unverified
+        # against a live single-phase capture — mark uncertain with raw uint16 if
+        # a future capture disagrees.
+        "v_ac_low_limit_1": Def(C.uint16, C.deci, HR(63), min=0.0, max=500.0),
+        "v_ac_high_limit_1": Def(C.uint16, C.deci, HR(64), min=0.0, max=500.0),
+        "f_ac_low_limit_1": Def(C.uint16, C.centi, HR(65), min=40.0, max=70.0),
+        "f_ac_high_limit_1": Def(C.uint16, C.centi, HR(66), min=40.0, max=70.0),
+        "t_ac_low_voltage_1": Def(C.uint16, C.centi, HR(67)),
+        "t_ac_high_voltage_1": Def(C.uint16, C.centi, HR(68)),
+        "t_ac_low_freq_1": Def(C.uint16, C.centi, HR(69)),
+        "t_ac_high_freq_1": Def(C.uint16, C.centi, HR(70)),
+        "v_ac_low_limit_2": Def(C.uint16, C.deci, HR(71), min=0.0, max=500.0),
+        "v_ac_high_limit_2": Def(C.uint16, C.deci, HR(72), min=0.0, max=500.0),
+        "f_ac_low_limit_2": Def(C.uint16, C.centi, HR(73), min=40.0, max=70.0),
+        "f_ac_high_limit_2": Def(C.uint16, C.centi, HR(74), min=40.0, max=70.0),
+        "t_ac_low_voltage_2": Def(C.uint16, C.centi, HR(75)),
+        "t_ac_high_voltage_2": Def(C.uint16, C.centi, HR(76)),
+        "t_ac_low_freq_2": Def(C.uint16, C.centi, HR(77)),
+        "t_ac_high_freq_2": Def(C.uint16, C.centi, HR(78)),
+        "v_ac_low_limit_3": Def(C.uint16, C.deci, HR(79), min=0.0, max=500.0),
+        "v_ac_high_limit_3": Def(C.uint16, C.deci, HR(80), min=0.0, max=500.0),
+        "f_ac_low_limit_3": Def(C.uint16, C.centi, HR(81), min=40.0, max=70.0),
+        "f_ac_high_limit_3": Def(C.uint16, C.centi, HR(82), min=40.0, max=70.0),
+        "v_ac_10min_protect": Def(C.uint16, C.deci, HR(83), min=0.0, max=500.0),
+        # skip HR(84-93) — unlabelled in the app's writable map
         "charge_slot_1": Def(C.timeslot, None, HR(94), HR(95)),
         "enable_charge": Def(C.bool, None, HR(96)),
         "battery_low_voltage_protection_limit": Def(C.uint16, C.centi, HR(97)),
@@ -590,6 +616,11 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Single Phase New registers
         # This block is polled for non-EMS / non-gateway inverters; see client.py.
         #
+        # HR(308-310): battery topology — rated power (W), rated current (A), max charge
+        # percentage. Extracted from GE app 4.0.7 binary; scale unconfirmed on live hardware.
+        "battery_nominal_power": Def(C.uint16, None, HR(308)),
+        "battery_nominal_current": Def(C.uint16, None, HR(309)),
+        "battery_max_charge_pct": Def(C.uint16, None, HR(310)),
         # HR(311): export priority — confirmed writable on Model.AC via portal observations
         # (hass#52): values 0/1/2 matched "Battery First / Grid First / Load First".
         "export_priority": Def(C.uint16, ExportPriority, HR(311)),
@@ -600,6 +631,38 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_eps": Def(C.bool, None, HR(317)),
         "battery_pause_mode": Def(C.uint16, None, HR(318)),
         "battery_pause_slot_1": Def(C.timeslot, None, HR(319), HR(320)),
+        #
+        # Holding Registers, block 499-510
+        # HV cabinet topology — extracted from GE app 4.0.7 binary; poll gated off for
+        # every model pending a confirming hardware capture (see _HV_CABINET_MODELS in
+        # plant.py). Values are raw uint16 counts/ratings; exact scaling unconfirmed.
+        #
+        "hv_cabinet_count": Def(C.uint16, None, HR(499)),
+        "hv_racks_per_cabinet": Def(C.uint16, None, HR(500)),
+        "hv_batteries_per_rack": Def(C.uint16, None, HR(501)),
+        "hv_cells_per_battery": Def(C.uint16, None, HR(502)),
+        "hv_total_cells": Def(C.uint16, None, HR(503)),
+        "hv_temp_sensors_per_battery": Def(C.uint16, None, HR(504)),
+        "hv_total_temp_sensors": Def(C.uint16, None, HR(505)),
+        "hv_max_pcs_power": Def(C.uint16, None, HR(506)),
+        "hv_max_charge_voltage": Def(C.uint16, None, HR(507)),
+        "hv_min_discharge_voltage": Def(C.uint16, None, HR(508)),
+        "hv_max_charge_current": Def(C.uint16, None, HR(509)),
+        "hv_parallel_count": Def(C.uint16, None, HR(510)),
+        #
+        # Holding Registers, block 20000-20051
+        # Peak-shaving / valley-filling — extracted from GE app 4.0.7 binary; poll gated
+        # off for every model pending a confirming hardware capture (see _PEAK_SHAVING_MODELS
+        # in plant.py). Sparse: defined registers at 20000-20003, 20020-20021, 20050-20051.
+        #
+        "peak_shaving_export_limit_enabled": Def(C.bool, None, HR(20000)),
+        "peak_shaving_export_limit": Def(C.uint16, None, HR(20001)),
+        "peak_shaving_enabled": Def(C.bool, None, HR(20002)),
+        "peak_shaving_threshold": Def(C.uint16, None, HR(20003)),
+        "peak_shaving_import_limit_enabled": Def(C.bool, None, HR(20020)),
+        "peak_shaving_import_limit": Def(C.uint16, None, HR(20021)),
+        "peak_shaving_power": Def(C.uint16, None, HR(20050)),
+        "valley_filling_power": Def(C.uint16, None, HR(20051)),
         #
         # Holding Registers, block 4080-4139
         #
