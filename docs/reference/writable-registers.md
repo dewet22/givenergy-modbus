@@ -66,15 +66,15 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 
 | HR | Field name | Description | Range / values |
 |---|---|---|---|
-| 20 | `enable_ac_charge_upper_soc` | Enable AC charge upper % limit | bool |
+| 20 | `enable_charge_target` | Enable AC charge upper % limit | bool |
 | 96 | `enable_charge` | Enable battery charging | bool |
 | 59 | `enable_discharge` | Enable battery discharging | bool |
-| 116 | `charge_upper_soc` | AC charge upper SOC % limit | 4–100 % |
+| 116 | `charge_target_soc` | AC charge upper SOC % limit | 4–100 % |
 | 110 | `battery_soc_reserve` | Discharge floor / SOC reserve | 4–100 % |
 | 111 | `battery_charge_limit` | Battery charge power limit | 0–100 % of rated |
 | 112 | `battery_discharge_limit` | Battery discharge power limit | 0–100 % of rated |
 | 114 | `battery_discharge_min_power_reserve` | Minimum discharge power reserve | 4–100 % |
-| 29 | `battery_soc_force_adjust` | SOC force-adjust | 0 (Stop), 1 (Start), 3 (Charge Only) |
+| 29 | `battery_calibration_stage` | SOC force-adjust | 0 (Stop), 1 (Start), 3 (Charge Only) |
 
 ### Charge slots 1–10
 
@@ -110,13 +110,13 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 
 | HR | Field name | Description | Notes |
 |---|---|---|---|
-| 27 | `enable_eco_mode` | Enable eco mode | bool |
+| 27 | `battery_power_mode` | Enable eco mode | bool |
 | 50 | `active_power_rate` | Active power rate | 0–100 % |
-| 163 | `reboot_inverter` | Restart inverter | write 100; non-damaging |
-| 166 | `real_time_control` | Real-time control | bool |
+| 163 | `inverter_reboot` | Restart inverter | write 100; non-damaging |
+| 166 | `enable_rtc` | Real-time control | bool |
 | 199 | `enable_inverter_parallel_mode` | Enable parallel mode | bool |
-| 299 | `dc_discharge_10_lower_soc` | DC discharge 10 lower SOC % limit | 0–100 % |
-| 331 | `force_off_grid` | Force off-grid | bool; see note below |
+| 299 | `discharge_target_soc_10` | DC discharge 10 lower SOC % limit | 0–100 % |
+| 331 | — | Force off-grid | bool; see note below |
 
 !!! note "HR331 — Force off-grid"
     This is a sustained islanding state, not a momentary reboot.  A stuck write
@@ -211,10 +211,10 @@ Use the `set_ems_*` helpers in `commands.py` rather than writing these directly.
 
 | HR | Field name | Description | Notes |
 |---|---|---|---|
-| 104 | `enable_battery_self_heating` | Enable battery self-heating | Hardware/batch-gated: write may be rejected per-unit |
-| 172 | `enable_manual_battery_heater` | Enable manual battery heater | Likely hardware-gated like HR104 |
-| 5010 | `restart_hardware` | Restart hardware | Non-damaging; same class as HR163 |
-| 5014 | `enable_calculated_load` | Enable calculated load | |
+| 104 | — | Enable battery self-heating | Hardware/batch-gated: write may be rejected per-unit |
+| 172 | — | Enable manual battery heater | Likely hardware-gated like HR104 |
+| 5010 | — | Restart hardware | Non-damaging; same class as HR163 |
+| 5014 | — | Enable calculated load | |
 
 ---
 
@@ -231,9 +231,11 @@ and HR79–83 form the third/final level including the 10-minute average voltage
 Converters for this block are inferred from the three-phase parallel block (HR1018–1042);
 unverified on live single-phase hardware.
 
-The corresponding `set_*` helpers and `Def` fields are `v_ac_low/high_limit_N`,
-`f_ac_low/high_limit_N`, `t_ac_low/high_voltage/freq_N` in
-`givenergy_modbus/model/inverter.py`.
+The corresponding `Def` fields (`v_ac_low/high_limit_N`, `f_ac_low/high_limit_N`,
+`t_ac_low/high_voltage/freq_N`) are in `givenergy_modbus/model/inverter.py` and can
+be read back after a poll.  No bounds-validating `set_*` helpers exist for this block
+yet — callers must construct `WriteHoldingRegisterRequest(..., installer=True)`
+directly and validate the value against grid-code tolerances themselves.
 
 | HR | Field name | Description | Unit / range |
 |---|---|---|---|
