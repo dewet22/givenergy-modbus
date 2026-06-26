@@ -451,9 +451,10 @@ additional field evidence.
 
 The app 4.0.7 holding-register inventory (460 entries) is committed to
 `docs/reference/registers/app_4.0.7_inventory.json`.  A diff against the library's
-live `REGISTER_LUT`s and `WRITE_SAFE_REGISTERS` / `INSTALLER_WRITE_REGISTERS` runs as a
-regression test in CI via `scripts/audit_register_doc.py --app-source`.  As of
-v2.6.0, the reconciliation stands at 340 matched / 120 app-only gaps.  The remaining
-gaps are predominantly registers with raw uint16 Defs (scale not yet confirmed from a
-live capture) or blocks not yet admitted to the read poll for want of a confirming
-hardware response.
+live `REGISTER_LUT`s and `WRITE_SAFE_REGISTERS` runs as a regression test in CI via
+`scripts/audit_register_doc.py --app-source`.  The audit does not currently cover
+`INSTALLER_WRITE_REGISTERS` — installer allow-list drift would not be caught by CI.
+As of v2.6.0, the reconciliation stands at 340 matched / 120 app-only gaps.  The
+remaining gaps are predominantly registers with raw uint16 Defs (scale not yet
+confirmed from a live capture) or blocks not yet admitted to the read poll for want
+of a confirming hardware response.
