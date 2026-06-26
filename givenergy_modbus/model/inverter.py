@@ -476,7 +476,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "start_countdown_timer": Def(C.uint16, None, HR(61)),
         "restart_delay_time": Def(C.uint16, None, HR(62)),
         # AC grid protection — voltage/frequency limits and trip-time settings.
-        # Names aligned with the three-phase equivalents in inverter_threephase.py.
+        # Names conceptually aligned with the three-phase equivalents in inverter_threephase.py
+        # (using v_ac_/t_ac_ prefixes here vs v_grid_/time_grid_ there).
         # Converters inferred from the 3ph parallel block (HR1018-1042); unverified
         # against a live single-phase capture — mark uncertain with raw uint16 if
         # a future capture disagrees.
