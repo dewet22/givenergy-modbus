@@ -613,9 +613,11 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "smart_load_slot_9": Def(C.timeslot, None, HR(570), HR(571)),
         "smart_load_slot_10": Def(C.timeslot, None, HR(572), HR(573)),
         #
-        # Holding Registers, block 300-359
-        # Single Phase New registers
-        # This block is polled for non-EMS / non-gateway inverters; see client.py.
+        # Holding Registers, block 300-359 — AC-output config.
+        # Polled only when has_ac_config_block is set (AC-coupled and All-in-One
+        # models); DC-coupled/hybrid models time out on it and never poll it (#162),
+        # so every field below stays None there — same as battery_*_limit_ac (HR313/314).
+        # See client.py load_config().
         #
         # HR(308-310): battery topology — rated power (W), rated current (A), max charge
         # percentage. Extracted from GE app 4.0.7 binary; scale unconfirmed on live hardware.
