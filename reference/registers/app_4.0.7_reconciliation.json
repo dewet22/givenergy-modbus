@@ -1,0 +1,857 @@
+{
+  "app_hr_count": 460,
+  "code_hr_count": 368,
+  "matched_count": 340,
+  "app_only_count": 120,
+  "app_only": [
+    {
+      "addr": 5,
+      "name": "Inverter Nominal Power",
+      "in_write_safe": false
+    },
+    {
+      "addr": 8,
+      "name": "Battery Serial Number Characters 1 & 2",
+      "in_write_safe": false
+    },
+    {
+      "addr": 9,
+      "name": "Battery Serial Number Characters 3 & 4",
+      "in_write_safe": false
+    },
+    {
+      "addr": 10,
+      "name": "Battery Serial Number Characters 5 & 6",
+      "in_write_safe": false
+    },
+    {
+      "addr": 11,
+      "name": "Battery Serial Number Characters 7 & 8",
+      "in_write_safe": false
+    },
+    {
+      "addr": 12,
+      "name": "Battery Serial Number Characters 9 & 10",
+      "in_write_safe": false
+    },
+    {
+      "addr": 101,
+      "name": "Grid Import Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 102,
+      "name": "Grid Import Limit Enabled",
+      "in_write_safe": false
+    },
+    {
+      "addr": 103,
+      "name": "Enable LoRa",
+      "in_write_safe": false
+    },
+    {
+      "addr": 104,
+      "name": "Enable Battery Self-Heating",
+      "in_write_safe": true
+    },
+    {
+      "addr": 115,
+      "name": "Anti-Islanding Detection",
+      "in_write_safe": false
+    },
+    {
+      "addr": 162,
+      "name": "Reset Energy Totals",
+      "in_write_safe": false
+    },
+    {
+      "addr": 164,
+      "name": "Enable Firmware Update Flag",
+      "in_write_safe": false
+    },
+    {
+      "addr": 165,
+      "name": "USB Transfer Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 172,
+      "name": "Enable Manual Battery Heater",
+      "in_write_safe": true
+    },
+    {
+      "addr": 174,
+      "name": "Wake Battery",
+      "in_write_safe": false
+    },
+    {
+      "addr": 192,
+      "name": "Ignore External Generation Meter",
+      "in_write_safe": false
+    },
+    {
+      "addr": 201,
+      "name": "Restart Battery",
+      "in_write_safe": false
+    },
+    {
+      "addr": 300,
+      "name": "Enable Plant Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 301,
+      "name": "Plant Master/Slave",
+      "in_write_safe": false
+    },
+    {
+      "addr": 302,
+      "name": "Plant Meters",
+      "in_write_safe": false
+    },
+    {
+      "addr": 303,
+      "name": "Overfrequency Load Drop Recovery Delay",
+      "in_write_safe": false
+    },
+    {
+      "addr": 305,
+      "name": "MPPT Operating Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 306,
+      "name": "Connection Loading Slope",
+      "in_write_safe": false
+    },
+    {
+      "addr": 307,
+      "name": "EPS Nominal Voltage",
+      "in_write_safe": false
+    },
+    {
+      "addr": 312,
+      "name": "Underfrequency Add Load Delay",
+      "in_write_safe": false
+    },
+    {
+      "addr": 315,
+      "name": "EN50549 Zero-Current Static Lower Voltage Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 316,
+      "name": "EN50549 Zero-Current Static Upper Voltage Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 321,
+      "name": "Overfrequency Derating Start Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 322,
+      "name": "Enable Tariff Pricing Battery Logic",
+      "in_write_safe": false
+    },
+    {
+      "addr": 323,
+      "name": "Import Price Battery Discharge Threshold",
+      "in_write_safe": false
+    },
+    {
+      "addr": 324,
+      "name": "Import Price Battery Charge Threshold",
+      "in_write_safe": false
+    },
+    {
+      "addr": 325,
+      "name": "Export Price Battery Discharge Threshold",
+      "in_write_safe": false
+    },
+    {
+      "addr": 326,
+      "name": "Underfrequency Derating Start Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 327,
+      "name": "Underfrequency Loading Slope",
+      "in_write_safe": false
+    },
+    {
+      "addr": 328,
+      "name": "Overfrequency Derating Stop Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 329,
+      "name": "Enable BMS OCV Calibration",
+      "in_write_safe": false
+    },
+    {
+      "addr": 330,
+      "name": "Gateway Power Off Setting",
+      "in_write_safe": false
+    },
+    {
+      "addr": 331,
+      "name": "Force Off Grid",
+      "in_write_safe": true
+    },
+    {
+      "addr": 332,
+      "name": "Enable Micro Grid",
+      "in_write_safe": false
+    },
+    {
+      "addr": 333,
+      "name": "EV Charger Enable",
+      "in_write_safe": false
+    },
+    {
+      "addr": 334,
+      "name": "EV Charger Import Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 335,
+      "name": "EV Charger Reconnection Wait Time",
+      "in_write_safe": false
+    },
+    {
+      "addr": 336,
+      "name": "EV Charger SOC Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 337,
+      "name": "Enable Fan",
+      "in_write_safe": false
+    },
+    {
+      "addr": 338,
+      "name": "Fan Speed",
+      "in_write_safe": false
+    },
+    {
+      "addr": 339,
+      "name": "Enable Gateway",
+      "in_write_safe": false
+    },
+    {
+      "addr": 340,
+      "name": "BMS Communication Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 341,
+      "name": "N-PE Relay Toggle",
+      "in_write_safe": false
+    },
+    {
+      "addr": 342,
+      "name": "AFCI Setting",
+      "in_write_safe": false
+    },
+    {
+      "addr": 343,
+      "name": "Enable Generator",
+      "in_write_safe": false
+    },
+    {
+      "addr": 344,
+      "name": "Generator Start SOC",
+      "in_write_safe": false
+    },
+    {
+      "addr": 345,
+      "name": "Generator Stop SOC",
+      "in_write_safe": false
+    },
+    {
+      "addr": 346,
+      "name": "Generator Charge Power",
+      "in_write_safe": false
+    },
+    {
+      "addr": 347,
+      "name": "Disable LEDs",
+      "in_write_safe": false
+    },
+    {
+      "addr": 348,
+      "name": "LCD Screen Idle Timeout",
+      "in_write_safe": false
+    },
+    {
+      "addr": 349,
+      "name": "Lead Acid Battery Calibration Upper Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 350,
+      "name": "Lead Acid Battery Calibration Lower Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 351,
+      "name": "Inverter Operating Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 479,
+      "name": "DC Wind CVT Voltage",
+      "in_write_safe": false
+    },
+    {
+      "addr": 540,
+      "name": "Enable Smart Load",
+      "in_write_safe": false
+    },
+    {
+      "addr": 541,
+      "name": "Smart Load Control SOC",
+      "in_write_safe": false
+    },
+    {
+      "addr": 542,
+      "name": "Enable General Load",
+      "in_write_safe": false
+    },
+    {
+      "addr": 543,
+      "name": "General Load Control SOC",
+      "in_write_safe": false
+    },
+    {
+      "addr": 544,
+      "name": "Generator Control SOC",
+      "in_write_safe": false
+    },
+    {
+      "addr": 545,
+      "name": "Generator Voltage Min",
+      "in_write_safe": false
+    },
+    {
+      "addr": 546,
+      "name": "Generator Voltage Max",
+      "in_write_safe": false
+    },
+    {
+      "addr": 547,
+      "name": "Generator Frequency Min",
+      "in_write_safe": false
+    },
+    {
+      "addr": 548,
+      "name": "Generator Frequency Max",
+      "in_write_safe": false
+    },
+    {
+      "addr": 552,
+      "name": "Smart Load Export Power",
+      "in_write_safe": false
+    },
+    {
+      "addr": 553,
+      "name": "Smart Load Delay Time",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1012,
+      "name": "Inverter Model, Battery Type, Battery Power & Special Functions",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1013,
+      "name": "Factory, Device Type & Grid Safety Standard",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1016,
+      "name": "Three Phase Factory Reset Without Meter Reset",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1081,
+      "name": "QU Curve Volt High Point 1",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1082,
+      "name": "QU Curve Volt High Point 2",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1083,
+      "name": "QU Curve Volt Low Point 1",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1084,
+      "name": "QU Curve Volt Low Point 2",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1085,
+      "name": "Voltage Reactive Power Percentage",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1086,
+      "name": "QU Curve Maximum Inductive Reactive Power",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1087,
+      "name": "QU Curve Maximum Capacitive Reactive Power",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1102,
+      "name": "Export Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1103,
+      "name": "Enable Export Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1125,
+      "name": "Enable LoRa",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1126,
+      "name": "Meter CT Direction",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1127,
+      "name": "Load Shedding Voltage Upper Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1128,
+      "name": "Load Shedding Voltage Lower Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1129,
+      "name": "Load Shedding Minimum Active Power %",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1130,
+      "name": "Import Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1131,
+      "name": "Enable Import Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1144,
+      "name": "Enable Meter Wiring Detection",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1149,
+      "name": "Meter Wiring Detection State",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1156,
+      "name": "Safety Function Control Word",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1158,
+      "name": "Active Power Per Thousand Ratio",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1159,
+      "name": "High Active Power High Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1160,
+      "name": "High Active Power Low Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1161,
+      "name": "Low Active Power High Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1162,
+      "name": "Low Active Power Low Point",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1163,
+      "name": "Qp Lock In Voltage",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1164,
+      "name": "Qp Lock Out Voltage",
+      "in_write_safe": false
+    },
+    {
+      "addr": 1165,
+      "name": "Minimum Power Factor Setting",
+      "in_write_safe": false
+    },
+    {
+      "addr": 4001,
+      "name": "Dual Grid Supply Operational Mode",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5002,
+      "name": "Send Wake Up Signal",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5003,
+      "name": "Enable Black Start",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5004,
+      "name": "Restore Factory Defaults",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5005,
+      "name": "Enable PV Meter Preset",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5006,
+      "name": "Enable AC Meter Preset",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5007,
+      "name": "Enable N-PE",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5008,
+      "name": "Enable CT Auto Configuration",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5009,
+      "name": "Enable Auto Address Configuration",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5010,
+      "name": "Restart Hardware",
+      "in_write_safe": true
+    },
+    {
+      "addr": 5011,
+      "name": "Grid Power Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5012,
+      "name": "AC Over Current Limit",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5014,
+      "name": "Enable Calculated Load",
+      "in_write_safe": true
+    },
+    {
+      "addr": 5018,
+      "name": "General Load Current K",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5019,
+      "name": "General Load Current B",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5020,
+      "name": "Smart Load Current K",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5021,
+      "name": "Smart Load Current B",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5022,
+      "name": "Critical Load Current K",
+      "in_write_safe": false
+    },
+    {
+      "addr": 5023,
+      "name": "Critical Load Current B",
+      "in_write_safe": false
+    }
+  ],
+  "code_only": [
+    105,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    167,
+    168,
+    169,
+    170,
+    171,
+    176,
+    200,
+    223,
+    224,
+    4107,
+    4108,
+    4109,
+    4110,
+    4111,
+    4112,
+    4113,
+    4114,
+    4141,
+    4142
+  ],
+  "name_divergence": [
+    {
+      "addr": 1,
+      "app_name": "Disable Safety Checks",
+      "code_attrs": [
+        "inverter_1ph.module",
+        "inverter_3ph.module"
+      ]
+    },
+    {
+      "addr": 2,
+      "app_name": "Inverter Safety Standard & Output Power",
+      "code_attrs": [
+        "inverter_1ph.module",
+        "inverter_3ph.module"
+      ]
+    },
+    {
+      "addr": 3,
+      "app_name": "Inverter Tracker Output Phase",
+      "code_attrs": [
+        "inverter_1ph.num_mppt",
+        "inverter_1ph.num_phases",
+        "inverter_3ph.num_mppt",
+        "inverter_3ph.num_phases"
+      ]
+    },
+    {
+      "addr": 53,
+      "app_name": "On/Off State",
+      "code_attrs": [
+        "inverter_1ph.enable_inverter",
+        "inverter_1ph.enable_inverter_auto_restart",
+        "inverter_3ph.enable_inverter",
+        "inverter_3ph.enable_inverter_auto_restart"
+      ]
+    },
+    {
+      "addr": 61,
+      "app_name": "Startup Time",
+      "code_attrs": [
+        "inverter_1ph.start_countdown_timer",
+        "inverter_3ph.start_countdown_timer"
+      ]
+    },
+    {
+      "addr": 166,
+      "app_name": "Real-Time Control",
+      "code_attrs": [
+        "inverter_1ph.enable_rtc",
+        "inverter_3ph.enable_rtc"
+      ]
+    },
+    {
+      "addr": 1042,
+      "app_name": "Volt Protection for 10 Minutes",
+      "code_attrs": [
+        "inverter_3ph.v_10min_protect"
+      ]
+    },
+    {
+      "addr": 1043,
+      "app_name": "Power Factor - Functional",
+      "code_attrs": [
+        "inverter_3ph.pf_model"
+      ]
+    },
+    {
+      "addr": 1109,
+      "app_name": "Discharge Down To %",
+      "code_attrs": [
+        "inverter_3ph.battery_soc_reserve"
+      ]
+    }
+  ],
+  "write_safe_coverage": {
+    "app_writable_in_write_safe": [
+      20,
+      27,
+      29,
+      31,
+      32,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      44,
+      45,
+      50,
+      56,
+      57,
+      59,
+      94,
+      95,
+      96,
+      104,
+      110,
+      111,
+      112,
+      114,
+      116,
+      163,
+      166,
+      172,
+      199,
+      246,
+      247,
+      249,
+      250,
+      252,
+      253,
+      255,
+      256,
+      258,
+      259,
+      261,
+      262,
+      264,
+      265,
+      267,
+      268,
+      276,
+      277,
+      279,
+      280,
+      282,
+      283,
+      285,
+      286,
+      288,
+      289,
+      291,
+      292,
+      294,
+      295,
+      297,
+      298,
+      299,
+      311,
+      313,
+      314,
+      317,
+      318,
+      319,
+      320,
+      331,
+      554,
+      555,
+      556,
+      557,
+      558,
+      559,
+      560,
+      561,
+      562,
+      563,
+      564,
+      565,
+      566,
+      567,
+      568,
+      569,
+      570,
+      571,
+      572,
+      573,
+      1005,
+      1078,
+      1108,
+      1109,
+      1110,
+      1111,
+      1112,
+      1113,
+      1114,
+      1115,
+      1116,
+      1118,
+      1119,
+      1120,
+      1121,
+      1122,
+      1123,
+      2040,
+      2044,
+      2045,
+      2046,
+      2047,
+      2048,
+      2049,
+      2050,
+      2051,
+      2052,
+      2053,
+      2054,
+      2055,
+      2056,
+      2057,
+      2058,
+      2059,
+      2060,
+      2061,
+      2062,
+      2063,
+      2064,
+      2065,
+      2066,
+      2067,
+      2068,
+      2069,
+      2070,
+      2071,
+      5010,
+      5014
+    ],
+    "write_safe_not_in_app": []
+  }
+}
