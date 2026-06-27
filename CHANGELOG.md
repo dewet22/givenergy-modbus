@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2026-06-27
+
+### ✨ Added
+
+- decode the installer-config register block for read-back (#321) ([ef23a1b](https://github.com/dewet22/givenergy-modbus/commit/ef23a1bf093c7340871852a148f14a7cf69ec731))
+
+### 🔧 Maintenance
+
+- enrich 2.6.0 changelog with register provenance and installer-tier rationale ([cec5807](https://github.com/dewet22/givenergy-modbus/commit/cec5807302c0cfba323205d5b3177c92f3698a81))
+- writable registers reference (#317) ([943d6f3](https://github.com/dewet22/givenergy-modbus/commit/943d6f3853e18881c47cea84cd2079efaa7c31a6))
+- correct HR300-359 block comment to reflect has_ac_config_block gating (#319) ([d0c40fe](https://github.com/dewet22/givenergy-modbus/commit/d0c40fed8a778cfa4a8d561e243efdb8902dab44))
+
 ## [2.6.0] - 2026-06-26
 
 ### ✨ Added
