@@ -619,6 +619,20 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # so every field below stays None there — same as battery_*_limit_ac (HR313/314).
         # See client.py load_config().
         #
+        # Newly decoded installer-config registers (HR300-351) from the GE app 4.0.7 binary,
+        # polled on AC/AIO via the HR(300,60) block. Enable/disable toggles decode via C.bool,
+        # matching the 1/0 installer setters in commands.py; thresholds, modes, slopes and
+        # limits decode as raw uint16 + None — scale/semantics are unconfirmed on live
+        # hardware, but raw read-back still lets a consumer verify an installer write. HR301
+        # selects the plant's primary/secondary role; named plant_role to avoid the app's
+        # non-inclusive label. It is decode-only — not in INSTALLER_WRITE_REGISTERS.
+        "enable_plant_mode": Def(C.bool, None, HR(300)),
+        "plant_role": Def(C.uint16, None, HR(301)),
+        "plant_meters": Def(C.uint16, None, HR(302)),
+        "overfrequency_load_drop_recovery_delay": Def(C.uint16, None, HR(303)),
+        "mppt_operating_mode": Def(C.uint16, None, HR(305)),
+        "connection_loading_slope": Def(C.uint16, None, HR(306)),
+        "eps_nominal_voltage": Def(C.uint16, None, HR(307)),
         # HR(308-310): battery topology — rated power (W), rated current (A), max charge
         # percentage. Extracted from GE app 4.0.7 binary; scale unconfirmed on live hardware.
         "battery_nominal_power": Def(C.uint16, None, HR(308)),
@@ -627,13 +641,55 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # HR(311): export priority — confirmed writable on Model.AC via portal observations
         # (hass#52): values 0/1/2 matched "Battery First / Grid First / Load First".
         "export_priority": Def(C.uint16, ExportPriority, HR(311)),
+        # HR(312): underfrequency add-load delay (raw uint16, scale unconfirmed).
+        "underfrequency_add_load_delay": Def(C.uint16, None, HR(312)),
         "battery_charge_limit_ac": Def(C.uint16, None, HR(313)),
         "battery_discharge_limit_ac": Def(C.uint16, None, HR(314)),
+        # HR(315-316): EN50549 zero-current static voltage limits (raw uint16).
+        "en50549_zero_current_lower_voltage_limit": Def(C.uint16, None, HR(315)),
+        "en50549_zero_current_upper_voltage_limit": Def(C.uint16, None, HR(316)),
         # HR(317): EPS enable — confirmed writable on Model.AC via portal observations
         # (hass#52): toggled 0/1 while the portal's "EPS" switch was flipped off/on.
         "enable_eps": Def(C.bool, None, HR(317)),
         "battery_pause_mode": Def(C.uint16, None, HR(318)),
         "battery_pause_slot_1": Def(C.timeslot, None, HR(319), HR(320)),
+        # HR(321-332): frequency derating, tariff-pricing battery logic, BMS OCV calibration,
+        # gateway power-off, force-off-grid, micro-grid.
+        "overfrequency_derating_start_point": Def(C.uint16, None, HR(321)),
+        "enable_tariff_pricing_battery_logic": Def(C.bool, None, HR(322)),
+        "import_price_battery_discharge_threshold": Def(C.uint16, None, HR(323)),
+        "import_price_battery_charge_threshold": Def(C.uint16, None, HR(324)),
+        "export_price_battery_discharge_threshold": Def(C.uint16, None, HR(325)),
+        "underfrequency_derating_start_point": Def(C.uint16, None, HR(326)),
+        "underfrequency_loading_slope": Def(C.uint16, None, HR(327)),
+        "overfrequency_derating_stop_point": Def(C.uint16, None, HR(328)),
+        "enable_bms_ocv_calibration": Def(C.bool, None, HR(329)),
+        "gateway_power_off_setting": Def(C.uint16, None, HR(330)),
+        "force_off_grid": Def(C.bool, None, HR(331)),
+        "enable_micro_grid": Def(C.bool, None, HR(332)),
+        # HR(333-336): EV charger config (enable, import limit, reconnection wait, SOC limit).
+        "enable_ev_charger": Def(C.bool, None, HR(333)),
+        "ev_charger_import_limit": Def(C.uint16, None, HR(334)),
+        "ev_charger_reconnection_wait_time": Def(C.uint16, None, HR(335)),
+        "ev_charger_soc_limit": Def(C.uint16, None, HR(336)),
+        # HR(337-342): fan, gateway, BMS comms, N-PE relay, AFCI.
+        "enable_fan": Def(C.bool, None, HR(337)),
+        "fan_speed": Def(C.uint16, None, HR(338)),
+        "enable_gateway": Def(C.bool, None, HR(339)),
+        "bms_communication_mode": Def(C.uint16, None, HR(340)),
+        "n_pe_relay_toggle": Def(C.uint16, None, HR(341)),
+        "afci_setting": Def(C.uint16, None, HR(342)),
+        # HR(343-346): generator config (enable, start/stop SOC, charge power).
+        "enable_generator": Def(C.bool, None, HR(343)),
+        "generator_start_soc": Def(C.uint16, None, HR(344)),
+        "generator_stop_soc": Def(C.uint16, None, HR(345)),
+        "generator_charge_power": Def(C.uint16, None, HR(346)),
+        # HR(347-351): display, lead-acid calibration limits, inverter operating mode.
+        "disable_leds": Def(C.bool, None, HR(347)),
+        "lcd_screen_idle_timeout": Def(C.uint16, None, HR(348)),
+        "lead_acid_battery_calibration_upper_limit": Def(C.uint16, None, HR(349)),
+        "lead_acid_battery_calibration_lower_limit": Def(C.uint16, None, HR(350)),
+        "inverter_operating_mode": Def(C.uint16, None, HR(351)),
         #
         # Holding Registers, block 499-510
         # HV cabinet topology — extracted from GE app 4.0.7 binary; poll gated off for

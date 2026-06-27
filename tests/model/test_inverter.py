@@ -42,6 +42,47 @@ def test_inverter():
         i1.model_dump()
         == i2.model_dump()
         == {
+            "enable_plant_mode": None,
+            "plant_role": None,
+            "plant_meters": None,
+            "overfrequency_load_drop_recovery_delay": None,
+            "mppt_operating_mode": None,
+            "connection_loading_slope": None,
+            "eps_nominal_voltage": None,
+            "underfrequency_add_load_delay": None,
+            "en50549_zero_current_lower_voltage_limit": None,
+            "en50549_zero_current_upper_voltage_limit": None,
+            "overfrequency_derating_start_point": None,
+            "enable_tariff_pricing_battery_logic": None,
+            "import_price_battery_discharge_threshold": None,
+            "import_price_battery_charge_threshold": None,
+            "export_price_battery_discharge_threshold": None,
+            "underfrequency_derating_start_point": None,
+            "underfrequency_loading_slope": None,
+            "overfrequency_derating_stop_point": None,
+            "enable_bms_ocv_calibration": None,
+            "gateway_power_off_setting": None,
+            "force_off_grid": None,
+            "enable_micro_grid": None,
+            "enable_ev_charger": None,
+            "ev_charger_import_limit": None,
+            "ev_charger_reconnection_wait_time": None,
+            "ev_charger_soc_limit": None,
+            "enable_fan": None,
+            "fan_speed": None,
+            "enable_gateway": None,
+            "bms_communication_mode": None,
+            "n_pe_relay_toggle": None,
+            "afci_setting": None,
+            "enable_generator": None,
+            "generator_start_soc": None,
+            "generator_stop_soc": None,
+            "generator_charge_power": None,
+            "disable_leds": None,
+            "lcd_screen_idle_timeout": None,
+            "lead_acid_battery_calibration_upper_limit": None,
+            "lead_acid_battery_calibration_lower_limit": None,
+            "inverter_operating_mode": None,
             "active_power_rate": None,
             "arm_firmware_version": None,
             "battery_max_power": None,
@@ -321,6 +362,47 @@ def test_from_registers(register_cache):
         i["serial_number"]
 
     assert i.model_dump() == {
+        "enable_plant_mode": None,
+        "plant_role": None,
+        "plant_meters": None,
+        "overfrequency_load_drop_recovery_delay": None,
+        "mppt_operating_mode": None,
+        "connection_loading_slope": None,
+        "eps_nominal_voltage": None,
+        "underfrequency_add_load_delay": None,
+        "en50549_zero_current_lower_voltage_limit": None,
+        "en50549_zero_current_upper_voltage_limit": None,
+        "overfrequency_derating_start_point": None,
+        "enable_tariff_pricing_battery_logic": None,
+        "import_price_battery_discharge_threshold": None,
+        "import_price_battery_charge_threshold": None,
+        "export_price_battery_discharge_threshold": None,
+        "underfrequency_derating_start_point": None,
+        "underfrequency_loading_slope": None,
+        "overfrequency_derating_stop_point": None,
+        "enable_bms_ocv_calibration": None,
+        "gateway_power_off_setting": None,
+        "force_off_grid": None,
+        "enable_micro_grid": None,
+        "enable_ev_charger": None,
+        "ev_charger_import_limit": None,
+        "ev_charger_reconnection_wait_time": None,
+        "ev_charger_soc_limit": None,
+        "enable_fan": None,
+        "fan_speed": None,
+        "enable_gateway": None,
+        "bms_communication_mode": None,
+        "n_pe_relay_toggle": None,
+        "afci_setting": None,
+        "enable_generator": None,
+        "generator_start_soc": None,
+        "generator_stop_soc": None,
+        "generator_charge_power": None,
+        "disable_leds": None,
+        "lcd_screen_idle_timeout": None,
+        "lead_acid_battery_calibration_upper_limit": None,
+        "lead_acid_battery_calibration_lower_limit": None,
+        "inverter_operating_mode": None,
         "battery_charge_limit": 50,
         "battery_discharge_limit": 50,
         "battery_discharge_min_power_reserve": 4,
@@ -719,6 +801,47 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
     assert i.serial_number == "SA1234G567"
     assert i.model == Model.HYBRID
     assert i.model_dump() == {
+        "enable_plant_mode": None,
+        "plant_role": None,
+        "plant_meters": None,
+        "overfrequency_load_drop_recovery_delay": None,
+        "mppt_operating_mode": None,
+        "connection_loading_slope": None,
+        "eps_nominal_voltage": None,
+        "underfrequency_add_load_delay": None,
+        "en50549_zero_current_lower_voltage_limit": None,
+        "en50549_zero_current_upper_voltage_limit": None,
+        "overfrequency_derating_start_point": None,
+        "enable_tariff_pricing_battery_logic": None,
+        "import_price_battery_discharge_threshold": None,
+        "import_price_battery_charge_threshold": None,
+        "export_price_battery_discharge_threshold": None,
+        "underfrequency_derating_start_point": None,
+        "underfrequency_loading_slope": None,
+        "overfrequency_derating_stop_point": None,
+        "enable_bms_ocv_calibration": None,
+        "gateway_power_off_setting": None,
+        "force_off_grid": None,
+        "enable_micro_grid": None,
+        "enable_ev_charger": None,
+        "ev_charger_import_limit": None,
+        "ev_charger_reconnection_wait_time": None,
+        "ev_charger_soc_limit": None,
+        "enable_fan": None,
+        "fan_speed": None,
+        "enable_gateway": None,
+        "bms_communication_mode": None,
+        "n_pe_relay_toggle": None,
+        "afci_setting": None,
+        "enable_generator": None,
+        "generator_start_soc": None,
+        "generator_stop_soc": None,
+        "generator_charge_power": None,
+        "disable_leds": None,
+        "lcd_screen_idle_timeout": None,
+        "lead_acid_battery_calibration_upper_limit": None,
+        "lead_acid_battery_calibration_lower_limit": None,
+        "inverter_operating_mode": None,
         "battery_charge_limit": 50,
         "battery_discharge_limit": 50,
         "battery_discharge_min_power_reserve": 4,
@@ -1924,3 +2047,53 @@ def test_directional_power_sensors():
     charging = SinglePhaseInverter.from_register_cache(RegisterCache({IR(52): 63536}))
     assert charging.battery_charge_power == 2000
     assert charging.battery_discharge_power == 0
+
+
+def test_installer_config_block_decodes_from_populated_cache():
+    """HR(300-351) installer-config registers decode from a populated cache.
+
+    Gap-fill from the GE app 4.0.7 binary. Guards the address/converter mapping
+    (the all-None snapshots can't catch a wrong HR address or bool-vs-uint16 typing).
+    """
+    cache = RegisterCache(
+        registers={
+            HR(300): 1,  # enable_plant_mode (bool)
+            HR(301): 2,  # plant_role (uint16)
+            HR(307): 2300,  # eps_nominal_voltage
+            HR(331): 1,  # force_off_grid (bool)
+            HR(333): 1,  # enable_ev_charger (bool)
+            HR(336): 80,  # ev_charger_soc_limit
+            HR(343): 0,  # enable_generator (bool)
+            HR(347): 1,  # disable_leds (bool)
+            HR(351): 4,  # inverter_operating_mode
+        }
+    )
+    d = SinglePhaseInverter.from_register_cache(cache).model_dump()
+    assert d["enable_plant_mode"] is True
+    assert d["plant_role"] == 2
+    assert d["eps_nominal_voltage"] == 2300
+    assert d["force_off_grid"] is True
+    assert d["enable_ev_charger"] is True
+    assert d["ev_charger_soc_limit"] == 80
+    assert d["enable_generator"] is False
+    assert d["disable_leds"] is True
+    assert d["inverter_operating_mode"] == 4
+
+
+def test_three_phase_grid_config_gaps_decode_from_populated_cache():
+    """HR(1081-1087) QU-curve and HR(1102-1103) export-limit gaps decode (app 4.0.7)."""
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+
+    cache = RegisterCache(
+        registers={
+            HR(1081): 2530,  # qu_curve_volt_high_point_1
+            HR(1085): 50,  # voltage_reactive_power_percentage
+            HR(1102): 3680,  # export_power_limit
+            HR(1103): 1,  # enable_export_limit (bool)
+        }
+    )
+    d = ThreePhaseInverter.from_register_cache(cache).model_dump()
+    assert d["qu_curve_volt_high_point_1"] == 2530
+    assert d["voltage_reactive_power_percentage"] == 50
+    assert d["export_power_limit"] == 3680
+    assert d["enable_export_limit"] is True

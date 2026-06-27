@@ -202,8 +202,8 @@ class CodeRegister:
     getters: set[str] = field(default_factory=set)
 
 
-def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int], dict[str, dict[int, set[str]]]]:
-    """Collect every register the library maps + the WRITE_SAFE address set.
+def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int], dict[str, dict[int, set[str]]], set[int]]:
+    """Collect every register the library maps + the WRITE_SAFE and INSTALLER address sets.
 
     Also returns a per-getter view (getter name -> register index -> converter
     names) so device sections can be diffed against just their own getter,
@@ -217,7 +217,7 @@ def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int], di
     from givenergy_modbus.model.inverter import SinglePhaseInverterRegisterGetter
     from givenergy_modbus.model.inverter_threephase import ThreePhaseInverterRegisterGetter
     from givenergy_modbus.model.meter import MeterProductRegisterGetter, MeterRegisterGetter
-    from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS
+    from givenergy_modbus.pdu.write_registers import INSTALLER_WRITE_REGISTERS, WRITE_SAFE_REGISTERS
 
     getters = {
         "battery": BatteryRegisterGetter,
@@ -253,7 +253,7 @@ def introspect_code() -> tuple[dict[tuple[str, int], CodeRegister], set[int], di
                     if n:
                         cr.converters.add(n)
                         convs.add(n)
-    return out, set(WRITE_SAFE_REGISTERS), by_getter
+    return out, set(WRITE_SAFE_REGISTERS), by_getter, set(INSTALLER_WRITE_REGISTERS)
 
 
 # --- Diff ------------------------------------------------------------------
@@ -404,16 +404,18 @@ def diff_app_source(
     app_hr: dict[int, dict],
     code_regs: dict[tuple[str, int], CodeRegister],
     write_safe: set[int],
+    installer_write: set[int],
 ) -> dict:
     """Reconcile an app-derived HR map against the library's HR definitions.
 
     Returns matched/gap/code-only counts, the gap list (app-writable HRs with no
     library Def — flagged when already write-safe, i.e. write-only), the set of
     matched HRs whose app label shares no token with any library attr name, and
-    write-safety coverage both ways.
+    write-safety coverage both ways for the standard (WRITE_SAFE) and installer
+    (INSTALLER_WRITE) allow-lists.
     """
     code_hr = {idx: cr for (rtype, idx), cr in code_regs.items() if rtype == "HR"}
-    app_set, code_set, ws = set(app_hr), set(code_hr), set(write_safe)
+    app_set, code_set, ws, iw = set(app_hr), set(code_hr), set(write_safe), set(installer_write)
     matched = sorted(app_set & code_set)
 
     name_divergence = []
@@ -438,13 +440,17 @@ def diff_app_source(
             "app_writable_in_write_safe": sorted(app_set & ws),
             "write_safe_not_in_app": sorted(ws - app_set),
         },
+        "installer_write_coverage": {
+            "app_writable_in_installer_write": sorted(app_set & iw),
+            "installer_write_not_in_app": sorted(iw - app_set),
+        },
     }
 
 
 def run_app_reconciliation(app_source: Path, json_out: Path | None) -> int:
     """Reconcile the library's HR map against an app-derived inventory; print the diff."""
-    code_regs, write_safe, _ = introspect_code()
-    report = diff_app_source(load_app_inventory(app_source), code_regs, write_safe)
+    code_regs, write_safe, _, installer_write = introspect_code()
+    report = diff_app_source(load_app_inventory(app_source), code_regs, write_safe, installer_write)
     print(json.dumps(report, indent=2, ensure_ascii=False))
     if json_out:
         json_out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -483,7 +489,7 @@ def main() -> int:
 def run_doc_audit(doc: Path, json_out: Path | None, facts_only: bool) -> int:
     """Diff the protocol doc against the library's register map; print the report."""
     doc_regs = parse_doc(doc)
-    code_regs, write_safe, by_getter = introspect_code()
+    code_regs, write_safe, by_getter, _ = introspect_code()
 
     # Build doc HR/IR address sets from the inverter sections.
     doc_by_type: dict[str, dict[int, DocRegister]] = {"HR": {}, "IR": {}}

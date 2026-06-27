@@ -116,7 +116,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 166 | `enable_rtc` | Real-time control | bool |
 | 199 | `enable_inverter_parallel_mode` | Enable parallel mode | bool |
 | 299 | `discharge_target_soc_10` | DC discharge 10 lower SOC % limit | 0–100 % |
-| 331 | — | Force off-grid | bool; see note below |
+| 331 | `force_off_grid` | Force off-grid | bool; see note below |
 
 !!! note "HR331 — Force off-grid"
     This is a sustained islanding state, not a momentary reboot.  A stuck write
@@ -286,42 +286,54 @@ directly and validate the value against grid-code tolerances themselves.
 
 ### Plant and inverter operating config (AC block, HR300–359)
 
+This block is polled on AC-coupled and All-in-One inverters (`has_ac_config_block`), so
+these registers are now **decoded for read-back** — a consumer can read the current value
+before issuing an installer write. The field names below are the getter fields in
+`model/inverter.py`. Scale/semantics are unconfirmed on live hardware (raw `uint16` unless
+noted), but raw read-back is correct regardless. On non-AC/AIO models the block is not
+polled and these fields read `None`.
+
+**HR301 (`plant_role`) is decode-only** — it is not in `INSTALLER_WRITE_REGISTERS`, so
+`installer_command()` will reject a write to it. It appears here only because it decodes
+from the same polled block; every other register in this table is installer-writable.
+
 | HR | Field name | Description | Notes |
 |---|---|---|---|
-| 300 | — | Enable plant mode | bool; `set_enable_plant_mode()` |
-| 302 | — | Plant meters | raw |
-| 303 | — | Overfrequency load drop recovery delay | raw |
-| 305 | — | MPPT operating mode | raw |
-| 306 | — | Connection loading slope | raw |
-| 307 | — | EPS nominal voltage | raw |
-| 312 | — | Underfrequency add load delay | raw |
-| 315 | — | EN50549 zero-current static lower voltage limit | raw |
-| 316 | — | EN50549 zero-current static upper voltage limit | raw |
-| 321 | — | Overfrequency derating start point | raw |
-| 322 | — | Enable tariff pricing battery logic | bool |
-| 323 | — | Import price battery discharge threshold | raw |
-| 324 | — | Import price battery charge threshold | raw |
-| 325 | — | Export price battery discharge threshold | raw |
-| 326 | — | Underfrequency derating start point | raw |
-| 327 | — | Underfrequency loading slope | raw |
-| 328 | — | Overfrequency derating stop point | raw |
-| 329 | — | Enable BMS OCV calibration | bool |
-| 330 | — | Gateway power off setting | raw |
-| 332 | — | Enable micro grid | bool; `set_enable_micro_grid()` |
-| 347 | — | Disable LEDs | bool |
-| 348 | — | LCD screen idle timeout | raw |
-| 349 | — | Lead acid battery calibration upper limit | raw |
-| 350 | — | Lead acid battery calibration lower limit | raw |
-| 351 | — | Inverter operating mode | raw |
+| 300 | `enable_plant_mode` | Enable plant mode | bool; `set_enable_plant_mode()` |
+| 301 | `plant_role` | Plant primary/secondary role selection | **read-only** (decode-only; not installer-writable) |
+| 302 | `plant_meters` | Plant meters | raw |
+| 303 | `overfrequency_load_drop_recovery_delay` | Overfrequency load drop recovery delay | raw |
+| 305 | `mppt_operating_mode` | MPPT operating mode | raw |
+| 306 | `connection_loading_slope` | Connection loading slope | raw |
+| 307 | `eps_nominal_voltage` | EPS nominal voltage | raw |
+| 312 | `underfrequency_add_load_delay` | Underfrequency add load delay | raw |
+| 315 | `en50549_zero_current_lower_voltage_limit` | EN50549 zero-current static lower voltage limit | raw |
+| 316 | `en50549_zero_current_upper_voltage_limit` | EN50549 zero-current static upper voltage limit | raw |
+| 321 | `overfrequency_derating_start_point` | Overfrequency derating start point | raw |
+| 322 | `enable_tariff_pricing_battery_logic` | Enable tariff pricing battery logic | bool |
+| 323 | `import_price_battery_discharge_threshold` | Import price battery discharge threshold | raw |
+| 324 | `import_price_battery_charge_threshold` | Import price battery charge threshold | raw |
+| 325 | `export_price_battery_discharge_threshold` | Export price battery discharge threshold | raw |
+| 326 | `underfrequency_derating_start_point` | Underfrequency derating start point | raw |
+| 327 | `underfrequency_loading_slope` | Underfrequency loading slope | raw |
+| 328 | `overfrequency_derating_stop_point` | Overfrequency derating stop point | raw |
+| 329 | `enable_bms_ocv_calibration` | Enable BMS OCV calibration | bool |
+| 330 | `gateway_power_off_setting` | Gateway power off setting | raw |
+| 332 | `enable_micro_grid` | Enable micro grid | bool; `set_enable_micro_grid()` |
+| 347 | `disable_leds` | Disable LEDs | bool |
+| 348 | `lcd_screen_idle_timeout` | LCD screen idle timeout | raw |
+| 349 | `lead_acid_battery_calibration_upper_limit` | Lead acid battery calibration upper limit | raw |
+| 350 | `lead_acid_battery_calibration_lower_limit` | Lead acid battery calibration lower limit | raw |
+| 351 | `inverter_operating_mode` | Inverter operating mode | raw |
 
 ### EV charger (HR333–336)
 
 | HR | Field name | Description | Range / notes |
 |---|---|---|---|
-| 333 | — | EV charger enable | bool; `set_enable_ev_charger()` |
-| 334 | — | EV charger import limit | raw |
-| 335 | — | EV charger reconnection wait time | raw |
-| 336 | — | EV charger SOC limit | 0–100 %; `set_ev_charger_soc_limit()` |
+| 333 | `enable_ev_charger` | EV charger enable | bool; `set_enable_ev_charger()` |
+| 334 | `ev_charger_import_limit` | EV charger import limit | raw |
+| 335 | `ev_charger_reconnection_wait_time` | EV charger reconnection wait time | raw |
+| 336 | `ev_charger_soc_limit` | EV charger SOC limit | 0–100 %; `set_ev_charger_soc_limit()` |
 
 ### Fan, gateway, and communications
 
@@ -451,10 +463,11 @@ additional field evidence.
 
 The app 4.0.7 holding-register inventory (460 entries) is committed to
 `docs/reference/registers/app_4.0.7_inventory.json`.  A diff against the library's
-live `REGISTER_LUT`s and `WRITE_SAFE_REGISTERS` runs as a regression test in CI via
-`scripts/audit_register_doc.py --app-source`.  The audit does not currently cover
-`INSTALLER_WRITE_REGISTERS` — installer allow-list drift would not be caught by CI.
-As of v2.6.0, the reconciliation stands at 340 matched / 120 app-only gaps.  The
-remaining gaps are predominantly registers with raw uint16 Defs (scale not yet
-confirmed from a live capture) or blocks not yet admitted to the read poll for want
-of a confirming hardware response.
+live `REGISTER_LUT`s, `WRITE_SAFE_REGISTERS` **and `INSTALLER_WRITE_REGISTERS`** runs as a
+regression test in CI via `scripts/audit_register_doc.py --app-source` — both allow-lists
+are checked against the app surface, so neither standard nor installer write drift can land
+silently. The reconciliation stands at 390 matched / 70 app-only gaps, after decoding the polled
+installer-config block (HR300–351), the three-phase QU-curve / export-limit registers
+(HR1081–1087, HR1102–1103) and HR331. The remaining gaps are predominantly registers in
+blocks not admitted to the read poll (special commands HR5000+, peak-shaving HR20000+) or
+identity/serial registers that are document-only by design.
