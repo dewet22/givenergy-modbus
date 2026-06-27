@@ -624,7 +624,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # matching the 1/0 installer setters in commands.py; thresholds, modes, slopes and
         # limits decode as raw uint16 + None — scale/semantics are unconfirmed on live
         # hardware, but raw read-back still lets a consumer verify an installer write. HR301
-        # is the app's "Plant Master/Slave", named plant_role here to avoid that terminology.
+        # selects the plant's primary/secondary role; named plant_role to avoid the app's
+        # non-inclusive label. It is decode-only — not in INSTALLER_WRITE_REGISTERS.
         "enable_plant_mode": Def(C.bool, None, HR(300)),
         "plant_role": Def(C.uint16, None, HR(301)),
         "plant_meters": Def(C.uint16, None, HR(302)),

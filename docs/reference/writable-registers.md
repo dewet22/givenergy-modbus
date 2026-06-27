@@ -293,10 +293,14 @@ before issuing an installer write. The field names below are the getter fields i
 noted), but raw read-back is correct regardless. On non-AC/AIO models the block is not
 polled and these fields read `None`.
 
+**HR301 (`plant_role`) is decode-only** — it is not in `INSTALLER_WRITE_REGISTERS`, so
+`installer_command()` will reject a write to it. It appears here only because it decodes
+from the same polled block; every other register in this table is installer-writable.
+
 | HR | Field name | Description | Notes |
 |---|---|---|---|
 | 300 | `enable_plant_mode` | Enable plant mode | bool; `set_enable_plant_mode()` |
-| 301 | `plant_role` | Plant role (app: "Plant Master/Slave"; read-only — not writable) | raw |
+| 301 | `plant_role` | Plant primary/secondary role selection | **read-only** (decode-only; not installer-writable) |
 | 302 | `plant_meters` | Plant meters | raw |
 | 303 | `overfrequency_load_drop_recovery_delay` | Overfrequency load drop recovery delay | raw |
 | 305 | `mppt_operating_mode` | MPPT operating mode | raw |
@@ -459,10 +463,10 @@ additional field evidence.
 
 The app 4.0.7 holding-register inventory (460 entries) is committed to
 `docs/reference/registers/app_4.0.7_inventory.json`.  A diff against the library's
-live `REGISTER_LUT`s and `WRITE_SAFE_REGISTERS` runs as a regression test in CI via
-`scripts/audit_register_doc.py --app-source`.  The audit does not currently cover
-`INSTALLER_WRITE_REGISTERS` — installer allow-list drift would not be caught by CI.
-The reconciliation stands at 390 matched / 70 app-only gaps, after decoding the polled
+live `REGISTER_LUT`s, `WRITE_SAFE_REGISTERS` **and `INSTALLER_WRITE_REGISTERS`** runs as a
+regression test in CI via `scripts/audit_register_doc.py --app-source` — both allow-lists
+are checked against the app surface, so neither standard nor installer write drift can land
+silently. The reconciliation stands at 390 matched / 70 app-only gaps, after decoding the polled
 installer-config block (HR300–351), the three-phase QU-curve / export-limit registers
 (HR1081–1087, HR1102–1103) and HR331. The remaining gaps are predominantly registers in
 blocks not admitted to the read poll (special commands HR5000+, peak-shaving HR20000+) or

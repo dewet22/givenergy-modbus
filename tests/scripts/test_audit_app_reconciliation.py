@@ -35,9 +35,9 @@ _BASELINE = _REGISTERS / "app_4.0.7_reconciliation.json"
 
 @pytest.fixture(scope="module")
 def live_report() -> dict:
-    code_regs, write_safe, _ = audit.introspect_code()
+    code_regs, write_safe, _, installer_write = audit.introspect_code()
     app_hr = audit.load_app_inventory(_INVENTORY)
-    return audit.diff_app_source(app_hr, code_regs, write_safe)
+    return audit.diff_app_source(app_hr, code_regs, write_safe, installer_write)
 
 
 def test_reconciliation_matches_committed_baseline(live_report):
@@ -52,3 +52,12 @@ def test_library_not_over_permissive(live_report):
     the library that the manufacturer's app does not also expose as writable.
     """
     assert live_report["write_safe_coverage"]["write_safe_not_in_app"] == []
+
+
+def test_installer_writes_not_over_permissive(live_report):
+    """Every installer-write HR is in the app's writable surface (no over-permission).
+
+    Same invariant as the standard write-safe set, applied to the installer tier:
+    nothing should be installer-writable that the app's surface doesn't expose.
+    """
+    assert live_report["installer_write_coverage"]["installer_write_not_in_app"] == []
