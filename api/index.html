@@ -4253,6 +4253,8 @@
       
         
       
+        
+      
     
     
     
@@ -4308,6 +4310,34 @@
     
   
     Register identification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/writable-registers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writable registers
   
 
     
@@ -22726,65 +22756,7 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 832</span>
-<span class="normal"> 833</span>
-<span class="normal"> 834</span>
-<span class="normal"> 835</span>
-<span class="normal"> 836</span>
-<span class="normal"> 837</span>
-<span class="normal"> 838</span>
-<span class="normal"> 839</span>
-<span class="normal"> 840</span>
-<span class="normal"> 841</span>
-<span class="normal"> 842</span>
-<span class="normal"> 843</span>
-<span class="normal"> 844</span>
-<span class="normal"> 845</span>
-<span class="normal"> 846</span>
-<span class="normal"> 847</span>
-<span class="normal"> 848</span>
-<span class="normal"> 849</span>
-<span class="normal"> 850</span>
-<span class="normal"> 851</span>
-<span class="normal"> 852</span>
-<span class="normal"> 853</span>
-<span class="normal"> 854</span>
-<span class="normal"> 855</span>
-<span class="normal"> 856</span>
-<span class="normal"> 857</span>
-<span class="normal"> 858</span>
-<span class="normal"> 859</span>
-<span class="normal"> 860</span>
-<span class="normal"> 861</span>
-<span class="normal"> 862</span>
-<span class="normal"> 863</span>
-<span class="normal"> 864</span>
-<span class="normal"> 865</span>
-<span class="normal"> 866</span>
-<span class="normal"> 867</span>
-<span class="normal"> 868</span>
-<span class="normal"> 869</span>
-<span class="normal"> 870</span>
-<span class="normal"> 871</span>
-<span class="normal"> 872</span>
-<span class="normal"> 873</span>
-<span class="normal"> 874</span>
-<span class="normal"> 875</span>
-<span class="normal"> 876</span>
-<span class="normal"> 877</span>
-<span class="normal"> 878</span>
-<span class="normal"> 879</span>
-<span class="normal"> 880</span>
-<span class="normal"> 881</span>
-<span class="normal"> 882</span>
-<span class="normal"> 883</span>
-<span class="normal"> 884</span>
-<span class="normal"> 885</span>
-<span class="normal"> 886</span>
-<span class="normal"> 887</span>
-<span class="normal"> 888</span>
-<span class="normal"> 889</span>
-<span class="normal"> 890</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 890</span>
 <span class="normal"> 891</span>
 <span class="normal"> 892</span>
 <span class="normal"> 893</span>
@@ -23062,7 +23034,65 @@ in later 2.x minors — see #75.</p>
 <span class="normal">1165</span>
 <span class="normal">1166</span>
 <span class="normal">1167</span>
-<span class="normal">1168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">1168</span>
+<span class="normal">1169</span>
+<span class="normal">1170</span>
+<span class="normal">1171</span>
+<span class="normal">1172</span>
+<span class="normal">1173</span>
+<span class="normal">1174</span>
+<span class="normal">1175</span>
+<span class="normal">1176</span>
+<span class="normal">1177</span>
+<span class="normal">1178</span>
+<span class="normal">1179</span>
+<span class="normal">1180</span>
+<span class="normal">1181</span>
+<span class="normal">1182</span>
+<span class="normal">1183</span>
+<span class="normal">1184</span>
+<span class="normal">1185</span>
+<span class="normal">1186</span>
+<span class="normal">1187</span>
+<span class="normal">1188</span>
+<span class="normal">1189</span>
+<span class="normal">1190</span>
+<span class="normal">1191</span>
+<span class="normal">1192</span>
+<span class="normal">1193</span>
+<span class="normal">1194</span>
+<span class="normal">1195</span>
+<span class="normal">1196</span>
+<span class="normal">1197</span>
+<span class="normal">1198</span>
+<span class="normal">1199</span>
+<span class="normal">1200</span>
+<span class="normal">1201</span>
+<span class="normal">1202</span>
+<span class="normal">1203</span>
+<span class="normal">1204</span>
+<span class="normal">1205</span>
+<span class="normal">1206</span>
+<span class="normal">1207</span>
+<span class="normal">1208</span>
+<span class="normal">1209</span>
+<span class="normal">1210</span>
+<span class="normal">1211</span>
+<span class="normal">1212</span>
+<span class="normal">1213</span>
+<span class="normal">1214</span>
+<span class="normal">1215</span>
+<span class="normal">1216</span>
+<span class="normal">1217</span>
+<span class="normal">1218</span>
+<span class="normal">1219</span>
+<span class="normal">1220</span>
+<span class="normal">1221</span>
+<span class="normal">1222</span>
+<span class="normal">1223</span>
+<span class="normal">1224</span>
+<span class="normal">1225</span>
+<span class="normal">1226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -23949,11 +23979,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">858</span>
-<span class="normal">859</span>
-<span class="normal">860</span>
-<span class="normal">861</span>
-<span class="normal">862</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">916</span>
+<span class="normal">917</span>
+<span class="normal">918</span>
+<span class="normal">919</span>
+<span class="normal">920</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -23984,10 +24014,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">847</span>
-<span class="normal">848</span>
-<span class="normal">849</span>
-<span class="normal">850</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">905</span>
+<span class="normal">906</span>
+<span class="normal">907</span>
+<span class="normal">908</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -24013,11 +24043,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">852</span>
-<span class="normal">853</span>
-<span class="normal">854</span>
-<span class="normal">855</span>
-<span class="normal">856</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">910</span>
+<span class="normal">911</span>
+<span class="normal">912</span>
+<span class="normal">913</span>
+<span class="normal">914</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -24450,7 +24480,65 @@ unknown (DTC unread).</p>
 <span class="normal">797</span>
 <span class="normal">798</span>
 <span class="normal">799</span>
-<span class="normal">800</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">800</span>
+<span class="normal">801</span>
+<span class="normal">802</span>
+<span class="normal">803</span>
+<span class="normal">804</span>
+<span class="normal">805</span>
+<span class="normal">806</span>
+<span class="normal">807</span>
+<span class="normal">808</span>
+<span class="normal">809</span>
+<span class="normal">810</span>
+<span class="normal">811</span>
+<span class="normal">812</span>
+<span class="normal">813</span>
+<span class="normal">814</span>
+<span class="normal">815</span>
+<span class="normal">816</span>
+<span class="normal">817</span>
+<span class="normal">818</span>
+<span class="normal">819</span>
+<span class="normal">820</span>
+<span class="normal">821</span>
+<span class="normal">822</span>
+<span class="normal">823</span>
+<span class="normal">824</span>
+<span class="normal">825</span>
+<span class="normal">826</span>
+<span class="normal">827</span>
+<span class="normal">828</span>
+<span class="normal">829</span>
+<span class="normal">830</span>
+<span class="normal">831</span>
+<span class="normal">832</span>
+<span class="normal">833</span>
+<span class="normal">834</span>
+<span class="normal">835</span>
+<span class="normal">836</span>
+<span class="normal">837</span>
+<span class="normal">838</span>
+<span class="normal">839</span>
+<span class="normal">840</span>
+<span class="normal">841</span>
+<span class="normal">842</span>
+<span class="normal">843</span>
+<span class="normal">844</span>
+<span class="normal">845</span>
+<span class="normal">846</span>
+<span class="normal">847</span>
+<span class="normal">848</span>
+<span class="normal">849</span>
+<span class="normal">850</span>
+<span class="normal">851</span>
+<span class="normal">852</span>
+<span class="normal">853</span>
+<span class="normal">854</span>
+<span class="normal">855</span>
+<span class="normal">856</span>
+<span class="normal">857</span>
+<span class="normal">858</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -24652,10 +24740,26 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;smart_load_slot_9&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">timeslot</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">570</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">571</span><span class="p">)),</span>
         <span class="s2">&quot;smart_load_slot_10&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">timeslot</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">572</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">573</span><span class="p">)),</span>
         <span class="c1">#</span>
-        <span class="c1"># Holding Registers, block 300-359</span>
-        <span class="c1"># Single Phase New registers</span>
-        <span class="c1"># This block is polled for non-EMS / non-gateway inverters; see client.py.</span>
+        <span class="c1"># Holding Registers, block 300-359 — AC-output config.</span>
+        <span class="c1"># Polled only when has_ac_config_block is set (AC-coupled and All-in-One</span>
+        <span class="c1"># models); DC-coupled/hybrid models time out on it and never poll it (#162),</span>
+        <span class="c1"># so every field below stays None there — same as battery_*_limit_ac (HR313/314).</span>
+        <span class="c1"># See client.py load_config().</span>
         <span class="c1">#</span>
+        <span class="c1"># Newly decoded installer-config registers (HR300-351) from the GE app 4.0.7 binary,</span>
+        <span class="c1"># polled on AC/AIO via the HR(300,60) block. Enable/disable toggles decode via C.bool,</span>
+        <span class="c1"># matching the 1/0 installer setters in commands.py; thresholds, modes, slopes and</span>
+        <span class="c1"># limits decode as raw uint16 + None — scale/semantics are unconfirmed on live</span>
+        <span class="c1"># hardware, but raw read-back still lets a consumer verify an installer write. HR301</span>
+        <span class="c1"># selects the plant&#39;s primary/secondary role; named plant_role to avoid the app&#39;s</span>
+        <span class="c1"># non-inclusive label. It is decode-only — not in INSTALLER_WRITE_REGISTERS.</span>
+        <span class="s2">&quot;enable_plant_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">300</span><span class="p">)),</span>
+        <span class="s2">&quot;plant_role&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">301</span><span class="p">)),</span>
+        <span class="s2">&quot;plant_meters&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">302</span><span class="p">)),</span>
+        <span class="s2">&quot;overfrequency_load_drop_recovery_delay&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">303</span><span class="p">)),</span>
+        <span class="s2">&quot;mppt_operating_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">305</span><span class="p">)),</span>
+        <span class="s2">&quot;connection_loading_slope&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">306</span><span class="p">)),</span>
+        <span class="s2">&quot;eps_nominal_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">307</span><span class="p">)),</span>
         <span class="c1"># HR(308-310): battery topology — rated power (W), rated current (A), max charge</span>
         <span class="c1"># percentage. Extracted from GE app 4.0.7 binary; scale unconfirmed on live hardware.</span>
         <span class="s2">&quot;battery_nominal_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">308</span><span class="p">)),</span>
@@ -24664,13 +24768,55 @@ unknown (DTC unread).</p>
         <span class="c1"># HR(311): export priority — confirmed writable on Model.AC via portal observations</span>
         <span class="c1"># (hass#52): values 0/1/2 matched &quot;Battery First / Grid First / Load First&quot;.</span>
         <span class="s2">&quot;export_priority&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="n">ExportPriority</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">311</span><span class="p">)),</span>
+        <span class="c1"># HR(312): underfrequency add-load delay (raw uint16, scale unconfirmed).</span>
+        <span class="s2">&quot;underfrequency_add_load_delay&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">312</span><span class="p">)),</span>
         <span class="s2">&quot;battery_charge_limit_ac&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">313</span><span class="p">)),</span>
         <span class="s2">&quot;battery_discharge_limit_ac&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">314</span><span class="p">)),</span>
+        <span class="c1"># HR(315-316): EN50549 zero-current static voltage limits (raw uint16).</span>
+        <span class="s2">&quot;en50549_zero_current_lower_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">315</span><span class="p">)),</span>
+        <span class="s2">&quot;en50549_zero_current_upper_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">316</span><span class="p">)),</span>
         <span class="c1"># HR(317): EPS enable — confirmed writable on Model.AC via portal observations</span>
         <span class="c1"># (hass#52): toggled 0/1 while the portal&#39;s &quot;EPS&quot; switch was flipped off/on.</span>
         <span class="s2">&quot;enable_eps&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">317</span><span class="p">)),</span>
         <span class="s2">&quot;battery_pause_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">318</span><span class="p">)),</span>
         <span class="s2">&quot;battery_pause_slot_1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">timeslot</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">319</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">320</span><span class="p">)),</span>
+        <span class="c1"># HR(321-332): frequency derating, tariff-pricing battery logic, BMS OCV calibration,</span>
+        <span class="c1"># gateway power-off, force-off-grid, micro-grid.</span>
+        <span class="s2">&quot;overfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">321</span><span class="p">)),</span>
+        <span class="s2">&quot;enable_tariff_pricing_battery_logic&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">322</span><span class="p">)),</span>
+        <span class="s2">&quot;import_price_battery_discharge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">323</span><span class="p">)),</span>
+        <span class="s2">&quot;import_price_battery_charge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">324</span><span class="p">)),</span>
+        <span class="s2">&quot;export_price_battery_discharge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">325</span><span class="p">)),</span>
+        <span class="s2">&quot;underfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">326</span><span class="p">)),</span>
+        <span class="s2">&quot;underfrequency_loading_slope&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">327</span><span class="p">)),</span>
+        <span class="s2">&quot;overfrequency_derating_stop_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">328</span><span class="p">)),</span>
+        <span class="s2">&quot;enable_bms_ocv_calibration&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">329</span><span class="p">)),</span>
+        <span class="s2">&quot;gateway_power_off_setting&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">330</span><span class="p">)),</span>
+        <span class="s2">&quot;force_off_grid&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">331</span><span class="p">)),</span>
+        <span class="s2">&quot;enable_micro_grid&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">332</span><span class="p">)),</span>
+        <span class="c1"># HR(333-336): EV charger config (enable, import limit, reconnection wait, SOC limit).</span>
+        <span class="s2">&quot;enable_ev_charger&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">333</span><span class="p">)),</span>
+        <span class="s2">&quot;ev_charger_import_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">334</span><span class="p">)),</span>
+        <span class="s2">&quot;ev_charger_reconnection_wait_time&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">335</span><span class="p">)),</span>
+        <span class="s2">&quot;ev_charger_soc_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">336</span><span class="p">)),</span>
+        <span class="c1"># HR(337-342): fan, gateway, BMS comms, N-PE relay, AFCI.</span>
+        <span class="s2">&quot;enable_fan&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">337</span><span class="p">)),</span>
+        <span class="s2">&quot;fan_speed&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">338</span><span class="p">)),</span>
+        <span class="s2">&quot;enable_gateway&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">339</span><span class="p">)),</span>
+        <span class="s2">&quot;bms_communication_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">340</span><span class="p">)),</span>
+        <span class="s2">&quot;n_pe_relay_toggle&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">341</span><span class="p">)),</span>
+        <span class="s2">&quot;afci_setting&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">342</span><span class="p">)),</span>
+        <span class="c1"># HR(343-346): generator config (enable, start/stop SOC, charge power).</span>
+        <span class="s2">&quot;enable_generator&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">343</span><span class="p">)),</span>
+        <span class="s2">&quot;generator_start_soc&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">344</span><span class="p">)),</span>
+        <span class="s2">&quot;generator_stop_soc&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">345</span><span class="p">)),</span>
+        <span class="s2">&quot;generator_charge_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">346</span><span class="p">)),</span>
+        <span class="c1"># HR(347-351): display, lead-acid calibration limits, inverter operating mode.</span>
+        <span class="s2">&quot;disable_leds&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">347</span><span class="p">)),</span>
+        <span class="s2">&quot;lcd_screen_idle_timeout&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">348</span><span class="p">)),</span>
+        <span class="s2">&quot;lead_acid_battery_calibration_upper_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">349</span><span class="p">)),</span>
+        <span class="s2">&quot;lead_acid_battery_calibration_lower_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">350</span><span class="p">)),</span>
+        <span class="s2">&quot;inverter_operating_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">351</span><span class="p">)),</span>
         <span class="c1">#</span>
         <span class="c1"># Holding Registers, block 499-510</span>
         <span class="c1"># HV cabinet topology — extracted from GE app 4.0.7 binary; poll gated off for</span>

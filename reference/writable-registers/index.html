@@ -1,0 +1,3091 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://dewet22.github.io/givenergy-modbus/reference/writable-registers/">
+      
+      
+        <link rel="prev" href="../../register-identification/">
+      
+      
+        <link rel="next" href="../../hardware-firmware-quirks/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Writable registers - GivEnergy Modbus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#writable-registers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="GivEnergy Modbus" class="md-header__button md-logo" aria-label="GivEnergy Modbus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GivEnergy Modbus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Writable registers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dewet22/givenergy-modbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewet22/givenergy-modbus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="GivEnergy Modbus" class="md-nav__button md-logo" aria-label="GivEnergy Modbus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    GivEnergy Modbus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dewet22/givenergy-modbus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dewet22/givenergy-modbus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../register-identification/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Register identification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writable registers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writable registers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#writable-registers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writable registers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writable registers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#write-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write tiers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-write-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard write surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Standard write surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#charge-discharge-enable-and-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charge / discharge enable and targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charge-slots-110" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charge slots 1–10
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discharge-slots-110" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discharge slots 1–10
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#battery-mode-and-scheduling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Battery mode and scheduling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System time
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ac-coupled-config-ac-all-in-one-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AC-coupled config (AC / All-in-One models)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#three-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-phase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ems-plant-level-scheduling-hr20402071" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMS plant-level scheduling (HR2040–2071)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-load-time-slots-hr554573" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart load time slots (HR554–573)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misc-hardware-gated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Misc / hardware-gated
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#installer-write-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installer write surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installer write surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ac-grid-protection-voltage-and-frequency-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AC grid protection — voltage and frequency limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grid-import-anti-islanding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grid import / anti-islanding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#battery-commissioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Battery commissioning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plant-and-inverter-operating-config-ac-block-hr300359" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plant and inverter operating config (AC block, HR300–359)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ev-charger-hr333336" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EV charger (HR333–336)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fan-gateway-and-communications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fan, gateway, and communications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generator-hr343346" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generator (HR343–346)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-load-non-slot-controls-hr540553" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart load — non-slot controls (HR540–553)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#three-phase-power-quality-and-grid-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-phase power quality and grid compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dual-grid-plant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual-grid / plant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#special-commands-non-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special commands (non-destructive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#peak-shaving-export-import-control-ems-installer-hr20000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Peak shaving / export-import control (EMS installer, HR20000+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#destructive-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Destructive operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#held-back-registers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Held-back registers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconciliation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../hardware-firmware-quirks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardware & firmware quirks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../migrating-from-the-async-fork/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrating from the async fork
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../plant-device-graph/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Graph-shaped Plant (#106)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flow-state-spec/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power-flow state (shared spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#writable-registers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writable registers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writable registers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#write-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write tiers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standard-write-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standard write surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Standard write surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#charge-discharge-enable-and-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charge / discharge enable and targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charge-slots-110" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charge slots 1–10
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#discharge-slots-110" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Discharge slots 1–10
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#battery-mode-and-scheduling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Battery mode and scheduling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#system-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System time
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ac-coupled-config-ac-all-in-one-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AC-coupled config (AC / All-in-One models)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#three-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-phase
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ems-plant-level-scheduling-hr20402071" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EMS plant-level scheduling (HR2040–2071)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-load-time-slots-hr554573" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart load time slots (HR554–573)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#misc-hardware-gated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Misc / hardware-gated
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#installer-write-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installer write surface
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installer write surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ac-grid-protection-voltage-and-frequency-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AC grid protection — voltage and frequency limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grid-import-anti-islanding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grid import / anti-islanding
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#battery-commissioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Battery commissioning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plant-and-inverter-operating-config-ac-block-hr300359" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Plant and inverter operating config (AC block, HR300–359)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ev-charger-hr333336" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        EV charger (HR333–336)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fan-gateway-and-communications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fan, gateway, and communications
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generator-hr343346" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generator (HR343–346)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-load-non-slot-controls-hr540553" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart load — non-slot controls (HR540–553)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#three-phase-power-quality-and-grid-compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-phase power quality and grid compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dual-grid-plant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dual-grid / plant
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#special-commands-non-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Special commands (non-destructive)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#peak-shaving-export-import-control-ems-installer-hr20000" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Peak shaving / export-import control (EMS installer, HR20000+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#destructive-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Destructive operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#held-back-registers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Held-back registers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reconciliation-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconciliation status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+  <h1>Writable registers</h1>
+
+<h2 id="writable-registers">Writable registers<a class="headerlink" href="#writable-registers" title="Permanent link">&para;</a></h2>
+<p>This document covers the full write surface of the GivEnergy Modbus library: which
+holding registers can be written, at what tier, through which API entry point, and what
+is known about their effect.</p>
+<h3 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h3>
+<p>The primary source is the GivEnergy Android app v4.0.7 "Direct Control" tab, which
+exposes the manufacturer's own writable-register map for end users (post–cloud-portal
+retirement) and a separate installer-login surface.  The app is Flutter-based; its
+full holding-register write map (460 entries) and per-model telemetry-kind table live
+in the Dart AOT snapshot inside <code>libapp.so</code> and were extracted via
+<a href="https://github.com/worawit/blutter">blutter</a> without requiring hardware or a live
+cloud connection.  The v4.1.6 hybrid Modbus RTU protocol document (2024-10-30) provides
+supplementary context; a parsed inventory lives in <code>docs/reference/registers/</code>.</p>
+<p>GivEnergy entered administration in 2025.  No further firmware or documentation
+updates are expected, which makes the app-binary extraction the most authoritative
+source likely to exist.</p>
+<h3 id="write-tiers">Write tiers<a class="headerlink" href="#write-tiers" title="Permanent link">&para;</a></h3>
+<p>The library enforces two independent gates around every write.</p>
+<p><strong>Gate 1 (client):</strong> <code>Client.one_shot_command()</code> validates that each request is in the
+per-model safe set before dispatching.  <code>Client.installer_command()</code> extends that set
+to include <code>INSTALLER_WRITE_REGISTERS</code>, but is never used by <code>one_shot_command()</code>.</p>
+<p><strong>Gate 2 (PDU):</strong> <code>WriteHoldingRegisterRequest.ensure_valid_state()</code> — called
+automatically during encode — checks the register against the appropriate allow-list.
+A request constructed without <code>installer=True</code> is rejected if its register is not in
+<code>WRITE_SAFE_REGISTERS</code>; one constructed with <code>installer=True</code> is rejected if it is not
+in <code>INSTALLER_WRITE_REGISTERS</code>.  The two sets are disjoint by design.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Entry point</th>
+<th>Register set</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard</td>
+<td><code>one_shot_command()</code></td>
+<td><code>WRITE_SAFE_REGISTERS</code></td>
+<td>Charge slots, SOC limits, mode switches, EMS scheduling</td>
+</tr>
+<tr>
+<td>Installer — config</td>
+<td><code>installer_command()</code></td>
+<td><code>INSTALLER_WRITE_REGISTERS</code> (non-destructive)</td>
+<td>Grid-protection limits, battery commissioning, hardware enables</td>
+</tr>
+<tr>
+<td>Installer — destructive</td>
+<td><code>installer_command()</code></td>
+<td><code>INSTALLER_WRITE_REGISTERS</code> (destructive group)</td>
+<td>Factory reset, energy-total reset, black-start</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Installer tier — read before use</p>
+<p>Installer registers control grid-safety parameters, hardware operating modes, and
+factory configuration.  Incorrect values can leave a site operating outside
+grid-code tolerances, prevent battery charging, or — for the destructive group —
+wipe all installer configuration irreversibly.</p>
+<ul>
+<li>Always obtain a baseline read of the current register value before writing.</li>
+<li>Apply changes incrementally and verify telemetry after each step.</li>
+<li>The destructive command helpers (<code>restore_factory_defaults</code>, <code>reset_energy_totals</code>,
+  <code>three_phase_factory_reset</code>, <code>enable_black_start</code>) require <code>confirm=True</code> and will
+  raise <code>ValueError</code> without it.  This is intentional — there is no undo.</li>
+<li>The original motivation for exposing this tier: with GivEnergy in administration
+  there is no longer a field-engineer path to correct a factory-misconfigured
+  inverter.  Use it accordingly — sparingly, deliberately, with a known target value
+  in hand.</li>
+</ul>
+</div>
+<hr />
+<h3 id="standard-write-surface">Standard write surface<a class="headerlink" href="#standard-write-surface" title="Permanent link">&para;</a></h3>
+<p>Accessed via <code>Client.one_shot_command()</code>.  All registers below are in
+<code>WRITE_SAFE_REGISTERS</code> (<code>givenergy_modbus/pdu/write_registers.py</code>).</p>
+<h4 id="charge-discharge-enable-and-targets">Charge / discharge enable and targets<a class="headerlink" href="#charge-discharge-enable-and-targets" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Range / values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>20</td>
+<td><code>enable_charge_target</code></td>
+<td>Enable AC charge upper % limit</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>96</td>
+<td><code>enable_charge</code></td>
+<td>Enable battery charging</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>59</td>
+<td><code>enable_discharge</code></td>
+<td>Enable battery discharging</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>116</td>
+<td><code>charge_target_soc</code></td>
+<td>AC charge upper SOC % limit</td>
+<td>4–100 %</td>
+</tr>
+<tr>
+<td>110</td>
+<td><code>battery_soc_reserve</code></td>
+<td>Discharge floor / SOC reserve</td>
+<td>4–100 %</td>
+</tr>
+<tr>
+<td>111</td>
+<td><code>battery_charge_limit</code></td>
+<td>Battery charge power limit</td>
+<td>0–100 % of rated</td>
+</tr>
+<tr>
+<td>112</td>
+<td><code>battery_discharge_limit</code></td>
+<td>Battery discharge power limit</td>
+<td>0–100 % of rated</td>
+</tr>
+<tr>
+<td>114</td>
+<td><code>battery_discharge_min_power_reserve</code></td>
+<td>Minimum discharge power reserve</td>
+<td>4–100 %</td>
+</tr>
+<tr>
+<td>29</td>
+<td><code>battery_calibration_stage</code></td>
+<td>SOC force-adjust</td>
+<td>0 (Stop), 1 (Start), 3 (Charge Only)</td>
+</tr>
+</tbody>
+</table>
+<h4 id="charge-slots-110">Charge slots 1–10<a class="headerlink" href="#charge-slots-110" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR (start / end)</th>
+<th>Field names</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>94 / 95</td>
+<td><code>charge_slot_1_start</code> / <code>_end</code></td>
+<td>HHMM format</td>
+</tr>
+<tr>
+<td>31 / 32</td>
+<td><code>charge_slot_2_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>246 / 247</td>
+<td><code>charge_slot_3_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>249 / 250</td>
+<td><code>charge_slot_4_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>252 / 253</td>
+<td><code>charge_slot_5_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>255 / 256</td>
+<td><code>charge_slot_6_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>258 / 259</td>
+<td><code>charge_slot_7_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>261 / 262</td>
+<td><code>charge_slot_8_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>264 / 265</td>
+<td><code>charge_slot_9_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>267 / 268</td>
+<td><code>charge_slot_10_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="discharge-slots-110">Discharge slots 1–10<a class="headerlink" href="#discharge-slots-110" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR (start / end)</th>
+<th>Field names</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>56 / 57</td>
+<td><code>discharge_slot_1_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>44 / 45</td>
+<td><code>discharge_slot_2_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>276 / 277</td>
+<td><code>discharge_slot_3_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>279 / 280</td>
+<td><code>discharge_slot_4_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>282 / 283</td>
+<td><code>discharge_slot_5_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>285 / 286</td>
+<td><code>discharge_slot_6_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>288 / 289</td>
+<td><code>discharge_slot_7_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>291 / 292</td>
+<td><code>discharge_slot_8_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>294 / 295</td>
+<td><code>discharge_slot_9_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+<tr>
+<td>297 / 298</td>
+<td><code>discharge_slot_10_start</code> / <code>_end</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h4 id="battery-mode-and-scheduling">Battery mode and scheduling<a class="headerlink" href="#battery-mode-and-scheduling" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>27</td>
+<td><code>battery_power_mode</code></td>
+<td>Enable eco mode</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>50</td>
+<td><code>active_power_rate</code></td>
+<td>Active power rate</td>
+<td>0–100 %</td>
+</tr>
+<tr>
+<td>163</td>
+<td><code>inverter_reboot</code></td>
+<td>Restart inverter</td>
+<td>write 100; non-damaging</td>
+</tr>
+<tr>
+<td>166</td>
+<td><code>enable_rtc</code></td>
+<td>Real-time control</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>199</td>
+<td><code>enable_inverter_parallel_mode</code></td>
+<td>Enable parallel mode</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>299</td>
+<td><code>discharge_target_soc_10</code></td>
+<td>DC discharge 10 lower SOC % limit</td>
+<td>0–100 %</td>
+</tr>
+<tr>
+<td>331</td>
+<td><code>force_off_grid</code></td>
+<td>Force off-grid</td>
+<td>bool; see note below</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">HR331 — Force off-grid</p>
+<p>This is a sustained islanding state, not a momentary reboot.  A stuck write
+leaves the site off-grid with no auto-recovery.  Bounded boolean; admitted to
+the standard tier because the app exposes it to end users, but treat with care
+at call sites.</p>
+</div>
+<h4 id="system-time">System time<a class="headerlink" href="#system-time" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>35</td>
+<td>System time: year</td>
+</tr>
+<tr>
+<td>36</td>
+<td>System time: month</td>
+</tr>
+<tr>
+<td>37</td>
+<td>System time: day</td>
+</tr>
+<tr>
+<td>38</td>
+<td>System time: hour</td>
+</tr>
+<tr>
+<td>39</td>
+<td>System time: minute</td>
+</tr>
+<tr>
+<td>40</td>
+<td>System time: second</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>set_system_date_time(dt)</code> rather than writing these individually.</p>
+<h4 id="ac-coupled-config-ac-all-in-one-models">AC-coupled config (AC / All-in-One models)<a class="headerlink" href="#ac-coupled-config-ac-all-in-one-models" title="Permanent link">&para;</a></h4>
+<p>Gated on <code>PlantCapabilities.has_ac_config_block</code> inside <code>one_shot_command()</code>.</p>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>311</td>
+<td><code>export_power_priority</code></td>
+<td>Export power priority</td>
+<td>0=Load / 1=Battery / 2=Grid</td>
+</tr>
+<tr>
+<td>313</td>
+<td><code>inverter_charge_power_pct</code></td>
+<td>Inverter charge power %</td>
+<td>1–100 %</td>
+</tr>
+<tr>
+<td>314</td>
+<td><code>inverter_discharge_power_pct</code></td>
+<td>Inverter discharge power %</td>
+<td>1–100 %</td>
+</tr>
+<tr>
+<td>317</td>
+<td><code>enable_eps</code></td>
+<td>Enable EPS</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>318</td>
+<td><code>battery_pause_mode</code></td>
+<td>Pause battery</td>
+<td><code>BatteryPauseMode</code> enum</td>
+</tr>
+<tr>
+<td>319</td>
+<td><code>battery_pause_slot_start</code></td>
+<td>Pause slot start</td>
+<td>HHMM</td>
+</tr>
+<tr>
+<td>320</td>
+<td><code>battery_pause_slot_end</code></td>
+<td>Pause slot end</td>
+<td>HHMM</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">HR313 / HR314 floor at 1, not 0</p>
+<p>Writing 0 to HR313 or HR314 returns an error on AC hardware (confirmed via
+wire capture).  The range floor is 1 for AC inverters.  DC-coupled models keep
+a 0-floor for HR111 / HR112.</p>
+</div>
+<h4 id="three-phase">Three-phase<a class="headerlink" href="#three-phase" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1005</td>
+<td><code>real_time_control_3ph</code></td>
+<td>Real-time control (mirrors HR166)</td>
+</tr>
+<tr>
+<td>1078</td>
+<td><code>battery_reserve_pct_3ph</code></td>
+<td>Battery reserve %</td>
+</tr>
+<tr>
+<td>1108</td>
+<td><code>discharge_power_rate_3ph</code></td>
+<td>Discharge power rate</td>
+</tr>
+<tr>
+<td>1109</td>
+<td><code>discharge_down_to_pct_3ph</code></td>
+<td>Discharge down-to %</td>
+</tr>
+<tr>
+<td>1110</td>
+<td><code>charge_power_rate_3ph</code></td>
+<td>Charge power rate</td>
+</tr>
+<tr>
+<td>1111</td>
+<td><code>charge_up_to_pct_3ph</code></td>
+<td>Charge up-to %</td>
+</tr>
+<tr>
+<td>1112</td>
+<td><code>enable_ac_charge_3ph</code></td>
+<td>Enable AC charge</td>
+</tr>
+<tr>
+<td>1113 / 1114</td>
+<td><code>ac_charge_1_start</code> / <code>_end</code></td>
+<td>AC charge slot 1</td>
+</tr>
+<tr>
+<td>1115 / 1116</td>
+<td><code>ac_charge_2_start</code> / <code>_end</code></td>
+<td>AC charge slot 2</td>
+</tr>
+<tr>
+<td>1118 / 1119</td>
+<td><code>dc_discharge_1_start</code> / <code>_end</code></td>
+<td>DC discharge slot 1</td>
+</tr>
+<tr>
+<td>1120 / 1121</td>
+<td><code>dc_discharge_2_start</code> / <code>_end</code></td>
+<td>DC discharge slot 2</td>
+</tr>
+<tr>
+<td>1122</td>
+<td><code>enable_force_discharge_3ph</code></td>
+<td>Enable force discharge</td>
+</tr>
+<tr>
+<td>1123</td>
+<td><code>enable_force_charge_3ph</code></td>
+<td>Enable force charge</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ems-plant-level-scheduling-hr20402071">EMS plant-level scheduling (HR2040–2071)<a class="headerlink" href="#ems-plant-level-scheduling-hr20402071" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2040</td>
+<td>Enable plant EMS control</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>2044–2046</td>
+<td>EMS discharge slot 1 (start / end / SOC limit)</td>
+<td></td>
+</tr>
+<tr>
+<td>2047–2049</td>
+<td>EMS discharge slot 2</td>
+<td></td>
+</tr>
+<tr>
+<td>2050–2052</td>
+<td>EMS discharge slot 3</td>
+<td></td>
+</tr>
+<tr>
+<td>2053–2055</td>
+<td>EMS charge slot 1 (start / end / SOC limit)</td>
+<td></td>
+</tr>
+<tr>
+<td>2056–2058</td>
+<td>EMS charge slot 2</td>
+<td></td>
+</tr>
+<tr>
+<td>2059–2061</td>
+<td>EMS charge slot 3</td>
+<td></td>
+</tr>
+<tr>
+<td>2062–2064</td>
+<td>EMS export slot 1 (start / end / SOC limit)</td>
+<td></td>
+</tr>
+<tr>
+<td>2065–2067</td>
+<td>EMS export slot 2</td>
+<td></td>
+</tr>
+<tr>
+<td>2068–2070</td>
+<td>EMS export slot 3</td>
+<td></td>
+</tr>
+<tr>
+<td>2071</td>
+<td>EMS export power limit</td>
+<td>Installer/DNO — not user-writable via app</td>
+</tr>
+</tbody>
+</table>
+<p>Use the <code>set_ems_*</code> helpers in <code>commands.py</code> rather than writing these directly.</p>
+<h4 id="smart-load-time-slots-hr554573">Smart load time slots (HR554–573)<a class="headerlink" href="#smart-load-time-slots-hr554573" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR (start / end)</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>554 / 555</td>
+<td>Smart load slot 1</td>
+</tr>
+<tr>
+<td>556 / 557</td>
+<td>Smart load slot 2</td>
+</tr>
+<tr>
+<td>558 / 559</td>
+<td>Smart load slot 3</td>
+</tr>
+<tr>
+<td>560 / 561</td>
+<td>Smart load slot 4</td>
+</tr>
+<tr>
+<td>562 / 563</td>
+<td>Smart load slot 5</td>
+</tr>
+<tr>
+<td>564 / 565</td>
+<td>Smart load slot 6</td>
+</tr>
+<tr>
+<td>566 / 567</td>
+<td>Smart load slot 7</td>
+</tr>
+<tr>
+<td>568 / 569</td>
+<td>Smart load slot 8</td>
+</tr>
+<tr>
+<td>570 / 571</td>
+<td>Smart load slot 9</td>
+</tr>
+<tr>
+<td>572 / 573</td>
+<td>Smart load slot 10</td>
+</tr>
+</tbody>
+</table>
+<h4 id="misc-hardware-gated">Misc / hardware-gated<a class="headerlink" href="#misc-hardware-gated" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>104</td>
+<td>—</td>
+<td>Enable battery self-heating</td>
+<td>Hardware/batch-gated: write may be rejected per-unit</td>
+</tr>
+<tr>
+<td>172</td>
+<td>—</td>
+<td>Enable manual battery heater</td>
+<td>Likely hardware-gated like HR104</td>
+</tr>
+<tr>
+<td>5010</td>
+<td>—</td>
+<td>Restart hardware</td>
+<td>Non-damaging; same class as HR163</td>
+</tr>
+<tr>
+<td>5014</td>
+<td>—</td>
+<td>Enable calculated load</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="installer-write-surface">Installer write surface<a class="headerlink" href="#installer-write-surface" title="Permanent link">&para;</a></h3>
+<p>Accessed via <code>Client.installer_command()</code>.  All registers below are in
+<code>INSTALLER_WRITE_REGISTERS</code> and are inaccessible through <code>one_shot_command()</code>.
+See the safety note at the top of this document.</p>
+<h4 id="ac-grid-protection-voltage-and-frequency-limits">AC grid protection — voltage and frequency limits<a class="headerlink" href="#ac-grid-protection-voltage-and-frequency-limits" title="Permanent link">&para;</a></h4>
+<p>Three-level trip scheme: level 1 is the tighter (quicker) trip, level 2 is looser,
+and HR79–83 form the third/final level including the 10-minute average voltage monitor.
+Converters for this block are inferred from the three-phase parallel block (HR1018–1042);
+unverified on live single-phase hardware.</p>
+<p>The corresponding <code>Def</code> fields (<code>v_ac_low/high_limit_N</code>, <code>f_ac_low/high_limit_N</code>,
+<code>t_ac_low/high_voltage/freq_N</code>) are in <code>givenergy_modbus/model/inverter.py</code> and can
+be read back after a poll.  No bounds-validating <code>set_*</code> helpers exist for this block
+yet — callers must construct <code>WriteHoldingRegisterRequest(..., installer=True)</code>
+directly and validate the value against grid-code tolerances themselves.</p>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Unit / range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>63</td>
+<td><code>v_ac_low_limit_1</code></td>
+<td>AC undervoltage limit 1</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>64</td>
+<td><code>v_ac_high_limit_1</code></td>
+<td>AC overvoltage limit 1</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>65</td>
+<td><code>f_ac_low_limit_1</code></td>
+<td>AC underfrequency limit 1</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>66</td>
+<td><code>f_ac_high_limit_1</code></td>
+<td>AC overfrequency limit 1</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>67</td>
+<td><code>t_ac_low_voltage_1</code></td>
+<td>Undervoltage 1 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>68</td>
+<td><code>t_ac_high_voltage_1</code></td>
+<td>Overvoltage 1 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>69</td>
+<td><code>t_ac_low_freq_1</code></td>
+<td>Underfrequency 1 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>70</td>
+<td><code>t_ac_high_freq_1</code></td>
+<td>Overfrequency 1 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>71</td>
+<td><code>v_ac_low_limit_2</code></td>
+<td>AC undervoltage limit 2</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>72</td>
+<td><code>v_ac_high_limit_2</code></td>
+<td>AC overvoltage limit 2</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>73</td>
+<td><code>f_ac_low_limit_2</code></td>
+<td>AC underfrequency limit 2</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>74</td>
+<td><code>f_ac_high_limit_2</code></td>
+<td>AC overfrequency limit 2</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>75</td>
+<td><code>t_ac_low_voltage_2</code></td>
+<td>Undervoltage 2 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>76</td>
+<td><code>t_ac_high_voltage_2</code></td>
+<td>Overvoltage 2 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>77</td>
+<td><code>t_ac_low_freq_2</code></td>
+<td>Underfrequency 2 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>78</td>
+<td><code>t_ac_high_freq_2</code></td>
+<td>Overfrequency 2 protection time</td>
+<td>s × 0.01</td>
+</tr>
+<tr>
+<td>79</td>
+<td><code>v_ac_low_limit_3</code></td>
+<td>AC undervoltage limit (final)</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>80</td>
+<td><code>v_ac_high_limit_3</code></td>
+<td>AC overvoltage limit (final)</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+<tr>
+<td>81</td>
+<td><code>f_ac_low_limit_3</code></td>
+<td>AC underfrequency limit (final)</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>82</td>
+<td><code>f_ac_high_limit_3</code></td>
+<td>AC overfrequency limit (final)</td>
+<td>Hz × 0.01; 40–70</td>
+</tr>
+<tr>
+<td>83</td>
+<td><code>v_ac_10min_protect</code></td>
+<td>AC voltage 10-minute average protection</td>
+<td>V × 0.1; 0–500</td>
+</tr>
+</tbody>
+</table>
+<h4 id="grid-import-anti-islanding">Grid import / anti-islanding<a class="headerlink" href="#grid-import-anti-islanding" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>101</td>
+<td>—</td>
+<td>Grid import limit (value)</td>
+<td>raw uint16</td>
+</tr>
+<tr>
+<td>102</td>
+<td>—</td>
+<td>Grid import limit enabled</td>
+<td>bool; <code>set_grid_import_limit_enabled()</code></td>
+</tr>
+<tr>
+<td>115</td>
+<td>—</td>
+<td>Anti-islanding detection</td>
+<td>bool; <code>set_anti_islanding_detection()</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="battery-commissioning">Battery commissioning<a class="headerlink" href="#battery-commissioning" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Range / notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>174</td>
+<td>—</td>
+<td>Wake battery</td>
+<td>write 1</td>
+</tr>
+<tr>
+<td>201</td>
+<td>—</td>
+<td>Restart battery</td>
+<td>write 1</td>
+</tr>
+<tr>
+<td>308</td>
+<td><code>battery_nominal_power</code></td>
+<td>Battery nominal power</td>
+<td>W; no app range — consult battery spec</td>
+</tr>
+<tr>
+<td>309</td>
+<td><code>battery_nominal_current</code></td>
+<td>Battery nominal current</td>
+<td>A; no app range</td>
+</tr>
+<tr>
+<td>310</td>
+<td><code>battery_max_charge_pct</code></td>
+<td>Battery max charge %</td>
+<td>20–100 %; <code>set_battery_max_charge_pct()</code></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">HR308–310 scale</p>
+<p>Register addresses extracted from the GE app 4.0.7 binary.  Scale and exact
+unit encoding are unconfirmed on live hardware — treat the raw value as uint16
+until a confirming capture is available.</p>
+</div>
+<h4 id="plant-and-inverter-operating-config-ac-block-hr300359">Plant and inverter operating config (AC block, HR300–359)<a class="headerlink" href="#plant-and-inverter-operating-config-ac-block-hr300359" title="Permanent link">&para;</a></h4>
+<p>This block is polled on AC-coupled and All-in-One inverters (<code>has_ac_config_block</code>), so
+these registers are now <strong>decoded for read-back</strong> — a consumer can read the current value
+before issuing an installer write. The field names below are the getter fields in
+<code>model/inverter.py</code>. Scale/semantics are unconfirmed on live hardware (raw <code>uint16</code> unless
+noted), but raw read-back is correct regardless. On non-AC/AIO models the block is not
+polled and these fields read <code>None</code>.</p>
+<p><strong>HR301 (<code>plant_role</code>) is decode-only</strong> — it is not in <code>INSTALLER_WRITE_REGISTERS</code>, so
+<code>installer_command()</code> will reject a write to it. It appears here only because it decodes
+from the same polled block; every other register in this table is installer-writable.</p>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>300</td>
+<td><code>enable_plant_mode</code></td>
+<td>Enable plant mode</td>
+<td>bool; <code>set_enable_plant_mode()</code></td>
+</tr>
+<tr>
+<td>301</td>
+<td><code>plant_role</code></td>
+<td>Plant primary/secondary role selection</td>
+<td><strong>read-only</strong> (decode-only; not installer-writable)</td>
+</tr>
+<tr>
+<td>302</td>
+<td><code>plant_meters</code></td>
+<td>Plant meters</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>303</td>
+<td><code>overfrequency_load_drop_recovery_delay</code></td>
+<td>Overfrequency load drop recovery delay</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>305</td>
+<td><code>mppt_operating_mode</code></td>
+<td>MPPT operating mode</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>306</td>
+<td><code>connection_loading_slope</code></td>
+<td>Connection loading slope</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>307</td>
+<td><code>eps_nominal_voltage</code></td>
+<td>EPS nominal voltage</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>312</td>
+<td><code>underfrequency_add_load_delay</code></td>
+<td>Underfrequency add load delay</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>315</td>
+<td><code>en50549_zero_current_lower_voltage_limit</code></td>
+<td>EN50549 zero-current static lower voltage limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>316</td>
+<td><code>en50549_zero_current_upper_voltage_limit</code></td>
+<td>EN50549 zero-current static upper voltage limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>321</td>
+<td><code>overfrequency_derating_start_point</code></td>
+<td>Overfrequency derating start point</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>322</td>
+<td><code>enable_tariff_pricing_battery_logic</code></td>
+<td>Enable tariff pricing battery logic</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>323</td>
+<td><code>import_price_battery_discharge_threshold</code></td>
+<td>Import price battery discharge threshold</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>324</td>
+<td><code>import_price_battery_charge_threshold</code></td>
+<td>Import price battery charge threshold</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>325</td>
+<td><code>export_price_battery_discharge_threshold</code></td>
+<td>Export price battery discharge threshold</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>326</td>
+<td><code>underfrequency_derating_start_point</code></td>
+<td>Underfrequency derating start point</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>327</td>
+<td><code>underfrequency_loading_slope</code></td>
+<td>Underfrequency loading slope</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>328</td>
+<td><code>overfrequency_derating_stop_point</code></td>
+<td>Overfrequency derating stop point</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>329</td>
+<td><code>enable_bms_ocv_calibration</code></td>
+<td>Enable BMS OCV calibration</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>330</td>
+<td><code>gateway_power_off_setting</code></td>
+<td>Gateway power off setting</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>332</td>
+<td><code>enable_micro_grid</code></td>
+<td>Enable micro grid</td>
+<td>bool; <code>set_enable_micro_grid()</code></td>
+</tr>
+<tr>
+<td>347</td>
+<td><code>disable_leds</code></td>
+<td>Disable LEDs</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>348</td>
+<td><code>lcd_screen_idle_timeout</code></td>
+<td>LCD screen idle timeout</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>349</td>
+<td><code>lead_acid_battery_calibration_upper_limit</code></td>
+<td>Lead acid battery calibration upper limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>350</td>
+<td><code>lead_acid_battery_calibration_lower_limit</code></td>
+<td>Lead acid battery calibration lower limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>351</td>
+<td><code>inverter_operating_mode</code></td>
+<td>Inverter operating mode</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="ev-charger-hr333336">EV charger (HR333–336)<a class="headerlink" href="#ev-charger-hr333336" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Range / notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>333</td>
+<td><code>enable_ev_charger</code></td>
+<td>EV charger enable</td>
+<td>bool; <code>set_enable_ev_charger()</code></td>
+</tr>
+<tr>
+<td>334</td>
+<td><code>ev_charger_import_limit</code></td>
+<td>EV charger import limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>335</td>
+<td><code>ev_charger_reconnection_wait_time</code></td>
+<td>EV charger reconnection wait time</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>336</td>
+<td><code>ev_charger_soc_limit</code></td>
+<td>EV charger SOC limit</td>
+<td>0–100 %; <code>set_ev_charger_soc_limit()</code></td>
+</tr>
+</tbody>
+</table>
+<h4 id="fan-gateway-and-communications">Fan, gateway, and communications<a class="headerlink" href="#fan-gateway-and-communications" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>337</td>
+<td>Enable fan</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>338</td>
+<td>Fan speed</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>339</td>
+<td>Enable gateway</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>340</td>
+<td>BMS communication mode</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>341</td>
+<td>N-PE relay toggle</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>342</td>
+<td>AFCI setting</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="generator-hr343346">Generator (HR343–346)<a class="headerlink" href="#generator-hr343346" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Range / notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>343</td>
+<td>Enable generator</td>
+<td>bool; <code>set_enable_generator()</code></td>
+</tr>
+<tr>
+<td>344</td>
+<td>Generator start SOC</td>
+<td>0–100 %; <code>set_generator_start_soc()</code></td>
+</tr>
+<tr>
+<td>345</td>
+<td>Generator stop SOC</td>
+<td>0–100 %; <code>set_generator_stop_soc()</code></td>
+</tr>
+<tr>
+<td>346</td>
+<td>Generator charge power</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="smart-load-non-slot-controls-hr540553">Smart load — non-slot controls (HR540–553)<a class="headerlink" href="#smart-load-non-slot-controls-hr540553" title="Permanent link">&para;</a></h4>
+<p>See the <a href="#smart-load-time-slots-hr554573">standard tier</a> for the slot start/end times;
+these registers control the feature's enable state and operating thresholds.</p>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Field name</th>
+<th>Description</th>
+<th>Range / notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>540</td>
+<td>—</td>
+<td>Enable smart load</td>
+<td>bool; <code>set_enable_smart_load()</code></td>
+</tr>
+<tr>
+<td>541</td>
+<td>—</td>
+<td>Smart load control SOC</td>
+<td>50–100 %; <code>set_smart_load_control_soc()</code></td>
+</tr>
+<tr>
+<td>542</td>
+<td>—</td>
+<td>Enable general load</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>543</td>
+<td>—</td>
+<td>General load control SOC</td>
+<td>50–100 %; <code>set_general_load_control_soc()</code></td>
+</tr>
+<tr>
+<td>544</td>
+<td>—</td>
+<td>Generator control SOC</td>
+<td>10–90 %; <code>set_generator_control_soc()</code></td>
+</tr>
+<tr>
+<td>545</td>
+<td>—</td>
+<td>Generator voltage min</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>546</td>
+<td>—</td>
+<td>Generator voltage max</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>547</td>
+<td>—</td>
+<td>Generator frequency min</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>548</td>
+<td>—</td>
+<td>Generator frequency max</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>552</td>
+<td>—</td>
+<td>Smart load export power</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>553</td>
+<td>—</td>
+<td>Smart load delay time</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="three-phase-power-quality-and-grid-compliance">Three-phase power quality and grid compliance<a class="headerlink" href="#three-phase-power-quality-and-grid-compliance" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1048</td>
+<td>Q lock-out power</td>
+<td><code>q_lock_out_power</code> Def; raw uint16</td>
+</tr>
+<tr>
+<td>1077</td>
+<td>PV input mode</td>
+<td><code>pv_input_mode</code> Def; raw uint16</td>
+</tr>
+<tr>
+<td>1081–1087</td>
+<td>QU curve points and reactive power limits</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1102</td>
+<td>Export limit (three-phase)</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1103</td>
+<td>Enable export limit (three-phase)</td>
+<td>bool; <code>set_enable_export_limit_3ph()</code></td>
+</tr>
+<tr>
+<td>1125</td>
+<td>Enable LoRa</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>1126</td>
+<td>Meter CT direction</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1127–1129</td>
+<td>Load shedding voltage limits and minimum active power %</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1130</td>
+<td>Import limit (three-phase)</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1131</td>
+<td>Enable import limit (three-phase)</td>
+<td>bool; <code>set_enable_import_limit_3ph()</code></td>
+</tr>
+<tr>
+<td>1144</td>
+<td>Enable meter wiring detection</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>1149</td>
+<td>Meter wiring detection state</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1156</td>
+<td>Safety function control word</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>1158–1165</td>
+<td>Active power ratio, high/low points, QP lock in/out voltage, min PF</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="dual-grid-plant">Dual-grid / plant<a class="headerlink" href="#dual-grid-plant" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4001</td>
+<td>Dual grid supply operational mode</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="special-commands-non-destructive">Special commands (non-destructive)<a class="headerlink" href="#special-commands-non-destructive" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5002</td>
+<td>Send wake-up signal</td>
+<td>write 1</td>
+</tr>
+<tr>
+<td>5005</td>
+<td>Enable PV meter preset</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>5006</td>
+<td>Enable AC meter preset</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>5007</td>
+<td>Enable N-PE</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>5008</td>
+<td>Enable CT auto configuration</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>5009</td>
+<td>Enable auto address configuration</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>5011</td>
+<td>Grid power limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>5012</td>
+<td>AC overcurrent limit</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<h4 id="peak-shaving-export-import-control-ems-installer-hr20000">Peak shaving / export-import control (EMS installer, HR20000+)<a class="headerlink" href="#peak-shaving-export-import-control-ems-installer-hr20000" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Description</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>20000</td>
+<td>Enable grid export limit</td>
+<td>bool; <code>set_peak_shaving_export_limit_enabled()</code></td>
+</tr>
+<tr>
+<td>20001</td>
+<td>Grid export limit</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>20002</td>
+<td>Enable peak shaving</td>
+<td>bool; <code>set_peak_shaving_enabled()</code></td>
+</tr>
+<tr>
+<td>20003</td>
+<td>Peak shaving threshold</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>20020</td>
+<td>Enable import limit</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>20021</td>
+<td>Import limit threshold</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>20050</td>
+<td>Peak shaving power</td>
+<td>raw</td>
+</tr>
+<tr>
+<td>20051</td>
+<td>Valley filling power</td>
+<td>raw</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Peak-shaving polling (HR20000–20051)</p>
+<p>The <code>has_peak_shaving_block</code> capability flag is currently <code>False</code> for all
+models, so no poll is issued for this range.  The corresponding <code>Def</code> entries
+exist and will decode once a confirming live capture allows a model to be added
+to the capability set.</p>
+</div>
+<h4 id="destructive-operations">Destructive operations<a class="headerlink" href="#destructive-operations" title="Permanent link">&para;</a></h4>
+<div class="admonition danger">
+<p class="admonition-title">These actions cannot be undone</p>
+<p>Each helper below raises <code>ValueError</code> unless called with <code>confirm=True</code>.
+Read the docstring of each helper before use.  Obtain the current register
+state beforehand; there is no rollback.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>Helper</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>162</td>
+<td><code>reset_energy_totals(confirm=True)</code></td>
+<td>Clear all lifetime energy counters</td>
+</tr>
+<tr>
+<td>1016</td>
+<td><code>three_phase_factory_reset(confirm=True)</code></td>
+<td>Three-phase factory reset (no meter reset)</td>
+</tr>
+<tr>
+<td>5003</td>
+<td><code>enable_black_start(confirm=True)</code></td>
+<td>Activate EPS black-start mode</td>
+</tr>
+<tr>
+<td>5004</td>
+<td><code>restore_factory_defaults(confirm=True)</code></td>
+<td>Wipe all installer config to factory defaults</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="held-back-registers">Held-back registers<a class="headerlink" href="#held-back-registers" title="Permanent link">&para;</a></h3>
+<p>These registers appear in the GE app 4.0.7 writable map but are intentionally not
+admitted to either allow-list pending a bounds-validating <code>set_*</code> wrapper or
+additional field evidence.</p>
+<table>
+<thead>
+<tr>
+<th>HR</th>
+<th>App name</th>
+<th>Reason held back</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>479</td>
+<td>DC Wind CVT Voltage</td>
+<td>Raw 16-bit voltage setpoint; no range guard — admit only with a validating command</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="reconciliation-status">Reconciliation status<a class="headerlink" href="#reconciliation-status" title="Permanent link">&para;</a></h3>
+<p>The app 4.0.7 holding-register inventory (460 entries) is committed to
+<code>docs/reference/registers/app_4.0.7_inventory.json</code>.  A diff against the library's
+live <code>REGISTER_LUT</code>s, <code>WRITE_SAFE_REGISTERS</code> <strong>and <code>INSTALLER_WRITE_REGISTERS</code></strong> runs as a
+regression test in CI via <code>scripts/audit_register_doc.py --app-source</code> — both allow-lists
+are checked against the app surface, so neither standard nor installer write drift can land
+silently. The reconciliation stands at 390 matched / 70 app-only gaps, after decoding the polled
+installer-config block (HR300–351), the three-phase QU-curve / export-limit registers
+(HR1081–1087, HR1102–1103) and HR331. The remaining gaps are predominantly registers in
+blocks not admitted to the read poll (special commands HR5000+, peak-shaving HR20000+) or
+identity/serial registers that are document-only by design.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/dewet22/givenergy-modbus" target="_blank" rel="noopener" title="Github" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="mailto:givenergy-modbus@dewet.org" target="_blank" rel="noopener" title="" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m20 8-8 5-8-5V6l8 5 8-5m0-2H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs.sticky"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
