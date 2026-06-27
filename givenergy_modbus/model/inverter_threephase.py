@@ -274,6 +274,15 @@ _THREE_PHASE_LUT = {
     "ac_power_derate_delay": Def(C.centi, None, HR(1079)),
     # battery_type at HR(1080) shadows the single-phase HR(54)
     "battery_type": Def(C.uint16, BatteryType, HR(1080)),
+    # HR(1081-1087): QU (volt-VAr) curve points and reactive-power limits. Newly decoded
+    # from the GE app 4.0.7 binary; raw uint16, scale unconfirmed on live hardware.
+    "qu_curve_volt_high_point_1": Def(C.uint16, None, HR(1081)),
+    "qu_curve_volt_high_point_2": Def(C.uint16, None, HR(1082)),
+    "qu_curve_volt_low_point_1": Def(C.uint16, None, HR(1083)),
+    "qu_curve_volt_low_point_2": Def(C.uint16, None, HR(1084)),
+    "voltage_reactive_power_percentage": Def(C.uint16, None, HR(1085)),
+    "qu_curve_max_inductive_reactive_power": Def(C.uint16, None, HR(1086)),
+    "qu_curve_max_capacitive_reactive_power": Def(C.uint16, None, HR(1087)),
     "max_charge_current": Def(C.uint16, None, HR(1088)),
     "v_battery_lv": Def(C.deci, None, HR(1089), min=0.0, max=1000.0),
     "v_battery_cv": Def(C.deci, None, HR(1090), min=0.0, max=1000.0),
@@ -282,13 +291,20 @@ _THREE_PHASE_LUT = {
     "aging_test": Def(C.uint16, None, HR(1098)),
     "bypass_enable": Def(C.bool, None, HR(1100)),
     "npe_enable": Def(C.bool, None, HR(1101)),
+    # HR(1102-1103): installer-tier export-limit pair from the GE app 4.0.7 binary. Distinct
+    # registers from p_export_limit (HR1063); the relationship between the two is unconfirmed.
+    # set_enable_export_limit_3ph() writes HR1103, so it decodes as a bool.
+    "export_power_limit": Def(C.uint16, None, HR(1102)),
+    "enable_export_limit": Def(C.bool, None, HR(1103)),
     "unbalance_output_enable": Def(C.bool, None, HR(1104)),
     "backup_enable": Def(C.bool, None, HR(1105)),
     "v_backup_nominal": Def(C.nominal_voltage, None, HR(1106)),
     "f_backup_nominal": Def(C.nominal_frequency, None, HR(1107)),
     # battery_discharge_limit_ac at HR(1108) shadows single-phase HR(314)
     "battery_discharge_limit_ac": Def(C.uint16, None, HR(1108)),
-    # battery_soc_reserve at HR(1109) shadows single-phase HR(110)
+    # battery_soc_reserve at HR(1109) shadows single-phase HR(110). The GE app 4.0.7 labels
+    # this "Discharge Down To %" — same concept (the SOC floor discharge stops at), different
+    # wording; kept as battery_soc_reserve for parity with the single-phase field.
     "battery_soc_reserve": Def(C.uint16, None, HR(1109)),
     # battery_charge_limit_ac at HR(1110) shadows single-phase HR(313)
     "battery_charge_limit_ac": Def(C.uint16, None, HR(1110)),
