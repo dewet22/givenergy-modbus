@@ -21,6 +21,7 @@ nav:
   - Reference:
       - Register identification: register-identification.md
       - Writable registers: reference/writable-registers.md
+      - Installer app reference: reference/registers/installer-app-reference.md
       - Hardware & firmware quirks: hardware-firmware-quirks.md
       - Migrating from the async fork: migrating-from-the-async-fork.md
       - Graph-shaped Plant (#106): plant-device-graph.md

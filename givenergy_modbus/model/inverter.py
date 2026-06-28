@@ -619,7 +619,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # so every field below stays None there — same as battery_*_limit_ac (HR313/314).
         # See client.py load_config().
         #
-        # Newly decoded installer-config registers (HR300-351) from the GE app 4.0.7 binary,
+        # Newly decoded installer-config registers (HR300-351) from the GivEnergy app v4.0.7,
         # polled on AC/AIO via the HR(300,60) block. Enable/disable toggles decode via C.bool,
         # matching the 1/0 installer setters in commands.py; thresholds, modes, slopes and
         # limits decode as raw uint16 + None — scale/semantics are unconfirmed on live
@@ -634,12 +634,12 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "connection_loading_slope": Def(C.uint16, None, HR(306)),
         "eps_nominal_voltage": Def(C.uint16, None, HR(307)),
         # HR(308-310): battery topology — rated power (W), rated current (A), max charge
-        # percentage. Extracted from GE app 4.0.7 binary; scale unconfirmed on live hardware.
+        # percentage. From the GivEnergy app v4.0.7; scale unconfirmed on live hardware.
         "battery_nominal_power": Def(C.uint16, None, HR(308)),
         "battery_nominal_current": Def(C.uint16, None, HR(309)),
         "battery_max_charge_pct": Def(C.uint16, None, HR(310)),
         # HR(311): export priority — confirmed writable on Model.AC via portal observations
-        # (hass#52): values 0/1/2 matched "Battery First / Grid First / Load First".
+        # (hass#52): values 0/1/2 = "Load First / Battery First / Grid First" (per ExportPriority, #303).
         "export_priority": Def(C.uint16, ExportPriority, HR(311)),
         # HR(312): underfrequency add-load delay (raw uint16, scale unconfirmed).
         "underfrequency_add_load_delay": Def(C.uint16, None, HR(312)),
@@ -692,7 +692,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "inverter_operating_mode": Def(C.uint16, None, HR(351)),
         #
         # Holding Registers, block 499-510
-        # HV cabinet topology — extracted from GE app 4.0.7 binary; poll gated off for
+        # HV cabinet topology — from the GivEnergy app v4.0.7; poll gated off for
         # every model pending a confirming hardware capture (see _HV_CABINET_MODELS in
         # plant.py). Values are raw uint16 counts/ratings; exact scaling unconfirmed.
         #
@@ -710,7 +710,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "hv_parallel_count": Def(C.uint16, None, HR(510)),
         #
         # Holding Registers, block 20000-20051
-        # Peak-shaving / valley-filling — extracted from GE app 4.0.7 binary; poll gated
+        # Peak-shaving / valley-filling — from the GivEnergy app v4.0.7; poll gated
         # off for every model pending a confirming hardware capture (see _PEAK_SHAVING_MODELS
         # in plant.py). Sparse: defined registers at 20000-20003, 20020-20021, 20050-20051.
         #

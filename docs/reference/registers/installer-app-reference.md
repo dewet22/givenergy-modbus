@@ -1,0 +1,121 @@
+# GivEnergy installer app — register & protocol reference
+
+Companion to [`installer_1.154.3_inventory.json`](installer_1.154.3_inventory.json), a register
+& protocol reference cross-referenced against the GivEnergy **Installer** app (v1.154.3).
+
+## Why this exists
+
+GivEnergy entered administration with no published Modbus specification. The values here are
+cross-referenced against the GivEnergy **Installer** app (v1.154.3), which exposes a more
+complete view of the register surface than the consumer app does (see `app_4.0.7_inventory.json`)
+— register maps with decode scales, named enums, the local-Modbus transport, the write path, and
+the destructive-operation set. Treat it as the most complete GivEnergy register reference
+available, pending hardware confirmation.
+
+## Transport & addressing
+
+- **Dongle** at `10.10.100.254:8899` over either a `ws://` WebSocket or **Bluetooth LE**
+  (service `000000ff…`, characteristic `ff05` = Modbus, `ff01` = config/auth).
+- **Framing**: the GivEnergy 18-byte transparent frame (magic `0x5959` "YY", 10-char dongle
+  serial), inner Modbus CRC-16 (init `0xFFFF`, poly `0xA001`, byte-swapped on wire).
+- **Transport function codes**: HEARTBEAT=1, TRANSPARENT=2, READ_DATALOG=3, WRITE_DATALOG=4,
+  FAULT=5. Inner Modbus: FC03 (read holding), FC04 (read input), FC06 (write single), FC16
+  (write multiple — dev console only).
+
+**Device-address map** (the authoritative version — cross-check `Plant._getter_for_device_address`):
+
+| Subsystem | Address |
+|---|---|
+| Inverter / EMS | 17 (0x11) |
+| Meters | 1–8 |
+| EMS version | 33 |
+| PCS / managed inverters | 35–42 |
+| BMS cluster | 32 + clusterId |
+| LV battery | 49 + id |
+| **HV BMU** (per module) | **80–111 (0x50–0x6F)** |
+| **HV BCU** (per stack) | **112+ (0x70+)** |
+| **HV BAMS** | **144+ (0x90+)** |
+
+The HV BMU band (`0x50–0x6F`) resolves the long-standing per-module decode question — see below.
+
+## Write model
+
+Installer settings are written as **FC06 single-register, fire-and-forget** — no retry, no
+verify-by-reread, and crucially **no commit/save step**. `SET_COMMAND_SAVE` (HR1001) exists for
+read-back only and is never written; multi-write sequences just pace each write ~5 s apart. The
+**write scale is the inverse of the decode `divideBy`** (a register decoded ÷10 is written ×10),
+so the decode-scale metadata in the inventory doubles as the write-scale reference. Writability
+is decided in per-screen form code, not flagged on the register definitions.
+
+## Per-cell HV battery — the read recipe (resolves #265)
+
+Per-cell HV voltages/temperatures **are** on the Modbus wire; prior probes missed them by
+sweeping the BCU band (`0x70+`) when the per-cell array lives one band lower on the BMU addresses.
+
+- **FC04 (read input), device `0x50–0x6F` (one per module), start register 60, count 60.**
+- `IR60–83` = `CELL_VOLTAGE_1..24` — raw **mV ÷ 1000 → V**.
+- `IR90–113` = `MODULE_TEMPERATURE_1..24` — **deci-°C ÷ 10, signed**, 16-bit big-endian.
+- Topology counts: **device `0xA0`, `IR60–64`** = `BAMS_COUNT` / `BCU_COUNT` / `BMU_COUNT` /
+  `CELL_COUNT_PER_MODULE` / `TEMPERATURE_SENSOR_COUNT`.
+
+The library's old `Bmu(base=120·k)` decode was addressing the wrong *device* (a stride within
+the BCU cache), not the wrong offset. **Not yet wire-confirmed** — no capture has addressed
+`0x50–0x6F`; a targeted `FC04 / 0x50 / start 60 / count 60` probe would confirm it.
+
+## Grid protection (HR63–83)
+
+The installer `HOLD_REGISTER` enum confirms the library's HR63–83 addresses exactly (HR63
+`VAC_LOW_PROTECT_OUT_VALUE` … HR83 `VOLTAGE_PROTECTION_10_MINUTES`). The deci-V / centi-Hz scales
+are corroborated by the app's measured-quantity decodes (`AC_VOLTAGE ÷10`, `FAC ÷100`). GE's
+structure is three *functions*, not three severity levels: trip (`HR63–70`), **reconnect** band
+(`HR71–78`), **grid** band (`HR79–82`). Per-grid-code limit *values* are firmware-managed (not in
+the app); the grid code itself is written as a packed `[safetyStandard, region]` u16 to HR2.
+
+## Destructive operations / footguns
+
+All bare FC06, gated only in the UI:
+
+| Operation | Register / value |
+|---|---|
+| Factory reset **and** restart inverter | `reg163 = 100` (firmware distinguishes by state) |
+| Reset user info | `reg162` |
+| SOC calibration | `reg29` (0=off … 6=set-full-capacity, 7=finish) |
+| Off-grid / black-start (3-phase) | `OFF_GRID_ENABLE 1105` + nominal V `1106` / Hz `1107` |
+
+## Using the inventory file
+
+`installer_1.154.3_inventory.json`:
+
+- `register_maps` — 27 maps (`HOLD_REGISTER`, `INPUT_REGISTER`, `THREE_PHASE_*`, `EMS_*`,
+  `HV_BCU/BMU/BAMS_*`, `PCS_*`, `METER_*`, `GATEWAY_*`, `DATALOG_*`, the BMS cluster-detail
+  V/T blocks). Each map is `{count, registers: {number: {name, scale?}}}` — iterate
+  `register_maps[map].registers` keyed by register address (`count` is the integrity check).
+  `scale` carries `divide_by` / `signed` / `byte_count` / `offset` where the app defines one
+  (231 registers across the maps).
+- `enums` — 68 code/value/bitfield enums: `DEVICE_TYPE_CODE` + the per-family `*_MODEL` tables,
+  `SAFETY_STANDARD`, `BATTERY_TYPE`, `SOC_CALIBRATION_SETTING`, `WORKING_MODE`, `INVERTER_STATUS`,
+  `MODBUS_FUNCTION_CODE`/`ERROR_CODE`, the single- and three-phase fault-code bit tables
+  (`INVERTER_FAULT_CODE`, `THREE_PHASE_HYBRID_FAULT_CODE_WORD_0..7`), `BATTERY_FAULT_CODE`,
+  `BMS_*_ALARM`, etc. A few enums whose own name wasn't recoverable carry a `?`-suffixed inferred
+  label.
+
+## Reconciliation notes for the library
+
+- Every `inverter.py` "skip" zone is now named — HR99–104 (string/grid voltage + power
+  adjustments), HR84–93 (ISO/GFCI/DCI protection — the `# skip … unlabelled` comment is wrong),
+  HR129–162 (PF-curve / CEI021 / LVFRT / `RESET_USER_INFORMATION`).
+- The fault bit tables (currently britkat-sourced, "not verified") are **validated** against GE's
+  enums once the MSB-first vs LSB-first convention is accounted for — with one real fix: bit 11 is
+  the **Hall** current sensor, not "Hail Sensor".
+- EMS names HR111/112 `BATTERY_*_MAX_C_RATING` — confirming they're a %-of-rated C-rating ceiling.
+- HR199: the app's generic `MODE_ENABLE_SWITCH` vs the library's `enable_inverter_parallel_mode`
+  — worth verifying against a real single-phase capture before any rename.
+- HR101/102: the app writes the grid import-limit / enable here. The library already names these
+  `GRID_IMPORT_LIMIT` / `_ENABLED` (101/102) on its write surface (three-phase 1130/1131), so no
+  rename is needed — only the `inverter.py` read-path comment (`# skip voltage adjustment 99-104`)
+  is stale. Single-phase captures read `0x0000` here on systems with no import limit set, so the
+  values are non-diagnostic until a capture from a configured system turns up.
+
+> Provenance caveat: this is GE's own installer tooling, the best non-hardware source — but the
+> app can carry its own mislabels/typos (e.g. `GRID_VOLTAGE_FALUT`). Treat as authoritative-pending
+> a wire capture, not gospel.

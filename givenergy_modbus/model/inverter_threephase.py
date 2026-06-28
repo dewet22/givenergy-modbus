@@ -275,7 +275,7 @@ _THREE_PHASE_LUT = {
     # battery_type at HR(1080) shadows the single-phase HR(54)
     "battery_type": Def(C.uint16, BatteryType, HR(1080)),
     # HR(1081-1087): QU (volt-VAr) curve points and reactive-power limits. Newly decoded
-    # from the GE app 4.0.7 binary; raw uint16, scale unconfirmed on live hardware.
+    # from the GivEnergy app v4.0.7; raw uint16, scale unconfirmed on live hardware.
     "qu_curve_volt_high_point_1": Def(C.uint16, None, HR(1081)),
     "qu_curve_volt_high_point_2": Def(C.uint16, None, HR(1082)),
     "qu_curve_volt_low_point_1": Def(C.uint16, None, HR(1083)),
@@ -291,7 +291,7 @@ _THREE_PHASE_LUT = {
     "aging_test": Def(C.uint16, None, HR(1098)),
     "bypass_enable": Def(C.bool, None, HR(1100)),
     "npe_enable": Def(C.bool, None, HR(1101)),
-    # HR(1102-1103): installer-tier export-limit pair from the GE app 4.0.7 binary. Distinct
+    # HR(1102-1103): installer-tier export-limit pair from the GivEnergy app v4.0.7. Distinct
     # registers from p_export_limit (HR1063); the relationship between the two is unconfirmed.
     # set_enable_export_limit_3ph() writes HR1103, so it decodes as a bool.
     "export_power_limit": Def(C.uint16, None, HR(1102)),
