@@ -101,9 +101,11 @@ All bare FC06, gated only in the UI:
 
 ## Reconciliation notes for the library
 
-- Every `inverter.py` "skip" zone is now named — HR99–104 (string/grid voltage + power
-  adjustments), HR84–93 (ISO/GFCI/DCI protection — the `# skip … unlabelled` comment is wrong),
-  HR129–162 (PF-curve / CEI021 / LVFRT / `RESET_USER_INFORMATION`).
+- The `inverter.py` "skip" zones are now **decoded** as raw read-back (scales app-unconfirmed,
+  the HR300-359 posture): HR84–93 (ISO/GFCI/DCI protection), HR99–107 (string/grid voltage +
+  power adjustments), HR129–156 (PF-curve / CEI021 / LVFRT). Left undecoded: HR157–161 (unnamed
+  in the installer map), HR162 `RESET_USER_INFORMATION` (momentary write-trigger), and HR115
+  (the installer's `IS_LAN` contradicts the old `island_check_continue` guess — unconfirmed).
 - The fault bit tables (currently britkat-sourced, "not verified") are **validated** against GE's
   enums once the MSB-first vs LSB-first convention is accounted for — with one real fix: bit 11 is
   the **Hall** current sensor, not "Hail Sensor".

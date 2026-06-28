@@ -676,6 +676,18 @@ class Plant(GivEnergyBaseModel):
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
 
+    # Authoritative device-address map (GivEnergy installer app v1.154.3 `device_address_map`),
+    # for orientation — not every band is modelled/routed below:
+    #   0x11        inverter / EMS controller    (0x31 = legacy pre-#189 facade)
+    #   0x21        EMS firmware-version device
+    #   0x01-0x08   energy meters
+    #   0x20+       BMS cluster (per clusterId)  — UNMODELLED (see #329)
+    #   0x23-0x2A   PCS-managed inverters
+    #   0x31+/0x32-0x37  LV battery packs
+    #   0x50-0x6F   HV BMU (per module)
+    #   0x70-0x8F   HV BCU (per stack)
+    #   0x90+       HV BAMS                       — UNMODELLED
+    # See docs/reference/registers/installer-app-reference.md.
     def _getter_for_device_address(self, device_address: int) -> type[RegisterGetter] | None:
         """Return the RegisterGetter class appropriate for a given device address.
 

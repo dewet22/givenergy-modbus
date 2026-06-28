@@ -1,8 +1,8 @@
 {
   "app_hr_count": 460,
-  "code_hr_count": 418,
-  "matched_count": 390,
-  "app_only_count": 70,
+  "code_hr_count": 464,
+  "matched_count": 394,
+  "app_only_count": 66,
   "app_only": [
     {
       "addr": 5,
@@ -33,26 +33,6 @@
       "addr": 12,
       "name": "Battery Serial Number Characters 9 & 10",
       "in_write_safe": false
-    },
-    {
-      "addr": 101,
-      "name": "Grid Import Limit",
-      "in_write_safe": false
-    },
-    {
-      "addr": 102,
-      "name": "Grid Import Limit Enabled",
-      "in_write_safe": false
-    },
-    {
-      "addr": 103,
-      "name": "Enable LoRa",
-      "in_write_safe": false
-    },
-    {
-      "addr": 104,
-      "name": "Enable Battery Self-Heating",
-      "in_write_safe": true
     },
     {
       "addr": 115,
@@ -356,7 +336,21 @@
     }
   ],
   "code_only": [
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    99,
+    100,
     105,
+    106,
+    107,
     121,
     122,
     123,
@@ -365,6 +359,34 @@
     126,
     127,
     128,
+    129,
+    130,
+    131,
+    132,
+    133,
+    134,
+    135,
+    136,
+    137,
+    138,
+    139,
+    140,
+    141,
+    142,
+    143,
+    144,
+    145,
+    146,
+    147,
+    148,
+    149,
+    150,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
     167,
     168,
     169,
@@ -428,6 +450,22 @@
       "code_attrs": [
         "inverter_1ph.start_countdown_timer",
         "inverter_3ph.start_countdown_timer"
+      ]
+    },
+    {
+      "addr": 103,
+      "app_name": "Enable LoRa",
+      "code_attrs": [
+        "inverter_1ph.grid_t_voltage_adjustment",
+        "inverter_3ph.grid_t_voltage_adjustment"
+      ]
+    },
+    {
+      "addr": 104,
+      "app_name": "Enable Battery Self-Heating",
+      "code_attrs": [
+        "inverter_1ph.grid_power_adjustment",
+        "inverter_3ph.grid_power_adjustment"
       ]
     },
     {
