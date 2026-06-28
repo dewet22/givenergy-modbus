@@ -638,16 +638,17 @@ def test_grid_protection_voltage_setter(fn_name, hr, good_voltage):
     with pytest.raises(ValueError, match="confirm=True"):
         fn(good_voltage)
 
-    # Mid-range value accepted, installer flag set, correct register
+    # Mid-range value accepted, installer flag set, correct register, encodes cleanly
     reqs = fn(good_voltage, confirm=True)
     assert len(reqs) == 1
     assert reqs[0].installer
     assert reqs[0].register == hr
     assert reqs[0].value == int(good_voltage * 10)
+    assert reqs[0].encode()
 
-    # Out-of-range raises (above 500.0 V)
+    # Out-of-range raises (above 500.0 V) — use integral-multiple to bypass _as_int check
     with pytest.raises(ValueError):
-        fn(500.1, confirm=True)
+        fn(501.0, confirm=True)
 
 
 @pytest.mark.parametrize(
@@ -674,9 +675,11 @@ def test_grid_protection_freq_setter(fn_name, hr, good_freq):
     assert reqs[0].installer
     assert reqs[0].register == hr
     assert reqs[0].value == int(good_freq * 100)
+    assert reqs[0].encode()
 
+    # Out-of-range raises (above 70.0 Hz) — use integral-multiple to bypass _as_int check
     with pytest.raises(ValueError):
-        fn(70.1, confirm=True)
+        fn(71.0, confirm=True)
 
 
 @pytest.mark.parametrize(
@@ -705,6 +708,7 @@ def test_grid_protection_time_setter(fn_name, hr):
     assert reqs[0].installer
     assert reqs[0].register == hr
     assert reqs[0].value == 250  # 2.5s × 100
+    assert reqs[0].encode()
 
     with pytest.raises(ValueError):
         fn(-0.01, confirm=True)

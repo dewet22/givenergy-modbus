@@ -2116,6 +2116,10 @@ def test_three_phase_grid_config_gaps_decode_from_populated_cache():
         ("v_ac_high_limit_2", "v_ac_high_limit_reconnect", 72, 2620, 262.0),
         ("f_ac_low_limit_2", "f_ac_low_limit_reconnect", 73, 4745, 47.45),
         ("f_ac_high_limit_2", "f_ac_high_limit_reconnect", 74, 5200, 52.0),
+        ("t_ac_low_voltage_2", "t_ac_low_voltage_reconnect", 75, 126, 1.26),
+        ("t_ac_high_voltage_2", "t_ac_high_voltage_reconnect", 76, 52, 0.52),
+        ("t_ac_low_freq_2", "t_ac_low_freq_reconnect", 77, 1, 0.01),
+        ("t_ac_high_freq_2", "t_ac_high_freq_reconnect", 78, 28, 0.28),
         # Grid band (HR79-82)
         ("v_ac_low_limit_3", "v_ac_low_limit_grid", 79, 1755, 175.5),
         ("v_ac_high_limit_3", "v_ac_high_limit_grid", 80, 2837, 283.7),
