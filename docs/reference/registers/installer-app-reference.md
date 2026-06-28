@@ -59,8 +59,10 @@ sweeping the BCU band (`0x70+`) when the per-cell array lives one band lower on 
   `CELL_COUNT_PER_MODULE` / `TEMPERATURE_SENSOR_COUNT`.
 
 The library's old `Bmu(base=120·k)` decode was addressing the wrong *device* (a stride within
-the BCU cache), not the wrong offset. **Not yet wire-confirmed** — no capture has addressed
-`0x50–0x6F`; a targeted `FC04 / 0x50 / start 60 / count 60` probe would confirm it.
+the BCU cache), not the wrong offset. **Wire-confirmed** against a 6-module HV stack
+(givenergy-hass#174): `FC04 / 0x50 / start 60 / count 60` and the same at `0x51` both decode
+cleanly through `BmuRegisterGetter` — 24 cells ~3.30 V, 24 temperatures ~36.5 °C, and distinct
+per-module serials at each address (proving the separate-address layout, not a single echoed cache).
 
 ## Grid protection (HR63–83)
 
