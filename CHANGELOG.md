@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-06-28
+
+### ✨ Added
+
+- decode HV BMU per-cell data from per-module device addresses (#265) (#326) ([8299845](https://github.com/dewet22/givenergy-modbus/commit/829984556aca7b62b6d6e406c4d09b084376b959))
+- rename HR63-83 grid-protection fields (_1/_2/_3 → _trip/_reconnect/_grid) + installer-tier setters (#327) ([b5b98f5](https://github.com/dewet22/givenergy-modbus/commit/b5b98f521981e391274037288d172d41c01b37ad))
+- validate fault tables against installer enums + decode BMS/HV diagnostics (#328) ([8a0b40b](https://github.com/dewet22/givenergy-modbus/commit/8a0b40b754ae6cc0706a6682ff08466125b02bba))
+- decode HR84–156 protection/adjustment/grid-compliance zones + device-address map (#331) ([8c8c6b0](https://github.com/dewet22/givenergy-modbus/commit/8c8c6b0edfb333f0d3ab1377cdd31f56bf7b5438))
+
+### 🔧 Maintenance
+
+- GivEnergy installer-app register reference (+ consistent oblique provenance) (#325) ([eba5c45](https://github.com/dewet22/givenergy-modbus/commit/eba5c45f63a532e6e437bf8d435e3bfa1f617bf9))
+- mark HV BMU per-cell decode wire-confirmed (#265) (#333) ([f6e6edc](https://github.com/dewet22/givenergy-modbus/commit/f6e6edcdf6abf0c6b840532fbb64225f60f75173))
+
 ## [2.6.1] - 2026-06-27
 
 ### ✨ Added
