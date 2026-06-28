@@ -1678,11 +1678,7 @@ def test_getter_for_device_address_hv_bmu():
     """Addresses in hv_bmu_addresses route to BmuRegisterGetter for refresh validation (#265)."""
     from givenergy_modbus.model.hv_bcu import BmuRegisterGetter
 
-    plant = Plant(
-        capabilities=PlantCapabilities(
-            device_type=Model.HYBRID_HV_GEN3, hv_bmu_addresses=[0x50, 0x51]
-        )
-    )
+    plant = Plant(capabilities=PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, hv_bmu_addresses=[0x50, 0x51]))
     assert plant._getter_for_device_address(0x50) is BmuRegisterGetter
     assert plant._getter_for_device_address(0x51) is BmuRegisterGetter
     assert plant._getter_for_device_address(0x52) is None  # not in the list → unrouted
