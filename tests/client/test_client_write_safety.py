@@ -718,8 +718,11 @@ def test_grid_protection_time_setter(fn_name, hr):
     assert reqs[0].value == 250  # 2.5s × 100
     assert reqs[0].encode()
 
-    # round() absorbs IEEE 754 artefact (0.28 * 100 = 27.999... without rounding)
+    # IEEE 754 residue absorbed: 0.28 × 100 = 27.999… (distance ≈ 3e-15) → value 28
     assert fn(0.28, confirm=True)[0].value == 28
+    # Genuine sub-precision rejected: 0.281 × 100 = 28.099… (distance ≈ 0.1)
+    with pytest.raises(ValueError, match="cannot be represented exactly"):
+        fn(0.281, confirm=True)
 
     # Bool inputs rejected before scaling
     with pytest.raises(ValueError, match="must be a number"):

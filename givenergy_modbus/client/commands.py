@@ -181,16 +181,26 @@ def _as_int(val: int | float, name: str) -> int:
 
 
 def _as_scaled_int(val: int | float, scale: int, name: str) -> int:
-    """Type-check val before scaling; use round() to absorb IEEE 754 artefacts.
+    """Type-check val before scaling; tolerate IEEE 754 residue, reject genuine sub-precision.
 
     Unlike _as_int, checks for bool before multiplication so True/False are
     always rejected (True * 10 == 10 slips past a post-scale bool check).
-    round() ensures decimal inputs like 0.28 s (27.999... × 100) are accepted
-    without raising on the fractional residual.
+
+    A nearness check (tolerance 1e-9) distinguishes binary-float residue —
+    0.28 × 100 = 27.999…, distance ≈ 3e-15 — from genuine precision mismatch —
+    0.281 × 100 = 28.099…, distance ≈ 0.1. The former is accepted; the latter
+    raises, preserving the command-helper invariant of failing loud on values
+    that cannot be represented exactly at the documented scale.
     """
     if isinstance(val, bool) or not isinstance(val, int | float):
         raise ValueError(f"{name} must be a number, not {type(val).__name__}")
-    return round(val * scale)
+    scaled = val * scale
+    nearest = round(scaled)
+    if abs(scaled - nearest) > 1e-9:
+        raise ValueError(
+            f"{name} cannot be represented exactly at scale ×{scale} (got {scaled!r}); use a multiple of {1 / scale}"
+        )
+    return nearest
 
 
 @deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
