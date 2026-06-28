@@ -24,7 +24,7 @@ from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
-from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
+from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, BmuRegisterGetter, HvStack
 from givenergy_modbus.model.inverter import (
     AC_COUPLED_MODELS,
     Model,
@@ -695,6 +695,8 @@ class Plant(GivEnergyBaseModel):
             # inverter_address=0x31 still routes to the inverter getter.
             if device_address == self.capabilities.lv_bcu_address:
                 return LvBcuRegisterGetter
+            if device_address in self.capabilities.hv_bmu_addresses:
+                return BmuRegisterGetter
             if 0x32 <= device_address <= 0x37:
                 return BatteryRegisterGetter
         else:

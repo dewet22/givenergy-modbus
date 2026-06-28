@@ -165,6 +165,55 @@ async def test_detect_hv_bmu_skips_on_decode_exception():
     assert caps.hv_bmu_addresses == []
 
 
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_empty_prior_falls_back_to_cold_detect():
+    """Prior with empty hv_bmu_addresses (pre-#326 upgrade) falls back to cold candidate derivation.
+
+    An upgraded system whose prior PlantCapabilities predate the hv_bmu_addresses field will have
+    prior.hv_bmu_addresses == [] even though bcu_stacks is populated. The hinted path must treat
+    this like a cold detect rather than silently probing nothing.
+    """
+    client = _make_client()
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 1)])
+    # prior exists but has no BMU addresses (simulates a pre-#326 persisted capability)
+    prior = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 1)])
+    assert prior.hv_bmu_addresses == []
+    _prime_aio_module_serial(client, 0x50, serial="BM2414G830")
+    probed = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed.append(request.device_address)
+        return request.device_address == 0x50
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_hv_bmu_modules(caps, prior, 1.0, 1)
+
+    assert 0x50 in probed, "cold fallback must probe 0x50 derived from bcu_stacks"
+    assert caps.hv_bmu_addresses == [0x50]
+
+
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_clamps_to_band_on_corrupt_module_count(caplog):
+    """A corrupt or unexpectedly large num_modules is clamped so probes stay within 0x50-0x6F."""
+    import logging
+
+    client = _make_client()
+    # BCU claims 100 modules — would spill into 0x70+ BCU territory without the clamp.
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 100)])
+    probed = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed.append(request.device_address)
+        return False
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        with caplog.at_level(logging.WARNING):
+            await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
+
+    assert all(0x50 <= addr < 0x70 for addr in probed), "all probed addresses must be within the BMU band"
+    assert "clamped" in caplog.text
+
+
 def test_plant_capabilities_round_trip_with_lv_bcu():
     caps = PlantCapabilities(
         device_type=Model.HYBRID,

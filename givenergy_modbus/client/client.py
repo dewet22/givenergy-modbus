@@ -582,14 +582,22 @@ class Client:
         """
         if not (caps.is_hv and caps.device_type is not Model.ALL_IN_ONE and caps.bcu_stacks):
             return
-        if prior is not None:
+        if prior is not None and prior.hv_bmu_addresses:
+            # Hinted mode: re-probe only the addresses the prior recorded.
             candidates: list[int] = list(prior.hv_bmu_addresses)
         else:
+            # Cold mode (also used when prior exists but predates this field): derive from BCU module counts.
             candidates = []
             next_addr = 0x50
             for _offset, num_modules in caps.bcu_stacks:
-                candidates.extend(range(next_addr, next_addr + num_modules))
-                next_addr += num_modules
+                end_addr = min(next_addr + max(num_modules, 0), 0x70)
+                candidates.extend(range(next_addr, end_addr))
+                if end_addr < next_addr + num_modules:
+                    _logger.warning(
+                        "detect: BCU module count %d exceeds HV BMU address band (0x50-0x6F) — clamped",
+                        num_modules,
+                    )
+                next_addr = end_addr
         for addr in candidates:
             if not await self._probe(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
