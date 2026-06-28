@@ -643,10 +643,14 @@ def test_grid_protection_voltage_setter(fn_name, hr, good_voltage):
     assert len(reqs) == 1
     assert reqs[0].installer
     assert reqs[0].register == hr
-    assert reqs[0].value == int(good_voltage * 10)
+    assert reqs[0].value == round(good_voltage * 10)
     assert reqs[0].encode()
 
-    # Out-of-range raises (above 500.0 V) — use integral-multiple to bypass _as_int check
+    # Bool inputs rejected before scaling (True * 10 == 10 would otherwise slip through)
+    with pytest.raises(ValueError, match="must be a number"):
+        fn(True, confirm=True)
+
+    # Out-of-range raises (above 500.0 V)
     with pytest.raises(ValueError):
         fn(501.0, confirm=True)
 
@@ -674,10 +678,14 @@ def test_grid_protection_freq_setter(fn_name, hr, good_freq):
     assert len(reqs) == 1
     assert reqs[0].installer
     assert reqs[0].register == hr
-    assert reqs[0].value == int(good_freq * 100)
+    assert reqs[0].value == round(good_freq * 100)
     assert reqs[0].encode()
 
-    # Out-of-range raises (above 70.0 Hz) — use integral-multiple to bypass _as_int check
+    # Bool inputs rejected before scaling
+    with pytest.raises(ValueError, match="must be a number"):
+        fn(True, confirm=True)
+
+    # Out-of-range raises (above 70.0 Hz)
     with pytest.raises(ValueError):
         fn(71.0, confirm=True)
 
@@ -710,8 +718,20 @@ def test_grid_protection_time_setter(fn_name, hr):
     assert reqs[0].value == 250  # 2.5s × 100
     assert reqs[0].encode()
 
+    # round() absorbs IEEE 754 artefact (0.28 * 100 = 27.999... without rounding)
+    assert fn(0.28, confirm=True)[0].value == 28
+
+    # Bool inputs rejected before scaling
+    with pytest.raises(ValueError, match="must be a number"):
+        fn(True, confirm=True)
+
+    # Negative time is invalid
     with pytest.raises(ValueError):
         fn(-0.01, confirm=True)
+
+    # Over uint16 ceiling (655.35 s max)
+    with pytest.raises(ValueError):
+        fn(700.0, confirm=True)
 
 
 # --- PDU: installer=True but register not in INSTALLER_WRITE_REGISTERS ---

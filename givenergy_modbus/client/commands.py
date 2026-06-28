@@ -180,6 +180,19 @@ def _as_int(val: int | float, name: str) -> int:
     return i
 
 
+def _as_scaled_int(val: int | float, scale: int, name: str) -> int:
+    """Type-check val before scaling; use round() to absorb IEEE 754 artefacts.
+
+    Unlike _as_int, checks for bool before multiplication so True/False are
+    always rejected (True * 10 == 10 slips past a post-scale bool check).
+    round() ensures decimal inputs like 0.28 s (27.999... × 100) are accepted
+    without raising on the fractional residual.
+    """
+    if isinstance(val, bool) or not isinstance(val, int | float):
+        raise ValueError(f"{name} must be a number, not {type(val).__name__}")
+    return round(val * scale)
+
+
 @deprecated("Call Client.detect() then load_config()/refresh() instead — see PlantNotDetected.")
 def refresh_plant_data(complete: bool, number_batteries: int = 1, max_batteries: int = 5) -> list[TransparentRequest]:
     """Removed: built a fixed 0x32-addressed poll that timed out on non-0x32 models.
@@ -1025,7 +1038,7 @@ def set_v_ac_low_limit_trip(voltage: float, *, confirm: bool = False) -> list[Wr
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_low_limit_trip", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_low_limit_trip must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_TRIP, val, installer=True)]
@@ -1038,7 +1051,7 @@ def set_v_ac_high_limit_trip(voltage: float, *, confirm: bool = False) -> list[W
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_high_limit_trip", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_high_limit_trip must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_TRIP, val, installer=True)]
@@ -1051,7 +1064,7 @@ def set_f_ac_low_limit_trip(freq: float, *, confirm: bool = False) -> list[Write
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_low_limit_trip", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_low_limit_trip must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_TRIP, val, installer=True)]
@@ -1064,7 +1077,7 @@ def set_f_ac_high_limit_trip(freq: float, *, confirm: bool = False) -> list[Writ
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_high_limit_trip", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_high_limit_trip must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_TRIP, val, installer=True)]
@@ -1077,9 +1090,9 @@ def set_t_ac_low_voltage_trip(seconds: float, *, confirm: bool = False) -> list[
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_low_voltage_trip", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_low_voltage_trip must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_low_voltage_trip must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_VOLTAGE_TRIP, val, installer=True)]
 
 
@@ -1090,9 +1103,9 @@ def set_t_ac_high_voltage_trip(seconds: float, *, confirm: bool = False) -> list
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_high_voltage_trip", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_high_voltage_trip must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_high_voltage_trip must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_VOLTAGE_TRIP, val, installer=True)]
 
 
@@ -1103,9 +1116,9 @@ def set_t_ac_low_freq_trip(seconds: float, *, confirm: bool = False) -> list[Wri
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_low_freq_trip", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_low_freq_trip must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_low_freq_trip must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_FREQ_TRIP, val, installer=True)]
 
 
@@ -1116,9 +1129,9 @@ def set_t_ac_high_freq_trip(seconds: float, *, confirm: bool = False) -> list[Wr
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_high_freq_trip", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_high_freq_trip must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_high_freq_trip must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_FREQ_TRIP, val, installer=True)]
 
 
@@ -1129,7 +1142,7 @@ def set_v_ac_low_limit_reconnect(voltage: float, *, confirm: bool = False) -> li
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_low_limit_reconnect", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_low_limit_reconnect must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_RECONNECT, val, installer=True)]
@@ -1142,7 +1155,7 @@ def set_v_ac_high_limit_reconnect(voltage: float, *, confirm: bool = False) -> l
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_high_limit_reconnect", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_high_limit_reconnect must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_RECONNECT, val, installer=True)]
@@ -1155,7 +1168,7 @@ def set_f_ac_low_limit_reconnect(freq: float, *, confirm: bool = False) -> list[
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_low_limit_reconnect", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_low_limit_reconnect must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_RECONNECT, val, installer=True)]
@@ -1168,7 +1181,7 @@ def set_f_ac_high_limit_reconnect(freq: float, *, confirm: bool = False) -> list
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_high_limit_reconnect", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_high_limit_reconnect must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_RECONNECT, val, installer=True)]
@@ -1181,9 +1194,9 @@ def set_t_ac_low_voltage_reconnect(seconds: float, *, confirm: bool = False) -> 
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_low_voltage_reconnect", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_low_voltage_reconnect must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_low_voltage_reconnect must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_VOLTAGE_RECONNECT, val, installer=True)]
 
 
@@ -1194,9 +1207,9 @@ def set_t_ac_high_voltage_reconnect(seconds: float, *, confirm: bool = False) ->
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_high_voltage_reconnect", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_high_voltage_reconnect must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_high_voltage_reconnect must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_VOLTAGE_RECONNECT, val, installer=True)]
 
 
@@ -1207,9 +1220,9 @@ def set_t_ac_low_freq_reconnect(seconds: float, *, confirm: bool = False) -> lis
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_low_freq_reconnect", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_low_freq_reconnect must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_low_freq_reconnect must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_FREQ_RECONNECT, val, installer=True)]
 
 
@@ -1220,9 +1233,9 @@ def set_t_ac_high_freq_reconnect(seconds: float, *, confirm: bool = False) -> li
     Value is written as centi (int(seconds × 100)).
     """
     _grid_confirm("set_t_ac_high_freq_reconnect", confirm)
-    val = _as_int(seconds * 100, "seconds × 100")
-    if val < 0:
-        raise ValueError(f"t_ac_high_freq_reconnect must be non-negative, got {seconds}")
+    val = _as_scaled_int(seconds, 100, "seconds")
+    if not (0 <= val <= 65535):
+        raise ValueError(f"t_ac_high_freq_reconnect must be 0.0–655.35 s, got {seconds}")
     return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_FREQ_RECONNECT, val, installer=True)]
 
 
@@ -1233,7 +1246,7 @@ def set_v_ac_low_limit_grid(voltage: float, *, confirm: bool = False) -> list[Wr
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_low_limit_grid", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_low_limit_grid must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_GRID, val, installer=True)]
@@ -1246,7 +1259,7 @@ def set_v_ac_high_limit_grid(voltage: float, *, confirm: bool = False) -> list[W
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_high_limit_grid", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_high_limit_grid must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_GRID, val, installer=True)]
@@ -1259,7 +1272,7 @@ def set_f_ac_low_limit_grid(freq: float, *, confirm: bool = False) -> list[Write
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_low_limit_grid", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_low_limit_grid must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_GRID, val, installer=True)]
@@ -1272,7 +1285,7 @@ def set_f_ac_high_limit_grid(freq: float, *, confirm: bool = False) -> list[Writ
     Value is written as centi (int(freq × 100)).
     """
     _grid_confirm("set_f_ac_high_limit_grid", confirm)
-    val = _as_int(freq * 100, "freq × 100")
+    val = _as_scaled_int(freq, 100, "freq")
     if not (4000 <= val <= 7000):
         raise ValueError(f"f_ac_high_limit_grid must be 40.0–70.0 Hz, got {freq}")
     return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_GRID, val, installer=True)]
@@ -1285,7 +1298,7 @@ def set_v_ac_10min_protect(voltage: float, *, confirm: bool = False) -> list[Wri
     Value is written as deci (int(voltage × 10)).
     """
     _grid_confirm("set_v_ac_10min_protect", confirm)
-    val = _as_int(voltage * 10, "voltage × 10")
+    val = _as_scaled_int(voltage, 10, "voltage")
     if not (0 <= val <= 5000):
         raise ValueError(f"v_ac_10min_protect must be 0.0–500.0 V, got {voltage}")
     return [WriteHoldingRegisterRequest(RegisterMap.V_AC_10MIN_PROTECT, val, installer=True)]
