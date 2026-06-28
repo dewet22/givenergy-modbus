@@ -88,8 +88,10 @@ All bare FC06, gated only in the UI:
 
 - `register_maps` — 27 maps (`HOLD_REGISTER`, `INPUT_REGISTER`, `THREE_PHASE_*`, `EMS_*`,
   `HV_BCU/BMU/BAMS_*`, `PCS_*`, `METER_*`, `GATEWAY_*`, `DATALOG_*`, the BMS cluster-detail
-  V/T blocks). Each is `{number: {name, scale?}}`; `scale` carries `divide_by` / `signed` /
-  `byte_count` / `offset` where the app defines one (231 registers total).
+  V/T blocks). Each map is `{count, registers: {number: {name, scale?}}}` — iterate
+  `register_maps[map].registers` keyed by register address (`count` is the integrity check).
+  `scale` carries `divide_by` / `signed` / `byte_count` / `offset` where the app defines one
+  (231 registers across the maps).
 - `enums` — 68 code/value/bitfield enums: `DEVICE_TYPE_CODE` + the per-family `*_MODEL` tables,
   `SAFETY_STANDARD`, `BATTERY_TYPE`, `SOC_CALIBRATION_SETTING`, `WORKING_MODE`, `INVERTER_STATUS`,
   `MODBUS_FUNCTION_CODE`/`ERROR_CODE`, the single- and three-phase fault-code bit tables

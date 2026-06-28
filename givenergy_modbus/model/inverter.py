@@ -639,7 +639,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "battery_nominal_current": Def(C.uint16, None, HR(309)),
         "battery_max_charge_pct": Def(C.uint16, None, HR(310)),
         # HR(311): export priority — confirmed writable on Model.AC via portal observations
-        # (hass#52): values 0/1/2 matched "Battery First / Grid First / Load First".
+        # (hass#52): values 0/1/2 = "Load First / Battery First / Grid First" (per ExportPriority, #303).
         "export_priority": Def(C.uint16, ExportPriority, HR(311)),
         # HR(312): underfrequency add-load delay (raw uint16, scale unconfirmed).
         "underfrequency_add_load_delay": Def(C.uint16, None, HR(312)),
