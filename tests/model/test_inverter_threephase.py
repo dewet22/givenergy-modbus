@@ -43,6 +43,37 @@ def test_three_phase_overrides_shadow_single_phase_registers():
     assert tph3.status == Status.NORMAL  # type: ignore[attr-defined]
 
 
+def test_hr101_104_phase_split():
+    """HR(101-104) carry the three-phase R/S/T grid adjustment meaning.
+
+    Not the single-phase grid_import_limit / enable_lora / self-heating names.
+    """
+    cache = _cache({HR(101): 11, HR(102): 22, HR(103): 33, HR(104): 44})
+    tph = ThreePhaseInverter.from_register_cache(cache)
+    dump = tph.model_dump()
+
+    # Three-phase names present and reading the right addresses.
+    assert dump["grid_r_voltage_adjustment"] == 11
+    assert dump["grid_s_voltage_adjustment"] == 22
+    assert dump["grid_t_voltage_adjustment"] == 33
+    assert dump["grid_power_adjustment"] == 44
+
+    # Single-phase-only names must NOT leak onto the three-phase model.
+    for name in (
+        "grid_import_limit",
+        "grid_import_limit_enabled",
+        "enable_lora",
+        "enable_battery_self_heating",
+    ):
+        assert name not in dump
+
+    # The single-phase model reads the same addresses under the 1ph names instead.
+    sph = SinglePhaseInverter.from_register_cache(cache).model_dump()
+    assert sph["grid_import_limit"] == 11
+    assert sph["grid_import_limit_enabled"] is True  # HR(102) = 22 → truthy bool
+    assert "grid_r_voltage_adjustment" not in sph
+
+
 def test_three_phase_grid_voltages():
     cache = _cache({IR(1061): 2310, IR(1062): 2290, IR(1063): 2300})
     tph = ThreePhaseInverter.from_register_cache(cache)

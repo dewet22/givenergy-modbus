@@ -192,9 +192,29 @@ def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
     return [f for i, f in enumerate(_WORDS[word]) if (val >> i) & 1 and f is not None]
 
 
+# Field names dropped from the three-phase merge: derived @computed_field properties, plus the
+# single-phase-only HR(101-104) names that the R/S/T overrides below replace by address.
+_DROP_ON_THREE_PHASE = (
+    "p_battery",
+    "e_battery_throughput",
+    "grid_import_limit",
+    "grid_import_limit_enabled",
+    "enable_lora",
+    "enable_battery_self_heating",
+)
+
 # Registers that are three-phase specific or that shadow single-phase registers at higher addresses.
 # When merged with InverterRegisterGetter.REGISTER_LUT these entries win (dict update semantics).
 _THREE_PHASE_LUT = {
+    # HR(101-104): on three-phase hardware these are the per-line-phase grid voltage
+    # adjustments + grid power adjustment (installer app GRID_R/S/T_VOLTAGE_ADJUSTMENT,
+    # GRID_POWER_ADJUSTMENT). The single-phase getter reuses the same addresses for
+    # grid_import_limit / _enabled / enable_lora / enable_battery_self_heating, so these
+    # overrides restore the three-phase meaning. Scales unconfirmed → raw read-back.
+    "grid_r_voltage_adjustment": Def(C.uint16, None, HR(101)),
+    "grid_s_voltage_adjustment": Def(C.uint16, None, HR(102)),
+    "grid_t_voltage_adjustment": Def(C.uint16, None, HR(103)),
+    "grid_power_adjustment": Def(C.uint16, None, HR(104)),
     #
     # Holding Registers 1000–1124 — Three-Phase configuration
     #
@@ -481,12 +501,18 @@ class ThreePhaseInverterRegisterGetter(RegisterGetter):
     they would inherit single-phase IR(52) / IR(6,7), which three-phase firmware does not
     populate (they read frozen) — and a generated pydantic field cannot be shadowed by a
     same-named computed_field.
+
+    The single-phase-only HR(101-104) names (grid_import_limit / _enabled / enable_lora /
+    enable_battery_self_heating) are also dropped: the merge is keyed by field name, not
+    address, so without this they would coexist with the three-phase grid_r/s/t_voltage_
+    adjustment overrides — eight fields for four registers. On three-phase these addresses
+    only carry the R/S/T meaning.
     """
 
     REGISTER_LUT = {
         k: v
         for k, v in dict(SinglePhaseInverterRegisterGetter.REGISTER_LUT, **_THREE_PHASE_LUT).items()
-        if k not in ("p_battery", "e_battery_throughput")
+        if k not in _DROP_ON_THREE_PHASE
     }
 
 

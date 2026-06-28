@@ -536,14 +536,45 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "f_ac_low_limit_grid": Def(C.uint16, C.centi, HR(81), min=40.0, max=70.0),
         "f_ac_high_limit_grid": Def(C.uint16, C.centi, HR(82), min=40.0, max=70.0),
         "v_ac_10min_protect": Def(C.uint16, C.deci, HR(83), min=0.0, max=500.0),
-        # skip HR(84-93) — unlabelled in the app's writable map
+        # HR(84-93): insulation (ISO), residual-current (GFCI) and DC-injection (DCI)
+        # protection thresholds and trip times. GE-named via the installer app; scales
+        # unconfirmed on live hardware, so raw read-back (cf. the HR(300-359) block).
+        "iso_protection_1": Def(C.uint16, None, HR(84)),
+        "iso_protection_2": Def(C.uint16, None, HR(85)),
+        "gfci_protection_value_1": Def(C.uint16, None, HR(86)),
+        "gfci_protection_time_1": Def(C.uint16, None, HR(87)),
+        "gfci_protection_value_2": Def(C.uint16, None, HR(88)),
+        "gfci_protection_time_2": Def(C.uint16, None, HR(89)),
+        "dci_protection_value_1": Def(C.uint16, None, HR(90)),
+        "dci_protection_time_1": Def(C.uint16, None, HR(91)),
+        "dci_protection_value_2": Def(C.uint16, None, HR(92)),
+        "dci_protection_time_2": Def(C.uint16, None, HR(93)),
         "charge_slot_1": Def(C.timeslot, None, HR(94), HR(95)),
         "enable_charge": Def(C.bool, None, HR(96)),
         "battery_low_voltage_protection_limit": Def(C.uint16, C.centi, HR(97)),
         "battery_high_voltage_protection_limit": Def(C.uint16, C.centi, HR(98)),
-        # skip voltage adjustment settings 99-104
+        # HR(99-107): string / grid calibration + single-phase config. GE-named via the
+        # installer app; scales unconfirmed, so raw read-back. HR(105) keeps its established
+        # centi-scaled `battery_voltage_adjust` (the installer name confirms it).
+        #
+        # HR(101-104) are address-reused across product lines. The installer map (one shared,
+        # three-phase-centric name table) calls them GRID_R/S/T_VOLTAGE_ADJUSTMENT (the R/S/T
+        # line phases) + GRID_POWER_ADJUSTMENT — the *three-phase* meaning. On single-phase
+        # hardware the firmware repurposes them, and both the consumer app v4.0.7 and the
+        # library's own write surface (commands.py: GRID_IMPORT_LIMIT / _ENABLED) agree on the
+        # 1ph semantics below. ThreePhaseInverterRegisterGetter overrides these four with the
+        # R/S/T names. (HR104 type=boolean per the consumer app; HR101-104 read 0 on an
+        # unconfigured single-phase capture, and a Gen1 AC hybrid rejected FC06 writes to
+        # HR101/102 with an error — so the 1ph names stay documentary, not write-confirmed.)
+        "string_1_voltage_adjustment": Def(C.uint16, None, HR(99)),
+        "string_2_voltage_adjustment": Def(C.uint16, None, HR(100)),
+        "grid_import_limit": Def(C.uint16, None, HR(101)),
+        "grid_import_limit_enabled": Def(C.bool, None, HR(102)),
+        "enable_lora": Def(C.bool, None, HR(103)),
+        "enable_battery_self_heating": Def(C.bool, None, HR(104)),
         "battery_voltage_adjust": Def(C.uint16, C.centi, HR(105)),
-        # skip voltage adjustment settings 106-107
+        "string_1_power_adjustment": Def(C.uint16, None, HR(106)),
+        "string_2_power_adjustment": Def(C.uint16, None, HR(107)),
         "battery_low_force_charge_time": Def(C.uint16, None, HR(108)),
         "enable_bms_read": Def(C.bool, None, HR(109)),
         "battery_soc_reserve": Def(C.uint16, None, HR(110)),
@@ -551,7 +582,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "battery_discharge_limit": Def(C.uint16, None, HR(112)),
         "enable_buzzer": Def(C.bool, None, HR(113)),
         "battery_discharge_min_power_reserve": Def(C.uint16, None, HR(114)),
-        # 'island_check_continue': Def(C.uint16, None, HR(115)),
+        # HR(115): left undecoded — the installer app names it IS_LAN, contradicting the
+        # earlier 'island_check_continue' guess, so neither reading is decoded until confirmed.
         "charge_target_soc": Def(C.uint16, None, HR(116)),  # requires enable_charge_target
         "charge_soc_stop_2": Def(C.uint16, None, HR(117)),
         "discharge_soc_stop_2": Def(C.uint16, None, HR(118)),
@@ -568,8 +600,44 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_above_6kw_system": Def(C.bool, None, HR(126)),
         "start_system_auto_test": Def(C.bool, None, HR(127)),
         "enable_spi": Def(C.bool, None, HR(128)),
-        # skip PF configuration and protection settings 129-162
+        # HR(129-156): power-factor curve, CEI 0-21 and LVFRT grid-compliance settings.
+        # GE-named via the installer app; scales unconfirmed (the power_factor values may
+        # use GE's EE encoding), so raw read-back. HR(157-161) are absent from the installer
+        # map (unnamed) and HR(162) RESET_USER_INFORMATION is a momentary write-trigger, not
+        # telemetry — neither is decoded.
+        "power_factor_cmd_memory_state": Def(C.uint16, None, HR(129)),
+        "power_factor_point_1_load_percent": Def(C.uint16, None, HR(130)),
+        "power_factor_point_1_power_factor": Def(C.uint16, None, HR(131)),
+        "power_factor_point_2_load_percent": Def(C.uint16, None, HR(132)),
+        "power_factor_point_2_power_factor": Def(C.uint16, None, HR(133)),
+        "power_factor_point_3_load_percent": Def(C.uint16, None, HR(134)),
+        "power_factor_point_3_power_factor": Def(C.uint16, None, HR(135)),
+        "power_factor_point_4_load_percent": Def(C.uint16, None, HR(136)),
+        "power_factor_point_4_power_factor": Def(C.uint16, None, HR(137)),
+        "cei021_v1s_q": Def(C.uint16, None, HR(138)),
+        "cei021_v2s_q": Def(C.uint16, None, HR(139)),
+        "cei021_v1l_q": Def(C.uint16, None, HR(140)),
+        "cei021_v2l_q": Def(C.uint16, None, HR(141)),
+        "cei021_lock_in_active_power": Def(C.uint16, None, HR(142)),
+        "cei021_lock_out_active_power": Def(C.uint16, None, HR(143)),
+        "cei021_lock_in_grid_voltage": Def(C.uint16, None, HR(144)),
+        "cei021_lock_out_grid_voltage": Def(C.uint16, None, HR(145)),
+        "lvfrt_reactive_rate": Def(C.uint16, None, HR(146)),
+        "lvfrt_low_fault_value_1": Def(C.uint16, None, HR(147)),
+        "lvfrt_low_fault_time_1": Def(C.uint16, None, HR(148)),
+        "lvfrt_low_fault_value_2": Def(C.uint16, None, HR(149)),
+        "lvfrt_low_fault_time_2": Def(C.uint16, None, HR(150)),
+        "lvfrt_low_fault_value_3": Def(C.uint16, None, HR(151)),
+        "lvfrt_low_fault_time_3": Def(C.uint16, None, HR(152)),
+        "lvfrt_low_fault_value_4": Def(C.uint16, None, HR(153)),
+        "lvfrt_low_fault_time_4": Def(C.uint16, None, HR(154)),
+        "lvfrt_high_fault_value_1": Def(C.uint16, None, HR(155)),
+        "lvfrt_high_fault_time_1": Def(C.uint16, None, HR(156)),
         "inverter_reboot": Def(C.uint16, None, HR(163)),
+        # HR(166): the installer app has no HR(166) entry and exposes no RTC / real-time-
+        # control enum, so a rename of enable_rtc → enable_real_time_control can't be
+        # substantiated — left as-is pending confirmation rather than trading one ambiguity
+        # for another.
         "enable_rtc": Def(C.bool, None, HR(166)),
         "threephase_balance_mode": Def(C.uint16, None, HR(167)),
         "threephase_abc": Def(C.uint16, None, HR(168)),
