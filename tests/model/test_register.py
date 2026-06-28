@@ -233,33 +233,52 @@ def test_inverter_fault_code():
 
     assert _inverter_fault_code(None) is None
     assert _inverter_fault_code(0) == []
-    # bit 3 (from MSB) → "Backup Overload Fault"
+    # GE bit 28 (= 1 << 28) → "Backup Overload Fault"
     result = _inverter_fault_code(0b0001_0000_0000_0000_0000_0000_0000_0000)
     assert result == ["Backup Overload Fault"]
-    # bits 6+7 → "Grid Monitor Comm Fault" + "ARM Comms Fault"
+    # GE bits 25+24 → "Grid Monitor Comm Fault" + "ARM Comms Fault"
     result = _inverter_fault_code(0b0000_0011_0000_0000_0000_0000_0000_0000)
     assert "Grid Monitor Comm Fault" in result
     assert "ARM Comms Fault" in result
+    # GE bit 11 → "Hall Sensor Fault" (was incorrectly "Hail" before validation)
+    assert _inverter_fault_code(1 << 11) == ["Hall Sensor Fault"]
     # None bits produce no output
     assert _inverter_fault_code(0b1110_0000_0000_0000_0000_0000_0000_0000) == []
 
 
 def test_inverter_fault_code2():
+    # The lists are LSB-indexed (position i = GE bit i = value bit i).
+    # Validated against GivEnergy Installer app v1.154.3
+    # THREE_PHASE_HYBRID_FAULT_CODE_WORD_0..7 enums.
     from givenergy_modbus.model.inverter_threephase import _inverter_fault_code2
 
     assert _inverter_fault_code2(None, 0) is None
     assert _inverter_fault_code2(0, 0) == []
-    # word 0, bit 0 (MSB) → "Battery Voltage High"
-    result = _inverter_fault_code2(0x8000, 0)
-    assert result == ["Battery Voltage High"]
-    # word 3, bit 0 (MSB) → "Battery reversed"
-    result = _inverter_fault_code2(0x8000, 3)
-    assert result == ["Battery reversed"]
     # out-of-range word → None (LUT covers 0..7 only; word 8+ unreachable)
     assert _inverter_fault_code2(0xFFFF, 8) is None
     assert _inverter_fault_code2(0xFFFF, 9) is None
-    # None bits produce no output (word 4 has mostly None)
-    assert _inverter_fault_code2(0x8000, 4) == []
+    # GE-confirmed: word 4 bit 5 → "PV1 voltage low"
+    assert _inverter_fault_code2(0x0020, 4) == ["PV1 voltage low"]
+    # None bits produce no output (word 4 bit 0 is None)
+    assert _inverter_fault_code2(0x0001, 4) == []
+    # GE-confirmed: word 0 bit 15 → "Grid frequency out of range"
+    assert _inverter_fault_code2(1 << 15, 0) == ["Grid frequency out of range"]
+    # GE-confirmed: word 1 bit 15 → "No Grid connection"
+    assert _inverter_fault_code2(1 << 15, 1) == ["No Grid connection"]
+    # GE-confirmed: word 3 bit 0 → "Battery reversed"
+    assert _inverter_fault_code2(0x0001, 3) == ["Battery reversed"]
+    # GE-confirmed: word 3 bits 0+1 → "Battery reversed" + "Battery open"
+    result = _inverter_fault_code2(0x0003, 3)
+    assert "Battery reversed" in result
+    assert "Battery open" in result
+    # GE-confirmed: word 5 bit 0 → "DCI high"
+    assert _inverter_fault_code2(0x0001, 5) == ["DCI high"]
+    # GE-confirmed: word 5 bit 11 → "Relay fault"
+    assert _inverter_fault_code2(1 << 11, 5) == ["Relay fault"]
+    # GE-confirmed: word 7 bit 14 → "Fan warning"
+    assert _inverter_fault_code2(1 << 14, 7) == ["Fan warning"]
+    # GE-confirmed: word 7 bit 2 → "Meter comms loss"
+    assert _inverter_fault_code2(0x0004, 7) == ["Meter comms loss"]
 
 
 # ---------------------------------------------------------------------------

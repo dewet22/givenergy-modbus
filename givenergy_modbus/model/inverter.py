@@ -168,8 +168,10 @@ def _battery_max_power(dtc_str: str, fw: int) -> int | None:
 def _inverter_fault_code(val: int) -> list[str] | None:
     """Decode a 32-bit inverter fault bitmask into a list of active fault names.
 
-    Bit table sourced from britkat1980/givenergy-modbus-async; not verified against
-    official firmware documentation (contact @britkat1980 for provenance).
+    Table validated against the GivEnergy Installer app v1.154.3 (INVERTER_FAULT_CODE
+    bitfield); 21/21 named bits confirmed. GE labels bit 10 COMMUNICATION_FAULT;
+    kept here as "DSP Comms Fault" (more specific). Bit encoding: library index i
+    = GE bit (31 − i); the None entries are bits absent from the GE enum.
     Three-phase units use a different 9-word fault register layout (IR 1300–1307).
     """
     if val is None:
@@ -195,7 +197,7 @@ def _inverter_fault_code(val: int) -> list[str] | None:
         "Relay Fault",
         "Inverter Voltage Fault",
         "GFCI Fault",
-        "Hail Sensor Fault",
+        "Hall Sensor Fault",
         "DSP Comms Fault",
         "Bus over voltage",
         "Inverter Current Fault",
