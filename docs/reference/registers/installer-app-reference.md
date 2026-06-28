@@ -106,6 +106,15 @@ All bare FC06, gated only in the UI:
   power adjustments), HR129–156 (PF-curve / CEI021 / LVFRT). Left undecoded: HR157–161 (unnamed
   in the installer map), HR162 `RESET_USER_INFORMATION` (momentary write-trigger), and HR115
   (the installer's `IS_LAN` contradicts the old `island_check_continue` guess — unconfirmed).
+- HR101–104 are **address-reused across product lines**. The installer's single shared
+  (three-phase-centric) name table calls them `GRID_R/S/T_VOLTAGE_ADJUSTMENT` + `GRID_POWER_ADJUSTMENT`
+  — the per-line-phase meaning. On single-phase hardware the firmware repurposes them, and both the
+  consumer app v4.0.7 *and* the library's own write surface agree on the 1ph semantics: `grid_import_limit`
+  (101), `grid_import_limit_enabled` (102), `enable_lora` (103), `enable_battery_self_heating` (104, app
+  `type=boolean`). So `SinglePhaseInverter` decodes the 1ph names and `ThreePhaseInverter` overrides the
+  four with the R/S/T names. Naming the read fields to match the write surface (`GRID_IMPORT_LIMIT` /
+  `_ENABLED`) also makes read-after-write consistent. Values read `0x0000` on an unconfigured single-phase
+  capture, so they aren't yet wire-confirmed.
 - The fault bit tables (currently britkat-sourced, "not verified") are **validated** against GE's
   enums once the MSB-first vs LSB-first convention is accounted for — with one real fix: bit 11 is
   the **Hall** current sensor, not "Hail Sensor".
@@ -122,11 +131,6 @@ All bare FC06, gated only in the UI:
 - EMS names HR111/112 `BATTERY_*_MAX_C_RATING` — confirming they're a %-of-rated C-rating ceiling.
 - HR199: the app's generic `MODE_ENABLE_SWITCH` vs the library's `enable_inverter_parallel_mode`
   — worth verifying against a real single-phase capture before any rename.
-- HR101/102: the app writes the grid import-limit / enable here. The library already names these
-  `GRID_IMPORT_LIMIT` / `_ENABLED` (101/102) on its write surface (three-phase 1130/1131), so no
-  rename is needed — only the `inverter.py` read-path comment (`# skip voltage adjustment 99-104`)
-  is stale. Single-phase captures read `0x0000` here on systems with no import limit set, so the
-  values are non-diagnostic until a capture from a configured system turns up.
 
 > Provenance caveat: this is GE's own installer tooling, the best non-hardware source — but the
 > app can carry its own mislabels/typos (e.g. `GRID_VOLTAGE_FALUT`). Treat as authoritative-pending

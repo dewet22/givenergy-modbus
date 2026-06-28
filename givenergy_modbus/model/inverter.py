@@ -553,15 +553,24 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "enable_charge": Def(C.bool, None, HR(96)),
         "battery_low_voltage_protection_limit": Def(C.uint16, C.centi, HR(97)),
         "battery_high_voltage_protection_limit": Def(C.uint16, C.centi, HR(98)),
-        # HR(99-107): string / grid voltage + power calibration adjustments. GE-named via
-        # the installer app; scales unconfirmed, so raw read-back. HR(105) keeps its
-        # established centi-scaled `battery_voltage_adjust` (the installer name confirms it).
+        # HR(99-107): string / grid calibration + single-phase config. GE-named via the
+        # installer app; scales unconfirmed, so raw read-back. HR(105) keeps its established
+        # centi-scaled `battery_voltage_adjust` (the installer name confirms it).
+        #
+        # HR(101-104) are address-reused across product lines. The installer map (one shared,
+        # three-phase-centric name table) calls them GRID_R/S/T_VOLTAGE_ADJUSTMENT (the R/S/T
+        # line phases) + GRID_POWER_ADJUSTMENT — the *three-phase* meaning. On single-phase
+        # hardware the firmware repurposes them, and both the consumer app v4.0.7 and the
+        # library's own write surface (commands.py: GRID_IMPORT_LIMIT / _ENABLED) agree on the
+        # 1ph semantics below. ThreePhaseInverterRegisterGetter overrides these four with the
+        # R/S/T names. (HR104 type=boolean per the consumer app; HR101-104 read 0 on an
+        # unconfigured single-phase capture, so the values aren't yet wire-confirmed.)
         "string_1_voltage_adjustment": Def(C.uint16, None, HR(99)),
         "string_2_voltage_adjustment": Def(C.uint16, None, HR(100)),
-        "grid_r_voltage_adjustment": Def(C.uint16, None, HR(101)),
-        "grid_s_voltage_adjustment": Def(C.uint16, None, HR(102)),
-        "grid_t_voltage_adjustment": Def(C.uint16, None, HR(103)),
-        "grid_power_adjustment": Def(C.uint16, None, HR(104)),
+        "grid_import_limit": Def(C.uint16, None, HR(101)),
+        "grid_import_limit_enabled": Def(C.bool, None, HR(102)),
+        "enable_lora": Def(C.bool, None, HR(103)),
+        "enable_battery_self_heating": Def(C.bool, None, HR(104)),
         "battery_voltage_adjust": Def(C.uint16, C.centi, HR(105)),
         "string_1_power_adjustment": Def(C.uint16, None, HR(106)),
         "string_2_power_adjustment": Def(C.uint16, None, HR(107)),

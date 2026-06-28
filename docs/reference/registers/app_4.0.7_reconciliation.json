@@ -453,22 +453,6 @@
       ]
     },
     {
-      "addr": 103,
-      "app_name": "Enable LoRa",
-      "code_attrs": [
-        "inverter_1ph.grid_t_voltage_adjustment",
-        "inverter_3ph.grid_t_voltage_adjustment"
-      ]
-    },
-    {
-      "addr": 104,
-      "app_name": "Enable Battery Self-Heating",
-      "code_attrs": [
-        "inverter_1ph.grid_power_adjustment",
-        "inverter_3ph.grid_power_adjustment"
-      ]
-    },
-    {
       "addr": 166,
       "app_name": "Real-Time Control",
       "code_attrs": [
