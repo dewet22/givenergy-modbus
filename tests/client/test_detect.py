@@ -122,6 +122,49 @@ async def test_detect_hv_bmu_skips_modules_with_no_serial():
     assert caps.hv_bmu_addresses == [0x50]
 
 
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_hinted_mode_uses_prior_addresses():
+    """Hinted detect re-probes only prior.hv_bmu_addresses, not the BCU module count.
+
+    If prior recorded [0x50] but the BCU now says 2 modules, only 0x50 is probed.
+    An address that no longer responds is dropped.
+    """
+    client = _make_client()
+    # BCU says 2 modules, but prior only knew about 0x50.
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
+    prior = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, hv_bmu_addresses=[0x50, 0x51])
+    _prime_aio_module_serial(client, 0x50, serial="BM2414G830")
+    # 0x51 is in prior but no longer responds.
+    probed = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        probed.append(request.device_address)
+        return request.device_address == 0x50
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_hv_bmu_modules(caps, prior, 1.0, 1)
+
+    assert probed == [0x50, 0x51], "hinted mode must probe exactly the prior addresses"
+    assert caps.hv_bmu_addresses == [0x50], "non-responding prior address must be dropped"
+
+
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_skips_on_decode_exception():
+    """If Bmu.from_register_cache raises, the address is skipped without propagating."""
+    client = _make_client()
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 1)])
+    _prime_aio_module_serial(client, 0x50)
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return True
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        with patch("givenergy_modbus.client.client.Bmu.from_register_cache", side_effect=RuntimeError("boom")):
+            await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
+
+    assert caps.hv_bmu_addresses == []
+
+
 def test_plant_capabilities_round_trip_with_lv_bcu():
     caps = PlantCapabilities(
         device_type=Model.HYBRID,
