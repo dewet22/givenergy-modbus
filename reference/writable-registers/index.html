@@ -14,7 +14,7 @@
         <link rel="prev" href="../../register-identification/">
       
       
-        <link rel="next" href="../../hardware-firmware-quirks/">
+        <link rel="next" href="../registers/installer-app-reference/">
       
       
         
@@ -398,6 +398,8 @@
   
     
     
+      
+        
       
         
       
@@ -893,6 +895,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../registers/installer-app-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer app reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1470,17 +1500,15 @@
 holding registers can be written, at what tier, through which API entry point, and what
 is known about their effect.</p>
 <h3 id="provenance">Provenance<a class="headerlink" href="#provenance" title="Permanent link">&para;</a></h3>
-<p>The primary source is the GivEnergy Android app v4.0.7 "Direct Control" tab, which
-exposes the manufacturer's own writable-register map for end users (post–cloud-portal
-retirement) and a separate installer-login surface.  The app is Flutter-based; its
-full holding-register write map (460 entries) and per-model telemetry-kind table live
-in the Dart AOT snapshot inside <code>libapp.so</code> and were extracted via
-<a href="https://github.com/worawit/blutter">blutter</a> without requiring hardware or a live
-cloud connection.  The v4.1.6 hybrid Modbus RTU protocol document (2024-10-30) provides
-supplementary context; a parsed inventory lives in <code>docs/reference/registers/</code>.</p>
+<p>The primary source is the GivEnergy app v4.0.7 "Direct Control" tab, which exposes the
+manufacturer's own writable-register map for end users (post–cloud-portal retirement)
+and a separate installer-login surface — the full holding-register write map (460
+entries) and per-model telemetry-kind table are cross-referenced against it. The v4.1.6
+hybrid Modbus RTU protocol document (2024-10-30) provides supplementary context; a
+parsed inventory lives in <code>docs/reference/registers/</code>.</p>
 <p>GivEnergy entered administration in 2025.  No further firmware or documentation
-updates are expected, which makes the app-binary extraction the most authoritative
-source likely to exist.</p>
+updates are expected, which makes the GivEnergy apps the most authoritative register
+reference likely to exist.</p>
 <h3 id="write-tiers">Write tiers<a class="headerlink" href="#write-tiers" title="Permanent link">&para;</a></h3>
 <p>The library enforces two independent gates around every write.</p>
 <p><strong>Gate 1 (client):</strong> <code>Client.one_shot_command()</code> validates that each request is in the
@@ -2133,15 +2161,15 @@ a 0-floor for HR111 / HR112.</p>
 <code>INSTALLER_WRITE_REGISTERS</code> and are inaccessible through <code>one_shot_command()</code>.
 See the safety note at the top of this document.</p>
 <h4 id="ac-grid-protection-voltage-and-frequency-limits">AC grid protection — voltage and frequency limits<a class="headerlink" href="#ac-grid-protection-voltage-and-frequency-limits" title="Permanent link">&para;</a></h4>
-<p>Three-level trip scheme: level 1 is the tighter (quicker) trip, level 2 is looser,
-and HR79–83 form the third/final level including the 10-minute average voltage monitor.
-Converters for this block are inferred from the three-phase parallel block (HR1018–1042);
-unverified on live single-phase hardware.</p>
-<p>The corresponding <code>Def</code> fields (<code>v_ac_low/high_limit_N</code>, <code>f_ac_low/high_limit_N</code>,
-<code>t_ac_low/high_voltage/freq_N</code>) are in <code>givenergy_modbus/model/inverter.py</code> and can
-be read back after a poll.  No bounds-validating <code>set_*</code> helpers exist for this block
-yet — callers must construct <code>WriteHoldingRegisterRequest(..., installer=True)</code>
-directly and validate the value against grid-code tolerances themselves.</p>
+<p>Three-level trip scheme confirmed against the GivEnergy Installer app:
+<strong>trip</strong> (HR63–70) is the tighter/faster band, <strong>reconnect</strong> (HR71–78) the looser outer
+band, and <strong>grid</strong> (HR79–82) the steady-state grid band.  HR83 is the 10-minute mean
+voltage protection.  Converters for this block are inferred from the three-phase parallel
+block (HR1018–1042); unverified on live single-phase hardware.</p>
+<p>The corresponding <code>Def</code> fields are in <code>givenergy_modbus/model/inverter.py</code> and can be
+read back after a poll. Bounds-validating helpers (<code>set_v_ac_low_limit_trip</code>, etc.) are
+available for all 21 registers; each requires <code>installer=True</code> and <code>confirm=True</code>.
+The legacy <code>_1</code>/<code>_2</code>/<code>_3</code> field names remain as deprecation-warning aliases.</p>
 <table>
 <thead>
 <tr>
@@ -2149,134 +2177,156 @@ directly and validate the value against grid-code tolerances themselves.</p>
 <th>Field name</th>
 <th>Description</th>
 <th>Unit / range</th>
+<th>Setter</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>63</td>
-<td><code>v_ac_low_limit_1</code></td>
-<td>AC undervoltage limit 1</td>
+<td><code>v_ac_low_limit_trip</code></td>
+<td>AC undervoltage trip threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_low_limit_trip</code></td>
 </tr>
 <tr>
 <td>64</td>
-<td><code>v_ac_high_limit_1</code></td>
-<td>AC overvoltage limit 1</td>
+<td><code>v_ac_high_limit_trip</code></td>
+<td>AC overvoltage trip threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_high_limit_trip</code></td>
 </tr>
 <tr>
 <td>65</td>
-<td><code>f_ac_low_limit_1</code></td>
-<td>AC underfrequency limit 1</td>
+<td><code>f_ac_low_limit_trip</code></td>
+<td>AC underfrequency trip threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_low_limit_trip</code></td>
 </tr>
 <tr>
 <td>66</td>
-<td><code>f_ac_high_limit_1</code></td>
-<td>AC overfrequency limit 1</td>
+<td><code>f_ac_high_limit_trip</code></td>
+<td>AC overfrequency trip threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_high_limit_trip</code></td>
 </tr>
 <tr>
 <td>67</td>
-<td><code>t_ac_low_voltage_1</code></td>
-<td>Undervoltage 1 protection time</td>
+<td><code>t_ac_low_voltage_trip</code></td>
+<td>Undervoltage trip time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_low_voltage_trip</code></td>
 </tr>
 <tr>
 <td>68</td>
-<td><code>t_ac_high_voltage_1</code></td>
-<td>Overvoltage 1 protection time</td>
+<td><code>t_ac_high_voltage_trip</code></td>
+<td>Overvoltage trip time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_high_voltage_trip</code></td>
 </tr>
 <tr>
 <td>69</td>
-<td><code>t_ac_low_freq_1</code></td>
-<td>Underfrequency 1 protection time</td>
+<td><code>t_ac_low_freq_trip</code></td>
+<td>Underfrequency trip time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_low_freq_trip</code></td>
 </tr>
 <tr>
 <td>70</td>
-<td><code>t_ac_high_freq_1</code></td>
-<td>Overfrequency 1 protection time</td>
+<td><code>t_ac_high_freq_trip</code></td>
+<td>Overfrequency trip time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_high_freq_trip</code></td>
 </tr>
 <tr>
 <td>71</td>
-<td><code>v_ac_low_limit_2</code></td>
-<td>AC undervoltage limit 2</td>
+<td><code>v_ac_low_limit_reconnect</code></td>
+<td>AC undervoltage reconnect threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_low_limit_reconnect</code></td>
 </tr>
 <tr>
 <td>72</td>
-<td><code>v_ac_high_limit_2</code></td>
-<td>AC overvoltage limit 2</td>
+<td><code>v_ac_high_limit_reconnect</code></td>
+<td>AC overvoltage reconnect threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_high_limit_reconnect</code></td>
 </tr>
 <tr>
 <td>73</td>
-<td><code>f_ac_low_limit_2</code></td>
-<td>AC underfrequency limit 2</td>
+<td><code>f_ac_low_limit_reconnect</code></td>
+<td>AC underfrequency reconnect threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_low_limit_reconnect</code></td>
 </tr>
 <tr>
 <td>74</td>
-<td><code>f_ac_high_limit_2</code></td>
-<td>AC overfrequency limit 2</td>
+<td><code>f_ac_high_limit_reconnect</code></td>
+<td>AC overfrequency reconnect threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_high_limit_reconnect</code></td>
 </tr>
 <tr>
 <td>75</td>
-<td><code>t_ac_low_voltage_2</code></td>
-<td>Undervoltage 2 protection time</td>
+<td><code>t_ac_low_voltage_reconnect</code></td>
+<td>Undervoltage reconnect time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_low_voltage_reconnect</code></td>
 </tr>
 <tr>
 <td>76</td>
-<td><code>t_ac_high_voltage_2</code></td>
-<td>Overvoltage 2 protection time</td>
+<td><code>t_ac_high_voltage_reconnect</code></td>
+<td>Overvoltage reconnect time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_high_voltage_reconnect</code></td>
 </tr>
 <tr>
 <td>77</td>
-<td><code>t_ac_low_freq_2</code></td>
-<td>Underfrequency 2 protection time</td>
+<td><code>t_ac_low_freq_reconnect</code></td>
+<td>Underfrequency reconnect time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_low_freq_reconnect</code></td>
 </tr>
 <tr>
 <td>78</td>
-<td><code>t_ac_high_freq_2</code></td>
-<td>Overfrequency 2 protection time</td>
+<td><code>t_ac_high_freq_reconnect</code></td>
+<td>Overfrequency reconnect time</td>
 <td>s × 0.01</td>
+<td><code>set_t_ac_high_freq_reconnect</code></td>
 </tr>
 <tr>
 <td>79</td>
-<td><code>v_ac_low_limit_3</code></td>
-<td>AC undervoltage limit (final)</td>
+<td><code>v_ac_low_limit_grid</code></td>
+<td>AC undervoltage grid-band threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_low_limit_grid</code></td>
 </tr>
 <tr>
 <td>80</td>
-<td><code>v_ac_high_limit_3</code></td>
-<td>AC overvoltage limit (final)</td>
+<td><code>v_ac_high_limit_grid</code></td>
+<td>AC overvoltage grid-band threshold</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_high_limit_grid</code></td>
 </tr>
 <tr>
 <td>81</td>
-<td><code>f_ac_low_limit_3</code></td>
-<td>AC underfrequency limit (final)</td>
+<td><code>f_ac_low_limit_grid</code></td>
+<td>AC underfrequency grid-band threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_low_limit_grid</code></td>
 </tr>
 <tr>
 <td>82</td>
-<td><code>f_ac_high_limit_3</code></td>
-<td>AC overfrequency limit (final)</td>
+<td><code>f_ac_high_limit_grid</code></td>
+<td>AC overfrequency grid-band threshold</td>
 <td>Hz × 0.01; 40–70</td>
+<td><code>set_f_ac_high_limit_grid</code></td>
 </tr>
 <tr>
 <td>83</td>
 <td><code>v_ac_10min_protect</code></td>
 <td>AC voltage 10-minute average protection</td>
 <td>V × 0.1; 0–500</td>
+<td><code>set_v_ac_10min_protect</code></td>
 </tr>
 </tbody>
 </table>
@@ -2356,7 +2406,7 @@ directly and validate the value against grid-code tolerances themselves.</p>
 </table>
 <div class="admonition note">
 <p class="admonition-title">HR308–310 scale</p>
-<p>Register addresses extracted from the GE app 4.0.7 binary.  Scale and exact
+<p>Register addresses cross-referenced against the GivEnergy app v4.0.7.  Scale and exact
 unit encoding are unconfirmed on live hardware — treat the raw value as uint16
 until a confirming capture is available.</p>
 </div>

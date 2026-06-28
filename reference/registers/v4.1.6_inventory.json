@@ -10893,7 +10893,7 @@
         "doc_unit": "0.02s",
         "doc_scale": 0.02,
         "code_attrs": [
-          "inverter_3ph.time_grid_low_voltage_limit_1"
+          "inverter_3ph.time_grid_low_voltage_limit_trip"
         ],
         "code_convs": [
           "centi"

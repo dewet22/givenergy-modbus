@@ -1,0 +1,6040 @@
+{
+ "source": "GivEnergy Installer app v1.154.3",
+ "dated": "2026-06-27",
+ "method": "values cross-referenced against the GivEnergy Installer app v1.154.3",
+ "transport": {
+  "dongle_ip": "10.10.100.254",
+  "port": 8899,
+  "links": [
+   "ws://",
+   "bluetooth_le ff05/ff01"
+  ],
+  "framing": "GivEnergy 18-byte transparent (magic 0x5959, 10-char serial)",
+  "crc": "Modbus CRC-16 (0xFFFF/0xA001)"
+ },
+ "function_codes": {
+  "transport": {
+   "HEARTBEAT": 1,
+   "TRANSPARENT": 2,
+   "READ_DATALOG": 3,
+   "WRITE_DATALOG": 4,
+   "FAULT": 5
+  },
+  "inner_modbus": [
+   "FC03 read-holding",
+   "FC04 read-input",
+   "FC06 write-single",
+   "FC16 write-multiple (dev console only)"
+  ]
+ },
+ "device_address_map": {
+  "inverter_ems": 17,
+  "meters": "1-8",
+  "ems_version": 33,
+  "pcs_managed_inverters": "35-42",
+  "bms_cluster": "32+clusterId",
+  "lv_battery": "49+id",
+  "hv_bmu": "80-111 (0x50-0x6F)",
+  "hv_bcu": "112+ (0x70+)",
+  "hv_bams": "144+ (0x90+)"
+ },
+ "write_model": {
+  "style": "FC06 single-register, fire-and-forget",
+  "commit_register": null,
+  "note": "no save/commit step; SET_COMMAND_SAVE(HR1001) defined for read-back only, never written; 5s pacing between writes; write scale = inverse of decode divide_by"
+ },
+ "destructive_ops": {
+  "factory_reset_and_restart_inverter": "reg163 = 100 (firmware distinguishes by state)",
+  "reset_user_info": "reg162",
+  "soc_calibration": "reg29 (0=off..6=set_full_capacity,7=finish)",
+  "off_grid_black_start_3ph": "OFF_GRID_ENABLE 1105 + nominal V 1106 / Hz 1107"
+ },
+ "percell_265": {
+  "path": "FC04 read-input, device band 0x50-0x6F (one per BMU/module), start 60, count 60",
+  "cell_voltages": "IR60-83 = CELL_VOLTAGE_1..24, raw mV / 1000 = V",
+  "cell_temps": "IR90-113 = MODULE_TEMPERATURE_1..24, deci-degC / 10 signed",
+  "counts": "device 0xA0, IR60-64 = BAMS/BCU/BMU/CELL_COUNT_PER_MODULE/TEMP_SENSOR_COUNT",
+  "note": "16-bit big-endian; prior probes only ever swept the 0x70+ BCU band, hence missed it"
+ },
+ "register_maps": {
+  "BMS_CLUSTER_DETAIL_INFORMATION_TEMPERATURE_REGISTER": {
+   "count": 52,
+   "registers": {
+    "0": {
+     "name": "MODULE_1_NUMBER"
+    },
+    "1": {
+     "name": "MODULE_1_CELL_1_TEMPERATURE"
+    },
+    "2": {
+     "name": "MODULE_1_CELL_2_TEMPERATURE"
+    },
+    "3": {
+     "name": "MODULE_1_CELL_3_TEMPERATURE"
+    },
+    "4": {
+     "name": "MODULE_1_CELL_4_TEMPERATURE"
+    },
+    "5": {
+     "name": "MODULE_1_CELL_5_TEMPERATURE"
+    },
+    "6": {
+     "name": "MODULE_1_CELL_6_TEMPERATURE"
+    },
+    "7": {
+     "name": "MODULE_1_CELL_7_TEMPERATURE"
+    },
+    "8": {
+     "name": "MODULE_1_CELL_8_TEMPERATURE"
+    },
+    "9": {
+     "name": "MODULE_1_CELL_9_TEMPERATURE"
+    },
+    "10": {
+     "name": "MODULE_1_CELL_10_TEMPERATURE"
+    },
+    "11": {
+     "name": "MODULE_1_CELL_11_TEMPERATURE"
+    },
+    "12": {
+     "name": "MODULE_1_CELL_12_TEMPERATURE"
+    },
+    "13": {
+     "name": "MODULE_2_NUMBER"
+    },
+    "14": {
+     "name": "MODULE_2_CELL_1_TEMPERATURE"
+    },
+    "15": {
+     "name": "MODULE_2_CELL_2_TEMPERATURE"
+    },
+    "16": {
+     "name": "MODULE_2_CELL_3_TEMPERATURE"
+    },
+    "17": {
+     "name": "MODULE_2_CELL_4_TEMPERATURE"
+    },
+    "18": {
+     "name": "MODULE_2_CELL_5_TEMPERATURE"
+    },
+    "19": {
+     "name": "MODULE_2_CELL_6_TEMPERATURE"
+    },
+    "20": {
+     "name": "MODULE_2_CELL_7_TEMPERATURE"
+    },
+    "21": {
+     "name": "MODULE_2_CELL_8_TEMPERATURE"
+    },
+    "22": {
+     "name": "MODULE_2_CELL_9_TEMPERATURE"
+    },
+    "23": {
+     "name": "MODULE_2_CELL_10_TEMPERATURE"
+    },
+    "24": {
+     "name": "MODULE_2_CELL_11_TEMPERATURE"
+    },
+    "25": {
+     "name": "MODULE_2_CELL_12_TEMPERATURE"
+    },
+    "26": {
+     "name": "MODULE_3_NUMBER"
+    },
+    "27": {
+     "name": "MODULE_3_CELL_1_TEMPERATURE"
+    },
+    "28": {
+     "name": "MODULE_3_CELL_2_TEMPERATURE"
+    },
+    "29": {
+     "name": "MODULE_3_CELL_3_TEMPERATURE"
+    },
+    "30": {
+     "name": "MODULE_3_CELL_4_TEMPERATURE"
+    },
+    "31": {
+     "name": "MODULE_3_CELL_5_TEMPERATURE"
+    },
+    "32": {
+     "name": "MODULE_3_CELL_6_TEMPERATURE"
+    },
+    "33": {
+     "name": "MODULE_3_CELL_7_TEMPERATURE"
+    },
+    "34": {
+     "name": "MODULE_3_CELL_8_TEMPERATURE"
+    },
+    "35": {
+     "name": "MODULE_3_CELL_9_TEMPERATURE"
+    },
+    "36": {
+     "name": "MODULE_3_CELL_10_TEMPERATURE"
+    },
+    "37": {
+     "name": "MODULE_3_CELL_11_TEMPERATURE"
+    },
+    "38": {
+     "name": "MODULE_3_CELL_12_TEMPERATURE"
+    },
+    "39": {
+     "name": "MODULE_4_NUMBER"
+    },
+    "40": {
+     "name": "MODULE_4_CELL_1_TEMPERATURE"
+    },
+    "41": {
+     "name": "MODULE_4_CELL_2_TEMPERATURE"
+    },
+    "42": {
+     "name": "MODULE_4_CELL_3_TEMPERATURE"
+    },
+    "43": {
+     "name": "MODULE_4_CELL_4_TEMPERATURE"
+    },
+    "44": {
+     "name": "MODULE_4_CELL_5_TEMPERATURE"
+    },
+    "45": {
+     "name": "MODULE_4_CELL_6_TEMPERATURE"
+    },
+    "46": {
+     "name": "MODULE_4_CELL_7_TEMPERATURE"
+    },
+    "47": {
+     "name": "MODULE_4_CELL_8_TEMPERATURE"
+    },
+    "48": {
+     "name": "MODULE_4_CELL_9_TEMPERATURE"
+    },
+    "49": {
+     "name": "MODULE_4_CELL_10_TEMPERATURE"
+    },
+    "50": {
+     "name": "MODULE_4_CELL_11_TEMPERATURE"
+    },
+    "51": {
+     "name": "MODULE_4_CELL_12_TEMPERATURE"
+    }
+   }
+  },
+  "BMS_CLUSTER_DETAIL_INFORMATION_VOLTAGE_REGISTER": {
+   "count": 50,
+   "registers": {
+    "0": {
+     "name": "MODULE_1_NUMBER"
+    },
+    "1": {
+     "name": "MODULE_1_CELL_1_VOLTAGE"
+    },
+    "2": {
+     "name": "MODULE_1_CELL_2_VOLTAGE"
+    },
+    "3": {
+     "name": "MODULE_1_CELL_3_VOLTAGE"
+    },
+    "4": {
+     "name": "MODULE_1_CELL_4_VOLTAGE"
+    },
+    "5": {
+     "name": "MODULE_1_CELL_5_VOLTAGE"
+    },
+    "6": {
+     "name": "MODULE_1_CELL_6_VOLTAGE"
+    },
+    "7": {
+     "name": "MODULE_1_CELL_7_VOLTAGE"
+    },
+    "8": {
+     "name": "MODULE_1_CELL_8_VOLTAGE"
+    },
+    "9": {
+     "name": "MODULE_1_CELL_9_VOLTAGE"
+    },
+    "10": {
+     "name": "MODULE_1_CELL_10_VOLTAGE"
+    },
+    "11": {
+     "name": "MODULE_1_CELL_11_VOLTAGE"
+    },
+    "12": {
+     "name": "MODULE_1_CELL_12_VOLTAGE"
+    },
+    "13": {
+     "name": "MODULE_1_CELL_13_VOLTAGE"
+    },
+    "14": {
+     "name": "MODULE_1_CELL_14_VOLTAGE"
+    },
+    "15": {
+     "name": "MODULE_1_CELL_15_VOLTAGE"
+    },
+    "16": {
+     "name": "MODULE_1_CELL_16_VOLTAGE"
+    },
+    "17": {
+     "name": "MODULE_1_CELL_17_VOLTAGE"
+    },
+    "18": {
+     "name": "MODULE_1_CELL_18_VOLTAGE"
+    },
+    "19": {
+     "name": "MODULE_1_CELL_19_VOLTAGE"
+    },
+    "20": {
+     "name": "MODULE_1_CELL_20_VOLTAGE"
+    },
+    "21": {
+     "name": "MODULE_1_CELL_21_VOLTAGE"
+    },
+    "22": {
+     "name": "MODULE_1_CELL_22_VOLTAGE"
+    },
+    "23": {
+     "name": "MODULE_1_CELL_23_VOLTAGE"
+    },
+    "24": {
+     "name": "MODULE_1_CELL_24_VOLTAGE"
+    },
+    "25": {
+     "name": "MODULE_2_NUMBER"
+    },
+    "26": {
+     "name": "MODULE_2_CELL_1_VOLTAGE"
+    },
+    "27": {
+     "name": "MODULE_2_CELL_2_VOLTAGE"
+    },
+    "28": {
+     "name": "MODULE_2_CELL_3_VOLTAGE"
+    },
+    "29": {
+     "name": "MODULE_2_CELL_4_VOLTAGE"
+    },
+    "30": {
+     "name": "MODULE_2_CELL_5_VOLTAGE"
+    },
+    "31": {
+     "name": "MODULE_2_CELL_6_VOLTAGE"
+    },
+    "32": {
+     "name": "MODULE_2_CELL_7_VOLTAGE"
+    },
+    "33": {
+     "name": "MODULE_2_CELL_8_VOLTAGE"
+    },
+    "34": {
+     "name": "MODULE_2_CELL_9_VOLTAGE"
+    },
+    "35": {
+     "name": "MODULE_2_CELL_10_VOLTAGE"
+    },
+    "36": {
+     "name": "MODULE_2_CELL_11_VOLTAGE"
+    },
+    "37": {
+     "name": "MODULE_2_CELL_12_VOLTAGE"
+    },
+    "38": {
+     "name": "MODULE_2_CELL_13_VOLTAGE"
+    },
+    "39": {
+     "name": "MODULE_2_CELL_14_VOLTAGE"
+    },
+    "40": {
+     "name": "MODULE_2_CELL_15_VOLTAGE"
+    },
+    "41": {
+     "name": "MODULE_2_CELL_16_VOLTAGE"
+    },
+    "42": {
+     "name": "MODULE_2_CELL_17_VOLTAGE"
+    },
+    "43": {
+     "name": "MODULE_2_CELL_18_VOLTAGE"
+    },
+    "44": {
+     "name": "MODULE_2_CELL_19_VOLTAGE"
+    },
+    "45": {
+     "name": "MODULE_2_CELL_20_VOLTAGE"
+    },
+    "46": {
+     "name": "MODULE_2_CELL_21_VOLTAGE"
+    },
+    "47": {
+     "name": "MODULE_2_CELL_22_VOLTAGE"
+    },
+    "48": {
+     "name": "MODULE_2_CELL_23_VOLTAGE"
+    },
+    "49": {
+     "name": "MODULE_2_CELL_24_VOLTAGE"
+    }
+   }
+  },
+  "BMS_CLUSTER_INFORMATION_REGISTER": {
+   "count": 44,
+   "registers": {
+    "60": {
+     "name": "PACK_VOLTAGE"
+    },
+    "61": {
+     "name": "PACK_CURRENT"
+    },
+    "62": {
+     "name": "SOC"
+    },
+    "63": {
+     "name": "SOH"
+    },
+    "64": {
+     "name": "AMBIENT_TEMPERATURE"
+    },
+    "66": {
+     "name": "MAXIMUM_CELL_VOLTAGE_BOX_NUMBER"
+    },
+    "67": {
+     "name": "MAXIMUM_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "68": {
+     "name": "MAXIMUM_CELL_VOLTAGE"
+    },
+    "69": {
+     "name": "MAXIMUM_CELL_VOLTAGE_SBMU_NUMBER"
+    },
+    "70": {
+     "name": "MINIMUM_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "71": {
+     "name": "MINIMUM_CELL_VOLTAGE"
+    },
+    "72": {
+     "name": "MIN_CLUSTER_POSITIVE_RESISTANCE"
+    },
+    "73": {
+     "name": "MIN_CLUSTER_NEGATIVE_RESISTANCE"
+    },
+    "76": {
+     "name": "MAX_MONOMER_DIFFERENTIAL_PRESSURE"
+    },
+    "77": {
+     "name": "MAX_MONOMER_DIFFERENTIAL_PRESSURE_CLUSTER_NUMBER"
+    },
+    "78": {
+     "name": "AVERAGE_VOLTAGE"
+    },
+    "80": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_SBCU_NUMBER"
+    },
+    "81": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "82": {
+     "name": "MAX_SAMPLING_POINT_TEMPERATURE"
+    },
+    "83": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_SBMU_NUMBER"
+    },
+    "84": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "85": {
+     "name": "MIN_SAMPLING_POINT_TEMPERATURE"
+    },
+    "86": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE"
+    },
+    "87": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE_CLUSTER_NUMBER"
+    },
+    "88": {
+     "name": "AVERAGE_TEMPERATURE"
+    },
+    "90": {
+     "name": "STATUS"
+    },
+    "91": {
+     "name": "CHARGING_AND_DISCHARGING_STATUS"
+    },
+    "92": {
+     "name": "MAX_SOC_SERIAL_NUMBER"
+    },
+    "93": {
+     "name": "MAX_SINGLE_CELL_SOC"
+    },
+    "94": {
+     "name": "MIN_SOC_SERIAL_NUMBER"
+    },
+    "95": {
+     "name": "MIN_SINGLE_CELL_SOC"
+    },
+    "96": {
+     "name": "MAX_SOH_SERIAL_NUMBER"
+    },
+    "97": {
+     "name": "MAX_SINGLE_CELL_SOH"
+    },
+    "98": {
+     "name": "MIN_SOH_SERIAL_NUMBER"
+    },
+    "99": {
+     "name": "MIN_SINGLE_CELL_SOH"
+    },
+    "100": {
+     "name": "MAXIMUM_R_SERIAL_NUMBER"
+    },
+    "101": {
+     "name": "MAXIMUM_SINGLE_CELL_R"
+    },
+    "102": {
+     "name": "MINIMUM_R_SERIAL_NUMBER"
+    },
+    "103": {
+     "name": "MINIMUM_CELL_R"
+    },
+    "104": {
+     "name": "ALARM_1"
+    },
+    "105": {
+     "name": "ALARM_2"
+    },
+    "106": {
+     "name": "ALARM_3"
+    },
+    "108": {
+     "name": "MAINTENANCE_ALARM_H"
+    },
+    "109": {
+     "name": "MAINTENANCE_ALARM_L"
+    }
+   }
+  },
+  "BMS_HEAP_EXPAND_REGISTER": {
+   "count": 17,
+   "registers": {
+    "62": {
+     "name": "ALARM_1"
+    },
+    "63": {
+     "name": "ALARM_2"
+    },
+    "64": {
+     "name": "ALARM_3"
+    },
+    "65": {
+     "name": "MAINTENANCE_ALARM_H"
+    },
+    "66": {
+     "name": "MAINTENANCE_ALARM_L"
+    },
+    "69": {
+     "name": "BATTERY_STACK_FAILURE_FLAG"
+    },
+    "72": {
+     "name": "MAX_CLUSTER_TOTAL_PRESSURE"
+    },
+    "74": {
+     "name": "MIN_CLUSTER_TOTAL_PRESSURE"
+    },
+    "75": {
+     "name": "MIN_CLUSTER_TOTAL_PRESSURE_NUMBER"
+    },
+    "78": {
+     "name": "MAX_TOTAL_DIFFERENTIAL_PRESSURE"
+    },
+    "79": {
+     "name": "MAX_CLUSTER_SOC"
+    },
+    "80": {
+     "name": "MAX_CLUSTER_SOC_NUMBER"
+    },
+    "81": {
+     "name": "MIN_CLUSTER_SOC"
+    },
+    "83": {
+     "name": "MIN_CLUSTER_SOC_NUMBER"
+    },
+    "84": {
+     "name": "CLUSTER_SBCU_NUMBER"
+    },
+    "85": {
+     "name": "CLUSTER_ACCUMULATIVE_TOTAL_MONOMER"
+    },
+    "86": {
+     "name": "CLUSTER_ACCUMULATIVE_TOTAL_TEMPERATURE"
+    }
+   }
+  },
+  "BMS_HEAP_REGISTER": {
+   "count": 47,
+   "registers": {
+    "60": {
+     "name": "STATE"
+    },
+    "61": {
+     "name": "CLUSTER_RUNNING_MARK"
+    },
+    "62": {
+     "name": "CHARGING_CURRENT_LIMIT"
+    },
+    "63": {
+     "name": "DISCHARGE_CURRENT_LIMIT"
+    },
+    "64": {
+     "name": "CHARGE_FULL_OR_EMPTYING_FLAG"
+    },
+    "65": {
+     "name": "TOTAL_VOLTAGE"
+    },
+    "66": {
+     "name": "TOTAL_CURRENT"
+    },
+    "67": {
+     "name": "SOC"
+    },
+    "68": {
+     "name": "SOH"
+    },
+    "69": {
+     "name": "FRAME_ID_1_1"
+    },
+    "70": {
+     "name": "CHARGE_ENERGY_SINGLE"
+    },
+    "71": {
+     "name": "CHARGE_ENERGY_TOTAL_H"
+    },
+    "72": {
+     "name": "CHARGE_ENERGY_TOTAL_L"
+    },
+    "74": {
+     "name": "FRAME_ID_2_1"
+    },
+    "75": {
+     "name": "DISCHARGE_ENERGY_SINGLE"
+    },
+    "76": {
+     "name": "DISCHARGE_ENERGY_TOTAL_H"
+    },
+    "77": {
+     "name": "DISCHARGE_ENERGY_TOTAL_L"
+    },
+    "79": {
+     "name": "FRAME_ID_3_1"
+    },
+    "80": {
+     "name": "HEAP_RECHARGEABLE_ENERGY_1"
+    },
+    "81": {
+     "name": "HEAP_RECHARGEABLE_ENERGY_2"
+    },
+    "84": {
+     "name": "FRAME_ID_1_2"
+    },
+    "85": {
+     "name": "MAXIMUM_CELL_VOLTAGE_SBCU_NUMBER"
+    },
+    "86": {
+     "name": "MAXIMUM_CELL_VOLTAGE_BOX_NUMBER"
+    },
+    "87": {
+     "name": "MAXIMUM_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "88": {
+     "name": "MAXIMUM_CELL_VOLTAGE"
+    },
+    "89": {
+     "name": "MIN_CLUSTER_POSITIVE_RESISTANCE"
+    },
+    "90": {
+     "name": "FRAME_ID_2_2"
+    },
+    "91": {
+     "name": "MIN_CELL_VOLTAGE_SBCU_NUMBER"
+    },
+    "92": {
+     "name": "MIN_CELL_VOLTAGE_SBMU_NUMBER"
+    },
+    "93": {
+     "name": "MIN_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "94": {
+     "name": "MIN_CELL_VOLTAGE"
+    },
+    "95": {
+     "name": "MIN_CLUSTER_NEGATIVE_RESISTANCE"
+    },
+    "96": {
+     "name": "FRAME_ID_3_2"
+    },
+    "97": {
+     "name": "MAX_DIFFERENTIAL_MONOMER_PRESSURE"
+    },
+    "98": {
+     "name": "MAX_MONOMER_DIFFERENTIAL_PRESSURE_CLUSTER_NUMBER"
+    },
+    "101": {
+     "name": "FRAME_ID_1_3"
+    },
+    "102": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_SBCU_NUMBER"
+    },
+    "103": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_SBMU_NUMBER"
+    },
+    "104": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "105": {
+     "name": "MAX_SAMPLING_POINT_TEMPERATURE"
+    },
+    "106": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_SBCU_NUMBER"
+    },
+    "107": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_SBMU_NUMBER"
+    },
+    "108": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "109": {
+     "name": "FRAME_ID_2_3"
+    },
+    "110": {
+     "name": "MIN_SAMPLING_POINT_TEMPERATURE"
+    },
+    "111": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE"
+    },
+    "112": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE_CLUSTER_NUMBER"
+    }
+   }
+  },
+  "BMS_INPUT_REGISTER": {
+   "count": 49,
+   "registers": {
+    "60": {
+     "name": "CELL_1_VOLTAGE"
+    },
+    "61": {
+     "name": "CELL_2_VOLTAGE"
+    },
+    "62": {
+     "name": "CELL_3_VOLTAGE"
+    },
+    "63": {
+     "name": "CELL_4_VOLTAGE"
+    },
+    "64": {
+     "name": "CELL_5_VOLTAGE"
+    },
+    "65": {
+     "name": "CELL_6_VOLTAGE"
+    },
+    "66": {
+     "name": "CELL_7_VOLTAGE"
+    },
+    "67": {
+     "name": "CELL_8_VOLTAGE"
+    },
+    "68": {
+     "name": "CELL_9_VOLTAGE"
+    },
+    "69": {
+     "name": "CELL_10_VOLTAGE"
+    },
+    "70": {
+     "name": "CELL_11_VOLTAGE"
+    },
+    "71": {
+     "name": "CELL_12_VOLTAGE"
+    },
+    "72": {
+     "name": "CELL_13_VOLTAGE"
+    },
+    "73": {
+     "name": "CELL_14_VOLTAGE"
+    },
+    "74": {
+     "name": "CELL_15_VOLTAGE"
+    },
+    "75": {
+     "name": "CELL_16_VOLTAGE"
+    },
+    "76": {
+     "name": "CELL_1_TEMPERATURE"
+    },
+    "77": {
+     "name": "CELL_2_TEMPERATURE"
+    },
+    "78": {
+     "name": "CELL_3_TEMPERATURE"
+    },
+    "79": {
+     "name": "CELL_4_TEMPERATURE"
+    },
+    "80": {
+     "name": "BMS_VOLTAGE_SUM"
+    },
+    "81": {
+     "name": "MOS_TEMPERATURE"
+    },
+    "82": {
+     "name": "BATTERY_OUTPUT_VOLTAGE_H"
+    },
+    "83": {
+     "name": "BATTERY_OUTPUT_VOLTAGE_L"
+    },
+    "84": {
+     "name": "BATTERY_FULL_CAPACITY_H"
+    },
+    "85": {
+     "name": "BATTERY_FULL_CAPACITY_L"
+    },
+    "86": {
+     "name": "BATTERY_DESIGN_CAPACITY_H"
+    },
+    "87": {
+     "name": "BATTERY_DESIGN_CAPACITY_L"
+    },
+    "88": {
+     "name": "BATTERY_REMAINING_CAPACITY_H"
+    },
+    "89": {
+     "name": "BATTERY_REMAINING_CAPACITY_L"
+    },
+    "90": {
+     "name": "BATTERY_STATUS_1_2"
+    },
+    "91": {
+     "name": "BATTERY_STATUS_3_4"
+    },
+    "92": {
+     "name": "BATTERY_STATUS_5_6"
+    },
+    "93": {
+     "name": "BATTERY_STATUS_7"
+    },
+    "94": {
+     "name": "BATTERY_WARNING_1_2"
+    },
+    "96": {
+     "name": "BATTERY_CYCLE"
+    },
+    "97": {
+     "name": "BATTERY_CELL_COUNT"
+    },
+    "98": {
+     "name": "BATTERY_BMS_FIRMWARE_VERSION"
+    },
+    "100": {
+     "name": "BATTERY_SOC"
+    },
+    "101": {
+     "name": "BATTERY_DESIGN_CAPACITY_H_2"
+    },
+    "102": {
+     "name": "BATTERY_DESIGN_CAPACITY_L_2"
+    },
+    "103": {
+     "name": "BATTERY_T_MAX"
+    },
+    "104": {
+     "name": "BATTERY_T_MIN"
+    },
+    "110": {
+     "name": "BATTERY_SN_1_2"
+    },
+    "111": {
+     "name": "BATTERY_SN_3_4"
+    },
+    "112": {
+     "name": "BATTERY_SN_5_6"
+    },
+    "113": {
+     "name": "BATTERY_SN_7_8"
+    },
+    "114": {
+     "name": "BATTERY_SN_9_10"
+    },
+    "115": {
+     "name": "BATTERY_HAS_USB_DISK"
+    }
+   }
+  },
+  "BMS_PRODUCT_INFORMATION_REGISTER": {
+   "count": 35,
+   "registers": {
+    "60": {
+     "name": "TYPE_1_2"
+    },
+    "61": {
+     "name": "TYPE_3_4"
+    },
+    "62": {
+     "name": "TYPE_5_6"
+    },
+    "63": {
+     "name": "TYPE_7_8"
+    },
+    "64": {
+     "name": "TYPE_9_10"
+    },
+    "65": {
+     "name": "TYPE_11_12"
+    },
+    "66": {
+     "name": "MANUFACTURER_NAME_1_2"
+    },
+    "67": {
+     "name": "MANUFACTURER_NAME_3_4"
+    },
+    "68": {
+     "name": "MANUFACTURER_NAME_5_6"
+    },
+    "69": {
+     "name": "MANUFACTURER_NAME_7_8"
+    },
+    "70": {
+     "name": "MANUFACTURER_NAME_9_10"
+    },
+    "71": {
+     "name": "MANUFACTURER_NAME_11_12"
+    },
+    "72": {
+     "name": "SOFTWARE_VERSION_1__1_2"
+    },
+    "73": {
+     "name": "SOFTWARE_VERSION_1__3_4"
+    },
+    "74": {
+     "name": "SOFTWARE_VERSION_1__5_6"
+    },
+    "75": {
+     "name": "SOFTWARE_VERSION_1__7_8"
+    },
+    "76": {
+     "name": "SOFTWARE_VERSION_1__9_10"
+    },
+    "77": {
+     "name": "SOFTWARE_VERSION_1__11_12"
+    },
+    "78": {
+     "name": "SOFTWARE_VERSION_2__1_2"
+    },
+    "79": {
+     "name": "SOFTWARE_VERSION_2__3_4"
+    },
+    "80": {
+     "name": "SOFTWARE_VERSION_2__5_6"
+    },
+    "81": {
+     "name": "SOFTWARE_VERSION_2__7_8"
+    },
+    "82": {
+     "name": "SOFTWARE_VERSION_2__9_10"
+    },
+    "83": {
+     "name": "SOFTWARE_VERSION_2__11_12"
+    },
+    "84": {
+     "name": "SOFTWARE_VERSION_3__1_2"
+    },
+    "85": {
+     "name": "SOFTWARE_VERSION_3__3_4"
+    },
+    "86": {
+     "name": "SOFTWARE_VERSION_3__5_6"
+    },
+    "87": {
+     "name": "SOFTWARE_VERSION_3__7_8"
+    },
+    "88": {
+     "name": "SOFTWARE_VERSION_3__9_10"
+    },
+    "89": {
+     "name": "SOFTWARE_VERSION_3__11_12"
+    },
+    "90": {
+     "name": "DEVICE_HARDWARE_VERSION_1_2"
+    },
+    "91": {
+     "name": "DEVICE_HARDWARE_VERSION_3_4"
+    },
+    "92": {
+     "name": "DEVICE_HARDWARE_VERSION_5_6"
+    },
+    "93": {
+     "name": "DEVICE_HARDWARE_VERSION_7_8"
+    },
+    "94": {
+     "name": "DEVICE_HARDWARE_VERSION_9_10"
+    }
+   }
+  },
+  "BMS_STATE_REGISTER": {
+   "count": 32,
+   "registers": {
+    "60": {
+     "name": "PACK_VOLTAGE"
+    },
+    "61": {
+     "name": "PACK_CURRENT"
+    },
+    "62": {
+     "name": "SOC"
+    },
+    "63": {
+     "name": "SOH"
+    },
+    "64": {
+     "name": "FRAME_ID_1_1"
+    },
+    "66": {
+     "name": "MAXIMUM_CELL_VOLTAGE_BOX_NUMBER"
+    },
+    "67": {
+     "name": "MAXIMUM_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "68": {
+     "name": "MAXIMUM_CELL_VOLTAGE"
+    },
+    "69": {
+     "name": "MIN_CLUSTER_POSITIVE_RESISTANCE"
+    },
+    "70": {
+     "name": "FRAME_ID_2_1"
+    },
+    "71": {
+     "name": "MINIMUM_CELL_VOLTAGE_SBMU_NUMBER"
+    },
+    "72": {
+     "name": "MINIMUM_CELL_VOLTAGE_SERIAL_NUMBER"
+    },
+    "73": {
+     "name": "MINIMUM_CELL_VOLTAGE"
+    },
+    "74": {
+     "name": "MIN_CLUSTER_NEGATIVE_RESISTANCE"
+    },
+    "75": {
+     "name": "FRAME_ID_3"
+    },
+    "76": {
+     "name": "MAX_MONOMER_DIFFERENTIAL_PRESSURE"
+    },
+    "77": {
+     "name": "MAX_MONOMER_DIFFERENTIAL_PRESSURE_CLUSTER_NUMBER"
+    },
+    "80": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_SBCU_NUMBER"
+    },
+    "81": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "82": {
+     "name": "MAX_SAMPLING_POINT_TEMPERATURE"
+    },
+    "83": {
+     "name": "HIGHEST_TEMPERATURE_MONOMER_SBMU_NUMBER"
+    },
+    "84": {
+     "name": "LOWEST_TEMPERATURE_MONOMER_NUMBER"
+    },
+    "85": {
+     "name": "MIN_SAMPLING_POINT_TEMPERATURE"
+    },
+    "86": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE"
+    },
+    "87": {
+     "name": "MAX_TEMPERATURE_DIFFERENCE_CLUSTER_NUMBER"
+    },
+    "88": {
+     "name": "FRAME_ID_1_2"
+    },
+    "90": {
+     "name": "ALARM_1"
+    },
+    "91": {
+     "name": "ALARM_2"
+    },
+    "92": {
+     "name": "ALARM_3"
+    },
+    "93": {
+     "name": "FRAME_ID_2_2"
+    },
+    "95": {
+     "name": "MAINTENANCE_ALARM_H"
+    },
+    "96": {
+     "name": "MAINTENANCE_ALARM_L"
+    }
+   }
+  },
+  "DATALOG_REGISTER": {
+   "count": 43,
+   "registers": {
+    "0": {
+     "name": "LANGUAGE"
+    },
+    "1": {
+     "name": "PROTOCOL_TYPE"
+    },
+    "2": {
+     "name": "PROTOCOL_VERSION"
+    },
+    "3": {
+     "name": "BACKLIGHT_DELAY"
+    },
+    "4": {
+     "name": "DATA_INTERVAL"
+    },
+    "5": {
+     "name": "INVERTER_RANGE_START"
+    },
+    "6": {
+     "name": "INVERTER_RANGE_END"
+    },
+    "7": {
+     "name": "SIM_CARD_SN"
+    },
+    "8": {
+     "name": "DATALOG_SN"
+    },
+    "9": {
+     "name": "ROLL_DELAY_TIME"
+    },
+    "10": {
+     "name": "UPDATE_DATALOG_FIRMWARE"
+    },
+    "11": {
+     "name": "FTP_SERVER"
+    },
+    "12": {
+     "name": "LOCAL_DNS"
+    },
+    "13": {
+     "name": "TYPE"
+    },
+    "14": {
+     "name": "LOCAL_IP_ADDRESS"
+    },
+    "15": {
+     "name": "LOCAL_PORT"
+    },
+    "16": {
+     "name": "LOCAL_MAC_ADDRESS"
+    },
+    "17": {
+     "name": "REMOTE_SERVER_IP_ADDRESS"
+    },
+    "18": {
+     "name": "REMOTE_SERVER_PORT"
+    },
+    "19": {
+     "name": "REMOTE_SERVER_URL"
+    },
+    "20": {
+     "name": "MODEL"
+    },
+    "21": {
+     "name": "FIRMWARE_VERSION"
+    },
+    "22": {
+     "name": "HARDWARE_VERSION"
+    },
+    "23": {
+     "name": "ZIGBEE_ID"
+    },
+    "24": {
+     "name": "ZIGBEE_RADIO_CHANNEL"
+    },
+    "25": {
+     "name": "SUBNET_MASK"
+    },
+    "26": {
+     "name": "DEFAULT_GATEWAY"
+    },
+    "27": {
+     "name": "WIRELESS_TYPE"
+    },
+    "28": {
+     "name": "EXTRA_DEVICE_SETTING"
+    },
+    "30": {
+     "name": "TIMEZONE"
+    },
+    "31": {
+     "name": "SYSTEM_TIME"
+    },
+    "32": {
+     "name": "RESTART"
+    },
+    "33": {
+     "name": "CLEAR_RECORDS"
+    },
+    "34": {
+     "name": "SCREEN_CORRECTION"
+    },
+    "35": {
+     "name": "SET_TO_FACTORY_DEFAULTS"
+    },
+    "36": {
+     "name": "DISABLE_POLLING"
+    },
+    "37": {
+     "name": "POLLING_RANGE_03"
+    },
+    "38": {
+     "name": "POLLING_RANGE_04"
+    },
+    "40": {
+     "name": "INVERTER_LIMIT"
+    },
+    "41": {
+     "name": "COMMUNICATION_PROTECT_TIME"
+    },
+    "42": {
+     "name": "DATA_TRANSFER_MODE"
+    },
+    "44": {
+     "name": "UPDATE_INVERTER_FW"
+    },
+    "45": {
+     "name": "NETWORK_TYPE"
+    }
+   }
+  },
+  "EMS_HOLD_REGISTER": {
+   "count": 166,
+   "registers": {
+    "0": {
+     "name": "DEVICE_TYPE_CODE"
+    },
+    "1": {
+     "name": "INVERTER_MODEL_HIGH"
+    },
+    "2": {
+     "name": "INVERTER_MODEL_LOW"
+    },
+    "3": {
+     "name": "INPUT_TRACKER_OUTPUT_PHASE"
+    },
+    "4": {
+     "name": "SET_PRIMARY_AND_SECONDARY_ADDRESSES"
+    },
+    "7": {
+     "name": "METERS_ENABLED"
+    },
+    "13": {
+     "name": "EMS_SERIAL_1_2"
+    },
+    "14": {
+     "name": "EMS_SERIAL_3_4"
+    },
+    "15": {
+     "name": "EMS_SERIAL_5_6"
+    },
+    "16": {
+     "name": "EMS_SERIAL_7_8"
+    },
+    "17": {
+     "name": "EMS_SERIAL_9_10"
+    },
+    "18": {
+     "name": "BMS_VERSION"
+    },
+    "19": {
+     "name": "DSP_FIRMWARE_VERSION"
+    },
+    "20": {
+     "name": "WINTER_MODE_ENABLE"
+    },
+    "21": {
+     "name": "ARM_FIRMWARE_VERSION"
+    },
+    "22": {
+     "name": "USB_TYPE"
+    },
+    "23": {
+     "name": "CHIP_SELECT"
+    },
+    "24": {
+     "name": "VARIABLE_ADDRESS"
+    },
+    "25": {
+     "name": "VARIABLE_VALUE"
+    },
+    "26": {
+     "name": "GRID_PORT_MAX_POWER_OUTPUT"
+    },
+    "27": {
+     "name": "BATTERY_DISCHARGE_MODEL"
+    },
+    "28": {
+     "name": "FREQUENCY_MODE"
+    },
+    "29": {
+     "name": "SOC_CALIBRATION"
+    },
+    "30": {
+     "name": "COMM_ADDRESS"
+    },
+    "31": {
+     "name": "AC_CHARGE_2_START_TIME"
+    },
+    "32": {
+     "name": "AC_CHARGE_2_END_TIME"
+    },
+    "33": {
+     "name": "USER_CODE"
+    },
+    "34": {
+     "name": "MODBUS_VERSION"
+    },
+    "35": {
+     "name": "TIME_YEAR"
+    },
+    "36": {
+     "name": "TIME_MONTH"
+    },
+    "37": {
+     "name": "TIME_DAY"
+    },
+    "38": {
+     "name": "TIME_HOUR"
+    },
+    "39": {
+     "name": "TIME_MINUTE"
+    },
+    "40": {
+     "name": "TIME_SECOND"
+    },
+    "41": {
+     "name": "DRM_ENABLE"
+    },
+    "42": {
+     "name": "CT_ADJUST"
+    },
+    "43": {
+     "name": "CHARGE_AND_DISCHARGE_SOC"
+    },
+    "44": {
+     "name": "DC_DISCHARGE_2_START_TIME"
+    },
+    "45": {
+     "name": "DC_DISCHARGE_2_END_TIME"
+    },
+    "46": {
+     "name": "BMS_VERSION_2"
+    },
+    "47": {
+     "name": "METER_TYPE"
+    },
+    "48": {
+     "name": "EM_115_CT_DIRECTION"
+    },
+    "49": {
+     "name": "EM_418_METER_DIRECTION"
+    },
+    "50": {
+     "name": "ACTIVE_POWER_RATE"
+    },
+    "51": {
+     "name": "REACTIVE_POWER_RATE"
+    },
+    "52": {
+     "name": "POWER_FACTOR"
+    },
+    "53": {
+     "name": "ON_OFF_AUTO_START"
+    },
+    "54": {
+     "name": "BATTERY_TYPE"
+    },
+    "55": {
+     "name": "BATTERY_CAPACITY"
+    },
+    "56": {
+     "name": "DC_DISCHARGE_1_START_TIME"
+    },
+    "57": {
+     "name": "DC_DISCHARGE_1_END_TIME"
+    },
+    "58": {
+     "name": "AUTO_READ_BATTERY_TYPE"
+    },
+    "59": {
+     "name": "DC_DISCHARGE_ENABLED"
+    },
+    "60": {
+     "name": "PV_STARTUP_VOLTAGE"
+    },
+    "61": {
+     "name": "START_TIME"
+    },
+    "62": {
+     "name": "RESTART_DELAY_TIME"
+    },
+    "63": {
+     "name": "VAC_LOW_PROTECT_OUT_VALUE"
+    },
+    "64": {
+     "name": "VAC_HIGH_PROTECT_OUT_VALUE"
+    },
+    "65": {
+     "name": "FAC_LOW_PROTECT_OUT_VALUE"
+    },
+    "66": {
+     "name": "FAC_HIGH_PROTECT_OUT_VALUE"
+    },
+    "67": {
+     "name": "VAC_LOW_PROTECT_OUT_TIME"
+    },
+    "68": {
+     "name": "VAC_HIGH_PROTECT_OUT_TIME"
+    },
+    "69": {
+     "name": "FAC_LOW_PROTECT_OUT_TIME"
+    },
+    "70": {
+     "name": "FAC_HIGH_PROTECT_OUT_TIME"
+    },
+    "71": {
+     "name": "VAC_LOW_PROTECT_IN_VALUE"
+    },
+    "72": {
+     "name": "VAC_HIGH_PROTECT_IN_VALUE"
+    },
+    "73": {
+     "name": "FAC_LOW_PROTECT_IN_VALUE"
+    },
+    "74": {
+     "name": "FAC_HIGH_PROTECT_IN_VALUE"
+    },
+    "75": {
+     "name": "VAC_LOW_PROTECT_IN_TIME"
+    },
+    "76": {
+     "name": "VAC_HIGH_PROTECT_IN_TIME"
+    },
+    "77": {
+     "name": "FAC_LOW_PROTECT_IN_TIME"
+    },
+    "78": {
+     "name": "FAC_HIGH_PROTECT_IN_TIME"
+    },
+    "79": {
+     "name": "VAC_GRID_LOW_VALUE"
+    },
+    "80": {
+     "name": "VAC_GRID_HIGH_VALUE"
+    },
+    "81": {
+     "name": "FAC_GRID_LOW_VALUE"
+    },
+    "82": {
+     "name": "FAC_GRID_HIGH_VALUE"
+    },
+    "83": {
+     "name": "VOLTAGE_PROTECTION_10_MINUTES"
+    },
+    "84": {
+     "name": "ISO_PROTECT_1"
+    },
+    "85": {
+     "name": "ISO_PROTECT_2"
+    },
+    "86": {
+     "name": "GFCI_PROTECT_VALUE_1"
+    },
+    "87": {
+     "name": "GCFI_PROTECT_TIME_1"
+    },
+    "88": {
+     "name": "GFCI_PROTECT_VALUE_2"
+    },
+    "89": {
+     "name": "GCFI_PROTECT_TIME_2"
+    },
+    "90": {
+     "name": "DCI_PROTECT_VALUE_1"
+    },
+    "91": {
+     "name": "DCI_PROTECT_TIME_1"
+    },
+    "92": {
+     "name": "DCI_PROTECT_VALUE_2"
+    },
+    "93": {
+     "name": "DCI_PROTECT_TIME_2"
+    },
+    "94": {
+     "name": "AC_CHARGE_1_START_TIME"
+    },
+    "95": {
+     "name": "AC_CHARGE_1_END_TIME"
+    },
+    "96": {
+     "name": "AC_CHARGE_ENABLED"
+    },
+    "97": {
+     "name": "BATTERY_UNDERVOLTAGE_PROTECT_LIMIT"
+    },
+    "98": {
+     "name": "BATTERY_OVERVOLTAGE_PROTECT_LIMIT"
+    },
+    "99": {
+     "name": "STRING_1_VOLTAGE_ADJUSTMENT"
+    },
+    "100": {
+     "name": "STRING_2_VOLTAGE_ADJUSTMENT"
+    },
+    "101": {
+     "name": "GRID_R_VOLTAGE_ADJUSTMENT"
+    },
+    "102": {
+     "name": "GRID_S_VOLTAGE_ADJUSTMENT"
+    },
+    "103": {
+     "name": "GRID_T_VOLTAGE_ADJUSTMENT"
+    },
+    "104": {
+     "name": "GRID_POWER_ADJUSTMENT"
+    },
+    "105": {
+     "name": "BATTERY_VOLTAGE_ADJUSTMENT"
+    },
+    "106": {
+     "name": "STRING_1_POWER_ADJUSTMENT"
+    },
+    "107": {
+     "name": "STRING_2_POWER_ADJUSTMENT"
+    },
+    "108": {
+     "name": "BATTERY_LOW_FORCE_CHARGE_TIME"
+    },
+    "109": {
+     "name": "AUTO_READ_BMS"
+    },
+    "110": {
+     "name": "BATTERY_SHALLOW_DISCHARGE_PERCENT"
+    },
+    "111": {
+     "name": "BATTERY_CHARGE_MAX_C_RATING"
+    },
+    "112": {
+     "name": "BATTERY_DISCHARGE_MAX_C_RATING"
+    },
+    "113": {
+     "name": "BUZZER_SW"
+    },
+    "114": {
+     "name": "BATTERY_DISCHARGE_CUT_OFF_SOC"
+    },
+    "115": {
+     "name": "IS_LAN"
+    },
+    "116": {
+     "name": "WINTER_MODE_CUT_OFF_SOC"
+    },
+    "117": {
+     "name": "CHARGE_SOC_CUT_OFF_1"
+    },
+    "118": {
+     "name": "DISCHARGE_SOC_CUT_OFF_1"
+    },
+    "119": {
+     "name": "CHARGE_SOC_CUT_OFF_2"
+    },
+    "120": {
+     "name": "DISCHARGE_SOC_CUT_OFF_2"
+    },
+    "121": {
+     "name": "LOCAL_COMMAND_TEST"
+    },
+    "122": {
+     "name": "POWER_FUNCTION_FUNCTION_MODEL"
+    },
+    "123": {
+     "name": "FREQUENCY_LOAD_LIMIT_RATE"
+    },
+    "124": {
+     "name": "LOW_VOLTAGE_FAULT_RIDE_THROUGH_ENABLED"
+    },
+    "125": {
+     "name": "FREQUENCY_DERATING_ENABLED"
+    },
+    "126": {
+     "name": "ABOVE_6_KW_SYSTEM_CEI021_ENABLED"
+    },
+    "127": {
+     "name": "AUTO_TEST_START"
+    },
+    "128": {
+     "name": "SYSTEM_PROTECTION_INTERFACE_FUNCTION_ENABLED"
+    },
+    "129": {
+     "name": "POWER_FACTOR_CMD_MEMORY_STATE"
+    },
+    "130": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_1_LOAD_PERCENT"
+    },
+    "131": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_1_POWER_FACTOR"
+    },
+    "132": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_2_LOAD_PERCENT"
+    },
+    "133": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_2_POWER_FACTOR"
+    },
+    "134": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_3_LOAD_PERCENT"
+    },
+    "135": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_3_POWER_FACTOR"
+    },
+    "136": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_4_LOAD_PERCENT"
+    },
+    "137": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_4_POWER_FACTOR"
+    },
+    "138": {
+     "name": "CEI021_V1S_Q"
+    },
+    "139": {
+     "name": "CEI021_V2S_Q"
+    },
+    "140": {
+     "name": "CEI021_V1L_Q"
+    },
+    "141": {
+     "name": "CEI021_V2L_Q"
+    },
+    "142": {
+     "name": "CEI021_LOCK_IN_ACTIVE_POWER"
+    },
+    "143": {
+     "name": "CEI021_LOCK_OUT_ACTIVE_POWER"
+    },
+    "144": {
+     "name": "CEI021_LOCK_IN_GRID_VOLTAGE"
+    },
+    "145": {
+     "name": "CEI021_LOCK_OUT_GRID_VOLTAGE"
+    },
+    "146": {
+     "name": "LVFRT_REACTIVE_RATE"
+    },
+    "147": {
+     "name": "LVFRT_LOW_FAULT_VALUE_1"
+    },
+    "148": {
+     "name": "LVFRT_LOW_FAULT_TIME_1"
+    },
+    "149": {
+     "name": "LVFRT_LOW_FAULT_VALUE_2"
+    },
+    "150": {
+     "name": "LVFRT_LOW_FAULT_TIME_2"
+    },
+    "151": {
+     "name": "LVFRT_LOW_FAULT_VALUE_3"
+    },
+    "152": {
+     "name": "LVFRT_LOW_FAULT_TIME_3"
+    },
+    "153": {
+     "name": "LVFRT_LOW_FAULT_VALUE_4"
+    },
+    "154": {
+     "name": "LVFRT_LOW_FAULT_TIME_4"
+    },
+    "155": {
+     "name": "LVFRT_HIGH_FAULT_VALUE_1"
+    },
+    "156": {
+     "name": "LVFRT_HIGH_FAULT_TIME_1"
+    },
+    "162": {
+     "name": "RESET_USER_INFORMATION"
+    },
+    "163": {
+     "name": "RESET_TO_FACTORY_SETTINGS_OR_RESTART_INVERTER"
+    },
+    "164": {
+     "name": "UPDATE_FIRMWARE_FLASH_FLAG"
+    },
+    "167": {
+     "name": "_3_PHASE_BALANCE_MODE"
+    },
+    "168": {
+     "name": "PHASE_ABC"
+    },
+    "169": {
+     "name": "_3_PHASE_BALANCE_1"
+    },
+    "170": {
+     "name": "_3_PHASE_BALANCE_2"
+    },
+    "171": {
+     "name": "_3_PHASE_BALANCE_3"
+    },
+    "175": {
+     "name": "ACTIVATE_BATTERY"
+    },
+    "176": {
+     "name": "DEBUG_INVERTER"
+    },
+    "177": {
+     "name": "ENABLE_EPS_ZERO_SECOND_CHANGEOVER"
+    },
+    "178": {
+     "name": "ENABLE_G100"
+    },
+    "179": {
+     "name": "ENABLE_IMPEDANCE_ALARM_CHECK"
+    },
+    "199": {
+     "name": "MODE_ENABLE_SWITCH"
+    },
+    "200": {
+     "name": "UPDATE_BMS_FLAG"
+    },
+    "201": {
+     "name": "RESET_BMS"
+    }
+   }
+  },
+  "EMS_INPUT_REGISTER": {
+   "count": 3,
+   "registers": {
+    "0": {
+     "name": "EMS_STATUS"
+    },
+    "1": {
+     "name": "PCS_COUNT"
+    },
+    "2": {
+     "name": "BMS_CLUSTER_COUNT"
+    }
+   }
+  },
+  "GATEWAY_INPUT_REGISTER": {
+   "count": 28,
+   "registers": {
+    "1600": {
+     "name": "SOFTWARE_VERSION_ASCII_1_2"
+    },
+    "1601": {
+     "name": "SOFTWARE_VERSION_ASCII_3_4"
+    },
+    "1602": {
+     "name": "SOFTWARE_VERSION_INT_H"
+    },
+    "1603": {
+     "name": "SOFTWARE_VERSION_INT_L"
+    },
+    "1604": {
+     "name": "WORKING_MODE"
+    },
+    "1605": {
+     "name": "POWER_ENABLED"
+    },
+    "1606": {
+     "name": "DO_STATE"
+    },
+    "1607": {
+     "name": "DI_STATE"
+    },
+    "1608": {
+     "name": "GRID_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1609": {
+     "name": "GRID_CURRENT",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1610": {
+     "name": "LOAD_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1611": {
+     "name": "LOAD_CURRENT",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1612": {
+     "name": "INVERTER_CURRENT",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1616": {
+     "name": "AC_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1617": {
+     "name": "INVERTER_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1618": {
+     "name": "LOAD_POWER"
+    },
+    "1619": {
+     "name": "ALL_IN_ONE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1620": {
+     "name": "PROTECTION_FAULT_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "1621": {
+     "name": "PROTECTION_FAULT_L"
+    },
+    "1622": {
+     "name": "WARNING_FAULT_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "1623": {
+     "name": "WARNING_FAULT_L"
+    },
+    "1624": {
+     "name": "GRID_RELAY_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1625": {
+     "name": "INVERTER_RELAY_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1627": {
+     "name": "GATEWAY_OR_ALL_IN_ONE_SERIAL_1_2"
+    },
+    "1628": {
+     "name": "GATEWAY_OR_ALL_IN_ONE_SERIAL_3_4"
+    },
+    "1629": {
+     "name": "GATEWAY_OR_ALL_IN_ONE_SERIAL_5_6"
+    },
+    "1630": {
+     "name": "GATEWAY_OR_ALL_IN_ONE_SERIAL_7_8"
+    },
+    "1631": {
+     "name": "GATEWAY_OR_ALL_IN_ONE_SERIAL_9_10"
+    }
+   }
+  },
+  "HOLD_REGISTER": {
+   "count": 169,
+   "registers": {
+    "0": {
+     "name": "DEVICE_TYPE_CODE"
+    },
+    "1": {
+     "name": "INVERTER_MODEL_HIGH"
+    },
+    "2": {
+     "name": "INVERTER_MODEL_LOW",
+     "scale": {
+      "byte_count": 1,
+      "offset": 1
+     }
+    },
+    "3": {
+     "name": "INPUT_TRACKER_OUTPUT_PHASE",
+     "scale": {
+      "byte_count": 1,
+      "offset": 1
+     }
+    },
+    "5": {
+     "name": "NOMINAL_POWER"
+    },
+    "7": {
+     "name": "METERS_ENABLED"
+    },
+    "8": {
+     "name": "BATTERY_SERIAL_1_2"
+    },
+    "9": {
+     "name": "BATTERY_SERIAL_3_4"
+    },
+    "10": {
+     "name": "BATTERY_SERIAL_5_6"
+    },
+    "11": {
+     "name": "BATTERY_SERIAL_7_8"
+    },
+    "12": {
+     "name": "BATTERY_SERIAL_9_10"
+    },
+    "13": {
+     "name": "INVERTER_SERIAL_1_2"
+    },
+    "14": {
+     "name": "INVERTER_SERIAL_3_4"
+    },
+    "15": {
+     "name": "INVERTER_SERIAL_5_6"
+    },
+    "16": {
+     "name": "INVERTER_SERIAL_7_8"
+    },
+    "17": {
+     "name": "INVERTER_SERIAL_9_10"
+    },
+    "18": {
+     "name": "BMS_VERSION"
+    },
+    "19": {
+     "name": "DSP_FIRMWARE_VERSION"
+    },
+    "20": {
+     "name": "WINTER_MODEL_ENABLE"
+    },
+    "21": {
+     "name": "ARM_FIRMWARE_VERSION"
+    },
+    "22": {
+     "name": "USB_TYPE"
+    },
+    "23": {
+     "name": "CHIP_SELECT"
+    },
+    "24": {
+     "name": "VARIABLE_ADDRESS"
+    },
+    "25": {
+     "name": "VARIABLE_VALUE",
+     "scale": {
+      "signed": true
+     }
+    },
+    "26": {
+     "name": "GRID_PORT_MAX_POWER_OUTPUT"
+    },
+    "27": {
+     "name": "BATTERY_DISCHARGE_MODEL"
+    },
+    "28": {
+     "name": "FREQUENCY_MODE"
+    },
+    "29": {
+     "name": "SOC_CALIBRATION"
+    },
+    "30": {
+     "name": "COMM_ADDRESS"
+    },
+    "31": {
+     "name": "AC_CHARGE_2_START_TIME"
+    },
+    "32": {
+     "name": "AC_CHARGE_2_END_TIME"
+    },
+    "33": {
+     "name": "USER_CODE"
+    },
+    "34": {
+     "name": "MODBUS_VERSION",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "35": {
+     "name": "TIME_YEAR"
+    },
+    "36": {
+     "name": "TIME_MONTH"
+    },
+    "37": {
+     "name": "TIME_DAY"
+    },
+    "38": {
+     "name": "TIME_HOUR"
+    },
+    "39": {
+     "name": "TIME_MINUTE"
+    },
+    "40": {
+     "name": "TIME_SECOND"
+    },
+    "41": {
+     "name": "DRM_ENABLE"
+    },
+    "42": {
+     "name": "CT_ADJUST"
+    },
+    "43": {
+     "name": "CHARGE_AND_DISCHARGE_SOC"
+    },
+    "44": {
+     "name": "DC_DISCHARGE_2_START_TIME"
+    },
+    "45": {
+     "name": "DC_DISCHARGE_2_END_TIME"
+    },
+    "47": {
+     "name": "METER_TYPE"
+    },
+    "48": {
+     "name": "OB_115_METER_DIRECTION"
+    },
+    "49": {
+     "name": "OB_418_METER_DIRECTION"
+    },
+    "50": {
+     "name": "ACTIVE_POWER_RATE"
+    },
+    "51": {
+     "name": "REACTIVE_POWER_RATE"
+    },
+    "52": {
+     "name": "POWER_FACTOR"
+    },
+    "53": {
+     "name": "ON_OFF_AUTO_START"
+    },
+    "54": {
+     "name": "BATTERY_TYPE"
+    },
+    "55": {
+     "name": "BATTERY_CAPACITY"
+    },
+    "56": {
+     "name": "DC_DISCHARGE_1_START_TIME"
+    },
+    "57": {
+     "name": "DC_DISCHARGE_1_END_TIME"
+    },
+    "58": {
+     "name": "AUTO_READ_BATTERY_TYPE"
+    },
+    "59": {
+     "name": "DC_DISCHARGE_ENABLED"
+    },
+    "60": {
+     "name": "PV_STARTUP_VOLTAGE"
+    },
+    "61": {
+     "name": "START_TIME"
+    },
+    "62": {
+     "name": "RESTART_DELAY_TIME"
+    },
+    "63": {
+     "name": "VAC_LOW_PROTECT_OUT_VALUE"
+    },
+    "64": {
+     "name": "VAC_HIGH_PROTECT_OUT_VALUE"
+    },
+    "65": {
+     "name": "FAC_LOW_PROTECT_OUT_VALUE"
+    },
+    "66": {
+     "name": "FAC_HIGH_PROTECT_OUT_VALUE"
+    },
+    "67": {
+     "name": "VAC_LOW_PROTECT_OUT_TIME"
+    },
+    "68": {
+     "name": "VAC_HIGH_PROTECT_OUT_TIME"
+    },
+    "69": {
+     "name": "FAC_LOW_PROTECT_OUT_TIME"
+    },
+    "70": {
+     "name": "FAC_HIGH_PROTECT_OUT_TIME"
+    },
+    "71": {
+     "name": "VAC_LOW_PROTECT_IN_VALUE"
+    },
+    "72": {
+     "name": "VAC_HIGH_PROTECT_IN_VALUE"
+    },
+    "73": {
+     "name": "FAC_LOW_PROTECT_IN_VALUE"
+    },
+    "74": {
+     "name": "FAC_HIGH_PROTECT_IN_VALUE"
+    },
+    "75": {
+     "name": "VAC_LOW_PROTECT_IN_TIME"
+    },
+    "76": {
+     "name": "VAC_HIGH_PROTECT_IN_TIME"
+    },
+    "77": {
+     "name": "FAC_LOW_PROTECT_IN_TIME"
+    },
+    "78": {
+     "name": "FAC_HIGH_PROTECT_IN_TIME"
+    },
+    "79": {
+     "name": "VAC_GRID_LOW_VALUE"
+    },
+    "80": {
+     "name": "VAC_GRID_HIGH_VALUE"
+    },
+    "81": {
+     "name": "FAC_GRID_LOW_VALUE"
+    },
+    "82": {
+     "name": "FAC_GRID_HIGH_VALUE"
+    },
+    "83": {
+     "name": "VOLTAGE_PROTECTION_10_MINUTES"
+    },
+    "84": {
+     "name": "ISO_PROTECT_1"
+    },
+    "85": {
+     "name": "ISO_PROTECT_2"
+    },
+    "86": {
+     "name": "GFCI_PROTECT_VALUE_1"
+    },
+    "87": {
+     "name": "GCFI_PROTECT_TIME_1"
+    },
+    "88": {
+     "name": "GFCI_PROTECT_VALUE_2"
+    },
+    "89": {
+     "name": "GCFI_PROTECT_TIME_2"
+    },
+    "90": {
+     "name": "DCI_PROTECT_VALUE_1"
+    },
+    "91": {
+     "name": "DCI_PROTECT_TIME_1"
+    },
+    "92": {
+     "name": "DCI_PROTECT_VALUE_2"
+    },
+    "93": {
+     "name": "DCI_PROTECT_TIME_2"
+    },
+    "94": {
+     "name": "AC_CHARGE_1_START_TIME"
+    },
+    "95": {
+     "name": "AC_CHARGE_1_END_TIME"
+    },
+    "96": {
+     "name": "AC_CHARGE_ENABLED"
+    },
+    "97": {
+     "name": "BATTERY_UNDERVOLTAGE_PROTECT_LIMIT"
+    },
+    "98": {
+     "name": "BATTERY_OVERVOLTAGE_PROTECT_LIMIT"
+    },
+    "99": {
+     "name": "STRING_1_VOLTAGE_ADJUSTMENT"
+    },
+    "100": {
+     "name": "STRING_2_VOLTAGE_ADJUSTMENT"
+    },
+    "101": {
+     "name": "GRID_R_VOLTAGE_ADJUSTMENT"
+    },
+    "102": {
+     "name": "GRID_S_VOLTAGE_ADJUSTMENT"
+    },
+    "103": {
+     "name": "GRID_T_VOLTAGE_ADJUSTMENT"
+    },
+    "104": {
+     "name": "GRID_POWER_ADJUSTMENT"
+    },
+    "105": {
+     "name": "BATTERY_VOLTAGE_ADJUSTMENT"
+    },
+    "106": {
+     "name": "STRING_1_POWER_ADJUSTMENT"
+    },
+    "107": {
+     "name": "STRING_2_POWER_ADJUSTMENT"
+    },
+    "108": {
+     "name": "BATTERY_LOW_FORCE_CHARGE_TIME"
+    },
+    "109": {
+     "name": "AUTO_READ_BMS"
+    },
+    "110": {
+     "name": "BATTERY_SHALLOW_DISCHARGE_PERCENT"
+    },
+    "111": {
+     "name": "BATTERY_CHARGE_MAX_CURRENT"
+    },
+    "112": {
+     "name": "BATTERY_DISCHARGE_MAX_CURRENT"
+    },
+    "113": {
+     "name": "BUZZER_SW"
+    },
+    "114": {
+     "name": "BATTERY_DISCHARGE_CUT_OFF_SOC"
+    },
+    "115": {
+     "name": "IS_LAN"
+    },
+    "116": {
+     "name": "WINTER_MODE_CUT_OFF_SOC"
+    },
+    "117": {
+     "name": "CHARGE_SOC_CUT_OFF_1"
+    },
+    "118": {
+     "name": "DISCHARGE_SOC_CUT_OFF_1"
+    },
+    "119": {
+     "name": "CHARGE_SOC_CUT_OFF_2"
+    },
+    "120": {
+     "name": "DISCHARGE_SOC_CUT_OFF_2"
+    },
+    "121": {
+     "name": "LOCAL_COMMAND_TEST"
+    },
+    "122": {
+     "name": "POWER_FUNCTION_FUNCTION_MODEL"
+    },
+    "123": {
+     "name": "FREQUENCY_LOAD_LIMIT_RATE"
+    },
+    "124": {
+     "name": "LOW_VOLTAGE_FAULT_RIDE_THROUGH_ENABLED"
+    },
+    "125": {
+     "name": "FREQUENCY_DERATING_ENABLED"
+    },
+    "126": {
+     "name": "ABOVE_6_KW_SYSTEM_CEI021_ENABLED"
+    },
+    "127": {
+     "name": "AUTO_TEST_START"
+    },
+    "128": {
+     "name": "SYSTEM_PROTECTION_INTERFACE_FUNCTION_ENABLED"
+    },
+    "129": {
+     "name": "POWER_FACTOR_CMD_MEMORY_STATE"
+    },
+    "130": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_1_LOAD_PERCENT"
+    },
+    "131": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_1_POWER_FACTOR"
+    },
+    "132": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_2_LOAD_PERCENT"
+    },
+    "133": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_2_POWER_FACTOR"
+    },
+    "134": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_3_LOAD_PERCENT"
+    },
+    "135": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_3_POWER_FACTOR"
+    },
+    "136": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_4_LOAD_PERCENT"
+    },
+    "137": {
+     "name": "POWER_FACTOR_LIMIT_LINE_POINT_4_POWER_FACTOR"
+    },
+    "138": {
+     "name": "CEI021_V1S_Q"
+    },
+    "139": {
+     "name": "CEI021_V2S_Q"
+    },
+    "140": {
+     "name": "CEI021_V1L_Q"
+    },
+    "141": {
+     "name": "CEI021_V2L_Q"
+    },
+    "142": {
+     "name": "CEI021_LOCK_IN_ACTIVE_POWER"
+    },
+    "143": {
+     "name": "CEI021_LOCK_OUT_ACTIVE_POWER"
+    },
+    "144": {
+     "name": "CEI021_LOCK_IN_GRID_VOLTAGE"
+    },
+    "145": {
+     "name": "CEI021_LOCK_OUT_GRID_VOLTAGE"
+    },
+    "146": {
+     "name": "LVFRT_REACTIVE_RATE"
+    },
+    "147": {
+     "name": "LVFRT_LOW_FAULT_VALUE_1"
+    },
+    "148": {
+     "name": "LVFRT_LOW_FAULT_TIME_1"
+    },
+    "149": {
+     "name": "LVFRT_LOW_FAULT_VALUE_2"
+    },
+    "150": {
+     "name": "LVFRT_LOW_FAULT_TIME_2"
+    },
+    "151": {
+     "name": "LVFRT_LOW_FAULT_VALUE_3"
+    },
+    "152": {
+     "name": "LVFRT_LOW_FAULT_TIME_3"
+    },
+    "153": {
+     "name": "LVFRT_LOW_FAULT_VALUE_4"
+    },
+    "154": {
+     "name": "LVFRT_LOW_FAULT_TIME_4"
+    },
+    "155": {
+     "name": "LVFRT_HIGH_FAULT_VALUE_1"
+    },
+    "156": {
+     "name": "LVFRT_HIGH_FAULT_TIME_1"
+    },
+    "162": {
+     "name": "RESET_USER_INFORMATION"
+    },
+    "163": {
+     "name": "RESET_TO_FACTORY_SETTINGS_OR_RESTART_INVERTER"
+    },
+    "164": {
+     "name": "UPDATE_FIRMWARE_FLASH_FLAG"
+    },
+    "167": {
+     "name": "_3_PHASE_BALANCE_MODE"
+    },
+    "168": {
+     "name": "PHASE_ABC"
+    },
+    "169": {
+     "name": "_3_PHASE_BALANCE_1"
+    },
+    "170": {
+     "name": "_3_PHASE_BALANCE_2"
+    },
+    "171": {
+     "name": "_3_PHASE_BALANCE_3"
+    },
+    "175": {
+     "name": "ACTIVATE_BATTERY"
+    },
+    "176": {
+     "name": "DEBUG_INVERTER"
+    },
+    "177": {
+     "name": "ENABLE_EPS_ZERO_SECOND_CHANGEOVER"
+    },
+    "178": {
+     "name": "ENABLE_G100"
+    },
+    "179": {
+     "name": "ENABLE_IMPEDANCE_ALARM_CHECK"
+    },
+    "199": {
+     "name": "MODE_ENABLE_SWITCH"
+    },
+    "200": {
+     "name": "UPDATE_BMS_FLAG"
+    }
+   }
+  },
+  "HV_BAMS_INPUT_REGISTER": {
+   "count": 6,
+   "registers": {
+    "60": {
+     "name": "SOFTWARE_VERSION_ASCII_1_2"
+    },
+    "61": {
+     "name": "SOFTWARE_VERSION_ASCII_3_4"
+    },
+    "62": {
+     "name": "SOFTWARE_VERSION_INT_1"
+    },
+    "63": {
+     "name": "SOFTWARE_VERSION_INT_2"
+    },
+    "64": {
+     "name": "BCU_COUNT"
+    },
+    "65": {
+     "name": "ONLINE_BCU_COUNT"
+    }
+   }
+  },
+  "HV_BCU_INPUT_REGISTER": {
+   "count": 74,
+   "registers": {
+    "60": {
+     "name": "SOFTWARE_VERSION_ASCII_1_2"
+    },
+    "61": {
+     "name": "SOFTWARE_VERSION_ASCII_3_4"
+    },
+    "62": {
+     "name": "SOFTWARE_VERSION_INT_1"
+    },
+    "63": {
+     "name": "SOFTWARE_VERSION_INT_2"
+    },
+    "64": {
+     "name": "BMU_COUNT"
+    },
+    "65": {
+     "name": "CELLS_PER_BMU"
+    },
+    "66": {
+     "name": "TEMPERATURE_SENSORS_PER_BMU"
+    },
+    "67": {
+     "name": "CELLS_PER_PACK"
+    },
+    "68": {
+     "name": "TEMPERATURE_SENSORS_PER_PACK"
+    },
+    "69": {
+     "name": "POSITIVE_NEGATIVE_AFE_COUNT",
+     "scale": {
+      "byte_count": 1,
+      "offset": 1
+     }
+    },
+    "70": {
+     "name": "STATUS"
+    },
+    "71": {
+     "name": "RELAY_INPUT_STATUS"
+    },
+    "72": {
+     "name": "RELAY_OUTPUT_STATUS"
+    },
+    "73": {
+     "name": "BUS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "74": {
+     "name": "BATTERY_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "76": {
+     "name": "PACK_CURRENT",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "79": {
+     "name": "BATTERY_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "80": {
+     "name": "SOC_DEBUG_VALUE",
+     "scale": {
+      "byte_count": 1,
+      "offset": 1
+     }
+    },
+    "81": {
+     "name": "SOH"
+    },
+    "82": {
+     "name": "TOTAL_CHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "83": {
+     "name": "TOTAL_CHARGE_ENERGY_L"
+    },
+    "84": {
+     "name": "TOTAL_DISCHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "85": {
+     "name": "TOTAL_DISCHARGE_ENERGY_L"
+    },
+    "86": {
+     "name": "TOTAL_CHARGE_CAPACITY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "87": {
+     "name": "TOTAL_CHARGE_CAPACITY_L"
+    },
+    "88": {
+     "name": "TOTAL_DISCHARGE_CAPACITY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "89": {
+     "name": "TOTAL_DISCHARGE_CAPACITY_L"
+    },
+    "90": {
+     "name": "CURRENT_CHARGE_CHARGE_ENERGY_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "91": {
+     "name": "CURRENT_CHARGE_CHARGE_ENERGY_L"
+    },
+    "92": {
+     "name": "CURRENT_CHARGE_DISCHARGE_ENERGY_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "93": {
+     "name": "CURRENT_CHARGE_DISCHARGE_ENERGY_L"
+    },
+    "94": {
+     "name": "CURRENT_CHARGE_CHARGE_CAPACITY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "95": {
+     "name": "CURRENT_CHARGE_CHARGE_CAPACITY_L"
+    },
+    "96": {
+     "name": "CURRENT_CHARGE_DISCHARGE_CAPACITY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "97": {
+     "name": "CURRENT_CHARGE_DISCHARGE_CAPACITY_L"
+    },
+    "98": {
+     "name": "BATTERY_CAPACITY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "99": {
+     "name": "REMAINING_BATTERY_CAPACITY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "100": {
+     "name": "CYCLE_COUNT"
+    },
+    "101": {
+     "name": "CHARGE_DISCHARGE_STATUS"
+    },
+    "102": {
+     "name": "MINIMUM_DISCHARGE_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "103": {
+     "name": "MAXIMUM_CHARGE_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "104": {
+     "name": "MINIMUM_DISCHARGE_CURRENT",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "105": {
+     "name": "MAXIMUM_CHARGE_CURRENT",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "106": {
+     "name": "FAN_SPEED_AND_STATUS",
+     "scale": {
+      "byte_count": 1,
+      "offset": 1
+     }
+    },
+    "107": {
+     "name": "FAN_FAULT_CODE"
+    },
+    "108": {
+     "name": "PACK_BALANCE_STATUS_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "109": {
+     "name": "PACK_BALANCE_STATUS_L"
+    },
+    "110": {
+     "name": "DEBUG_REGISTER_1"
+    },
+    "111": {
+     "name": "DEBUG_REGISTER_2"
+    },
+    "113": {
+     "name": "SELF_CHECK_STATUS"
+    },
+    "114": {
+     "name": "PACK_WARNING_STATUS_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "115": {
+     "name": "PACK_WARNING_STATUS_L"
+    },
+    "116": {
+     "name": "PACK_PROTECTION_STATUS_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "117": {
+     "name": "PACK_PROTECTION_STATUS_L"
+    },
+    "118": {
+     "name": "PACK_FAULT_STATUS_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "119": {
+     "name": "PACK_FAULT_STATUS_L"
+    },
+    "120": {
+     "name": "MAXIMUM_CELL_VOLTAGE",
+     "scale": {
+      "divide_by": 1000.0
+     }
+    },
+    "121": {
+     "name": "MAXIMUM_CELL_VOLTAGE_MODULE_NUMBER"
+    },
+    "122": {
+     "name": "MAXIMUM_CELL_VOLTAGE_CELL_NUMBER"
+    },
+    "123": {
+     "name": "MINIMUM_CELL_VOLTAGE",
+     "scale": {
+      "divide_by": 1000.0
+     }
+    },
+    "124": {
+     "name": "MINIMUM_CELL_VOLTAGE_MODULE_NUMBER"
+    },
+    "125": {
+     "name": "MINIMUM_CELL_VOLTAGE_CELL_NUMBER"
+    },
+    "126": {
+     "name": "MAXIMUM_CELL_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "127": {
+     "name": "MAXIMUM_CELL_TEMPERATURE_MODULE_NUMBER"
+    },
+    "128": {
+     "name": "MAXIMUM_CELL_TEMPERATURE_CELL_NUMBER"
+    },
+    "129": {
+     "name": "MINIMUM_CELL_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "130": {
+     "name": "MINIMUM_CELL_TEMPERATURE_MODULE_NUMBER"
+    },
+    "131": {
+     "name": "MINIMUM_CELL_TEMPERATURE_CELL_NUMBER"
+    },
+    "132": {
+     "name": "MAXIMUM_COPPER_BAR_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "133": {
+     "name": "MAXIMUM_COPPER_BAR_TEMPERATURE_2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "134": {
+     "name": "PACK_CELL_VOLTAGE_RANGE",
+     "scale": {
+      "divide_by": 1000.0
+     }
+    },
+    "135": {
+     "name": "PACK_CELL_TEMPERATURE_RANGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "136": {
+     "name": "PACK_AVERAGE_CELL_VOLTAGE",
+     "scale": {
+      "divide_by": 1000.0
+     }
+    },
+    "137": {
+     "name": "PACK_AVERAGE_CELL_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    }
+   }
+  },
+  "HV_BMS_CONFIG_REGISTER": {
+   "count": 5,
+   "registers": {
+    "60": {
+     "name": "BAMS_COUNT"
+    },
+    "61": {
+     "name": "BCU_COUNT"
+    },
+    "62": {
+     "name": "BMU_COUNT"
+    },
+    "63": {
+     "name": "CELL_COUNT_PER_MODULE"
+    },
+    "64": {
+     "name": "TEMPERATURE_SENSOR_COUNT"
+    }
+   }
+  },
+  "HV_BMU_INPUT_REGISTER": {
+   "count": 48,
+   "registers": {
+    "60": {
+     "name": "CELL_VOLTAGE_1"
+    },
+    "61": {
+     "name": "CELL_VOLTAGE_2"
+    },
+    "62": {
+     "name": "CELL_VOLTAGE_3"
+    },
+    "63": {
+     "name": "CELL_VOLTAGE_4"
+    },
+    "64": {
+     "name": "CELL_VOLTAGE_5"
+    },
+    "65": {
+     "name": "CELL_VOLTAGE_6"
+    },
+    "66": {
+     "name": "CELL_VOLTAGE_7"
+    },
+    "67": {
+     "name": "CELL_VOLTAGE_8"
+    },
+    "68": {
+     "name": "CELL_VOLTAGE_9"
+    },
+    "69": {
+     "name": "CELL_VOLTAGE_10"
+    },
+    "70": {
+     "name": "CELL_VOLTAGE_11"
+    },
+    "71": {
+     "name": "CELL_VOLTAGE_12"
+    },
+    "72": {
+     "name": "CELL_VOLTAGE_13"
+    },
+    "73": {
+     "name": "CELL_VOLTAGE_14"
+    },
+    "74": {
+     "name": "CELL_VOLTAGE_15"
+    },
+    "75": {
+     "name": "CELL_VOLTAGE_16"
+    },
+    "76": {
+     "name": "CELL_VOLTAGE_17"
+    },
+    "77": {
+     "name": "CELL_VOLTAGE_18"
+    },
+    "78": {
+     "name": "CELL_VOLTAGE_19"
+    },
+    "79": {
+     "name": "CELL_VOLTAGE_20"
+    },
+    "80": {
+     "name": "CELL_VOLTAGE_21"
+    },
+    "81": {
+     "name": "CELL_VOLTAGE_22"
+    },
+    "82": {
+     "name": "CELL_VOLTAGE_23"
+    },
+    "83": {
+     "name": "CELL_VOLTAGE_24"
+    },
+    "90": {
+     "name": "MODULE_TEMPERATURE_1"
+    },
+    "91": {
+     "name": "MODULE_TEMPERATURE_2"
+    },
+    "92": {
+     "name": "MODULE_TEMPERATURE_3"
+    },
+    "93": {
+     "name": "MODULE_TEMPERATURE_4"
+    },
+    "94": {
+     "name": "MODULE_TEMPERATURE_5"
+    },
+    "95": {
+     "name": "MODULE_TEMPERATURE_6"
+    },
+    "96": {
+     "name": "MODULE_TEMPERATURE_7"
+    },
+    "97": {
+     "name": "MODULE_TEMPERATURE_8"
+    },
+    "98": {
+     "name": "MODULE_TEMPERATURE_9"
+    },
+    "99": {
+     "name": "MODULE_TEMPERATURE_10"
+    },
+    "100": {
+     "name": "MODULE_TEMPERATURE_11"
+    },
+    "101": {
+     "name": "MODULE_TEMPERATURE_12"
+    },
+    "102": {
+     "name": "MODULE_TEMPERATURE_13"
+    },
+    "103": {
+     "name": "MODULE_TEMPERATURE_14"
+    },
+    "104": {
+     "name": "MODULE_TEMPERATURE_15"
+    },
+    "105": {
+     "name": "MODULE_TEMPERATURE_16"
+    },
+    "106": {
+     "name": "MODULE_TEMPERATURE_17"
+    },
+    "107": {
+     "name": "MODULE_TEMPERATURE_18"
+    },
+    "108": {
+     "name": "MODULE_TEMPERATURE_19"
+    },
+    "109": {
+     "name": "MODULE_TEMPERATURE_20"
+    },
+    "110": {
+     "name": "MODULE_TEMPERATURE_21"
+    },
+    "111": {
+     "name": "MODULE_TEMPERATURE_22"
+    },
+    "112": {
+     "name": "MODULE_TEMPERATURE_23"
+    },
+    "113": {
+     "name": "MODULE_TEMPERATURE_24"
+    }
+   }
+  },
+  "INPUT_REGISTER": {
+   "count": 59,
+   "registers": {
+    "0": {
+     "name": "STATUS"
+    },
+    "1": {
+     "name": "VPV_1",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "2": {
+     "name": "VPV_2",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "3": {
+     "name": "P_BUS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "4": {
+     "name": "N_BUS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "5": {
+     "name": "AC_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "6": {
+     "name": "BTT_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "7": {
+     "name": "BTT_L"
+    },
+    "8": {
+     "name": "IPV_1",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "9": {
+     "name": "IPV_2",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "10": {
+     "name": "IACR",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "11": {
+     "name": "COMBINED_PV_GENERATION_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "12": {
+     "name": "COMBINED_PV_GENERATION_L"
+    },
+    "13": {
+     "name": "FAC",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "14": {
+     "name": "BATT_CHARGE_DISCHARGE_STATUS"
+    },
+    "15": {
+     "name": "HIGH_BRIGH_BUS_VOLTAGE"
+    },
+    "16": {
+     "name": "POWER_FACTOR",
+     "scale": {
+      "divide_by": 10000.0
+     }
+    },
+    "17": {
+     "name": "STRING_1_GENERATION_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "18": {
+     "name": "PPV_1",
+     "scale": {
+      "signed": true
+     }
+    },
+    "19": {
+     "name": "STRING_2_GENERATION_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "20": {
+     "name": "PPV_2",
+     "scale": {
+      "signed": true
+     }
+    },
+    "21": {
+     "name": "GRID_EXPORT_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "22": {
+     "name": "GRID_EXPORT_TOTAL_L"
+    },
+    "23": {
+     "name": "PV_MATE"
+    },
+    "24": {
+     "name": "P_INV",
+     "scale": {
+      "signed": true
+     }
+    },
+    "25": {
+     "name": "GRID_EXPORT_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "26": {
+     "name": "GRID_IMPORT_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "27": {
+     "name": "AC_CHARGE_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "28": {
+     "name": "AC_CHARGE_TOTAL_L"
+    },
+    "29": {
+     "name": "YEAR_DISCHARGE_ENERGY"
+    },
+    "30": {
+     "name": "POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "31": {
+     "name": "ESS_OUTPUT"
+    },
+    "32": {
+     "name": "GRID_IMPORT_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "33": {
+     "name": "GRID_IMPORT_TOTAL_L"
+    },
+    "35": {
+     "name": "AC_CHARGE_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "36": {
+     "name": "BATTERY_CHARGE_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "37": {
+     "name": "BATTERY_DISCHARGE_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "38": {
+     "name": "COUNTDOWN"
+    },
+    "39": {
+     "name": "INVERTER_FAULT_CODE",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "40": {
+     "name": "INVERTER_WARNING_CODE"
+    },
+    "41": {
+     "name": "INVERTER_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "42": {
+     "name": "LOAD"
+    },
+    "43": {
+     "name": "APPARENT_POWER"
+    },
+    "44": {
+     "name": "GENERATION_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "45": {
+     "name": "GENERATION_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "46": {
+     "name": "GENERATION_TOTAL_L"
+    },
+    "47": {
+     "name": "RUNTIME_H",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "48": {
+     "name": "RUNTIME_L"
+    },
+    "49": {
+     "name": "WORKING_MODE"
+    },
+    "50": {
+     "name": "BATTERY_VOLTAGE",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "51": {
+     "name": "BATTERY_CURRENT",
+     "scale": {
+      "divide_by": 100.0,
+      "signed": true
+     }
+    },
+    "52": {
+     "name": "BATTERY_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "53": {
+     "name": "ESS_OUTPUT_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "54": {
+     "name": "ESS_OUTPUT_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "55": {
+     "name": "CHARGER_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "56": {
+     "name": "BATTERY_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "57": {
+     "name": "BATTERY_FAULT_CODE"
+    },
+    "58": {
+     "name": "GRID_PORT_CURRENT",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "59": {
+     "name": "BATTERY_PERCENT"
+    }
+   }
+  },
+  "METER_INPUT_REGISTER": {
+   "count": 44,
+   "registers": {
+    "60": {
+     "name": "VOLTAGE_L1",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "61": {
+     "name": "VOLTAGE_L2",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "62": {
+     "name": "VOLTAGE_L3",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "63": {
+     "name": "CURRENT_L1",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "64": {
+     "name": "CURRENT_L2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "65": {
+     "name": "CURRENT_L3",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "66": {
+     "name": "CURRENT_LN",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "67": {
+     "name": "CURRENT_TOTAL",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "68": {
+     "name": "ACTIVE_POWER_L1",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "69": {
+     "name": "ACTIVE_POWER_L2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "70": {
+     "name": "ACTIVE_POWER_L3",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "71": {
+     "name": "ACTIVE_POWER_TOTAL",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "72": {
+     "name": "REACTIVE_POWER_L1",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "73": {
+     "name": "REACTIVE_POWER_L2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "74": {
+     "name": "REACTIVE_POWER_L3",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "75": {
+     "name": "REACTIVE_POWER_TOTAL",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "76": {
+     "name": "APPARENT_POWER_L1",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "77": {
+     "name": "APPARENT_POWER_L2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "78": {
+     "name": "APPARENT_POWER_L3",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "79": {
+     "name": "APPARENT_POWER_TOTAL",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "80": {
+     "name": "POWER_FACTOR_L1",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "81": {
+     "name": "POWER_FACTOR_L2",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "82": {
+     "name": "POWER_FACTOR_L3",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "83": {
+     "name": "POWER_FACTOR_TOTAL",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "84": {
+     "name": "FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "85": {
+     "name": "IMPORT_ACTIVE_ENERGY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "86": {
+     "name": "IMPORT_REACTIVE_ENERGY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "87": {
+     "name": "EXPORT_ACTIVE_ENERGY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "88": {
+     "name": "EXPORT_REACTIVE_ENERGY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "89": {
+     "name": "ACTIVE_ENERGY_NET",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "90": {
+     "name": "ACTIVE_NET_TOTAL",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "91": {
+     "name": "ACTIVE_NET_TARIFF_1"
+    },
+    "92": {
+     "name": "ACTIVE_NET_TARIFF_2"
+    },
+    "93": {
+     "name": "ACTIVE_NET_TARIFF_3"
+    },
+    "94": {
+     "name": "ACTIVE_NET_TARIFF_4"
+    },
+    "95": {
+     "name": "METER_SN_H"
+    },
+    "96": {
+     "name": "METER_SN_L"
+    },
+    "97": {
+     "name": "METER_FACTORY_CODE_H"
+    },
+    "98": {
+     "name": "METER_FACTORY_CODE_L"
+    },
+    "99": {
+     "name": "TYPE_CODE"
+    },
+    "100": {
+     "name": "HARDWARE_VERSION"
+    },
+    "101": {
+     "name": "SOFTWARE_VERSION"
+    },
+    "102": {
+     "name": "MODBUS_ID"
+    },
+    "103": {
+     "name": "BAUD_RATE"
+    }
+   }
+  },
+  "METER_PRODUCTION_INFORMATION_REGISTER": {
+   "count": 9,
+   "registers": {
+    "60": {
+     "name": "METER_SN_1_2"
+    },
+    "61": {
+     "name": "METER_SN_3_4"
+    },
+    "62": {
+     "name": "METER_FACTORY_CODE_H"
+    },
+    "63": {
+     "name": "METER_FACTORY_CODE_L",
+     "scale": {
+      "byte_count": 4
+     }
+    },
+    "64": {
+     "name": "TYPE_CODE"
+    },
+    "65": {
+     "name": "HARDWARE_VERSION"
+    },
+    "66": {
+     "name": "SOFTWARE_VERSION"
+    },
+    "67": {
+     "name": "MODBUS_ID"
+    },
+    "68": {
+     "name": "BAUD_RATE"
+    }
+   }
+  },
+  "PCS_DATA_INFORMATION_REGISTER": {
+   "count": 50,
+   "registers": {
+    "60": {
+     "name": "PCS_FAULT_1"
+    },
+    "61": {
+     "name": "PCS_FAULT_2"
+    },
+    "62": {
+     "name": "PCS_FAULT_3"
+    },
+    "63": {
+     "name": "PCS_STATE_1"
+    },
+    "64": {
+     "name": "PCS_STATE_2"
+    },
+    "65": {
+     "name": "OUTPUT_VAB",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "66": {
+     "name": "OUTPUT_VBC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "67": {
+     "name": "OUTPUT_VCA",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "68": {
+     "name": "OUTPUT_IA",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "69": {
+     "name": "OUTPUT_IB",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "70": {
+     "name": "OUTPUT_IC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "71": {
+     "name": "OUTPUT_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "72": {
+     "name": "LOAD_VAB",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "73": {
+     "name": "LOAD_VBC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "74": {
+     "name": "LOAD_VCA",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "75": {
+     "name": "LOAD_IA",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "76": {
+     "name": "LOAD_IB",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "77": {
+     "name": "LOAD_IC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "78": {
+     "name": "LOAD_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "79": {
+     "name": "LOAD_POWER_FACTOR",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "80": {
+     "name": "LOAD_ACTIVE_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "81": {
+     "name": "LOAD_REACTIVE_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "82": {
+     "name": "LOAD_APPARENT_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "83": {
+     "name": "GRID_VAB",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "84": {
+     "name": "GRID_VBC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "85": {
+     "name": "GRID_VCA",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "86": {
+     "name": "GRID_IA",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "87": {
+     "name": "GRID_IB",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "88": {
+     "name": "GRID_IC",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "89": {
+     "name": "GRID_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "90": {
+     "name": "GRID_POWER_FACTOR",
+     "scale": {
+      "divide_by": 10000.0,
+      "signed": true
+     }
+    },
+    "91": {
+     "name": "GRID_ACTIVE_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "92": {
+     "name": "GRID_REACTIVE_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "93": {
+     "name": "GRID_APPARENT_POWER",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "94": {
+     "name": "VDC",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "95": {
+     "name": "IDC",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "96": {
+     "name": "PDC",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "97": {
+     "name": "IGBT_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "98": {
+     "name": "INV_TEMPERATURE_1",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "99": {
+     "name": "INV_TEMPERATURE_2",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "100": {
+     "name": "DISCHARGE_ENERGY_TODAY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "101": {
+     "name": "MONTH_DISCHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "102": {
+     "name": "MONTH_DISCHARGE_ENERGY_L"
+    },
+    "103": {
+     "name": "YEAR_DISCHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "104": {
+     "name": "YEAR_DISCHARGE_ENERGY_L"
+    },
+    "105": {
+     "name": "TODAY_CHARGE_ENERGY",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "106": {
+     "name": "MONTH_CHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "107": {
+     "name": "MONTH_CHARGE_ENERGY_L"
+    },
+    "108": {
+     "name": "YEAR_CHARGE_ENERGY_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "109": {
+     "name": "YEAR_CHARGE_ENERGY_L"
+    }
+   }
+  },
+  "PCS_OTHER_INFORMATION_REGISTER": {
+   "count": 9,
+   "registers": {
+    "60": {
+     "name": "VPV1"
+    },
+    "61": {
+     "name": "IPV1"
+    },
+    "62": {
+     "name": "PPV1"
+    },
+    "66": {
+     "name": "VPV2"
+    },
+    "67": {
+     "name": "IPV2"
+    },
+    "68": {
+     "name": "PPV2"
+    },
+    "72": {
+     "name": "VPV3"
+    },
+    "73": {
+     "name": "IPV3"
+    },
+    "74": {
+     "name": "PPV3"
+    }
+   }
+  },
+  "PCS_PRODUCT_INFORMATION_REGISTER": {
+   "count": 36,
+   "registers": {
+    "60": {
+     "name": "PCS_TYPE_1_2"
+    },
+    "61": {
+     "name": "PCS_TYPE_3_4"
+    },
+    "62": {
+     "name": "PCS_TYPE_5_6"
+    },
+    "63": {
+     "name": "PCS_TYPE_7_8"
+    },
+    "64": {
+     "name": "PCS_TYPE_9_10"
+    },
+    "65": {
+     "name": "PCS_TYPE_11_12"
+    },
+    "66": {
+     "name": "MANUFACTURER_NAME_1_2"
+    },
+    "67": {
+     "name": "MANUFACTURER_NAME_3_4"
+    },
+    "68": {
+     "name": "MANUFACTURER_NAME_5_6"
+    },
+    "69": {
+     "name": "MANUFACTURER_NAME_7_8"
+    },
+    "70": {
+     "name": "MANUFACTURER_NAME_9_10"
+    },
+    "71": {
+     "name": "MANUFACTURER_NAME_11_12"
+    },
+    "72": {
+     "name": "MONITORING_SOFTWARE_VERSION_1_2"
+    },
+    "73": {
+     "name": "MONITORING_SOFTWARE_VERSION_3_4"
+    },
+    "74": {
+     "name": "MONITORING_SOFTWARE_VERSION_5_6"
+    },
+    "75": {
+     "name": "MONITORING_SOFTWARE_VERSION_7_8"
+    },
+    "76": {
+     "name": "MONITORING_SOFTWARE_VERSION_9_10"
+    },
+    "77": {
+     "name": "MONITORING_SOFTWARE_VERSION_11_12"
+    },
+    "78": {
+     "name": "INVERTER_SOFTWARE_VERSION_1_2"
+    },
+    "79": {
+     "name": "INVERTER_SOFTWARE_VERSION_3_4"
+    },
+    "80": {
+     "name": "INVERTER_SOFTWARE_VERSION_5_6"
+    },
+    "81": {
+     "name": "INVERTER_SOFTWARE_VERSION_7_8"
+    },
+    "82": {
+     "name": "INVERTER_SOFTWARE_VERSION_9_10"
+    },
+    "83": {
+     "name": "INVERTER_SOFTWARE_VERSION_11_12"
+    },
+    "84": {
+     "name": "CPLD_SOFTWARE_VERSION_1_2"
+    },
+    "85": {
+     "name": "CPLD_SOFTWARE_VERSION_3_4"
+    },
+    "86": {
+     "name": "CPLD_SOFTWARE_VERSION_5_6"
+    },
+    "87": {
+     "name": "CPLD_SOFTWARE_VERSION_7_8"
+    },
+    "88": {
+     "name": "CPLD_SOFTWARE_VERSION_9_10"
+    },
+    "89": {
+     "name": "CPLD_SOFTWARE_VERSION_11_12"
+    },
+    "90": {
+     "name": "DEVICE_SOFTWARE_VERSION_1_2"
+    },
+    "91": {
+     "name": "DEVICE_SOFTWARE_VERSION_3_4"
+    },
+    "92": {
+     "name": "DEVICE_SOFTWARE_VERSION_5_6"
+    },
+    "93": {
+     "name": "DEVICE_SOFTWARE_VERSION_7_8"
+    },
+    "94": {
+     "name": "DEVICE_SOFTWARE_VERSION_9_10"
+    },
+    "95": {
+     "name": "DEVICE_SOFTWARE_VERSION_11_12"
+    }
+   }
+  },
+  "PCS_SYSTEM_INFORMATION_REGISTER": {
+   "count": 21,
+   "registers": {
+    "60": {
+     "name": "OUTPUT_POWER"
+    },
+    "61": {
+     "name": "REACTIVE_POWER_MODE"
+    },
+    "62": {
+     "name": "OUTPUT_POWER_FACTOR"
+    },
+    "63": {
+     "name": "OUTPUT_REACTIVE_POWER"
+    },
+    "64": {
+     "name": "OUTPUT_ON_OFF_MODE"
+    },
+    "65": {
+     "name": "CHARGE_DISCHARGE_MODE"
+    },
+    "66": {
+     "name": "CONSTANT_CURRENT"
+    },
+    "67": {
+     "name": "CONTROL_MODE"
+    },
+    "68": {
+     "name": "ON_OFF"
+    },
+    "69": {
+     "name": "LEAD_ACID_BATTERY"
+    },
+    "70": {
+     "name": "LEAD_ACID_CAPACITY"
+    },
+    "71": {
+     "name": "LEAD_ACID_CHARGE_CURRENT_LIMIT"
+    },
+    "72": {
+     "name": "LEAD_ACID_CHARGE_VOLTAGE"
+    },
+    "73": {
+     "name": "LEAD_ACID_CHARGE_FLOAT_VOLTAGE"
+    },
+    "74": {
+     "name": "LEAD_ACID_ONLINE_EOD"
+    },
+    "75": {
+     "name": "LEAD_ACID_OFFLINE_EOD"
+    },
+    "76": {
+     "name": "LITHIUM_ONLINE_EOD"
+    },
+    "77": {
+     "name": "LITHIUM_OFFLINE_EOD"
+    },
+    "78": {
+     "name": "LITHIUM_CHARGE_VOLT_LIMIT"
+    },
+    "79": {
+     "name": "LITHIUM_DISCHARGE_VOLT_LIMIT"
+    },
+    "80": {
+     "name": "LITHIUM_CHARGE_CURRENT_LIMIT"
+    }
+   }
+  },
+  "PLANT_EMS_SUMMARY_INPUT_REGISTER": {
+   "count": 56,
+   "registers": {
+    "2040": {
+     "name": "STATUS"
+    },
+    "2041": {
+     "name": "METER_COUNT"
+    },
+    "2042": {
+     "name": "METER_TYPES"
+    },
+    "2043": {
+     "name": "METER_STATUSES"
+    },
+    "2044": {
+     "name": "INVERTER_COUNT"
+    },
+    "2045": {
+     "name": "INVERTER_STATUSES"
+    },
+    "2046": {
+     "name": "METER_1_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2047": {
+     "name": "METER_2_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2048": {
+     "name": "METER_3_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2049": {
+     "name": "METER_4_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2050": {
+     "name": "METER_5_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2051": {
+     "name": "METER_6_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2052": {
+     "name": "METER_7_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2053": {
+     "name": "METER_8_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2054": {
+     "name": "INVERTER_1_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2055": {
+     "name": "INVERTER_2_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2056": {
+     "name": "INVERTER_3_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2057": {
+     "name": "INVERTER_4_ACTIVE_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2058": {
+     "name": "INVERTER_1_SOC"
+    },
+    "2059": {
+     "name": "INVERTER_2_SOC"
+    },
+    "2060": {
+     "name": "INVERTER_3_SOC"
+    },
+    "2061": {
+     "name": "INVERTER_4_SOC"
+    },
+    "2062": {
+     "name": "INVERTER_1_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "2063": {
+     "name": "INVERTER_2_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "2064": {
+     "name": "INVERTER_3_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "2065": {
+     "name": "INVERTER_4_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "2066": {
+     "name": "INVERTER_1_SN_1_2"
+    },
+    "2067": {
+     "name": "INVERTER_1_SN_3_4"
+    },
+    "2068": {
+     "name": "INVERTER_1_SN_5_6"
+    },
+    "2069": {
+     "name": "INVERTER_1_SN_7_8"
+    },
+    "2070": {
+     "name": "INVERTER_1_SN_9_10"
+    },
+    "2071": {
+     "name": "INVERTER_2_SN_1_2"
+    },
+    "2072": {
+     "name": "INVERTER_2_SN_3_4"
+    },
+    "2073": {
+     "name": "INVERTER_2_SN_5_6"
+    },
+    "2074": {
+     "name": "INVERTER_2_SN_7_8"
+    },
+    "2075": {
+     "name": "INVERTER_2_SN_9_10"
+    },
+    "2076": {
+     "name": "INVERTER_3_SN_1_2"
+    },
+    "2077": {
+     "name": "INVERTER_3_SN_3_4"
+    },
+    "2078": {
+     "name": "INVERTER_3_SN_5_6"
+    },
+    "2079": {
+     "name": "INVERTER_3_SN_7_8"
+    },
+    "2080": {
+     "name": "INVERTER_3_SN_9_10"
+    },
+    "2081": {
+     "name": "INVERTER_4_SN_1_2"
+    },
+    "2082": {
+     "name": "INVERTER_4_SN_3_4"
+    },
+    "2083": {
+     "name": "INVERTER_4_SN_5_6"
+    },
+    "2084": {
+     "name": "INVERTER_4_SN_7_8"
+    },
+    "2085": {
+     "name": "INVERTER_4_SN_9_10"
+    },
+    "2086": {
+     "name": "CALCULATED_LOAD_POWER"
+    },
+    "2087": {
+     "name": "MEASURED_LOAD_POWER"
+    },
+    "2088": {
+     "name": "TOTAL_GENERATION"
+    },
+    "2089": {
+     "name": "GRID_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2090": {
+     "name": "BATTERY_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2091": {
+     "name": "SYSTEM_WH_REMAINING"
+    },
+    "2092": {
+     "name": "WARNINGS"
+    },
+    "2093": {
+     "name": "ERRORS"
+    },
+    "2094": {
+     "name": "OTHER_BATTERY_POWER",
+     "scale": {
+      "signed": true
+     }
+    },
+    "2095": {
+     "name": "MODBUS_ERROR_COUNT"
+    }
+   }
+  },
+  "THREE_PHASE_HOLD_REGISTER": {
+   "count": 117,
+   "registers": {
+    "23": {
+     "name": "CHIP_SELECT"
+    },
+    "24": {
+     "name": "VARIABLE_ADDRESS"
+    },
+    "29": {
+     "name": "BATTERY_SOC_CALIBRATION"
+    },
+    "30": {
+     "name": "DEVICE_ADDRESS"
+    },
+    "53": {
+     "name": "ON_OFF_STATE"
+    },
+    "163": {
+     "name": "RESTART_INVERTER"
+    },
+    "13": {
+     "name": "INVERTER_SERIAL_1_2"
+    },
+    "14": {
+     "name": "INVERTER_SERIAL_3_4"
+    },
+    "15": {
+     "name": "INVERTER_SERIAL_5_6"
+    },
+    "16": {
+     "name": "INVERTER_SERIAL_7_8"
+    },
+    "17": {
+     "name": "INVERTER_SERIAL_9_10"
+    },
+    "35": {
+     "name": "TIME_YEAR"
+    },
+    "36": {
+     "name": "TIME_MONTH"
+    },
+    "37": {
+     "name": "TIME_DAY"
+    },
+    "38": {
+     "name": "TIME_HOUR"
+    },
+    "39": {
+     "name": "TIME_MINUTE"
+    },
+    "40": {
+     "name": "TIME_SECOND"
+    },
+    "1000": {
+     "name": "SYSTEM_ENABLE_SET"
+    },
+    "1001": {
+     "name": "SET_COMMAND_SAVE"
+    },
+    "1002": {
+     "name": "ACTIVE_RATE_ORDER"
+    },
+    "1003": {
+     "name": "REACTIVE_RATE_ORDER"
+    },
+    "1004": {
+     "name": "POWER_FACTOR_SET"
+    },
+    "1007": {
+     "name": "GRID_CONNECT_TIME"
+    },
+    "1008": {
+     "name": "GRID_RECONNECT_TIME"
+    },
+    "1009": {
+     "name": "ON_GRID_CONNECT_SLOPE"
+    },
+    "1010": {
+     "name": "SELECT_COM_BAUD_RATE"
+    },
+    "1011": {
+     "name": "ON_GRID_RECONNECT_SLOPE"
+    },
+    "1012": {
+     "name": "HYBRID_MODEL_HIGH"
+    },
+    "1013": {
+     "name": "HYBRID_MODEL_LOW"
+    },
+    "1017": {
+     "name": "ENABLE_METER_COMMS_ERROR_FAILSAFE"
+    },
+    "1018": {
+     "name": "GRID_VOLT_LOW_LIMIT_1"
+    },
+    "1019": {
+     "name": "GRID_VOLT_HIGH_LIMIT_1"
+    },
+    "1020": {
+     "name": "GRID_FREQ_LOW_LIMIT_1"
+    },
+    "1021": {
+     "name": "GRID_FREQ_HIGH_LIMIT_1"
+    },
+    "1022": {
+     "name": "GRID_VOLT_LOW_LIMIT_2"
+    },
+    "1023": {
+     "name": "GRID_VOLT_HIGH_LIMIT_2"
+    },
+    "1024": {
+     "name": "GRID_FREQ_LOW_LIMIT_2"
+    },
+    "1025": {
+     "name": "GRID_FREQ_HIGH_LIMIT_2"
+    },
+    "1026": {
+     "name": "GRID_VOLT_LOW_LIMIT_3"
+    },
+    "1027": {
+     "name": "GRID_VOLT_HIGH_LIMIT_3"
+    },
+    "1028": {
+     "name": "GRID_FREQ_LOW_LIMIT_3"
+    },
+    "1029": {
+     "name": "GRID_FREQ_HIGH_LIMIT_3"
+    },
+    "1030": {
+     "name": "GRID_VOLT_LOW_CONN"
+    },
+    "1031": {
+     "name": "GRID_VOLT_HIGH_CONN"
+    },
+    "1032": {
+     "name": "GRID_FREQ_LOW_CONN"
+    },
+    "1033": {
+     "name": "GRID_FREQ_HIGH_CONN"
+    },
+    "1034": {
+     "name": "GRID_VOLT_LOW_LIMIT_PROT_1"
+    },
+    "1035": {
+     "name": "GRID_VOLT_HIGH_LIMIT_PROT_1"
+    },
+    "1036": {
+     "name": "GRID_VOLT_LOW_LIMIT_PROT_2"
+    },
+    "1037": {
+     "name": "GRID_VOLT_HIGH_LIMIT_PROT_2"
+    },
+    "1038": {
+     "name": "GRID_FREQ_LOW_LIMIT_PROT_1"
+    },
+    "1039": {
+     "name": "GRID_FREQ_HIGH_LIMIT_PROT_1"
+    },
+    "1040": {
+     "name": "GRID_FREQ_LOW_LIMIT_PROT_2"
+    },
+    "1041": {
+     "name": "GRID_FREQ_HIGH_LIMIT_PROT_2"
+    },
+    "1042": {
+     "name": "VOLT_PROT_FOR_10_MINS"
+    },
+    "1043": {
+     "name": "SET_POWER_FACTOR"
+    },
+    "1045": {
+     "name": "OVER_FREQ_DERAT_START_POINT"
+    },
+    "1046": {
+     "name": "OVER_FREQ_DERAT_SLOPE"
+    },
+    "1047": {
+     "name": "Q_LOCK_IN_POWER"
+    },
+    "1049": {
+     "name": "POWER_FACTOR_LOCK_IN_VOLT"
+    },
+    "1050": {
+     "name": "POWER_FACTOR_LOCK_OUT_VOLT"
+    },
+    "1051": {
+     "name": "UNDER_FREQ_DERAT_SLOPE"
+    },
+    "1052": {
+     "name": "VOLT_REACTIVE_DELAY_TIME"
+    },
+    "1053": {
+     "name": "OVER_FREQ_DELAY_TIME"
+    },
+    "1054": {
+     "name": "PF_LIMIT_LINE_POINT_1_LOAD_PERCENT"
+    },
+    "1055": {
+     "name": "PF_LIMIT_LINE_POINT_1_POWER_FACTOR"
+    },
+    "1056": {
+     "name": "PF_LIMIT_LINE_POINT_2_LOAD_PERCENT"
+    },
+    "1057": {
+     "name": "PF_LIMIT_LINE_POINT_2_POWER_FACTOR"
+    },
+    "1058": {
+     "name": "PF_LIMIT_LINE_POINT_3_LOAD_PERCENT"
+    },
+    "1059": {
+     "name": "PF_LIMIT_LINE_POINT_3_POWER_FACTOR"
+    },
+    "1060": {
+     "name": "PF_LIMIT_LINE_POINT_4_LOAD_PERCENT"
+    },
+    "1061": {
+     "name": "PF_LIMIT_LINE_POINT_4_POWER_FACTOR"
+    },
+    "1063": {
+     "name": "EXPORT_LIMIT_POWER_SET"
+    },
+    "1064": {
+     "name": "UNDER_FREQ_DERAT_START_POINT"
+    },
+    "1065": {
+     "name": "UNDER_FREQ_DERAT_END_POINT"
+    },
+    "1066": {
+     "name": "OVER_FREQ_DERAT_END_POINT"
+    },
+    "1067": {
+     "name": "UNDER_FREQ_DERAT_DELAY_TIME"
+    },
+    "1069": {
+     "name": "OVER_FREQ_DERAT_STOP_POINT"
+    },
+    "1070": {
+     "name": "OVER_FREQ_DERAT_RECOVER_DELAY_TIME"
+    },
+    "1071": {
+     "name": "ZERO_CURR_STATIC_LOW_VOLT"
+    },
+    "1072": {
+     "name": "ZERO_CURR_STATIC_HIGH_VOLT"
+    },
+    "1073": {
+     "name": "POWER_ON_FREQ_HIGH_RECOVERY"
+    },
+    "1074": {
+     "name": "UNDER_FREQ_DERAT_STOP_POINT"
+    },
+    "1075": {
+     "name": "UNDER_FREQ_DERAT_RECOVERY_DELAY_TIME"
+    },
+    "1077": {
+     "name": "PV_INPUT_MODE"
+    },
+    "1078": {
+     "name": "LOAD_FIRST_STOP_SOC_SET"
+    },
+    "1079": {
+     "name": "AC_HIGH_ACTIVE_POWER_DERAT_DELAY"
+    },
+    "1080": {
+     "name": "BATTERY_TYPE"
+    },
+    "1088": {
+     "name": "LEAD_ACID_MAX_CHARGE_CURRENT"
+    },
+    "1089": {
+     "name": "LEAD_ACID_UNDER_CHARGE_VOLTAGE_LIMIT"
+    },
+    "1090": {
+     "name": "BAT_CONSTANT_VOLT_SET"
+    },
+    "1091": {
+     "name": "LEAD_ACID_NUMBER"
+    },
+    "1093": {
+     "name": "ENABLE_DRM"
+    },
+    "1098": {
+     "name": "AGING_TEST_COMMAND"
+    },
+    "1100": {
+     "name": "ENABLE_BYPASS_MODE"
+    },
+    "1101": {
+     "name": "N_PE_RELAY_ENABLE"
+    },
+    "1104": {
+     "name": "UNBALANCE_ENABLE"
+    },
+    "1105": {
+     "name": "OFF_GRID_ENABLE"
+    },
+    "1106": {
+     "name": "OFF_GRID_NOMINAL_VOLT"
+    },
+    "1107": {
+     "name": "OFF_GRID_NOMINAL_FREQ"
+    },
+    "1108": {
+     "name": "DISCHARGE_POWER_RATE"
+    },
+    "1109": {
+     "name": "DISCHARGE_STOP_SOC"
+    },
+    "1110": {
+     "name": "CHARGE_POWER_RATE"
+    },
+    "1111": {
+     "name": "CHARGE_STOP_SOC"
+    },
+    "1112": {
+     "name": "AC_CHARGE_ENABLE"
+    },
+    "1113": {
+     "name": "CHARGE_START_TIME_1"
+    },
+    "1114": {
+     "name": "CHARGE_END_TIME_1"
+    },
+    "1115": {
+     "name": "CHARGE_START_TIME_2"
+    },
+    "1116": {
+     "name": "CHARGE_END_TIME_2"
+    },
+    "1117": {
+     "name": "LOAD_REACTIVE_POWER_ENABLE"
+    },
+    "1118": {
+     "name": "DISCHARGE_START_TIME_1"
+    },
+    "1119": {
+     "name": "DISCHARGE_END_TIME_1"
+    },
+    "1120": {
+     "name": "DISCHARGE_START_TIME_2"
+    },
+    "1121": {
+     "name": "DISCHARGE_END_TIME_2"
+    },
+    "1122": {
+     "name": "ENABLE_FORCE_DISCHARGE"
+    },
+    "1123": {
+     "name": "ENABLE_FORCE_CHARGE"
+    },
+    "1124": {
+     "name": "BAT_MAINTENANCE_MODE"
+    }
+   }
+  },
+  "THREE_PHASE_INPUT_REGISTER": {
+   "count": 148,
+   "registers": {
+    "1000": {
+     "name": "RESERVED_1000"
+    },
+    "1001": {
+     "name": "VPV_1",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1002": {
+     "name": "VPV_2",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1009": {
+     "name": "IPV_1",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1010": {
+     "name": "IPV_2",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1017": {
+     "name": "PPV_1_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1018": {
+     "name": "PPV_1_L"
+    },
+    "1019": {
+     "name": "PPV_2_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1020": {
+     "name": "PPV_2_L"
+    },
+    "1033": {
+     "name": "PPV_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1034": {
+     "name": "PPV_TOTAL_L"
+    },
+    "1060": {
+     "name": "STATUS"
+    },
+    "1061": {
+     "name": "VAC_RS",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1062": {
+     "name": "VAC_ST",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1063": {
+     "name": "VAC_TR",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1064": {
+     "name": "INVERTER_OUTPUT_CURRENT_RS",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1065": {
+     "name": "INVERTER_OUTPUT_CURRENT_ST",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1066": {
+     "name": "INVERTER_OUTPUT_CURRENT_TR",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1067": {
+     "name": "GRID_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "1068": {
+     "name": "POWER_FACTOR",
+     "scale": {
+      "divide_by": 1000.0,
+      "signed": true
+     }
+    },
+    "1069": {
+     "name": "INVERTER_OUTPUT_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1070": {
+     "name": "INVERTER_OUTPUT_POWER_L"
+    },
+    "1071": {
+     "name": "AC_CHARGE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1072": {
+     "name": "AC_CHARGE_POWER_L"
+    },
+    "1073": {
+     "name": "APPARENT_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1074": {
+     "name": "APPARENT_POWER_L"
+    },
+    "1075": {
+     "name": "WORKING_MODE"
+    },
+    "1076": {
+     "name": "INVERTER_STATUS"
+    },
+    "1077": {
+     "name": "START_DELAY"
+    },
+    "1079": {
+     "name": "GRID_IMPORT_ACTIVE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1080": {
+     "name": "GRID_IMPORT_ACTIVE_POWER_L"
+    },
+    "1081": {
+     "name": "GRID_EXPORT_ACTIVE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1082": {
+     "name": "GRID_EXPORT_ACTIVE_POWER_L"
+    },
+    "1083": {
+     "name": "METER_ACTIVE_POWER_R",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1084": {
+     "name": "METER_ACTIVE_POWER_S",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1085": {
+     "name": "METER_ACTIVE_POWER_T",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1086": {
+     "name": "LOAD_POWER_R"
+    },
+    "1087": {
+     "name": "LOAD_POWER_S"
+    },
+    "1088": {
+     "name": "LOAD_POWER_T"
+    },
+    "1089": {
+     "name": "LOAD_TOTAL_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1090": {
+     "name": "LOAD_TOTAL_L"
+    },
+    "1091": {
+     "name": "ACTIVE_POWER_R",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1092": {
+     "name": "ACTIVE_POWER_S",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1093": {
+     "name": "ACTIVE_POWER_T",
+     "scale": {
+      "signed": true
+     }
+    },
+    "1120": {
+     "name": "BATTERY_PRIORITY_SETTING"
+    },
+    "1121": {
+     "name": "BATTERY_TYPE"
+    },
+    "1124": {
+     "name": "DC_WORK_STATUS"
+    },
+    "1125": {
+     "name": "SYSTEM_SET_ENABLE"
+    },
+    "1126": {
+     "name": "DC_DSP_WORK_MODE"
+    },
+    "1128": {
+     "name": "INVERTER_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1129": {
+     "name": "BOOST_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1130": {
+     "name": "BUCK_BOOST_TEMPERATURE",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1131": {
+     "name": "BMS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1132": {
+     "name": "BATTERY_SOC"
+    },
+    "1133": {
+     "name": "PCS_BATTERY_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1134": {
+     "name": "DC_BUS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1135": {
+     "name": "INVERTER_BUS_VOLTAGE",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1136": {
+     "name": "BATTERY_DISCHARGE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1137": {
+     "name": "BATTERY_DISCHARGE_POWER_L"
+    },
+    "1138": {
+     "name": "BATTERY_CHARGE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1139": {
+     "name": "BATTERY_CHARGE_POWER_L"
+    },
+    "1140": {
+     "name": "BUCK_BOOST_CURRENT",
+     "scale": {
+      "divide_by": 10.0,
+      "signed": true
+     }
+    },
+    "1180": {
+     "name": "EPS_NOMINAL_FREQUENCY",
+     "scale": {
+      "divide_by": 100.0
+     }
+    },
+    "1181": {
+     "name": "EPS_RMS_VOLTAGE_R",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1182": {
+     "name": "EPS_RMS_VOLTAGE_S",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1183": {
+     "name": "EPS_RMS_VOLTAGE_T",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1184": {
+     "name": "EPS_RMS_CURRENT_R",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1185": {
+     "name": "EPS_RMS_CURRENT_S",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1186": {
+     "name": "EPS_RMS_CURRENT_T",
+     "scale": {
+      "divide_by": 10.0
+     }
+    },
+    "1187": {
+     "name": "EPS_APPARENT_POWER_R_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1188": {
+     "name": "EPS_APPARENT_POWER_R_L"
+    },
+    "1189": {
+     "name": "EPS_APPARENT_POWER_S_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1190": {
+     "name": "EPS_APPARENT_POWER_S_L"
+    },
+    "1191": {
+     "name": "EPS_APPARENT_POWER_T_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1192": {
+     "name": "EPS_APPARENT_POWER_T_L"
+    },
+    "1240": {
+     "name": "METER_REACTIVE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1241": {
+     "name": "METER_REACTIVE_POWER_L"
+    },
+    "1244": {
+     "name": "METER_2_ACTIVE_POWER_H",
+     "scale": {
+      "divide_by": 10.0,
+      "byte_count": 4
+     }
+    },
+    "1245": {
+     "name": "METER_2_ACTIVE_POWER_L"
+    },
+    "1300": {
+     "name": "FAULT_CODE_0"
+    },
+    "1301": {
+     "name": "FAULT_CODE_1"
+    },
+    "1302": {
+     "name": "FAULT_CODE_2"
+    },
+    "1303": {
+     "name": "FAULT_CODE_3"
+    },
+    "1304": {
+     "name": "FAULT_CODE_4"
+    },
+    "1305": {
+     "name": "FAULT_CODE_5"
+    },
+    "1306": {
+     "name": "FAULT_CODE_6"
+    },
+    "1307": {
+     "name": "FAULT_CODE_7"
+    },
+    "1308": {
+     "name": "CEI_0_21_AUTO_TEST_PROCESS"
+    },
+    "1309": {
+     "name": "CEI_0_21_AUTO_TEST_STATUS"
+    },
+    "1310": {
+     "name": "CEI_0_21_AUTO_TEST_STEP"
+    },
+    "1311": {
+     "name": "CEI_0_21_AUTO_TEST_DEFAULT_VF_VALUE"
+    },
+    "1312": {
+     "name": "CEI_0_21_AUTO_TEST_DEFAULT_TIME"
+    },
+    "1313": {
+     "name": "CEI_0_21_AUTO_TEST_VF_NOW"
+    },
+    "1314": {
+     "name": "CEI_0_21_AUTO_TEST_VF_VALUE"
+    },
+    "1315": {
+     "name": "CEI_0_21_AUTO_TEST_FAULT_VALUE"
+    },
+    "1316": {
+     "name": "CEI_0_21_AUTO_TEST_BREAK_TIME"
+    },
+    "1317": {
+     "name": "SOFTWARE_VERSION_1_2"
+    },
+    "1318": {
+     "name": "SOFTWARE_VERSION_3_4"
+    },
+    "1319": {
+     "name": "SOFTWARE_VERSION_5_6"
+    },
+    "1320": {
+     "name": "FIRMWARE_VERSION_1_2"
+    },
+    "1321": {
+     "name": "FIRMWARE_VERSION_3_4"
+    },
+    "1322": {
+     "name": "FIRMWARE_VERSION_5_6"
+    },
+    "1323": {
+     "name": "FIRMWARE_VERSION_7_8"
+    },
+    "1324": {
+     "name": "FIRMWARE_VERSION_9_10"
+    },
+    "1360": {
+     "name": "INVERTER_AC_OUTPUT_TODAY_H"
+    },
+    "1361": {
+     "name": "INVERTER_AC_OUTPUT_TODAY_L"
+    },
+    "1362": {
+     "name": "INVERTER_AC_OUTPUT_TOTAL_H"
+    },
+    "1363": {
+     "name": "INVERTER_AC_OUTPUT_TOTAL_L"
+    },
+    "1366": {
+     "name": "PV_STRING_1_GENERATION_TODAY_H"
+    },
+    "1367": {
+     "name": "PV_STRING_1_GENERATION_TODAY_L"
+    },
+    "1368": {
+     "name": "PV_STRING_1_GENERATION_TOTAL_H"
+    },
+    "1369": {
+     "name": "PV_STRING_1_GENERATION_TOTAL_L"
+    },
+    "1370": {
+     "name": "PV_STRING_2_GENERATION_TODAY_H"
+    },
+    "1371": {
+     "name": "PV_STRING_2_GENERATION_TODAY_L"
+    },
+    "1372": {
+     "name": "PV_STRING_2_GENERATION_TOTAL_H"
+    },
+    "1373": {
+     "name": "PV_STRING_2_GENERATION_TOTAL_L"
+    },
+    "1374": {
+     "name": "PV_GENERATION_TOTAL_H"
+    },
+    "1375": {
+     "name": "PV_GENERATION_TOTAL_L"
+    },
+    "1376": {
+     "name": "AC_CHARGE_TODAY_H"
+    },
+    "1377": {
+     "name": "AC_CHARGE_TODAY_L"
+    },
+    "1378": {
+     "name": "AC_CHARGE_TOTAL_H"
+    },
+    "1379": {
+     "name": "AC_CHARGE_TOTAL_L"
+    },
+    "1380": {
+     "name": "GRID_IMPORT_TODAY_H"
+    },
+    "1381": {
+     "name": "GRID_IMPORT_TODAY_L"
+    },
+    "1382": {
+     "name": "GRID_IMPORT_TOTAL_H"
+    },
+    "1383": {
+     "name": "GRID_IMPORT_TOTAL_L"
+    },
+    "1384": {
+     "name": "GRID_EXPORT_TODAY_H"
+    },
+    "1385": {
+     "name": "GRID_EXPORT_TODAY_L"
+    },
+    "1386": {
+     "name": "GRID_EXPORT_TOTAL_H"
+    },
+    "1387": {
+     "name": "GRID_EXPORT_TOTAL_L"
+    },
+    "1388": {
+     "name": "BATTERY_DISCHARGE_TODAY_H"
+    },
+    "1389": {
+     "name": "BATTERY_DISCHARGE_TODAY_L"
+    },
+    "1390": {
+     "name": "BATTERY_DISCHARGE_TOTAL_H"
+    },
+    "1391": {
+     "name": "BATTERY_DISCHARGE_TOTAL_L"
+    },
+    "1392": {
+     "name": "BATTERY_CHARGE_TODAY_H"
+    },
+    "1393": {
+     "name": "BATTERY_CHARGE_TODAY_L"
+    },
+    "1394": {
+     "name": "BATTERY_CHARGE_TOTAL_H"
+    },
+    "1395": {
+     "name": "BATTERY_CHARGE_TOTAL_L"
+    },
+    "1396": {
+     "name": "CONSUMPTION_TODAY_H"
+    },
+    "1397": {
+     "name": "CONSUMPTION_TODAY_L"
+    },
+    "1398": {
+     "name": "CONSUMPTION_TOTAL_H"
+    },
+    "1399": {
+     "name": "CONSUMPTION_TOTAL_L"
+    },
+    "1400": {
+     "name": "METER_2_EXPORT_TODAY_H"
+    },
+    "1401": {
+     "name": "METER_2_EXPORT_TODAY_L"
+    },
+    "1402": {
+     "name": "METER_2_EXPORT_TOTAL_H"
+    },
+    "1403": {
+     "name": "METER_2_EXPORT_TOTAL_L"
+    },
+    "1412": {
+     "name": "PV_GENERATION_TODAY_H"
+    },
+    "1413": {
+     "name": "PV_GENERATION_TODAY_L"
+    }
+   }
+  }
+ },
+ "enums": {
+  "INVERTER_TYPE?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "SINGLE_PHASE_INVERTER",
+    "1": "THREE_PHASE_INVERTER",
+    "2": "SINGLE_PHASE_HYBRID",
+    "3": "SINGLE_PHASE_AC_COUPLED",
+    "4": "THREE_PHASE_HYBRID",
+    "5": "THREE_PHASE_AC_COUPLED",
+    "6": "ALL_IN_ONE",
+    "7": "LV_BATTERY",
+    "8": "HV_BATTERY",
+    "9": "SOLAR_PANEL",
+    "10": "EMS",
+    "11": "GATEWAY",
+    "12": "METER",
+    "13": "CHARGER",
+    "14": "HEAT_PUMP"
+   }
+  },
+  "AIO_MODEL_VARIANT?": {
+   "kind": "value_enum",
+   "members": {
+    "1": "LIBERTY",
+    "516": "ALL_IN_ONE_V2"
+   }
+  },
+  "GATEWAY_VARIANT?": {
+   "kind": "value_enum",
+   "members": {
+    "1": "GATEWAY",
+    "2": "GATEWAY_V2"
+   }
+  },
+  "POWER_RATING_3PH_HV?": {
+   "kind": "value_enum",
+   "members": {
+    "1": "KW_6",
+    "2": "KW_8",
+    "3": "KW_10",
+    "4": "KW_11",
+    "5": "KW_15",
+    "6": "KW_20"
+   }
+  },
+  "POWER_RATING_AC?": {
+   "kind": "value_enum",
+   "members": {
+    "1": "KW_3",
+    "2": "KW_3_6"
+   }
+  },
+  "POWER_RATING_HYBRID?": {
+   "kind": "value_enum",
+   "members": {
+    "1": "KW_5",
+    "2": "KW_4_6",
+    "3": "KW_3_6",
+    "771": "STRING_KW_3_6",
+    "770": "STRING_KW_4_6",
+    "769": "STRING_KW_5",
+    "772": "STRING_KW_6"
+   }
+  },
+  "METER_MODEL?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "EM115",
+    "1": "GEM120",
+    "2": "GEM630"
+   }
+  },
+  "BATTERY_SYSTEM_TYPE?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "NONE",
+    "2": "HYBRID",
+    "6": "AIO_2"
+   }
+  },
+  "GIV_FUNCTION_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "22": "GET_PRODUCT_INFORMATION",
+    "32": "GET_CLUSTER_1_DATA",
+    "33": "GET_CLUSTER_2_DATA",
+    "34": "GET_CLUSTER_3_DATA",
+    "35": "GET_CLUSTER_4_DATA",
+    "36": "GET_CLUSTER_5_DATA",
+    "37": "GET_CLUSTER_6_DATA",
+    "38": "GET_CLUSTER_7_DATA"
+   }
+  },
+  "FUNCTION_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "1": "HEARTBEAT",
+    "2": "TRANSPARENT",
+    "3": "READ_DATALOG_PARAMETER",
+    "4": "WRITE_DATALOG_PARAMETER",
+    "5": "DATALOG_FAULT_EVENT"
+   }
+  },
+  "UPDATE_INVERTER_FIRMWARE_FUNCTION_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "36": "UPDATE_DSP",
+    "37": "UPDATE_DC_DSP",
+    "38": "UPDATE_ARM",
+    "39": "UPDATE_ARM_103",
+    "40": "UPDATE_3_PHASE_DSP_AC",
+    "41": "UPDATE_WIFI_ARM_BOOT",
+    "42": "UPDATE_3_PHASE_DSP_DC",
+    "44": "UPDATE_WIFI_MODULE",
+    "45": "UPDATE_HF_WIFI",
+    "52": "UPDATE_PCS_DSP",
+    "53": "UPDATE_PCS_ARM",
+    "128": "UPDATE_LCD_13",
+    "129": "UPDATE_LCD_14",
+    "130": "UPDATE_LCD_15",
+    "131": "UPDATE_LCD_22",
+    "132": "UPDATE_LCD_26",
+    "133": "UPDATE_EMS_R_ARM",
+    "134": "UPDATE_EMS_C_ARM"
+   }
+  },
+  "MODBUS_FUNCTION_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "1": "READ_COILS",
+    "2": "READ_DISCREET_INPUTS",
+    "3": "READ_HOLDING_REGISTERS",
+    "4": "READ_INPUT_REGISTERS",
+    "5": "WRITE_SINGLE_COIL",
+    "6": "WRITE_SINGLE_REGISTER",
+    "7": "READ_EXCEPTION_STATUS",
+    "15": "WRITE_MULTIPLE_COILS",
+    "16": "WRITE_MULTIPLE_REGISTERS"
+   }
+  },
+  "HARDWARE_ADDRESS": {
+   "kind": "value_enum",
+   "members": {
+    "1": "METER_1",
+    "2": "METER_2",
+    "3": "METER_3",
+    "4": "METER_4",
+    "5": "METER_5",
+    "6": "METER_6",
+    "7": "METER_7",
+    "8": "METER_8",
+    "17": "INVERTER_OR_EMS",
+    "33": "EMS_VERSION",
+    "35": "PCS_1",
+    "36": "PCS_2",
+    "37": "PCS_3",
+    "38": "PCS_4",
+    "39": "PCS_5",
+    "40": "PCS_6",
+    "41": "PCS_7",
+    "42": "PCS_8",
+    "48": "BMS_PRODUCT_OR_HEAP",
+    "49": "BMS_CLUSTER",
+    "50": "BMS_CLUSTER_DETAIL_VOLTAGE",
+    "51": "BMS_CLUSTER_DETAIL_TEMPERATURE"
+   }
+  },
+  "MODBUS_ERROR_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "1": "ILLEGAL_FUNCTION",
+    "2": "ILLEGAL_DATA_ADDRESS",
+    "3": "ILLEGAL_DATA_VALUE",
+    "4": "SLAVE_DEVICE_FAILURE",
+    "5": "ACKNOWLEDGE",
+    "6": "SLAVE_DEVICE_BUSY",
+    "7": "NEGATIVE_ACKNOWLEDGE",
+    "8": "MEMORY_PARITY_ERROR"
+   }
+  },
+  "DATALOG_WRITE_RESPONSE_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "SUCCESS",
+    "1": "VALIDATION_ERROR",
+    "2": "WRITE_FAILURE",
+    "3": "UNSUPPORTED_ADDRESS",
+    "16": "UPDATING_SUCCESSFULLY",
+    "17": "FTP_VISIT_ERROR",
+    "18": "INVERTER_OR_BMS_FIRMWARE_NOT_FOUND",
+    "19": "DATALOG_FIRMWARE_NOT_FOUND",
+    "20": "FIRMWARE_DOWNLOAD_ERROR",
+    "21": "FIRMWARE_UPDATE_ERROR"
+   }
+  },
+  "DATALOG_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "WIFI",
+    "1": "GPRS"
+   }
+  },
+  "BATTERY_STACK_FAILURE_FLAG": {
+   "kind": "value_enum",
+   "members": {
+    "1": "NORMAL",
+    "2": "FAULT"
+   }
+  },
+  "BCU_FAN_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "STOP",
+    "1": "RUN"
+   }
+  },
+  "BCU_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "BMS_INITIALISING",
+    "1": "PRECHARGING",
+    "2": "STANDBY",
+    "3": "CHARGING",
+    "4": "DISCHARGING",
+    "5": "ERROR",
+    "6": "UPDATING",
+    "7": "POWERED_OFF",
+    "8": "PRODUCTION"
+   }
+  },
+  "BMS_LEVEL_ALARM": {
+   "kind": "bitfield",
+   "members": {
+    "15": "HIGH_DISCHARGE_TEMPERATURE",
+    "14": "LOW_DISCHARGE_TEMPERATURE",
+    "13": "HIGH_CELL_VOLTAGE",
+    "12": "LOW_CELL_VOLTAGE",
+    "11": "LARGE_DIFFERENCE_IN_CELL_VOLTAGE",
+    "10": "LOW_SOC",
+    "9": "HIGH_SOC",
+    "7": "HIGH_CHARGING_CURRENT",
+    "6": "HIGH_DISCHARGING_CURRENT",
+    "5": "LARGE_DIFFERENCE_IN_TEMPERATURE",
+    "4": "LOW_INSULATION",
+    "3": "HIGH_TOTAL_VOLTAGE",
+    "2": "LOW_TOTAL_VOLTAGE",
+    "1": "HIGH_CHARGING_TEMPERATURE",
+    "0": "LOW_CHARGING_TEMPERATURE"
+   }
+  },
+  "BMS_MAINTENANCE_ALARM": {
+   "kind": "bitfield",
+   "members": {
+    "31": "BMU_FAULT",
+    "30": "BMS_BATTERY_FAULT",
+    "29": "BMU_COMMUNICATION_FAULT",
+    "28": "TEMPERATURE_COLLECTION_FAULT",
+    "27": "MAIN_NEGATIVE_RELAY_FAULT",
+    "26": "MAIN_POSITIVE_RELAY_FAULT",
+    "25": "PREFILLED_FAILURE",
+    "24": "FUSE_FAULT",
+    "23": "SCRAM",
+    "22": "CURRENT_RING_DAMAGE",
+    "21": "TOTAL_VOLTAGE_COLLECTION_IS_INVALID",
+    "20": "ABNORMAL_MONOMER_VOLTAGE_INCREASE",
+    "19": "HIGH_MONOMER",
+    "18": "LOW_MONOMER",
+    "17": "HIGH_TEMPERATURE",
+    "16": "RELAY_STRONG_CONTROL",
+    "15": "LARGE_VOLTAGE_DIFFERENCE_BETWEEN_CLUSTERS",
+    "14": "ABNORMAL_COMMUNICATION_OF_MASTER_CONTROL",
+    "13": "ABNORMAL_COMMUNICATION_WITH_EMS",
+    "12": "EMS_STRONG_CONTROL_RELAY",
+    "10": "ABNORMAL_COMMUNICATION_WITH_DISPLAY",
+    "9": "BATTERY_CLUSTER_NOT_ENABLED",
+    "8": "CLUSTER_COUNT_TOO_LOW",
+    "7": "CLUSTER_COUNT_TOO_HIGH"
+   }
+  },
+  "INVERTER_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "WAITING",
+    "1": "NORMAL",
+    "2": "WARNING",
+    "3": "ERROR",
+    "4": "UPDATING",
+    "5": "BYPASS"
+   }
+  },
+  "GATEWAY_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "INITIALISING",
+    "1": "OFF_GRID",
+    "2": "ON_GRID",
+    "3": "FAULT",
+    "4": "UPDATING"
+   }
+  },
+  "BATTERY_DISCHARGE_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "0": "STATIC",
+    "1": "DYNAMIC"
+   }
+  },
+  "BATTERY_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "LEAD_ACID",
+    "1": "LITHIUM_ION"
+   }
+  },
+  "CHIP_SELECT": {
+   "kind": "value_enum",
+   "members": {
+    "0": "DSP",
+    "1": "ARM"
+   }
+  },
+  "CT_ADJUSTMENT": {
+   "kind": "value_enum",
+   "members": {
+    "0": "POSITIVE",
+    "1": "NEGATIVE"
+   }
+  },
+  "DEVICE_TYPE_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "1": "_5000DTL",
+    "2": "_4600DTL",
+    "3": "_4200DTL",
+    "4": "_3600DTL",
+    "5": "_3000TL",
+    "6": "_2000TL",
+    "7": "_1500TL",
+    "8": "_1000TL",
+    "8193": "HY_5_0",
+    "8194": "HY_4_6",
+    "8195": "HY_3_6",
+    "12289": "AC_COUPLED_3",
+    "12290": "AC_COUPLED_3_6"
+   }
+  },
+  "FREQUENCY_MODE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "_50_HZ",
+    "1": "_60_HZ"
+   }
+  },
+  "METER_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "EM_418_OR_CT",
+    "1": "EM_115"
+   }
+  },
+  "SOC_CALIBRATION_SETTING": {
+   "kind": "value_enum",
+   "members": {
+    "0": "OFF",
+    "1": "DISCHARGE",
+    "2": "SET_LOWER_LIMIT",
+    "3": "CHARGE",
+    "4": "SET_UPPER_LIMIT",
+    "5": "BALANCE",
+    "6": "SET_FULL_CAPACITY",
+    "7": "FINISH"
+   }
+  },
+  "USB_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "NONE",
+    "1": "WIFI",
+    "2": "UDISK"
+   }
+  },
+  "USER_CODE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "NONE",
+    "1": "AEGIS",
+    "2": "GEM",
+    "3": "LANTRUN",
+    "4": "PRIME",
+    "5": "CATCH",
+    "6": "ESA",
+    "7": "GIV"
+   }
+  },
+  "WORKING_MODE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "OFFLINE",
+    "1": "GRID_TIE"
+   }
+  },
+  "INVERTER_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "SINGLE_PHASE_INVERTER",
+    "1": "THREE_PHASE_INVERTER",
+    "2": "SINGLE_PHASE_HYBRID",
+    "3": "SINGLE_PHASE_AC_COUPLED",
+    "4": "THREE_PHASE_HYBRID",
+    "5": "EMS",
+    "6": "THREE_PHASE_AC_COUPLED",
+    "7": "GATEWAY",
+    "8": "ALL_IN_ONE"
+   }
+  },
+  "SINGLE_PHASE_INVERTER_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "_5000DTL",
+    "2": "_4600DTL",
+    "3": "_4200DTL",
+    "4": "_3600DTL",
+    "5": "_3000TL",
+    "6": "_2000TL",
+    "7": "_1500TL",
+    "8": "_1000TL"
+   }
+  },
+  "SINGLE_PHASE_HYBRID_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "_5KW",
+    "2": "_4_6KW",
+    "3": "_3_6KW"
+   }
+  },
+  "SINGLE_PHASE_AC_COUPLED_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "_3KW",
+    "2": "_3_6KW"
+   }
+  },
+  "THREE_PHASE_HYBRID_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "_6KW",
+    "2": "_8KW",
+    "3": "_10KW",
+    "4": "_11KW",
+    "5": "_15KW",
+    "6": "_20KW"
+   }
+  },
+  "EMS_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "0": "COMMERCIAL_EMS",
+    "1": "DOMESTIC_EMS",
+    "768": "EMS_C"
+   }
+  },
+  "GATEWAY_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "GATEWAY"
+   }
+  },
+  "ALL_IN_ONE_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "1": "LIBERTY"
+   }
+  },
+  "BATTERY_FAULT_CODE": {
+   "kind": "bitfield",
+   "members": {
+    "15": "ELECTRICITY_METER_COM_FAIL",
+    "14": "STORAGE_WARN_BATTERY_VOLTAGE_HIGH",
+    "13": "STORAGE_WARN_BATTERY_VOLTAGE_LOW",
+    "12": "STORAGE_WARN_BATTERY_SOFT_START_FAIL",
+    "11": "STORAGE_WARN_BIT_4",
+    "10": "STORAGE_WARN_BMS_COM_FAIL",
+    "9": "STORAGE_WARN_BAT_TEMPERATURE_FAULT",
+    "8": "STORAGE_WARN_CHGDIS_MODULE_TEMPERATURE_FAULT",
+    "7": "STORAGE_WARN_BMS_OVER_CURRENT_DISCHARGER",
+    "6": "STORAGE_WARN_BMS_SHORT_CURRENT_DISCHARGER",
+    "5": "STORAGE_WARN_BMS_OVER_VOLTAGE",
+    "4": "STORAGE_WARN_BMS_UNDER_VOLTAGE",
+    "3": "STORAGE_WARN_BMS_OVER_TEMPERATURE_DISCHARGER",
+    "2": "STORAGE_WARN_BMS_OVER_TEMPERATURE_CHARGER",
+    "1": "STORAGE_WARN_BMS_UNDER_TEMPERATURE_DISCHARGER",
+    "0": "STORAGE_WARN_BMS_UNDER_TEMPERATURE_CHARGER"
+   }
+  },
+  "INVERTER_FAULT_CODE": {
+   "kind": "bitfield",
+   "members": {
+    "28": "STORAGE_ERROR_BACKUP_OVERLOAD_FAULT",
+    "25": "STORAGE_ERROR_GRID_PORT_MONITOR_COM_FAIL",
+    "24": "STORAGE_ERROR_ARM_COM_FAIL",
+    "23": "STORAGE_ERROR_CONSISTENT_FAULT",
+    "22": "STORAGE_ERROR_EEPROM_FAULT",
+    "15": "STORAGE_ERROR_INVERTER_FREQUENCY_FAULT",
+    "14": "STORAGE_ERROR_RELAY_FAULT",
+    "13": "STORAGE_ERROR_INVERTER_VOLTAGE_FAULT",
+    "12": "STORAGE_ERROR_GFCI_FAULT",
+    "11": "STORAGE_ERROR_HALL_SENSOR_FAULT",
+    "10": "STORAGE_ERROR_COMMUNICATION_FAULT",
+    "9": "STORAGE_ERROR_BUS_OVER_VOLTAGE",
+    "8": "STORAGE_ERROR_INVERTER_CURRENT_FAULT",
+    "7": "STORAGE_ERROR_NO_UTILITY",
+    "6": "STORAGE_ERROR_PV_ISOLATION_FAULT",
+    "5": "STORAGE_ERROR_CURRENT_LEAK_HIGH",
+    "4": "STORAGE_ERROR_DCI_TOO_HIGH",
+    "3": "STORAGE_ERROR_PV_OVER_VOLTAGE",
+    "2": "STORAGE_ERROR_GRID_VOLTAGE_FALUT",
+    "1": "STORAGE_ERROR_GRID_FREQUENCY_FAULT",
+    "0": "STORAGE_ERROR_INVERTER_NTC_FAULT"
+   }
+  },
+  "BATTERY_POWER_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "0": "_1KW",
+    "1": "_2KW",
+    "2": "_3KW",
+    "3": "_4KW",
+    "4": "_5KW",
+    "5": "_6KW",
+    "6": "_7KW",
+    "7": "_8KW",
+    "8": "_10KW",
+    "9": "_11KW"
+   }
+  },
+  "BATTERY_PRIORITY_SETTING": {
+   "kind": "code_enum",
+   "members": {
+    "0": "LOAD_FIRST",
+    "1": "BATTERY_FIRST",
+    "2": "GRID_FIRST"
+   }
+  },
+  "DEVICE_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "SINGLE_PHASE_LV",
+    "1": "THREE_PHASE_LV",
+    "2": "SINGLE_PHASE_HV",
+    "3": "THREE_PHASE_HV"
+   }
+  },
+  "FACTORY": {
+   "kind": "value_enum",
+   "members": {
+    "0": "GIVENERGY"
+   }
+  },
+  "INVERTER_POWER_MODEL": {
+   "kind": "code_enum",
+   "members": {
+    "0": "_1KW",
+    "1": "_2KW",
+    "2": "_3KW",
+    "3": "_3_6KW",
+    "4": "_4KW",
+    "5": "_4_6KW",
+    "6": "_5KW",
+    "7": "_6KW",
+    "8": "_7KW",
+    "9": "_8KW",
+    "10": "_10KW",
+    "11": "_11KW",
+    "12": "_15KW",
+    "13": "_20KW"
+   }
+  },
+  "SAFETY_STANDARD": {
+   "kind": "code_enum",
+   "members": {
+    "0": "NONE",
+    "1": "VDE0126",
+    "2": "EN50549",
+    "3": "AS4777",
+    "4": "CEI021",
+    "5": "MAURITIUS",
+    "6": "XINA1",
+    "7": "N4105",
+    "8": "G98",
+    "9": "NETHERLANDS",
+    "10": "CGC",
+    "11": "POLAND",
+    "12": "G99",
+    "13": "BELGIUM",
+    "14": "CGC_1",
+    "15": "NORTHERN_IRELAND",
+    "16": "G98_NI",
+    "17": "G99_NI"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_0": {
+   "kind": "bitfield",
+   "members": {
+    "12": "GRID_VOLTAGE_OUTRANGE",
+    "15": "GRID_FREQUENCY_OUTRANGE"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_1": {
+   "kind": "bitfield",
+   "members": {
+    "15": "NO_GRID_CONNECTION"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_2": {
+   "kind": "bitfield",
+   "members": {
+    "2": "GRID_VOLTAGE_UNBALANCE",
+    "7": "GRID_CONNECTED_V_F_OUTRANGE",
+    "8": "EPS_VOLTAGE_LOW",
+    "11": "EPS_BUS_VOLTAGE_LOW",
+    "12": "EPS_OVERLOAD"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_3": {
+   "kind": "bitfield",
+   "members": {
+    "0": "BATTERY_REVERSED",
+    "1": "BATTERY_OPEN",
+    "2": "BATTERY_VOLTAGE_LOW",
+    "5": "BUCK_BOOST_SOFT_START_FAIL",
+    "6": "BATTERY_VOLTAGE_HIGH",
+    "8": "BMS_ERROR",
+    "9": "BMS_COM_FAULT"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_4": {
+   "kind": "bitfield",
+   "members": {
+    "5": "PV_VOLTAGE_LOW"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_5": {
+   "kind": "bitfield",
+   "members": {
+    "0": "DCI_HIGH",
+    "1": "PV_ISOLATION_LOW",
+    "2": "NTC_OPEN",
+    "3": "BUS_VOLTAGE_HIGH",
+    "4": "PV_VOLTAGE_HIGH",
+    "5": "BOOST_OVER_TEMPERATURE",
+    "6": "BUCK_BOOST_OVER_TEMPERATURE",
+    "7": "INVERTER_OVER_TEMPERATURE",
+    "8": "EPS_OUTPUT_SHORT_FAULT",
+    "10": "INIT_MODEL_FAULT",
+    "11": "RELAY_FAULT",
+    "12": "BUS_VOLTAGE_UNBALANCE"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_6": {
+   "kind": "bitfield",
+   "members": {
+    "2": "INTERNAL_COM_FAULT_1",
+    "3": "INTERNAL_COM_FAULT_2",
+    "6": "GFCI_HIGH",
+    "8": "INTERNAL_COM_FAULT_3"
+   }
+  },
+  "THREE_PHASE_HYBRID_FAULT_CODE_WORD_7": {
+   "kind": "bitfield",
+   "members": {
+    "2": "METER_COMM_LOSS",
+    "8": "BATTERY_FULL",
+    "9": "BATTERY_NEEDS_CHARGE",
+    "11": "BATTERY_WEAK",
+    "14": "FAN_WARNING"
+   }
+  },
+  "PCS_FAULT_1": {
+   "kind": "bitfield",
+   "members": {
+    "0": "PCS_FAULT_1_0",
+    "1": "PCS_FAULT_1_1",
+    "2": "PCS_FAULT_1_2",
+    "3": "PCS_FAULT_1_3",
+    "4": "PCS_FAULT_1_4",
+    "5": "PCS_FAULT_1_5",
+    "6": "PCS_FAULT_1_6",
+    "7": "PCS_FAULT_1_7",
+    "8": "PCS_FAULT_1_8",
+    "9": "PCS_FAULT_1_9",
+    "10": "PCS_FAULT_1_10",
+    "11": "PCS_FAULT_1_11",
+    "12": "PCS_FAULT_1_12",
+    "13": "PCS_FAULT_1_13",
+    "14": "PCS_FAULT_1_14",
+    "15": "PCS_FAULT_1_15"
+   }
+  },
+  "PLANT_EMS_INVERTER_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "DISABLED",
+    "1": "WAITING",
+    "2": "ONLINE",
+    "3": "WARNING",
+    "4": "ERROR",
+    "5": "FLASH",
+    "7": "OFFLINE"
+   }
+  },
+  "PLANT_EMS_METER_STATUS": {
+   "kind": "code_enum",
+   "members": {
+    "0": "DISABLED",
+    "1": "ONLINE",
+    "2": "OFFLINE"
+   }
+  },
+  "PLANT_EMS_METER_TYPE": {
+   "kind": "code_enum",
+   "members": {
+    "0": "GRID",
+    "1": "GENERATION",
+    "2": "LOAD",
+    "3": "OTHER"
+   }
+  },
+  "REQUEST_SENDER_SEND_RESPONSE": {
+   "kind": "value_enum",
+   "members": {
+    "0": "SENT",
+    "1": "NOT_SENT",
+    "2": "BUSY",
+    "3": "QUEUED"
+   }
+  },
+  "BACKUP_WIRING_TYPE?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "MANUAL_CHANGEOVER_SWITCH",
+    "1": "AUTOMATIC_CHANGEOVER_SWITCH",
+    "2": "SINGLE_SOCKET",
+    "3": "DEDICATED_DISTRIBUTION_BOARD"
+   }
+  },
+  "SYSTEM_TYPE_SUBSET?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "SINGLE_PHASE_HYBRID",
+    "1": "ALL_IN_ONE"
+   }
+  },
+  "DATALOG_FIELD?": {
+   "kind": "value_enum",
+   "members": {
+    "12": "DNS",
+    "13": "DATALOG_TYPE",
+    "14": "LOCAL_IP",
+    "16": "LOCAL_MAC",
+    "21": "FIRMWARE_VERSION",
+    "22": "HARDWARE_VERSION",
+    "25": "SUBNET_MASK",
+    "26": "DEFAULT_GATEWAY",
+    "32": "RESTART",
+    "54": "BLE_TOKEN",
+    "55": "WIFI_CONFIG_STATUS",
+    "56": "WIFI_SSID",
+    "57": "WIFI_PASSWORD",
+    "60": "LINK_STATUS",
+    "71": "NET_DHCP",
+    "75": "WIFI_SCAN",
+    "89": "AP_AUTH_MODE",
+    "91": "AP_PASSWORD",
+    "92": "AP_HIDDEN",
+    "93": "AP_CHANNEL",
+    "94": "AP_NAME",
+    "95": "WEB_USERNAME",
+    "96": "WEB_PASSWORD",
+    "106": "BLE_NAME"
+   }
+  },
+  "AIO_ENERGY_FIELD?": {
+   "kind": "value_enum",
+   "members": {
+    "1800": "BATTERY_CHARGE_ENERGY_TOTAl",
+    "1801": "AIO_1_BATTERY_SOC",
+    "1802": "AIO_2_BATTERY_SOC",
+    "1803": "AIO_3_BATTERY_SOC"
+   }
+  },
+  "DEVICE_CATEGORY?": {
+   "kind": "value_enum",
+   "members": {
+    "0": "INVERTER",
+    "1": "GATEWAY",
+    "2": "STRING_INVERTER",
+    "3": "BATTERY",
+    "4": "BATTERY_STACK"
+   }
+  }
+ }
+}
