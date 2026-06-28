@@ -28,6 +28,7 @@ from givenergy_modbus.framer import ClientFramer, Framer
 from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.ems import EmsRegisterGetter
+from givenergy_modbus.model.hv_bcu import Bmu
 from givenergy_modbus.model.inverter import Model, resolve_model
 from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS, LvBcu
 from givenergy_modbus.model.meter import Meter
@@ -560,6 +561,61 @@ class Client:
                 continue
             caps.aio_battery_module_addresses.append(addr)
 
+    async def _detect_hv_bmu_modules(
+        self,
+        caps: PlantCapabilities,
+        prior: PlantCapabilities | None,
+        probe_timeout: float,
+        probe_retries: int,
+    ) -> None:
+        """Populate caps.hv_bmu_addresses for a non-AIO HV stack (#265).
+
+        Each HV battery module answers at its own device address (0x50 + running module index,
+        contiguous across stacks) with the same IR(60-119) per-cell block AIO modules use — the
+        earlier stride-within-the-BCU decode read the BCU's cluster registers as cell data.
+        Installer-confirmed, not yet wire-confirmed: probing here both populates the addresses to
+        poll and surfaces whether the band actually responds on real HV hardware.
+
+        Hinted mode (prior is not None): re-probe only the previously-seen addresses. Cold mode:
+        derive candidates 0x50 + k from each BCU's module count. Self-gated: a no-op unless this
+        is a non-AIO HV stack with detected BCUs (AIO modules use aio_battery_module_addresses).
+        """
+        if not (caps.is_hv and caps.device_type is not Model.ALL_IN_ONE and caps.bcu_stacks):
+            return
+        if prior is not None and prior.hv_bmu_addresses:
+            # Hinted mode: re-probe only the addresses the prior recorded.
+            candidates: list[int] = list(prior.hv_bmu_addresses)
+        else:
+            # Cold mode (also used when prior exists but predates this field): derive from BCU module counts.
+            candidates = []
+            next_addr = 0x50
+            for _offset, num_modules in caps.bcu_stacks:
+                end_addr = min(next_addr + max(num_modules, 0), 0x70)
+                candidates.extend(range(next_addr, end_addr))
+                if end_addr < next_addr + num_modules:
+                    _logger.warning(
+                        "detect: BCU module count %d exceeds HV BMU address band (0x50-0x6F) — clamped",
+                        num_modules,
+                    )
+                next_addr = end_addr
+        for addr in candidates:
+            if not await self._probe(
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
+                timeout=probe_timeout,
+                retries=probe_retries,
+            ):
+                continue
+            cache = self.plant.register_caches.get(addr)
+            try:
+                if cache is None or not Bmu.from_register_cache(cache).is_valid():
+                    _logger.debug("detect: HV BMU probe at 0x%02x responded but is_valid()=False — skipping", addr)
+                    continue
+            except Exception:
+                _logger.debug("detect: HV BMU probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
+                continue
+            caps.hv_bmu_addresses.append(addr)
+        _logger.info("detect: hv_bmu_modules=[%s]", ", ".join(f"0x{a:02x}" for a in caps.hv_bmu_addresses))
+
     async def _detect_lv_bcu(
         self,
         caps: PlantCapabilities,
@@ -796,6 +852,11 @@ class Client:
                 "detect: aio_battery_modules=[%s]",
                 ", ".join(f"0x{a:02x}" for a in caps.aio_battery_module_addresses),
             )
+
+        # Step 2c — HV BMU per-module probing (#265). Non-AIO HV stacks expose per-cell data at
+        # their own BMU addresses (0x50+), distinct from the bcu_stacks stride decode (which read
+        # the BCU's cluster registers as cells). Self-gated to non-AIO HV; a no-op otherwise.
+        await self._detect_hv_bmu_modules(caps, prior, probe_timeout, probe_retries)
 
         # Step 3 — meter probing. Hinted: only previously-seen addresses. Cold: full 0x01–0x08 sweep.
         # In both modes, a probe response is necessary but not sufficient — some EMS firmwares
@@ -1107,6 +1168,10 @@ class Client:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
         # AIO per-module battery caches (#192) — each module answers at its own address.
         for addr in caps.aio_battery_module_addresses:
+            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
+        # HV BMU per-module per-cell caches (#265) — each module answers at its own 0x50+ address
+        # (installer-confirmed, not yet wire-confirmed). Empty until detect probes the band.
+        for addr in caps.hv_bmu_addresses:
             reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant

@@ -24,7 +24,7 @@ from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
-from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, HvStack
+from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, BmuRegisterGetter, HvStack
 from givenergy_modbus.model.inverter import (
     AC_COUPLED_MODELS,
     Model,
@@ -219,6 +219,10 @@ class PlantCapabilities(BaseModel):
     # AIO (All-in-One) per-module battery device addresses (0x50-0x53). Separate-address
     # layout, distinct from the bcu_stacks stride model — see model/aio_battery.py (#192).
     aio_battery_module_addresses: list[int] = Field(default_factory=list)
+    # HV BMU per-module device addresses (0x50+), populated by detect for non-AIO HV stacks.
+    # Each module answers at its own IR(60-119) cache (same separate-address layout as AIO);
+    # installer-confirmed, not yet wire-confirmed — see model/hv_bcu.py (#265).
+    hv_bmu_addresses: list[int] = Field(default_factory=list)
     # LV BCU page address (observed only at 0x31 — see model/lv_bcu.py). None when the
     # block read all-zero at detect time (firmware-gated, #241).
     lv_bcu_address: int | None = None
@@ -232,6 +236,7 @@ class PlantCapabilities(BaseModel):
         bcu_stacks: list[tuple[int, int]] | None = None,
         aio_battery_module_addresses: list[int] | None = None,
         lv_bcu_address: int | None = None,
+        hv_bmu_addresses: list[int] | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -256,6 +261,8 @@ class PlantCapabilities(BaseModel):
             kwargs["aio_battery_module_addresses"] = aio_battery_module_addresses
         if lv_bcu_address is not None:
             kwargs["lv_bcu_address"] = lv_bcu_address
+        if hv_bmu_addresses is not None:
+            kwargs["hv_bmu_addresses"] = hv_bmu_addresses
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 
@@ -375,6 +382,7 @@ class PlantCapabilities(BaseModel):
             "lv_battery_addresses": [f"0x{a:02x}" for a in self.lv_battery_addresses],
             "bcu_stacks": [[offset, modules] for offset, modules in self.bcu_stacks],
             "aio_battery_module_addresses": [f"0x{a:02x}" for a in self.aio_battery_module_addresses],
+            "hv_bmu_addresses": [f"0x{a:02x}" for a in self.hv_bmu_addresses],
             "lv_bcu_address": f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else None,
         }
 
@@ -436,6 +444,7 @@ class PlantCapabilities(BaseModel):
             # (`0x70 + offset` in detect()). Fail loud at parse time instead.
             bcu_stacks=[(int(offset), int(modules)) for offset, modules in (normalised.get("bcu_stacks") or [])],
             aio_battery_module_addresses=[_addr(a) for a in (normalised.get("aio_battery_module_addresses") or [])],
+            hv_bmu_addresses=[_addr(a) for a in (normalised.get("hv_bmu_addresses") or [])],
             lv_bcu_address=(
                 _addr(normalised["lv_bcu_address"]) if normalised.get("lv_bcu_address") is not None else None
             ),
@@ -446,6 +455,7 @@ class PlantCapabilities(BaseModel):
         batts = ", ".join(f"0x{a:02x}" for a in self.lv_battery_addresses)
         bcus = ", ".join(f"({o}, {n})" for o, n in self.bcu_stacks)
         aio_mods = ", ".join(f"0x{a:02x}" for a in self.aio_battery_module_addresses)
+        hv_bmus = ", ".join(f"0x{a:02x}" for a in self.hv_bmu_addresses)
         lv_bcu = f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else "None"
         return (
             f"PlantCapabilities("
@@ -455,6 +465,7 @@ class PlantCapabilities(BaseModel):
             f"lv_battery_addresses=[{batts}], "
             f"bcu_stacks=[{bcus}], "
             f"aio_battery_module_addresses=[{aio_mods}], "
+            f"hv_bmu_addresses=[{hv_bmus}], "
             f"lv_bcu_address={lv_bcu})"
         )
 
@@ -684,6 +695,8 @@ class Plant(GivEnergyBaseModel):
             # inverter_address=0x31 still routes to the inverter getter.
             if device_address == self.capabilities.lv_bcu_address:
                 return LvBcuRegisterGetter
+            if device_address in self.capabilities.hv_bmu_addresses:
+                return BmuRegisterGetter
             if 0x32 <= device_address <= 0x37:
                 return BatteryRegisterGetter
         else:
@@ -1545,15 +1558,27 @@ class Plant(GivEnergyBaseModel):
 
     @property
     def hv_stacks(self) -> list[HvStack]:
-        """Return HV battery stacks (BCU + BMUs) for HV systems; empty list for LV systems."""
+        """Return HV battery stacks (BCU + per-module BMUs) for HV systems; [] for LV systems.
+
+        Each BMU is decoded from its **own** device-address cache (0x50 + running module index,
+        contiguous across stacks), matching the separate-address AIO layout. Single-stack
+        allocation is installer-confirmed; the multi-stack stride is not yet wire-confirmed
+        (#265). Module caches that haven't been polled (or don't respond) decode to all-None and
+        report ``is_valid() == False``.
+        """
         if not self.capabilities or not self.capabilities.bcu_stacks:
             return []
         stacks = []
+        next_bmu_addr = 0x50
         for offset, num_modules in self.capabilities.bcu_stacks:
             device_addr = 0x70 + offset
             cache = self.register_caches.get(device_addr, RegisterCache())
             bcu = Bcu.from_register_cache(cache)
-            bmus = [Bmu.from_register_cache(cache, i) for i in range(num_modules)]
+            bmus = []
+            for i in range(num_modules):
+                bmu_cache = self.register_caches.get(next_bmu_addr + i, RegisterCache())
+                bmus.append(Bmu.from_register_cache(bmu_cache, i))
+            next_bmu_addr += num_modules
             stacks.append(HvStack(device_address=device_addr, bcu=bcu, bmus=bmus))
         return stacks
 

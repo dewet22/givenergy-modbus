@@ -1,5 +1,7 @@
 """Tests for Plant typed accessors that depend on PlantCapabilities."""
 
+import pytest
+
 from givenergy_modbus.model.hv_bcu import HvStack
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
@@ -109,6 +111,35 @@ def test_hv_stacks_returns_stack_per_bcu():
     assert stacks[1].device_address == 0x71
     assert len(stacks[0].bmus) == 2
     assert len(stacks[1].bmus) == 3
+
+
+def test_hv_stacks_decodes_bmus_from_own_address_caches():
+    # #265: each BMU decodes from its own device-address cache (0x50 + running index), NOT a
+    # stride within the BCU cache. A two-module stack → BMUs at 0x50, 0x51.
+    plant = _plant_with_caps(device_type=Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 2)])
+    _prime(plant, 0x70, {IR(64): 2})  # BCU cluster: 2 modules
+    _prime(plant, 0x50, {IR(60): 3200, IR(90): 250})  # BMU 0: v_cell_01=3.2 V, t_cell_01=25.0 °C
+    _prime(plant, 0x51, {IR(60): 3300, IR(90): 260})  # BMU 1: v_cell_01=3.3 V, t_cell_01=26.0 °C
+    bmus = plant.hv_stacks[0].bmus
+    assert len(bmus) == 2
+    assert bmus[0].bmu_index == 0
+    assert bmus[0].v_cell_01 == pytest.approx(3.2)
+    assert bmus[0].t_cell_01 == pytest.approx(25.0)
+    assert bmus[1].bmu_index == 1
+    assert bmus[1].v_cell_01 == pytest.approx(3.3)
+    assert bmus[1].t_cell_01 == pytest.approx(26.0)
+
+
+def test_hv_stacks_bmu_does_not_read_bcu_cluster_registers():
+    # Regression for the #265 bug: the BCU cluster cache (0x70) carries pack_software_version,
+    # counts and cluster V/I/SoC at IR(60-105). With no per-module 0x50+ cache primed, BMUs must
+    # decode to None — they must not mistake the BCU's own registers for cell data.
+    plant = _plant_with_caps(device_type=Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 1)])
+    _prime(plant, 0x70, {IR(60): 1234, IR(67): 3300, IR(90): 250})  # BCU cluster regs, not cells
+    bmus = plant.hv_stacks[0].bmus
+    assert len(bmus) == 1
+    assert bmus[0].v_cell_01 is None
+    assert bmus[0].is_valid() is False
 
 
 # ---------------------------------------------------------------------------

@@ -352,6 +352,16 @@ async def test_refresh_aio_battery_modules():
         assert _ir(60, 60, device=addr) in reqs
 
 
+async def test_refresh_hv_bmu_modules():
+    """Non-AIO HV BMU modules each add an IR 60+60 read at their own 0x50+ address (#265)."""
+    client = _client_with_caps(Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 2)], hv_bmu_addresses=[0x50, 0x51])
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    reqs = _reqs(mock_exec)
+    for addr in (0x50, 0x51):
+        assert _ir(60, 60, device=addr) in reqs
+
+
 async def test_refresh_plant_forwards_timeout_retries_and_retry_delay_post_detect():
     """Once capabilities is set, refresh_plant() must thread timeout/retries/retry_delay through.
 
