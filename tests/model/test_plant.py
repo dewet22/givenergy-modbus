@@ -1674,6 +1674,20 @@ def test_getter_for_device_address_lv_bcu():
     assert plant._getter_for_device_address(0x31) is LvBcuRegisterGetter
 
 
+def test_getter_for_device_address_hv_bmu():
+    """Addresses in hv_bmu_addresses route to BmuRegisterGetter for refresh validation (#265)."""
+    from givenergy_modbus.model.hv_bcu import BmuRegisterGetter
+
+    plant = Plant(
+        capabilities=PlantCapabilities(
+            device_type=Model.HYBRID_HV_GEN3, hv_bmu_addresses=[0x50, 0x51]
+        )
+    )
+    assert plant._getter_for_device_address(0x50) is BmuRegisterGetter
+    assert plant._getter_for_device_address(0x51) is BmuRegisterGetter
+    assert plant._getter_for_device_address(0x52) is None  # not in the list → unrouted
+
+
 def test_commit_bank_incoherent_serial_discards_bank(plant: Plant, caplog):
     """A battery bank whose serial number registers decode to garbage must be discarded.
 
