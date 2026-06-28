@@ -107,6 +107,16 @@ All bare FC06, gated only in the UI:
 - The fault bit tables (currently britkat-sourced, "not verified") are **validated** against GE's
   enums once the MSB-first vs LSB-first convention is accounted for — with one real fix: bit 11 is
   the **Hall** current sensor, not "Hail Sensor".
+- `BATTERY_FAULT_CODE` decodes the single-phase inverter's IR(57) (the library's raw
+  `charger_warning_code`) — a 16-bit storage-warning word, now surfaced decoded as
+  `charger_warning_messages`. The meter-comms bit (15) confirms it is an inverter-level word, not a
+  battery-pack register.
+- `BCU_STATUS` decodes the HV BCU's IR(70) (`status` → typed `status_label`). The BCU's polled
+  IR(107–119) diagnostic tail (`fan_fault_code`, `self_check_status`, `pack_warning/protection/
+  fault_status`) is now surfaced as raw read-back — bit-level semantics are not yet enum-confirmed.
+- `BMS_LEVEL_ALARM` / `BMS_MAINTENANCE_ALARM` belong to the `bms_cluster` device band (`0x20+`),
+  which the library does not model; the extract carries no device/function-code/start metadata for
+  those maps, so decoding them needs a new device model plus a wire capture. Tracked as follow-up.
 - EMS names HR111/112 `BATTERY_*_MAX_C_RATING` — confirming they're a %-of-rated C-rating ceiling.
 - HR199: the app's generic `MODE_ENABLE_SWITCH` vs the library's `enable_inverter_parallel_mode`
   — worth verifying against a real single-phase capture before any rename.

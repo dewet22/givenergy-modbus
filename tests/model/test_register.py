@@ -281,6 +281,27 @@ def test_inverter_fault_code2():
     assert _inverter_fault_code2(0x0004, 7) == ["Meter comms loss"]
 
 
+def test_charger_warning_code():
+    # 16-bit charger/battery warning word (IR(57)), LSB-indexed against the GE
+    # Installer app v1.154.3 BATTERY_FAULT_CODE bitfield.
+    from givenergy_modbus.model.inverter import _charger_warning_code
+
+    assert _charger_warning_code(None) is None
+    assert _charger_warning_code(0) == []
+    # bit 0 → BMS under-temperature (charge)
+    assert _charger_warning_code(1 << 0) == ["BMS under-temperature (charge)"]
+    # bit 5 → BMS over-voltage
+    assert _charger_warning_code(1 << 5) == ["BMS over-voltage"]
+    # bit 11 is reserved/unnamed in the GE enum → no output
+    assert _charger_warning_code(1 << 11) == []
+    # bit 15 → Electricity meter comms fail (the tell that this is an inverter-level
+    # storage-warning word, not a battery-pack register)
+    assert _charger_warning_code(1 << 15) == ["Electricity meter comms fail"]
+    # bits 0 + 5 together
+    result = _charger_warning_code((1 << 0) | (1 << 5))
+    assert result == ["BMS under-temperature (charge)", "BMS over-voltage"]
+
+
 # ---------------------------------------------------------------------------
 # RegisterDefinition bounds
 # ---------------------------------------------------------------------------

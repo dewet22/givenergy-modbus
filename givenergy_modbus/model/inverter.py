@@ -215,6 +215,38 @@ def _inverter_fault_code(val: int) -> list[str] | None:
     return [f for i, b in enumerate(bits) if b == "1" and (f := _FAULTS[i]) is not None]
 
 
+def _charger_warning_code(val: int | None) -> list[str] | None:
+    """Decode the 16-bit charger/battery warning bitmask (IR(57)) into active warnings.
+
+    Validated against the GivEnergy Installer app v1.154.3 (BATTERY_FAULT_CODE bitfield —
+    a "storage warning" word the single-phase inverter exposes at IR(57), which the library
+    already surfaces raw as ``charger_warning_code``); all 16 bits named. Unlike the
+    inverter fault table above, the list is LSB-indexed: position i corresponds to GE bit i
+    (value bit i = 1 << i). Bit 11 is reserved/unnamed in the GE enum (``STORAGE_WARN_BIT_4``).
+    """
+    if val is None:
+        return None
+    _WARNINGS = [
+        "BMS under-temperature (charge)",
+        "BMS under-temperature (discharge)",
+        "BMS over-temperature (charge)",
+        "BMS over-temperature (discharge)",
+        "BMS under-voltage",
+        "BMS over-voltage",
+        "BMS short-circuit current (discharge)",
+        "BMS over-current (discharge)",
+        "Charge/discharge module temperature fault",
+        "Battery temperature fault",
+        "BMS comms fail",
+        None,
+        "Battery soft-start fail",
+        "Battery voltage low",
+        "Battery voltage high",
+        "Electricity meter comms fail",
+    ]
+    return [f for i, f in enumerate(_WARNINGS) if (val >> i) & 1 and f is not None]
+
+
 def resolve_model(raw_dtc: int, arm_fw: int) -> Model:
     """Return the most specific Model for a given device type code and ARM firmware version.
 
@@ -841,6 +873,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
         "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
+        "charger_warning_messages": Def(C.uint16, _charger_warning_code, IR(57)),
         # Inverter AC grid-terminal current; pairs with IR(24)/IR(43) (I×V ≈ IR43 VA),
         # the inverter terminal — not the external CT. Same node as IR(24).
         "i_grid_port": Def(C.centi, None, IR(58)),
