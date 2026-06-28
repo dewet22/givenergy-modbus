@@ -564,7 +564,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # library's own write surface (commands.py: GRID_IMPORT_LIMIT / _ENABLED) agree on the
         # 1ph semantics below. ThreePhaseInverterRegisterGetter overrides these four with the
         # R/S/T names. (HR104 type=boolean per the consumer app; HR101-104 read 0 on an
-        # unconfigured single-phase capture, so the values aren't yet wire-confirmed.)
+        # unconfigured single-phase capture, and a Gen1 AC hybrid rejected FC06 writes to
+        # HR101/102 with an error — so the 1ph names stay documentary, not write-confirmed.)
         "string_1_voltage_adjustment": Def(C.uint16, None, HR(99)),
         "string_2_voltage_adjustment": Def(C.uint16, None, HR(100)),
         "grid_import_limit": Def(C.uint16, None, HR(101)),
