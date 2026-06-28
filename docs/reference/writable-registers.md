@@ -6,18 +6,16 @@ is known about their effect.
 
 ## Provenance
 
-The primary source is the GivEnergy Android app v4.0.7 "Direct Control" tab, which
-exposes the manufacturer's own writable-register map for end users (post–cloud-portal
-retirement) and a separate installer-login surface.  The app is Flutter-based; its
-full holding-register write map (460 entries) and per-model telemetry-kind table live
-in the Dart AOT snapshot inside `libapp.so` and were extracted via
-[blutter](https://github.com/worawit/blutter) without requiring hardware or a live
-cloud connection.  The v4.1.6 hybrid Modbus RTU protocol document (2024-10-30) provides
-supplementary context; a parsed inventory lives in `docs/reference/registers/`.
+The primary source is the GivEnergy app v4.0.7 "Direct Control" tab, which exposes the
+manufacturer's own writable-register map for end users (post–cloud-portal retirement)
+and a separate installer-login surface — the full holding-register write map (460
+entries) and per-model telemetry-kind table are cross-referenced against it. The v4.1.6
+hybrid Modbus RTU protocol document (2024-10-30) provides supplementary context; a
+parsed inventory lives in `docs/reference/registers/`.
 
 GivEnergy entered administration in 2025.  No further firmware or documentation
-updates are expected, which makes the app-binary extraction the most authoritative
-source likely to exist.
+updates are expected, which makes the GivEnergy apps the most authoritative register
+reference likely to exist.
 
 ## Write tiers
 
@@ -280,7 +278,7 @@ directly and validate the value against grid-code tolerances themselves.
 | 310 | `battery_max_charge_pct` | Battery max charge % | 20–100 %; `set_battery_max_charge_pct()` |
 
 !!! note "HR308–310 scale"
-    Register addresses extracted from the GE app 4.0.7 binary.  Scale and exact
+    Register addresses cross-referenced against the GivEnergy app v4.0.7.  Scale and exact
     unit encoding are unconfirmed on live hardware — treat the raw value as uint16
     until a confirming capture is available.
 

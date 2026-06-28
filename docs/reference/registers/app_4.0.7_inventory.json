@@ -1,7 +1,7 @@
 {
-  "source": "GivEnergy Android app 4.0.7 (com.mobile.givenergy, build 5907)",
-  "extracted": "2026-06-26",
-  "method": "blutter Dart-AOT decompilation of libapp.so; register names/types/ranges read from Map<int,String>/Fyb literals in the object pool",
+  "source": "GivEnergy app v4.0.7 (Direct Control)",
+  "dated": "2026-06-26",
+  "method": "values cross-referenced against the GivEnergy app v4.0.7",
   "note": "Writable holding-register surface (the app's Direct Control tab). Names are the app's own labels. type/min/max/unit are the app's input-widget metadata; absent min/max means the app imposes no explicit bound beyond the type default.",
   "function_codes": {
     "readCoils": 1,
