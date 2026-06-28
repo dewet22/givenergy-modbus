@@ -5,10 +5,11 @@ BMU device addresses: 0x50–0x6F
 
 `HvStack` bundles a BCU and its BMUs for one physical battery stack.
 
-The BMU register layout is offset by 120 * bmu_index within the BCU device, which
-means register addresses depend on which BMU is being read.  Because Pydantic models
-require a fixed schema, `Bmu` is constructed by `Bmu.from_register_cache(cache, offset)`
-which resolves all addresses before model creation.
+Each BMU answers at its **own device address** (0x50+) with a plain ``IR(60-119)`` block —
+24 cell voltages, temperatures and the module serial — the same separate-address layout as
+`AioBatteryModule` (see `model/aio_battery.py`), decoded at ``base = 0`` via
+:func:`decode_cells_temps_serial`. (Installer-confirmed; the earlier stride-within-the-BCU-cache
+decode read the BCU's own cluster registers as cell data — see #265. Not yet wire-confirmed.)
 """
 
 import warnings
@@ -88,8 +89,6 @@ class Bcu(_BcuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
 
 # Cell count per BMU (all known HV stacks use 24 cells per module)
 _BMU_CELLS = 24
-# Register stride between BMUs within a BCU device's address space
-_BMU_STRIDE = 120
 # Base register addresses (relative to a module's ``base`` offset) for the per-cell block.
 # Shared by the field schema, the decode, and the register LUT so they can't drift (#273).
 _V_CELL_BASE = 60  # IR(60+base .. 83+base) — 24 cell voltages, milli (÷1000)
@@ -115,11 +114,11 @@ def module_cell_temp_serial_fields() -> dict[str, tuple[Any, None]]:
 def cell_temp_serial_register_lut(base: int = 0) -> dict[str, Def]:
     """field→register LUT matching :func:`decode_cells_temps_serial` for the given ``base``.
 
-    Base-parametrised the same way the decode is, so a future `Bmu` getter could offset by
-    ``120 * bmu_index``; `AioBatteryModule` uses ``base = 0``. Converters mirror the decode:
-    voltages milli (÷1000), temperatures deci (÷10), serial the 5-register string decode.
-    Drives ``registers_of()`` / ``precision_of()`` for staleness gating (#273); the min/max on
-    voltages mirror `BatteryRegisterGetter` and are inert under the imperative decode.
+    Both `BmuRegisterGetter` (#265) and `AioBatteryModuleRegisterGetter` (#192) use ``base = 0``
+    — one cache per module device address. Converters mirror the decode: voltages milli (÷1000),
+    temperatures deci (÷10), serial the 5-register string decode. Drives ``registers_of()`` /
+    ``precision_of()`` for staleness gating (#273); the min/max on voltages mirror
+    `BatteryRegisterGetter` and are inert under the imperative decode.
     """
     lut: dict[str, Def] = {}
     for i in range(_BMU_CELLS):
@@ -133,10 +132,10 @@ def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
     """Decode a battery module's cells, temperatures and serial from a cache, offset by ``base``.
 
     Reads 24 cell voltages (IR 60-83), temperatures (IR 90-113) and the module serial
-    (IR 114-118). Shared decode for both module layouts: `Bmu` passes ``base = 120 * bmu_index`` (stride
-    within one BCU cache); `AioBatteryModule` passes ``base = 0`` (one cache per module
-    device address). Voltages are milli (÷1000), temperatures deci (÷10). A missing register
-    decodes as None; an incomplete serial group yields ``serial_number = None``.
+    (IR 114-118). Shared decode for the separate-address module layout: both `Bmu` (HV, #265)
+    and `AioBatteryModule` (#192) pass ``base = 0`` — one cache per module device address.
+    Voltages are milli (÷1000), temperatures deci (÷10). A missing register decodes as None;
+    an incomplete serial group yields ``serial_number = None``.
     """
     data: dict[str, Any] = {}
 
@@ -162,8 +161,18 @@ def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
     return data
 
 
-# Build the Bmu pydantic model schema using dummy offset 0 to infer field types,
-# then instantiate with real data in from_register_cache.
+class BmuRegisterGetter(RegisterGetter):
+    """field→register metadata for HV BMU per-module data (#265).
+
+    Same separate-address layout as AIO modules — each BMU decodes its own ``IR(60-119)``
+    cache at ``base = 0``; this LUT drives ``registers_of()`` / ``precision_of()`` for
+    staleness gating, matching `AioBatteryModuleRegisterGetter`.
+    """
+
+    REGISTER_LUT = cell_temp_serial_register_lut(base=0)
+
+
+# Pydantic model schema: the shared per-cell fields plus the module's 0-based index.
 def _bmu_fields() -> dict[str, tuple[Any, None]]:
     fields = module_cell_temp_serial_fields()
     fields["bmu_index"] = (int | None, None)
@@ -177,22 +186,26 @@ _BmuBase = create_model(  # type: ignore[call-overload]
 )
 
 
-class Bmu(_BmuBase):  # type: ignore[misc,valid-type]
+class Bmu(_BmuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy HV Battery Module Unit (BMU) per-module data.
 
-    `bmu_index` is 0-based within the BCU (module 0 uses registers 60–179,
-    module 1 uses 180–299, etc.).
+    Decoded from the module's **own** register cache (``base = 0``), keyed by its 0-based
+    ``bmu_index`` within the stack (module *k* answers at device address 0x50 + k). The earlier
+    stride-within-the-BCU-cache layout addressed the wrong device, reading the BCU's cluster
+    registers as cell data — see #265. Installer-derived; not yet wire-confirmed.
     """
+
+    REGISTER_GETTER: ClassVar[type[RegisterGetter]] = BmuRegisterGetter
 
     @classmethod
     def from_register_cache(cls, register_cache, bmu_index: int = 0) -> "Bmu":
-        """Construct a Bmu from a RegisterCache for the given bmu_index."""
-        data = decode_cells_temps_serial(register_cache, base=_BMU_STRIDE * bmu_index)
+        """Construct a Bmu from its own register cache (no stride)."""
+        data = decode_cells_temps_serial(register_cache, base=0)
         data["bmu_index"] = bmu_index
         return cls.model_validate(data)
 
     def is_valid(self) -> bool:
-        """Try to detect if a BMU is present based on its attributes."""
+        """True if the module reports a non-blank serial (i.e. a module is present)."""
         return self.serial_number not in (None, "", "          ")  # type: ignore[attr-defined]
 
 

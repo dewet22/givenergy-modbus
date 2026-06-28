@@ -101,20 +101,19 @@ def test_bmu_index_0():
     assert bmu.serial_number == "ABCDEFGHI"  # type: ignore[attr-defined]
 
 
-def test_bmu_index_1_uses_offset_registers():
-    # BMU index 1: registers start at base + 1*120 = 120
-    # v_cell_01 at IR(60 + 120) = IR(180)
-    # t_cell_01 at IR(90 + 120) = IR(210)
-    # serial at IR(114 + 120) = IR(234)
+def test_bmu_index_is_a_label_not_a_stride():
+    # Post-#265: every BMU reads its OWN device-address cache at base=0 (IR 60-118). bmu_index
+    # is just a label; it no longer shifts the register window (the old 120*index stride read
+    # the BCU's own cluster registers as cell data).
     cache = _cache(
         {
-            IR(180): 3300,  # v_cell_01 for BMU 1 = 3.300 V
-            IR(210): 280,  # t_cell_01 for BMU 1 = 28.0 °C
-            IR(234): 0x4142,
-            IR(235): 0x4344,
-            IR(236): 0x4546,
-            IR(237): 0x4748,
-            IR(238): 0x4900,
+            IR(60): 3300,  # v_cell_01 = 3.300 V (milli)
+            IR(90): 280,  # t_cell_01 = 28.0 °C (deci)
+            IR(114): 0x4142,
+            IR(115): 0x4344,
+            IR(116): 0x4546,
+            IR(117): 0x4748,
+            IR(118): 0x4900,
         }
     )
     bmu = Bmu.from_register_cache(cache, bmu_index=1)
@@ -125,11 +124,13 @@ def test_bmu_index_1_uses_offset_registers():
     assert bmu.serial_number == "ABCDEFGHI"  # type: ignore[attr-defined]
 
 
-def test_bmu_index_0_does_not_see_index_1_registers():
-    # Data placed only at BMU 1 offsets should not appear in BMU 0
+def test_bmu_reads_only_its_own_cache_window():
+    # Each BMU decodes IR(60-118) from its own cache; data outside that window — e.g. the old
+    # stride offset IR(180), or the BCU cluster block — is never read.
     cache = _cache({IR(180): 3300})
-    bmu0 = Bmu.from_register_cache(cache, bmu_index=0)
-    assert bmu0.v_cell_01 is None  # type: ignore[attr-defined]
+    bmu = Bmu.from_register_cache(cache, bmu_index=1)
+    assert bmu.v_cell_01 is None  # type: ignore[attr-defined]
+    assert bmu.is_valid() is False
 
 
 def test_bmu_has_24_cell_voltage_fields():

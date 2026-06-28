@@ -75,6 +75,53 @@ def test_plant_capabilities_round_trip_with_aio_modules():
     assert restored.aio_battery_module_addresses == [0x50, 0x51, 0x52, 0x53]
 
 
+def test_plant_capabilities_round_trip_with_hv_bmu_modules():
+    caps = PlantCapabilities(
+        device_type=Model.HYBRID_HV_GEN3,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 2)],
+        hv_bmu_addresses=[0x50, 0x51],
+    )
+    restored = PlantCapabilities.from_dict(caps.to_dict())
+    assert restored == caps
+    assert restored.hv_bmu_addresses == [0x50, 0x51]
+
+
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_modules_records_responding_addresses():
+    """A non-AIO HV stack records per-module BMU addresses at 0x50+ (#265)."""
+    client = _make_client()
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
+    for addr in (0x50, 0x51):
+        _prime_aio_module_serial(client, addr, serial=f"BM2414G83{addr - 0x50}")
+    responders = {0x50, 0x51}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responders
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
+
+    assert caps.hv_bmu_addresses == [0x50, 0x51]
+
+
+@pytest.mark.asyncio
+async def test_detect_hv_bmu_skips_modules_with_no_serial():
+    """An HV BMU that responds but reports no serial is not recorded (ghost guard, #265)."""
+    client = _make_client()
+    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
+    _prime_aio_module_serial(client, 0x50)  # 0x51 responds but has no serial primed
+    responders = {0x50, 0x51}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address in responders
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
+
+    assert caps.hv_bmu_addresses == [0x50]
+
+
 def test_plant_capabilities_round_trip_with_lv_bcu():
     caps = PlantCapabilities(
         device_type=Model.HYBRID,
@@ -532,6 +579,8 @@ async def test_detect_finds_aio_battery_modules():
     assert caps.device_type is Model.ALL_IN_ONE
     assert caps.bcu_stacks == [(0, 4)]
     assert caps.aio_battery_module_addresses == [0x50, 0x51, 0x52, 0x53]
+    # AIO modules must not also be detected via the HV BMU path — that's gated to non-AIO (#265).
+    assert caps.hv_bmu_addresses == []
 
 
 @pytest.mark.asyncio
