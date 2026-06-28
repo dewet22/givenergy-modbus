@@ -210,32 +210,32 @@ _THREE_PHASE_LUT = {
     # the full register or only a nibble holds the value; needs a register capture to confirm.
     # See open questions in fork-merge-plan.md.
     "meter_fail_enable": Def(C.uint16, None, HR(1017)),
-    "v_grid_low_limit_1": Def(C.deci, None, HR(1018), min=0.0, max=500.0),
-    "v_grid_high_limit_1": Def(C.deci, None, HR(1019), min=0.0, max=500.0),
-    "f_grid_low_limit_1": Def(C.centi, None, HR(1020), min=40.0, max=70.0),
-    "f_grid_high_limit_1": Def(C.centi, None, HR(1021), min=40.0, max=70.0),
-    "v_grid_low_limit_2": Def(C.deci, None, HR(1022), min=0.0, max=500.0),
-    "v_grid_high_limit_2": Def(C.deci, None, HR(1023), min=0.0, max=500.0),
-    "f_grid_low_limit_2": Def(C.centi, None, HR(1024), min=40.0, max=70.0),
-    "f_grid_high_limit_2": Def(C.centi, None, HR(1025), min=40.0, max=70.0),
-    "v_grid_low_limit_3": Def(C.deci, None, HR(1026), min=0.0, max=500.0),
-    "v_grid_high_limit_3": Def(C.deci, None, HR(1027), min=0.0, max=500.0),
-    "f_grid_low_limit_3": Def(C.centi, None, HR(1028), min=40.0, max=70.0),
-    "f_grid_high_limit_3": Def(C.centi, None, HR(1029), min=40.0, max=70.0),
+    "v_grid_low_limit_trip": Def(C.deci, None, HR(1018), min=0.0, max=500.0),
+    "v_grid_high_limit_trip": Def(C.deci, None, HR(1019), min=0.0, max=500.0),
+    "f_grid_low_limit_trip": Def(C.centi, None, HR(1020), min=40.0, max=70.0),
+    "f_grid_high_limit_trip": Def(C.centi, None, HR(1021), min=40.0, max=70.0),
+    "v_grid_low_limit_reconnect": Def(C.deci, None, HR(1022), min=0.0, max=500.0),
+    "v_grid_high_limit_reconnect": Def(C.deci, None, HR(1023), min=0.0, max=500.0),
+    "f_grid_low_limit_reconnect": Def(C.centi, None, HR(1024), min=40.0, max=70.0),
+    "f_grid_high_limit_reconnect": Def(C.centi, None, HR(1025), min=40.0, max=70.0),
+    "v_grid_low_limit_grid": Def(C.deci, None, HR(1026), min=0.0, max=500.0),
+    "v_grid_high_limit_grid": Def(C.deci, None, HR(1027), min=0.0, max=500.0),
+    "f_grid_low_limit_grid": Def(C.centi, None, HR(1028), min=40.0, max=70.0),
+    "f_grid_high_limit_grid": Def(C.centi, None, HR(1029), min=40.0, max=70.0),
     # HR(1030-1033) — CEE grid limits
     "v_grid_low_limit_cee": Def(C.deci, None, HR(1030), min=0.0, max=500.0),
     "v_grid_high_limit_cee": Def(C.deci, None, HR(1031), min=0.0, max=500.0),
     "f_grid_low_limit_cee": Def(C.centi, None, HR(1032), min=40.0, max=70.0),
     "f_grid_high_limit_cee": Def(C.centi, None, HR(1033), min=40.0, max=70.0),
     # HR(1034-1041) — time-based grid voltage/frequency limits
-    "time_grid_low_voltage_limit_1": Def(C.centi, None, HR(1034)),
-    "time_grid_high_voltage_limit_1": Def(C.centi, None, HR(1035)),
-    "time_grid_low_voltage_limit_2": Def(C.centi, None, HR(1036)),
-    "time_grid_high_voltage_limit_2": Def(C.centi, None, HR(1037)),
-    "time_grid_low_freq_limit_1": Def(C.centi, None, HR(1038)),
-    "time_grid_high_freq_limit_1": Def(C.centi, None, HR(1039)),
-    "time_grid_low_freq_limit_2": Def(C.centi, None, HR(1040)),
-    "time_grid_high_freq_limit_2": Def(C.centi, None, HR(1041)),
+    "time_grid_low_voltage_limit_trip": Def(C.centi, None, HR(1034)),
+    "time_grid_high_voltage_limit_trip": Def(C.centi, None, HR(1035)),
+    "time_grid_low_voltage_limit_reconnect": Def(C.centi, None, HR(1036)),
+    "time_grid_high_voltage_limit_reconnect": Def(C.centi, None, HR(1037)),
+    "time_grid_low_freq_limit_trip": Def(C.centi, None, HR(1038)),
+    "time_grid_high_freq_limit_trip": Def(C.centi, None, HR(1039)),
+    "time_grid_low_freq_limit_reconnect": Def(C.centi, None, HR(1040)),
+    "time_grid_high_freq_limit_reconnect": Def(C.centi, None, HR(1041)),
     "v_10min_protect": Def(C.deci, None, HR(1042), min=0.0, max=500.0),
     "pf_model": Def(C.uint16, PowerFactorFunctionModel, HR(1043)),
     "f_over_derate_start": Def(C.centi, None, HR(1045), min=40.0, max=70.0),
@@ -675,6 +675,210 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.battery_reserve_soc  # type: ignore[attr-defined,no-any-return]
+
+    # HR(1018-1041) renamed: _1/_2/_3 → _trip/_reconnect/_grid (installer-confirmed band structure).
+    # Aliases preserve back-compat for a release.
+
+    @property
+    def v_grid_low_limit_1(self) -> float | None:
+        """Deprecated alias for `v_grid_low_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_low_limit_1 is deprecated; use v_grid_low_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_low_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_grid_high_limit_1(self) -> float | None:
+        """Deprecated alias for `v_grid_high_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_high_limit_1 is deprecated; use v_grid_high_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_high_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_low_limit_1(self) -> float | None:
+        """Deprecated alias for `f_grid_low_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_low_limit_1 is deprecated; use f_grid_low_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_low_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_high_limit_1(self) -> float | None:
+        """Deprecated alias for `f_grid_high_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_high_limit_1 is deprecated; use f_grid_high_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_high_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_grid_low_limit_2(self) -> float | None:
+        """Deprecated alias for `v_grid_low_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_low_limit_2 is deprecated; use v_grid_low_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_low_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_grid_high_limit_2(self) -> float | None:
+        """Deprecated alias for `v_grid_high_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_high_limit_2 is deprecated; use v_grid_high_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_high_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_low_limit_2(self) -> float | None:
+        """Deprecated alias for `f_grid_low_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_low_limit_2 is deprecated; use f_grid_low_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_low_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_high_limit_2(self) -> float | None:
+        """Deprecated alias for `f_grid_high_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_high_limit_2 is deprecated; use f_grid_high_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_high_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_grid_low_limit_3(self) -> float | None:
+        """Deprecated alias for `v_grid_low_limit_grid`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_low_limit_3 is deprecated; use v_grid_low_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_low_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_grid_high_limit_3(self) -> float | None:
+        """Deprecated alias for `v_grid_high_limit_grid`."""
+        warnings.warn(
+            "ThreePhaseInverter.v_grid_high_limit_3 is deprecated; use v_grid_high_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_grid_high_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_low_limit_3(self) -> float | None:
+        """Deprecated alias for `f_grid_low_limit_grid`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_low_limit_3 is deprecated; use f_grid_low_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_low_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_grid_high_limit_3(self) -> float | None:
+        """Deprecated alias for `f_grid_high_limit_grid`."""
+        warnings.warn(
+            "ThreePhaseInverter.f_grid_high_limit_3 is deprecated; use f_grid_high_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_grid_high_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_low_voltage_limit_1(self) -> float | None:
+        """Deprecated alias for `time_grid_low_voltage_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_low_voltage_limit_1 is deprecated; use time_grid_low_voltage_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_low_voltage_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_high_voltage_limit_1(self) -> float | None:
+        """Deprecated alias for `time_grid_high_voltage_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_high_voltage_limit_1 is deprecated; use time_grid_high_voltage_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_high_voltage_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_low_voltage_limit_2(self) -> float | None:
+        """Deprecated alias for `time_grid_low_voltage_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_low_voltage_limit_2 is deprecated; use time_grid_low_voltage_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_low_voltage_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_high_voltage_limit_2(self) -> float | None:
+        """Deprecated alias for `time_grid_high_voltage_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_high_voltage_limit_2 is deprecated; "
+            "use time_grid_high_voltage_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_high_voltage_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_low_freq_limit_1(self) -> float | None:
+        """Deprecated alias for `time_grid_low_freq_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_low_freq_limit_1 is deprecated; use time_grid_low_freq_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_low_freq_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_high_freq_limit_1(self) -> float | None:
+        """Deprecated alias for `time_grid_high_freq_limit_trip`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_high_freq_limit_1 is deprecated; use time_grid_high_freq_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_high_freq_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_low_freq_limit_2(self) -> float | None:
+        """Deprecated alias for `time_grid_low_freq_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_low_freq_limit_2 is deprecated; use time_grid_low_freq_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_low_freq_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def time_grid_high_freq_limit_2(self) -> float | None:
+        """Deprecated alias for `time_grid_high_freq_limit_reconnect`."""
+        warnings.warn(
+            "ThreePhaseInverter.time_grid_high_freq_limit_2 is deprecated; use time_grid_high_freq_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.time_grid_high_freq_limit_reconnect  # type: ignore[attr-defined,no-any-return]
 
 
 # Models that decode via the three-phase / 1000-range register layout. The residential

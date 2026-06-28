@@ -481,26 +481,26 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Converters inferred from the 3ph parallel block (HR1018-1042); unverified
         # against a live single-phase capture — mark uncertain with raw uint16 if
         # a future capture disagrees.
-        "v_ac_low_limit_1": Def(C.uint16, C.deci, HR(63), min=0.0, max=500.0),
-        "v_ac_high_limit_1": Def(C.uint16, C.deci, HR(64), min=0.0, max=500.0),
-        "f_ac_low_limit_1": Def(C.uint16, C.centi, HR(65), min=40.0, max=70.0),
-        "f_ac_high_limit_1": Def(C.uint16, C.centi, HR(66), min=40.0, max=70.0),
-        "t_ac_low_voltage_1": Def(C.uint16, C.centi, HR(67)),
-        "t_ac_high_voltage_1": Def(C.uint16, C.centi, HR(68)),
-        "t_ac_low_freq_1": Def(C.uint16, C.centi, HR(69)),
-        "t_ac_high_freq_1": Def(C.uint16, C.centi, HR(70)),
-        "v_ac_low_limit_2": Def(C.uint16, C.deci, HR(71), min=0.0, max=500.0),
-        "v_ac_high_limit_2": Def(C.uint16, C.deci, HR(72), min=0.0, max=500.0),
-        "f_ac_low_limit_2": Def(C.uint16, C.centi, HR(73), min=40.0, max=70.0),
-        "f_ac_high_limit_2": Def(C.uint16, C.centi, HR(74), min=40.0, max=70.0),
-        "t_ac_low_voltage_2": Def(C.uint16, C.centi, HR(75)),
-        "t_ac_high_voltage_2": Def(C.uint16, C.centi, HR(76)),
-        "t_ac_low_freq_2": Def(C.uint16, C.centi, HR(77)),
-        "t_ac_high_freq_2": Def(C.uint16, C.centi, HR(78)),
-        "v_ac_low_limit_3": Def(C.uint16, C.deci, HR(79), min=0.0, max=500.0),
-        "v_ac_high_limit_3": Def(C.uint16, C.deci, HR(80), min=0.0, max=500.0),
-        "f_ac_low_limit_3": Def(C.uint16, C.centi, HR(81), min=40.0, max=70.0),
-        "f_ac_high_limit_3": Def(C.uint16, C.centi, HR(82), min=40.0, max=70.0),
+        "v_ac_low_limit_trip": Def(C.uint16, C.deci, HR(63), min=0.0, max=500.0),
+        "v_ac_high_limit_trip": Def(C.uint16, C.deci, HR(64), min=0.0, max=500.0),
+        "f_ac_low_limit_trip": Def(C.uint16, C.centi, HR(65), min=40.0, max=70.0),
+        "f_ac_high_limit_trip": Def(C.uint16, C.centi, HR(66), min=40.0, max=70.0),
+        "t_ac_low_voltage_trip": Def(C.uint16, C.centi, HR(67)),
+        "t_ac_high_voltage_trip": Def(C.uint16, C.centi, HR(68)),
+        "t_ac_low_freq_trip": Def(C.uint16, C.centi, HR(69)),
+        "t_ac_high_freq_trip": Def(C.uint16, C.centi, HR(70)),
+        "v_ac_low_limit_reconnect": Def(C.uint16, C.deci, HR(71), min=0.0, max=500.0),
+        "v_ac_high_limit_reconnect": Def(C.uint16, C.deci, HR(72), min=0.0, max=500.0),
+        "f_ac_low_limit_reconnect": Def(C.uint16, C.centi, HR(73), min=40.0, max=70.0),
+        "f_ac_high_limit_reconnect": Def(C.uint16, C.centi, HR(74), min=40.0, max=70.0),
+        "t_ac_low_voltage_reconnect": Def(C.uint16, C.centi, HR(75)),
+        "t_ac_high_voltage_reconnect": Def(C.uint16, C.centi, HR(76)),
+        "t_ac_low_freq_reconnect": Def(C.uint16, C.centi, HR(77)),
+        "t_ac_high_freq_reconnect": Def(C.uint16, C.centi, HR(78)),
+        "v_ac_low_limit_grid": Def(C.uint16, C.deci, HR(79), min=0.0, max=500.0),
+        "v_ac_high_limit_grid": Def(C.uint16, C.deci, HR(80), min=0.0, max=500.0),
+        "f_ac_low_limit_grid": Def(C.uint16, C.centi, HR(81), min=40.0, max=70.0),
+        "f_ac_high_limit_grid": Def(C.uint16, C.centi, HR(82), min=40.0, max=70.0),
         "v_ac_10min_protect": Def(C.uint16, C.deci, HR(83), min=0.0, max=500.0),
         # skip HR(84-93) — unlabelled in the app's writable map
         "charge_slot_1": Def(C.timeslot, None, HR(94), HR(95)),
@@ -1224,6 +1224,209 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
+
+    # HR(63-82) renamed: _1/_2/_3 → _trip/_reconnect/_grid (installer-confirmed band structure).
+    # Aliases preserve back-compat for a release.
+
+    @property
+    def v_ac_low_limit_1(self) -> float | None:
+        """Deprecated alias for `v_ac_low_limit_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_low_limit_1 is deprecated; use v_ac_low_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_low_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_ac_high_limit_1(self) -> float | None:
+        """Deprecated alias for `v_ac_high_limit_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_high_limit_1 is deprecated; use v_ac_high_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_high_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_low_limit_1(self) -> float | None:
+        """Deprecated alias for `f_ac_low_limit_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_low_limit_1 is deprecated; use f_ac_low_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_low_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_high_limit_1(self) -> float | None:
+        """Deprecated alias for `f_ac_high_limit_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_high_limit_1 is deprecated; use f_ac_high_limit_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_high_limit_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_low_voltage_1(self) -> float | None:
+        """Deprecated alias for `t_ac_low_voltage_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_low_voltage_1 is deprecated; use t_ac_low_voltage_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_low_voltage_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_high_voltage_1(self) -> float | None:
+        """Deprecated alias for `t_ac_high_voltage_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_high_voltage_1 is deprecated; use t_ac_high_voltage_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_high_voltage_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_low_freq_1(self) -> float | None:
+        """Deprecated alias for `t_ac_low_freq_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_low_freq_1 is deprecated; use t_ac_low_freq_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_low_freq_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_high_freq_1(self) -> float | None:
+        """Deprecated alias for `t_ac_high_freq_trip`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_high_freq_1 is deprecated; use t_ac_high_freq_trip",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_high_freq_trip  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_ac_low_limit_2(self) -> float | None:
+        """Deprecated alias for `v_ac_low_limit_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_low_limit_2 is deprecated; use v_ac_low_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_low_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_ac_high_limit_2(self) -> float | None:
+        """Deprecated alias for `v_ac_high_limit_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_high_limit_2 is deprecated; use v_ac_high_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_high_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_low_limit_2(self) -> float | None:
+        """Deprecated alias for `f_ac_low_limit_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_low_limit_2 is deprecated; use f_ac_low_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_low_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_high_limit_2(self) -> float | None:
+        """Deprecated alias for `f_ac_high_limit_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_high_limit_2 is deprecated; use f_ac_high_limit_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_high_limit_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_low_voltage_2(self) -> float | None:
+        """Deprecated alias for `t_ac_low_voltage_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_low_voltage_2 is deprecated; use t_ac_low_voltage_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_low_voltage_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_high_voltage_2(self) -> float | None:
+        """Deprecated alias for `t_ac_high_voltage_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_high_voltage_2 is deprecated; use t_ac_high_voltage_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_high_voltage_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_low_freq_2(self) -> float | None:
+        """Deprecated alias for `t_ac_low_freq_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_low_freq_2 is deprecated; use t_ac_low_freq_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_low_freq_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def t_ac_high_freq_2(self) -> float | None:
+        """Deprecated alias for `t_ac_high_freq_reconnect`."""
+        warnings.warn(
+            "SinglePhaseInverter.t_ac_high_freq_2 is deprecated; use t_ac_high_freq_reconnect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.t_ac_high_freq_reconnect  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_ac_low_limit_3(self) -> float | None:
+        """Deprecated alias for `v_ac_low_limit_grid`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_low_limit_3 is deprecated; use v_ac_low_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_low_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def v_ac_high_limit_3(self) -> float | None:
+        """Deprecated alias for `v_ac_high_limit_grid`."""
+        warnings.warn(
+            "SinglePhaseInverter.v_ac_high_limit_3 is deprecated; use v_ac_high_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.v_ac_high_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_low_limit_3(self) -> float | None:
+        """Deprecated alias for `f_ac_low_limit_grid`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_low_limit_3 is deprecated; use f_ac_low_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_low_limit_grid  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def f_ac_high_limit_3(self) -> float | None:
+        """Deprecated alias for `f_ac_high_limit_grid`."""
+        warnings.warn(
+            "SinglePhaseInverter.f_ac_high_limit_3 is deprecated; use f_ac_high_limit_grid",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.f_ac_high_limit_grid  # type: ignore[attr-defined,no-any-return]
 
 
 def __getattr__(name: str):

@@ -299,26 +299,26 @@ def test_inverter():
             "e_battery_charge_total_alt1": None,
             "e_battery_discharge_today_alt2": None,
             "e_battery_charge_today_alt2": None,
-            "v_ac_low_limit_1": None,
-            "v_ac_high_limit_1": None,
-            "f_ac_low_limit_1": None,
-            "f_ac_high_limit_1": None,
-            "t_ac_low_voltage_1": None,
-            "t_ac_high_voltage_1": None,
-            "t_ac_low_freq_1": None,
-            "t_ac_high_freq_1": None,
-            "v_ac_low_limit_2": None,
-            "v_ac_high_limit_2": None,
-            "f_ac_low_limit_2": None,
-            "f_ac_high_limit_2": None,
-            "t_ac_low_voltage_2": None,
-            "t_ac_high_voltage_2": None,
-            "t_ac_low_freq_2": None,
-            "t_ac_high_freq_2": None,
-            "v_ac_low_limit_3": None,
-            "v_ac_high_limit_3": None,
-            "f_ac_low_limit_3": None,
-            "f_ac_high_limit_3": None,
+            "v_ac_low_limit_trip": None,
+            "v_ac_high_limit_trip": None,
+            "f_ac_low_limit_trip": None,
+            "f_ac_high_limit_trip": None,
+            "t_ac_low_voltage_trip": None,
+            "t_ac_high_voltage_trip": None,
+            "t_ac_low_freq_trip": None,
+            "t_ac_high_freq_trip": None,
+            "v_ac_low_limit_reconnect": None,
+            "v_ac_high_limit_reconnect": None,
+            "f_ac_low_limit_reconnect": None,
+            "f_ac_high_limit_reconnect": None,
+            "t_ac_low_voltage_reconnect": None,
+            "t_ac_high_voltage_reconnect": None,
+            "t_ac_low_freq_reconnect": None,
+            "t_ac_high_freq_reconnect": None,
+            "v_ac_low_limit_grid": None,
+            "v_ac_high_limit_grid": None,
+            "f_ac_low_limit_grid": None,
+            "f_ac_high_limit_grid": None,
             "v_ac_10min_protect": None,
             "battery_nominal_power": None,
             "battery_nominal_current": None,
@@ -743,26 +743,26 @@ def test_from_registers(register_cache):
         "e_battery_charge_total_alt1": 174.4,  # IR(181)
         "e_battery_discharge_today_alt2": 8.9,  # IR(182)
         "e_battery_charge_today_alt2": 9.0,  # IR(183)
-        "v_ac_low_limit_1": 184.0,
-        "v_ac_high_limit_1": 274.0,
-        "f_ac_low_limit_1": 47.0,
-        "f_ac_high_limit_1": 51.98,
-        "t_ac_low_voltage_1": 1.26,
-        "t_ac_high_voltage_1": 0.27,
-        "t_ac_low_freq_1": 0.24,
-        "t_ac_high_freq_1": 0.28,
-        "v_ac_low_limit_2": 184.0,
-        "v_ac_high_limit_2": 262.0,
-        "f_ac_low_limit_2": 47.45,
-        "f_ac_high_limit_2": 52.0,
-        "t_ac_low_voltage_2": 1.26,
-        "t_ac_high_voltage_2": 0.52,
-        "t_ac_low_freq_2": 0.01,
-        "t_ac_high_freq_2": 0.28,
-        "v_ac_low_limit_3": 175.5,
-        "v_ac_high_limit_3": 283.7,
-        "f_ac_low_limit_3": 47.0,
-        "f_ac_high_limit_3": 52.0,
+        "v_ac_low_limit_trip": 184.0,
+        "v_ac_high_limit_trip": 274.0,
+        "f_ac_low_limit_trip": 47.0,
+        "f_ac_high_limit_trip": 51.98,
+        "t_ac_low_voltage_trip": 1.26,
+        "t_ac_high_voltage_trip": 0.27,
+        "t_ac_low_freq_trip": 0.24,
+        "t_ac_high_freq_trip": 0.28,
+        "v_ac_low_limit_reconnect": 184.0,
+        "v_ac_high_limit_reconnect": 262.0,
+        "f_ac_low_limit_reconnect": 47.45,
+        "f_ac_high_limit_reconnect": 52.0,
+        "t_ac_low_voltage_reconnect": 1.26,
+        "t_ac_high_voltage_reconnect": 0.52,
+        "t_ac_low_freq_reconnect": 0.01,
+        "t_ac_high_freq_reconnect": 0.28,
+        "v_ac_low_limit_grid": 175.5,
+        "v_ac_high_limit_grid": 283.7,
+        "f_ac_low_limit_grid": 47.0,
+        "f_ac_high_limit_grid": 52.0,
         "v_ac_10min_protect": 274.0,
         "battery_nominal_power": None,
         "battery_nominal_current": None,
@@ -1183,26 +1183,26 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_battery_charge_total_alt1": 183.5,  # IR(181)
         "e_battery_discharge_today_alt2": 3.4,  # IR(182)
         "e_battery_charge_today_alt2": 9.1,  # IR(183)
-        "v_ac_low_limit_1": 184.0,
-        "v_ac_high_limit_1": 274.0,
-        "f_ac_low_limit_1": 47.0,
-        "f_ac_high_limit_1": 51.98,
-        "t_ac_low_voltage_1": 1.26,
-        "t_ac_high_voltage_1": 0.27,
-        "t_ac_low_freq_1": 0.24,
-        "t_ac_high_freq_1": 0.28,
-        "v_ac_low_limit_2": 184.0,
-        "v_ac_high_limit_2": 262.0,
-        "f_ac_low_limit_2": 47.45,
-        "f_ac_high_limit_2": 52.0,
-        "t_ac_low_voltage_2": 1.26,
-        "t_ac_high_voltage_2": 0.52,
-        "t_ac_low_freq_2": 0.01,
-        "t_ac_high_freq_2": 0.28,
-        "v_ac_low_limit_3": 175.5,
-        "v_ac_high_limit_3": 283.7,
-        "f_ac_low_limit_3": 47.0,
-        "f_ac_high_limit_3": 52.0,
+        "v_ac_low_limit_trip": 184.0,
+        "v_ac_high_limit_trip": 274.0,
+        "f_ac_low_limit_trip": 47.0,
+        "f_ac_high_limit_trip": 51.98,
+        "t_ac_low_voltage_trip": 1.26,
+        "t_ac_high_voltage_trip": 0.27,
+        "t_ac_low_freq_trip": 0.24,
+        "t_ac_high_freq_trip": 0.28,
+        "v_ac_low_limit_reconnect": 184.0,
+        "v_ac_high_limit_reconnect": 262.0,
+        "f_ac_low_limit_reconnect": 47.45,
+        "f_ac_high_limit_reconnect": 52.0,
+        "t_ac_low_voltage_reconnect": 1.26,
+        "t_ac_high_voltage_reconnect": 0.52,
+        "t_ac_low_freq_reconnect": 0.01,
+        "t_ac_high_freq_reconnect": 0.28,
+        "v_ac_low_limit_grid": 175.5,
+        "v_ac_high_limit_grid": 283.7,
+        "f_ac_low_limit_grid": 47.0,
+        "f_ac_high_limit_grid": 52.0,
         "v_ac_10min_protect": 274.0,
         "battery_nominal_power": None,
         "battery_nominal_current": None,
@@ -2097,3 +2097,112 @@ def test_three_phase_grid_config_gaps_decode_from_populated_cache():
     assert d["voltage_reactive_power_percentage"] == 50
     assert d["export_power_limit"] == 3680
     assert d["enable_export_limit"] is True
+
+
+@pytest.mark.parametrize(
+    "old_name,new_name,hr,raw_value,expected",
+    [
+        # Trip band (HR63-70)
+        ("v_ac_low_limit_1", "v_ac_low_limit_trip", 63, 2060, 206.0),
+        ("v_ac_high_limit_1", "v_ac_high_limit_trip", 64, 2740, 274.0),
+        ("f_ac_low_limit_1", "f_ac_low_limit_trip", 65, 4700, 47.0),
+        ("f_ac_high_limit_1", "f_ac_high_limit_trip", 66, 5198, 51.98),
+        ("t_ac_low_voltage_1", "t_ac_low_voltage_trip", 67, 126, 1.26),
+        ("t_ac_high_voltage_1", "t_ac_high_voltage_trip", 68, 27, 0.27),
+        ("t_ac_low_freq_1", "t_ac_low_freq_trip", 69, 24, 0.24),
+        ("t_ac_high_freq_1", "t_ac_high_freq_trip", 70, 28, 0.28),
+        # Reconnect band (HR71-78)
+        ("v_ac_low_limit_2", "v_ac_low_limit_reconnect", 71, 1840, 184.0),
+        ("v_ac_high_limit_2", "v_ac_high_limit_reconnect", 72, 2620, 262.0),
+        ("f_ac_low_limit_2", "f_ac_low_limit_reconnect", 73, 4745, 47.45),
+        ("f_ac_high_limit_2", "f_ac_high_limit_reconnect", 74, 5200, 52.0),
+        ("t_ac_low_voltage_2", "t_ac_low_voltage_reconnect", 75, 126, 1.26),
+        ("t_ac_high_voltage_2", "t_ac_high_voltage_reconnect", 76, 52, 0.52),
+        ("t_ac_low_freq_2", "t_ac_low_freq_reconnect", 77, 1, 0.01),
+        ("t_ac_high_freq_2", "t_ac_high_freq_reconnect", 78, 28, 0.28),
+        # Grid band (HR79-82)
+        ("v_ac_low_limit_3", "v_ac_low_limit_grid", 79, 1755, 175.5),
+        ("v_ac_high_limit_3", "v_ac_high_limit_grid", 80, 2837, 283.7),
+        ("f_ac_low_limit_3", "f_ac_low_limit_grid", 81, 4700, 47.0),
+        ("f_ac_high_limit_3", "f_ac_high_limit_grid", 82, 5200, 52.0),
+    ],
+)
+def test_grid_protection_rename_and_deprecated_alias_single_phase(old_name, new_name, hr, raw_value, expected):
+    """HR(63-82) renamed _1/_2/_3 → _trip/_reconnect/_grid; old names are deprecated aliases."""
+    cache = RegisterCache({HR(hr): raw_value})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+
+    # New name returns the value with no warning.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert getattr(inv, new_name) == pytest.approx(expected)  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    # Deprecated alias warns and returns the same value.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert getattr(inv, old_name) == pytest.approx(expected)  # type: ignore[attr-defined]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert new_name in str(deprecations[0].message)
+
+    # model_dump() uses the new name only.
+    dumped = inv.model_dump()
+    assert new_name in dumped
+    assert old_name not in dumped
+
+
+@pytest.mark.parametrize(
+    "old_name,new_name,hr,raw_value,expected",
+    [
+        # Trip band (HR1018-1021)
+        ("v_grid_low_limit_1", "v_grid_low_limit_trip", 1018, 2060, 206.0),
+        ("v_grid_high_limit_1", "v_grid_high_limit_trip", 1019, 2740, 274.0),
+        ("f_grid_low_limit_1", "f_grid_low_limit_trip", 1020, 4700, 47.0),
+        ("f_grid_high_limit_1", "f_grid_high_limit_trip", 1021, 5198, 51.98),
+        # Reconnect band (HR1022-1025)
+        ("v_grid_low_limit_2", "v_grid_low_limit_reconnect", 1022, 1840, 184.0),
+        ("v_grid_high_limit_2", "v_grid_high_limit_reconnect", 1023, 2620, 262.0),
+        ("f_grid_low_limit_2", "f_grid_low_limit_reconnect", 1024, 4745, 47.45),
+        ("f_grid_high_limit_2", "f_grid_high_limit_reconnect", 1025, 5200, 52.0),
+        # Grid band (HR1026-1029)
+        ("v_grid_low_limit_3", "v_grid_low_limit_grid", 1026, 1755, 175.5),
+        ("v_grid_high_limit_3", "v_grid_high_limit_grid", 1027, 2837, 283.7),
+        ("f_grid_low_limit_3", "f_grid_low_limit_grid", 1028, 4700, 47.0),
+        ("f_grid_high_limit_3", "f_grid_high_limit_grid", 1029, 5200, 52.0),
+        # Time limits (HR1034-1041)
+        ("time_grid_low_voltage_limit_1", "time_grid_low_voltage_limit_trip", 1034, 126, 1.26),
+        ("time_grid_high_voltage_limit_1", "time_grid_high_voltage_limit_trip", 1035, 27, 0.27),
+        ("time_grid_low_voltage_limit_2", "time_grid_low_voltage_limit_reconnect", 1036, 126, 1.26),
+        ("time_grid_high_voltage_limit_2", "time_grid_high_voltage_limit_reconnect", 1037, 52, 0.52),
+        ("time_grid_low_freq_limit_1", "time_grid_low_freq_limit_trip", 1038, 1, 0.01),
+        ("time_grid_high_freq_limit_1", "time_grid_high_freq_limit_trip", 1039, 28, 0.28),
+        ("time_grid_low_freq_limit_2", "time_grid_low_freq_limit_reconnect", 1040, 1, 0.01),
+        ("time_grid_high_freq_limit_2", "time_grid_high_freq_limit_reconnect", 1041, 28, 0.28),
+    ],
+)
+def test_grid_protection_rename_and_deprecated_alias_three_phase(old_name, new_name, hr, raw_value, expected):
+    """HR(1018-1041) renamed _1/_2/_3 → _trip/_reconnect/_grid; old names are deprecated aliases."""
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+
+    cache = RegisterCache({HR(hr): raw_value})
+    inv = ThreePhaseInverter.from_register_cache(cache)
+
+    # New name returns the value with no warning.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert getattr(inv, new_name) == pytest.approx(expected)  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    # Deprecated alias warns and returns the same value.
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert getattr(inv, old_name) == pytest.approx(expected)  # type: ignore[attr-defined]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert new_name in str(deprecations[0].message)
+
+    # model_dump() uses the new name only.
+    dumped = inv.model_dump()
+    assert new_name in dumped
+    assert old_name not in dumped
