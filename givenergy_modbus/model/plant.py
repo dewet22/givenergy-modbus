@@ -235,8 +235,8 @@ class PlantCapabilities(BaseModel):
         lv_battery_addresses: list[int] | None = None,
         bcu_stacks: list[tuple[int, int]] | None = None,
         aio_battery_module_addresses: list[int] | None = None,
-        hv_bmu_addresses: list[int] | None = None,
         lv_bcu_address: int | None = None,
+        hv_bmu_addresses: list[int] | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -259,10 +259,10 @@ class PlantCapabilities(BaseModel):
             kwargs["bcu_stacks"] = bcu_stacks
         if aio_battery_module_addresses is not None:
             kwargs["aio_battery_module_addresses"] = aio_battery_module_addresses
-        if hv_bmu_addresses is not None:
-            kwargs["hv_bmu_addresses"] = hv_bmu_addresses
         if lv_bcu_address is not None:
             kwargs["lv_bcu_address"] = lv_bcu_address
+        if hv_bmu_addresses is not None:
+            kwargs["hv_bmu_addresses"] = hv_bmu_addresses
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 
