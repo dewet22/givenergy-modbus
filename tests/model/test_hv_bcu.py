@@ -1,6 +1,6 @@
 import pytest
 
-from givenergy_modbus.model.hv_bcu import Bcu, Bmu
+from givenergy_modbus.model.hv_bcu import Bcu, BcuStatus, Bmu, _bcu_status_from
 from givenergy_modbus.model.register import IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
@@ -41,6 +41,13 @@ def test_bcu_from_synthetic_registers():
             IR(98): 2000,  # nominal_capacity_ah = 200.0 Ah
             IR(99): 1800,  # remaining_capacity_ah = 180.0 Ah
             IR(100): 120,  # number_of_cycles = 12.0
+            # Diagnostic tail (IR(107)–IR(119)) — raw read-back
+            IR(107): 7,  # fan_fault_code
+            IR(113): 1,  # self_check_status
+            IR(114): 0x0001,  # pack_warning_status H
+            IR(115): 0x0002,  # pack_warning_status L → 0x00010002
+            IR(118): 0x0000,
+            IR(119): 0x0010,  # pack_fault_status → 0x00000010
         }
     )
     bcu = Bcu.from_register_cache(cache)
@@ -57,12 +64,29 @@ def test_bcu_from_synthetic_registers():
     assert bcu.battery_nominal_capacity_ah == 200.0  # type: ignore[attr-defined]
     assert bcu.remaining_battery_capacity_ah == 180.0  # type: ignore[attr-defined]
     assert bcu.number_of_cycles == pytest.approx(12.0)  # type: ignore[attr-defined]
+    # IR(70) = 1 → PRECHARGING; raw status stays available alongside the typed label
+    assert bcu.status == 1  # type: ignore[attr-defined]
+    assert bcu.status_label is BcuStatus.PRECHARGING  # type: ignore[attr-defined]
+    # Diagnostic read-back (raw, un-decoded)
+    assert bcu.fan_fault_code == 7  # type: ignore[attr-defined]
+    assert bcu.self_check_status == 1  # type: ignore[attr-defined]
+    assert bcu.pack_warning_status == 0x00010002  # type: ignore[attr-defined]
+    assert bcu.pack_fault_status == 0x00000010  # type: ignore[attr-defined]
 
 
 def test_bcu_is_valid_empty_version_string():
     cache = _cache({IR(60): 0, IR(61): 0, IR(62): 0, IR(63): 0})
     bcu = Bcu.from_register_cache(cache)
     assert bcu.is_valid() is False
+
+
+def test_bcu_status_label_decode():
+    # Every named BCU_STATUS code maps to its label; unknown codes degrade to None.
+    assert _bcu_status_from(0) is BcuStatus.BMS_INITIALISING
+    assert _bcu_status_from(5) is BcuStatus.ERROR
+    assert _bcu_status_from(8) is BcuStatus.PRODUCTION
+    assert _bcu_status_from(99) is None
+    assert _bcu_status_from(None) is None
 
 
 # ---------------------------------------------------------------------------

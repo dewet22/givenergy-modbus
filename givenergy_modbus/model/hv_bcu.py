@@ -14,6 +14,7 @@ decode read the BCU's own cluster registers as cell data — see #265. Not yet w
 
 import warnings
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import Any, ClassVar
 
 from pydantic import ConfigDict, create_model
@@ -21,6 +22,35 @@ from pydantic import ConfigDict, create_model
 from givenergy_modbus.model.register import IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
+
+
+class BcuStatus(IntEnum):
+    """HV BCU operating status (IR(70)).
+
+    Codes per the GivEnergy Installer app v1.154.3 BCU_STATUS enum. Raw int stays
+    accessible via ``status``; the typed label is exposed as ``status_label``, which
+    decodes unknown codes to ``None`` rather than raising.
+    """
+
+    BMS_INITIALISING = 0
+    PRECHARGING = 1
+    STANDBY = 2
+    CHARGING = 3
+    DISCHARGING = 4
+    ERROR = 5
+    UPDATING = 6
+    POWERED_OFF = 7
+    PRODUCTION = 8
+
+
+def _bcu_status_from(code: int | None) -> BcuStatus | None:
+    """Lenient BcuStatus decode — returns None for unknown codes."""
+    if code is None:
+        return None
+    try:
+        return BcuStatus(code)
+    except ValueError:
+        return None
 
 
 class BcuRegisterGetter(RegisterGetter):
@@ -34,6 +64,7 @@ class BcuRegisterGetter(RegisterGetter):
         "cluster_cell_voltage": Def(C.uint16, None, IR(67)),
         "cluster_cell_temperature": Def(C.uint16, None, IR(68)),
         "status": Def(C.uint16, None, IR(70)),
+        "status_label": Def(C.uint16, _bcu_status_from, IR(70)),
         "battery_voltage": Def(C.deci, None, IR(73), min=0.0, max=1000.0),
         "load_voltage": Def(C.deci, None, IR(74), min=0.0, max=1000.0),
         "battery_current": Def(C.int16, C.deci, IR(76), min=-500.0, max=500.0),
@@ -57,6 +88,17 @@ class BcuRegisterGetter(RegisterGetter):
         "max_charge_voltage": Def(C.deci, None, IR(103)),
         "min_discharge_current": Def(C.deci, None, IR(104)),
         "max_charge_current": Def(C.deci, None, IR(105)),
+        # Diagnostic tail (IR(107)–IR(119)): inside the polled IR(60–119) window but
+        # previously dropped. Names per the GivEnergy Installer app v1.154.3
+        # HV_BCU_INPUT_REGISTER. Exposed as raw read-back: the bit-level semantics of
+        # the warning/protection/fault words are not yet enum-confirmed, so consumers
+        # can detect a non-zero condition without the library implying a decode it
+        # cannot yet substantiate (cf. the HR(300–359) read-back precedent).
+        "fan_fault_code": Def(C.uint16, None, IR(107)),
+        "self_check_status": Def(C.uint16, None, IR(113)),
+        "pack_warning_status": Def(C.uint32, None, IR(114), IR(115)),
+        "pack_protection_status": Def(C.uint32, None, IR(116), IR(117)),
+        "pack_fault_status": Def(C.uint32, None, IR(118), IR(119)),
     }
 
 

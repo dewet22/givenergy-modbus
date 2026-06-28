@@ -1307,6 +1307,7 @@ def test_from_actual():
         "t_charger": 31.8,
         "t_battery": 19.0,
         "charger_warning_code": 0,
+        "charger_warning_messages": [],
         "i_grid_port": 2.66,
         "battery_soc": 57,
         "system_time": datetime(2022, 4, 27, 23, 29, 18),

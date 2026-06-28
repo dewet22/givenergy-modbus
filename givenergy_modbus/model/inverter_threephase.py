@@ -32,6 +32,12 @@ def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
     parallel-operation word at IR(1308) is documented in some firmware but
     not surfaced by the model LUT (no `inverter_fault_codes_8` field), so the
     decoder only ships tables for the wired-up range.
+
+    The lists below are LSB-indexed: position i corresponds to GE bit i (value
+    bit i = 1 << i). Cross-validated against the GivEnergy Installer app
+    v1.154.3 THREE_PHASE_HYBRID_FAULT_CODE_WORD_0..7 enums; all named GE bits
+    confirmed present. Entries absent from the GE enum are kept as-is from the
+    original britkat-sourced table and are not verified against hardware.
     """
     if val is None:
         return None
@@ -183,8 +189,7 @@ def _inverter_fault_code2(val: int, word: int) -> list[str] | None:
     ]
     if word < 0 or word >= len(_WORDS):
         return None
-    bits = f"{val:016b}"
-    return [f for i, b in enumerate(bits) if b == "1" and (f := _WORDS[word][i]) is not None]
+    return [f for i, f in enumerate(_WORDS[word]) if (val >> i) & 1 and f is not None]
 
 
 # Registers that are three-phase specific or that shadow single-phase registers at higher addresses.
