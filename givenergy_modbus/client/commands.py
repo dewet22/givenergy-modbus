@@ -113,6 +113,28 @@ class RegisterMap:
     EMS_EXPORT_TARGET_SOC_3 = 2070
     EMS_EXPORT_POWER_LIMIT = 2071
     # --- Installer-tier registers (accessible only via Client.installer_command()) ---
+    # Grid protection — all require confirm=True (G98/G99/G100 compliance impact)
+    V_AC_LOW_LIMIT_TRIP = 63
+    V_AC_HIGH_LIMIT_TRIP = 64
+    F_AC_LOW_LIMIT_TRIP = 65
+    F_AC_HIGH_LIMIT_TRIP = 66
+    T_AC_LOW_VOLTAGE_TRIP = 67
+    T_AC_HIGH_VOLTAGE_TRIP = 68
+    T_AC_LOW_FREQ_TRIP = 69
+    T_AC_HIGH_FREQ_TRIP = 70
+    V_AC_LOW_LIMIT_RECONNECT = 71
+    V_AC_HIGH_LIMIT_RECONNECT = 72
+    F_AC_LOW_LIMIT_RECONNECT = 73
+    F_AC_HIGH_LIMIT_RECONNECT = 74
+    T_AC_LOW_VOLTAGE_RECONNECT = 75
+    T_AC_HIGH_VOLTAGE_RECONNECT = 76
+    T_AC_LOW_FREQ_RECONNECT = 77
+    T_AC_HIGH_FREQ_RECONNECT = 78
+    V_AC_LOW_LIMIT_GRID = 79
+    V_AC_HIGH_LIMIT_GRID = 80
+    F_AC_LOW_LIMIT_GRID = 81
+    F_AC_HIGH_LIMIT_GRID = 82
+    V_AC_10MIN_PROTECT = 83
     ANTI_ISLANDING_DETECTION = 115
     RESET_ENERGY_TOTALS = 162
     GRID_IMPORT_LIMIT = 101
@@ -142,7 +164,7 @@ class RegisterMap:
     RESTORE_FACTORY_DEFAULTS = 5004
 
 
-def _as_int(val: int, name: str) -> int:
+def _as_int(val: int | float, name: str) -> int:
     """Validate a numeric command argument as an integral number (audit L1).
 
     Fails loud on the silent-coercion caller-error class: bool subclasses int (True would
@@ -979,6 +1001,294 @@ def set_peak_shaving_export_limit_enabled(enabled: bool) -> list[WriteHoldingReg
 def set_peak_shaving_enabled(enabled: bool) -> list[WriteHoldingRegisterRequest]:
     """Enable or disable peak shaving (HR20002). Installer-tier."""
     return [WriteHoldingRegisterRequest(RegisterMap.PEAK_SHAVING_ENABLED, 1 if enabled else 0, installer=True)]
+
+
+# --- Grid protection setters — installer-tier, require confirm=True ---
+# These registers govern trip/reconnect/grid-band thresholds for G98/G99/G100 compliance.
+# Incorrect values can cause loss of grid-code certification. An installer is responsible
+# for verifying that settings comply with the applicable grid code before writing.
+
+
+def _grid_confirm(fn_name: str, confirm: bool) -> None:
+    if not confirm:
+        raise ValueError(
+            f"{fn_name}() modifies a grid-protection register — pass confirm=True to proceed. "
+            "Verify the new value complies with G98/G99/G100 (or the applicable grid code) "
+            "before writing."
+        )
+
+
+def set_v_ac_low_limit_trip(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-voltage trip threshold (HR63). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_low_limit_trip", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_low_limit_trip must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_TRIP, val, installer=True)]
+
+
+def set_v_ac_high_limit_trip(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-voltage trip threshold (HR64). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_high_limit_trip", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_high_limit_trip must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_TRIP, val, installer=True)]
+
+
+def set_f_ac_low_limit_trip(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-frequency trip threshold (HR65). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_low_limit_trip", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_low_limit_trip must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_TRIP, val, installer=True)]
+
+
+def set_f_ac_high_limit_trip(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-frequency trip threshold (HR66). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_high_limit_trip", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_high_limit_trip must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_TRIP, val, installer=True)]
+
+
+def set_t_ac_low_voltage_trip(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-voltage trip time (HR67). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_low_voltage_trip", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_low_voltage_trip must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_VOLTAGE_TRIP, val, installer=True)]
+
+
+def set_t_ac_high_voltage_trip(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-voltage trip time (HR68). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_high_voltage_trip", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_high_voltage_trip must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_VOLTAGE_TRIP, val, installer=True)]
+
+
+def set_t_ac_low_freq_trip(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-frequency trip time (HR69). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_low_freq_trip", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_low_freq_trip must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_FREQ_TRIP, val, installer=True)]
+
+
+def set_t_ac_high_freq_trip(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-frequency trip time (HR70). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 trip band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_high_freq_trip", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_high_freq_trip must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_FREQ_TRIP, val, installer=True)]
+
+
+def set_v_ac_low_limit_reconnect(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-voltage reconnect threshold (HR71). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_low_limit_reconnect", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_low_limit_reconnect must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_RECONNECT, val, installer=True)]
+
+
+def set_v_ac_high_limit_reconnect(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-voltage reconnect threshold (HR72). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_high_limit_reconnect", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_high_limit_reconnect must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_RECONNECT, val, installer=True)]
+
+
+def set_f_ac_low_limit_reconnect(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-frequency reconnect threshold (HR73). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_low_limit_reconnect", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_low_limit_reconnect must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_RECONNECT, val, installer=True)]
+
+
+def set_f_ac_high_limit_reconnect(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-frequency reconnect threshold (HR74). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_high_limit_reconnect", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_high_limit_reconnect must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_RECONNECT, val, installer=True)]
+
+
+def set_t_ac_low_voltage_reconnect(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-voltage reconnect time (HR75). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_low_voltage_reconnect", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_low_voltage_reconnect must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_VOLTAGE_RECONNECT, val, installer=True)]
+
+
+def set_t_ac_high_voltage_reconnect(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-voltage reconnect time (HR76). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_high_voltage_reconnect", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_high_voltage_reconnect must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_VOLTAGE_RECONNECT, val, installer=True)]
+
+
+def set_t_ac_low_freq_reconnect(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-frequency reconnect time (HR77). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_low_freq_reconnect", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_low_freq_reconnect must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_LOW_FREQ_RECONNECT, val, installer=True)]
+
+
+def set_t_ac_high_freq_reconnect(seconds: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-frequency reconnect time (HR78). Installer-tier. Value in seconds (centi-scaled).
+
+    Part of the G98/G99/G100 reconnect band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(seconds × 100)).
+    """
+    _grid_confirm("set_t_ac_high_freq_reconnect", confirm)
+    val = _as_int(seconds * 100, "seconds × 100")
+    if val < 0:
+        raise ValueError(f"t_ac_high_freq_reconnect must be non-negative, got {seconds}")
+    return [WriteHoldingRegisterRequest(RegisterMap.T_AC_HIGH_FREQ_RECONNECT, val, installer=True)]
+
+
+def set_v_ac_low_limit_grid(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-voltage grid-band threshold (HR79). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 grid band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_low_limit_grid", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_low_limit_grid must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_LOW_LIMIT_GRID, val, installer=True)]
+
+
+def set_v_ac_high_limit_grid(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-voltage grid-band threshold (HR80). Installer-tier. Range 0.0–500.0 V.
+
+    Part of the G98/G99/G100 grid band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_high_limit_grid", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_high_limit_grid must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_HIGH_LIMIT_GRID, val, installer=True)]
+
+
+def set_f_ac_low_limit_grid(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC under-frequency grid-band threshold (HR81). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 grid band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_low_limit_grid", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_low_limit_grid must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_LOW_LIMIT_GRID, val, installer=True)]
+
+
+def set_f_ac_high_limit_grid(freq: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set AC over-frequency grid-band threshold (HR82). Installer-tier. Range 40.0–70.0 Hz.
+
+    Part of the G98/G99/G100 grid band. Pass confirm=True after verifying grid-code compliance.
+    Value is written as centi (int(freq × 100)).
+    """
+    _grid_confirm("set_f_ac_high_limit_grid", confirm)
+    val = _as_int(freq * 100, "freq × 100")
+    if not (4000 <= val <= 7000):
+        raise ValueError(f"f_ac_high_limit_grid must be 40.0–70.0 Hz, got {freq}")
+    return [WriteHoldingRegisterRequest(RegisterMap.F_AC_HIGH_LIMIT_GRID, val, installer=True)]
+
+
+def set_v_ac_10min_protect(voltage: float, *, confirm: bool = False) -> list[WriteHoldingRegisterRequest]:
+    """Set 10-minute mean AC voltage protection threshold (HR83). Installer-tier. Range 0.0–500.0 V.
+
+    G98/G99/G100 10-minute mean voltage protection. Pass confirm=True after verifying grid-code compliance.
+    Value is written as deci (int(voltage × 10)).
+    """
+    _grid_confirm("set_v_ac_10min_protect", confirm)
+    val = _as_int(voltage * 10, "voltage × 10")
+    if not (0 <= val <= 5000):
+        raise ValueError(f"v_ac_10min_protect must be 0.0–500.0 V, got {voltage}")
+    return [WriteHoldingRegisterRequest(RegisterMap.V_AC_10MIN_PROTECT, val, installer=True)]
 
 
 # --- Destructive installer commands — require confirm=True ---

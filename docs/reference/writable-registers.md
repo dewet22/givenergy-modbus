@@ -224,40 +224,40 @@ See the safety note at the top of this document.
 
 ### AC grid protection — voltage and frequency limits
 
-Three-level trip scheme: level 1 is the tighter (quicker) trip, level 2 is looser,
-and HR79–83 form the third/final level including the 10-minute average voltage monitor.
-Converters for this block are inferred from the three-phase parallel block (HR1018–1042);
-unverified on live single-phase hardware.
+Three-level trip scheme confirmed against the GivEnergy Installer app:
+**trip** (HR63–70) is the tighter/faster band, **reconnect** (HR71–78) the looser outer
+band, and **grid** (HR79–82) the steady-state grid band.  HR83 is the 10-minute mean
+voltage protection.  Converters for this block are inferred from the three-phase parallel
+block (HR1018–1042); unverified on live single-phase hardware.
 
-The corresponding `Def` fields (`v_ac_low/high_limit_N`, `f_ac_low/high_limit_N`,
-`t_ac_low/high_voltage/freq_N`) are in `givenergy_modbus/model/inverter.py` and can
-be read back after a poll.  No bounds-validating `set_*` helpers exist for this block
-yet — callers must construct `WriteHoldingRegisterRequest(..., installer=True)`
-directly and validate the value against grid-code tolerances themselves.
+The corresponding `Def` fields are in `givenergy_modbus/model/inverter.py` and can be
+read back after a poll. Bounds-validating helpers (`set_v_ac_low_limit_trip`, etc.) are
+available for all 21 registers; each requires `installer=True` and `confirm=True`.
+The legacy `_1`/`_2`/`_3` field names remain as deprecation-warning aliases.
 
-| HR | Field name | Description | Unit / range |
-|---|---|---|---|
-| 63 | `v_ac_low_limit_1` | AC undervoltage limit 1 | V × 0.1; 0–500 |
-| 64 | `v_ac_high_limit_1` | AC overvoltage limit 1 | V × 0.1; 0–500 |
-| 65 | `f_ac_low_limit_1` | AC underfrequency limit 1 | Hz × 0.01; 40–70 |
-| 66 | `f_ac_high_limit_1` | AC overfrequency limit 1 | Hz × 0.01; 40–70 |
-| 67 | `t_ac_low_voltage_1` | Undervoltage 1 protection time | s × 0.01 |
-| 68 | `t_ac_high_voltage_1` | Overvoltage 1 protection time | s × 0.01 |
-| 69 | `t_ac_low_freq_1` | Underfrequency 1 protection time | s × 0.01 |
-| 70 | `t_ac_high_freq_1` | Overfrequency 1 protection time | s × 0.01 |
-| 71 | `v_ac_low_limit_2` | AC undervoltage limit 2 | V × 0.1; 0–500 |
-| 72 | `v_ac_high_limit_2` | AC overvoltage limit 2 | V × 0.1; 0–500 |
-| 73 | `f_ac_low_limit_2` | AC underfrequency limit 2 | Hz × 0.01; 40–70 |
-| 74 | `f_ac_high_limit_2` | AC overfrequency limit 2 | Hz × 0.01; 40–70 |
-| 75 | `t_ac_low_voltage_2` | Undervoltage 2 protection time | s × 0.01 |
-| 76 | `t_ac_high_voltage_2` | Overvoltage 2 protection time | s × 0.01 |
-| 77 | `t_ac_low_freq_2` | Underfrequency 2 protection time | s × 0.01 |
-| 78 | `t_ac_high_freq_2` | Overfrequency 2 protection time | s × 0.01 |
-| 79 | `v_ac_low_limit_3` | AC undervoltage limit (final) | V × 0.1; 0–500 |
-| 80 | `v_ac_high_limit_3` | AC overvoltage limit (final) | V × 0.1; 0–500 |
-| 81 | `f_ac_low_limit_3` | AC underfrequency limit (final) | Hz × 0.01; 40–70 |
-| 82 | `f_ac_high_limit_3` | AC overfrequency limit (final) | Hz × 0.01; 40–70 |
-| 83 | `v_ac_10min_protect` | AC voltage 10-minute average protection | V × 0.1; 0–500 |
+| HR | Field name | Description | Unit / range | Setter |
+|---|---|---|---|---|
+| 63 | `v_ac_low_limit_trip` | AC undervoltage trip threshold | V × 0.1; 0–500 | `set_v_ac_low_limit_trip` |
+| 64 | `v_ac_high_limit_trip` | AC overvoltage trip threshold | V × 0.1; 0–500 | `set_v_ac_high_limit_trip` |
+| 65 | `f_ac_low_limit_trip` | AC underfrequency trip threshold | Hz × 0.01; 40–70 | `set_f_ac_low_limit_trip` |
+| 66 | `f_ac_high_limit_trip` | AC overfrequency trip threshold | Hz × 0.01; 40–70 | `set_f_ac_high_limit_trip` |
+| 67 | `t_ac_low_voltage_trip` | Undervoltage trip time | s × 0.01 | `set_t_ac_low_voltage_trip` |
+| 68 | `t_ac_high_voltage_trip` | Overvoltage trip time | s × 0.01 | `set_t_ac_high_voltage_trip` |
+| 69 | `t_ac_low_freq_trip` | Underfrequency trip time | s × 0.01 | `set_t_ac_low_freq_trip` |
+| 70 | `t_ac_high_freq_trip` | Overfrequency trip time | s × 0.01 | `set_t_ac_high_freq_trip` |
+| 71 | `v_ac_low_limit_reconnect` | AC undervoltage reconnect threshold | V × 0.1; 0–500 | `set_v_ac_low_limit_reconnect` |
+| 72 | `v_ac_high_limit_reconnect` | AC overvoltage reconnect threshold | V × 0.1; 0–500 | `set_v_ac_high_limit_reconnect` |
+| 73 | `f_ac_low_limit_reconnect` | AC underfrequency reconnect threshold | Hz × 0.01; 40–70 | `set_f_ac_low_limit_reconnect` |
+| 74 | `f_ac_high_limit_reconnect` | AC overfrequency reconnect threshold | Hz × 0.01; 40–70 | `set_f_ac_high_limit_reconnect` |
+| 75 | `t_ac_low_voltage_reconnect` | Undervoltage reconnect time | s × 0.01 | `set_t_ac_low_voltage_reconnect` |
+| 76 | `t_ac_high_voltage_reconnect` | Overvoltage reconnect time | s × 0.01 | `set_t_ac_high_voltage_reconnect` |
+| 77 | `t_ac_low_freq_reconnect` | Underfrequency reconnect time | s × 0.01 | `set_t_ac_low_freq_reconnect` |
+| 78 | `t_ac_high_freq_reconnect` | Overfrequency reconnect time | s × 0.01 | `set_t_ac_high_freq_reconnect` |
+| 79 | `v_ac_low_limit_grid` | AC undervoltage grid-band threshold | V × 0.1; 0–500 | `set_v_ac_low_limit_grid` |
+| 80 | `v_ac_high_limit_grid` | AC overvoltage grid-band threshold | V × 0.1; 0–500 | `set_v_ac_high_limit_grid` |
+| 81 | `f_ac_low_limit_grid` | AC underfrequency grid-band threshold | Hz × 0.01; 40–70 | `set_f_ac_low_limit_grid` |
+| 82 | `f_ac_high_limit_grid` | AC overfrequency grid-band threshold | Hz × 0.01; 40–70 | `set_f_ac_high_limit_grid` |
+| 83 | `v_ac_10min_protect` | AC voltage 10-minute average protection | V × 0.1; 0–500 | `set_v_ac_10min_protect` |
 
 ### Grid import / anti-islanding
 

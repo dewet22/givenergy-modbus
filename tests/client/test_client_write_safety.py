@@ -614,6 +614,102 @@ async def test_installer_command_rejects_installer_register_without_flag():
         await client.installer_command([req], dry_run=True)
 
 
+# --- Grid protection setters (HR63-83) ---
+
+
+@pytest.mark.parametrize(
+    "fn_name,hr,good_voltage",
+    [
+        ("set_v_ac_low_limit_trip", 63, 200.0),
+        ("set_v_ac_high_limit_trip", 64, 270.0),
+        ("set_v_ac_low_limit_reconnect", 71, 185.0),
+        ("set_v_ac_high_limit_reconnect", 72, 260.0),
+        ("set_v_ac_low_limit_grid", 79, 175.0),
+        ("set_v_ac_high_limit_grid", 80, 285.0),
+        ("set_v_ac_10min_protect", 83, 270.0),
+    ],
+)
+def test_grid_protection_voltage_setter(fn_name, hr, good_voltage):
+    import importlib
+
+    fn = getattr(importlib.import_module("givenergy_modbus.client.commands"), fn_name)
+
+    # confirm=False (default) raises
+    with pytest.raises(ValueError, match="confirm=True"):
+        fn(good_voltage)
+
+    # Mid-range value accepted, installer flag set, correct register
+    reqs = fn(good_voltage, confirm=True)
+    assert len(reqs) == 1
+    assert reqs[0].installer
+    assert reqs[0].register == hr
+    assert reqs[0].value == int(good_voltage * 10)
+
+    # Out-of-range raises (above 500.0 V)
+    with pytest.raises(ValueError):
+        fn(500.1, confirm=True)
+
+
+@pytest.mark.parametrize(
+    "fn_name,hr,good_freq",
+    [
+        ("set_f_ac_low_limit_trip", 65, 47.0),
+        ("set_f_ac_high_limit_trip", 66, 51.5),
+        ("set_f_ac_low_limit_reconnect", 73, 47.5),
+        ("set_f_ac_high_limit_reconnect", 74, 52.0),
+        ("set_f_ac_low_limit_grid", 81, 47.0),
+        ("set_f_ac_high_limit_grid", 82, 52.0),
+    ],
+)
+def test_grid_protection_freq_setter(fn_name, hr, good_freq):
+    import importlib
+
+    fn = getattr(importlib.import_module("givenergy_modbus.client.commands"), fn_name)
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        fn(good_freq)
+
+    reqs = fn(good_freq, confirm=True)
+    assert len(reqs) == 1
+    assert reqs[0].installer
+    assert reqs[0].register == hr
+    assert reqs[0].value == int(good_freq * 100)
+
+    with pytest.raises(ValueError):
+        fn(70.1, confirm=True)
+
+
+@pytest.mark.parametrize(
+    "fn_name,hr",
+    [
+        ("set_t_ac_low_voltage_trip", 67),
+        ("set_t_ac_high_voltage_trip", 68),
+        ("set_t_ac_low_freq_trip", 69),
+        ("set_t_ac_high_freq_trip", 70),
+        ("set_t_ac_low_voltage_reconnect", 75),
+        ("set_t_ac_high_voltage_reconnect", 76),
+        ("set_t_ac_low_freq_reconnect", 77),
+        ("set_t_ac_high_freq_reconnect", 78),
+    ],
+)
+def test_grid_protection_time_setter(fn_name, hr):
+    import importlib
+
+    fn = getattr(importlib.import_module("givenergy_modbus.client.commands"), fn_name)
+
+    with pytest.raises(ValueError, match="confirm=True"):
+        fn(1.0)
+
+    reqs = fn(2.5, confirm=True)
+    assert len(reqs) == 1
+    assert reqs[0].installer
+    assert reqs[0].register == hr
+    assert reqs[0].value == 250  # 2.5s × 100
+
+    with pytest.raises(ValueError):
+        fn(-0.01, confirm=True)
+
+
 # --- PDU: installer=True but register not in INSTALLER_WRITE_REGISTERS ---
 
 
