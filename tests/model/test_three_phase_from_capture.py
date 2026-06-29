@@ -92,10 +92,10 @@ def test_three_phase_grid_block_decode_from_capture(replayed_plant: Plant):
     assert inv.p_grid_apparent == pytest.approx(652.0)  # type: ignore[attr-defined]
     assert inv.p_load_all == pytest.approx(339.0)  # type: ignore[attr-defined]
 
-    # Per-phase inverter output — all zero on this idle capture.
-    assert inv.p_out_ac1 == pytest.approx(0.0)  # type: ignore[attr-defined]
-    assert inv.p_out_ac2 == pytest.approx(0.0)  # type: ignore[attr-defined]
-    assert inv.p_out_ac3 == pytest.approx(0.0)  # type: ignore[attr-defined]
+    # Per-phase inverter active power IR(1091-1093) — all zero on this idle capture.
+    assert inv.p_inverter_active_ac1 == 0  # type: ignore[attr-defined]
+    assert inv.p_inverter_active_ac2 == 0  # type: ignore[attr-defined]
+    assert inv.p_inverter_active_ac3 == 0  # type: ignore[attr-defined]
 
     # Inherited single-phase grid nodes — IR(30) p_grid_out reads as 0 on 3-phase. With the
     # inverter idle here we can't tell whether 3ph firmware ever populates it; #141 stays
@@ -103,12 +103,13 @@ def test_three_phase_grid_block_decode_from_capture(replayed_plant: Plant):
     assert inv.p_grid_out == 0  # type: ignore[attr-defined]
     assert inv.p_grid_out_ph1 == 0  # type: ignore[attr-defined]
 
-    # Per-phase loads IR(1083-1085) — IR(1083) raw=65456 and IR(1084) raw=65351 silently
-    # decode to ``None`` because the current ``Def(C.deci, ...)`` uses unsigned uint16 and
-    # the values fall outside the (0, 6500) bounds. Read as int16 they're -8.0 W / -18.5 W
-    # respectively, which would make sense as net per-phase load on an exporting house.
-    # Calling that out here rather than asserting either interpretation; tracked as a
-    # follow-up because confirming wants an active-grid 3-phase capture.
-    assert inv.p_load_ac1 is None  # type: ignore[attr-defined]
-    assert inv.p_load_ac2 is None  # type: ignore[attr-defined]
-    assert inv.p_load_ac3 == pytest.approx(26.9)  # type: ignore[attr-defined]
+    # Per-phase grid-METER active power IR(1083-1085) — signed watts (#185). The old unsigned
+    # C.deci decode dropped IR1083/1084 as out-of-bounds (raw 65456/65351) and mis-scaled IR1085;
+    # as signed int16 they read -80 / -185 / +269 W, summing to +4 W — matching p_meter_export
+    # (4.0 W) on this exporting house. That sum identity is what confirms the signed-watt scale.
+    assert inv.p_meter_active_ac1 == -80  # type: ignore[attr-defined]
+    assert inv.p_meter_active_ac2 == -185  # type: ignore[attr-defined]
+    assert inv.p_meter_active_ac3 == 269  # type: ignore[attr-defined]
+    assert (  # the per-phase sum reconciles with the aggregate meter export
+        inv.p_meter_active_ac1 + inv.p_meter_active_ac2 + inv.p_meter_active_ac3  # type: ignore[attr-defined]
+    ) == pytest.approx(inv.p_meter_export)  # type: ignore[attr-defined]
