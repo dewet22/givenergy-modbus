@@ -1444,6 +1444,90 @@ def test_resolve_model(raw_dtc, arm_fw, expected):
     assert resolve_model(raw_dtc, arm_fw) is expected
 
 
+# Characterisation + extension lock for _DTC_RATED_POWER (#320). Drives the real inverter_max_power
+# property via HR(0). The pre-existing codes pin the table that previously had no test; the codes
+# commented "app v4.0.7" are the additive vendor entries (all overlaps agreed exactly, so existing
+# values are unchanged). Expected watts are written explicitly here, independent of the source dict.
+@pytest.mark.parametrize(
+    "code,watts",
+    [
+        ("2001", 5000),
+        ("2002", 4600),
+        ("2003", 3600),
+        ("2101", 5000),
+        ("2102", 4600),
+        ("2103", 3600),
+        ("2104", 6000),
+        ("2105", 7000),
+        ("2106", 8000),
+        ("2201", 5000),
+        ("2202", 4600),
+        ("2203", 3600),
+        ("2204", 6000),
+        ("2205", 7000),
+        ("2206", 8000),
+        ("2301", 5000),
+        ("2302", 4600),
+        ("2303", 3600),
+        ("2304", 6000),
+        ("2401", 5000),
+        ("2402", 4600),
+        ("2403", 3600),
+        ("2404", 6000),
+        ("2405", 7000),  # app v4.0.7
+        ("2406", 8000),
+        ("2501", 5000),
+        ("2502", 4600),
+        ("2503", 3600),
+        ("2504", 6000),  # app v4.0.7
+        ("2505", 7000),
+        ("2506", 8000),  # app v4.0.7
+        ("3001", 3000),
+        ("3002", 3600),
+        ("4001", 6000),
+        ("4002", 8000),
+        ("4003", 10000),
+        ("4004", 11000),
+        ("4005", 15000),
+        ("4006", 20000),
+        ("4007", 5000),
+        ("4101", 30000),
+        ("4103", 50000),  # app v4.0.7
+        ("6001", 6000),
+        ("6002", 8000),
+        ("6003", 10000),
+        ("6004", 11000),
+        ("6005", 15000),  # app v4.0.7
+        ("6006", 20000),  # app v4.0.7
+        ("7001", 12000),
+        ("8001", 6000),
+        ("8002", 3600),
+        ("8003", 5000),
+        ("8101", 6000),
+        ("8102", 8000),
+        ("8103", 10000),
+        ("8201", 6000),
+        ("8202", 8000),
+        ("8203", 10000),
+        ("8204", 12000),
+        ("8205", 11000),
+        ("8301", 3600),
+        ("8302", 4600),
+        ("8303", 5000),  # app v4.0.7
+        ("8304", 6000),
+    ],
+)
+def test_inverter_max_power_rated_table(code, watts):
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): int(code, 16)}))
+    assert inv.inverter_max_power == watts  # type: ignore[attr-defined]
+
+
+def test_inverter_max_power_unknown_code_is_none():
+    """An unmapped device-type code returns None (e.g. the rating-less Gateway codes)."""
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x7002}))
+    assert inv.inverter_max_power is None  # type: ignore[attr-defined]
+
+
 @pytest.mark.parametrize(
     "model,expected",
     [

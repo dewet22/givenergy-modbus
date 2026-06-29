@@ -96,7 +96,10 @@ _DTC_PREFIX_TO_MODEL: dict[str, Model] = {
 AC_COUPLED_MODELS: frozenset[Model] = frozenset({Model.AC, Model.AC_3PH})
 
 # Rated AC output power in watts, keyed by 4-char hex device type code.
-# Sourced from britkat1980/giv_tcp:dev3; likely not exhaustive for all variants.
+# Original entries from britkat1980/giv_tcp:dev3. Entries marked "(app v4.0.7)" were added from
+# the GivEnergy app's authoritative HR(0) model-code table (#320): all 36 codes that overlapped the
+# existing table agreed exactly, so the additions are purely new codes (the table only resolves codes
+# that previously returned None). The two Gateway codes (7001/7002) carry no kW rating in the table.
 _DTC_RATED_POWER: dict[str, int] = {
     "2001": 5000,
     "2002": 4600,
@@ -117,12 +120,35 @@ _DTC_RATED_POWER: dict[str, int] = {
     "2302": 4600,
     "2303": 3600,
     "2304": 6000,
+    "2401": 5000,  # ALPS-CUBE-HY5.0 5KW (app v4.0.7)
+    "2402": 4600,  # ALPS-CUBE-HY5.0 4.6KW (app v4.0.7)
+    "2403": 3600,  # ALPS-CUBE-HY5.0 3.6KW (app v4.0.7)
+    "2404": 6000,  # ALPS-CUBE-HY5.0 6KW (app v4.0.7)
+    "2405": 7000,  # ALPS-CUBE-HY5.0 7KW (app v4.0.7)
+    "2406": 8000,  # ALPS-CUBE-HY5.0 8KW (app v4.0.7)
+    "2501": 5000,  # POL-HY-8.0-GL 5KW (app v4.0.7)
+    "2502": 4600,  # POL-HY-8.0-GL 4.6KW (app v4.0.7)
+    "2503": 3600,  # POL-HY-8.0-GL 3.6KW (app v4.0.7)
+    "2504": 6000,  # POL-HY-8.0-GL 6KW (app v4.0.7)
+    "2505": 7000,  # POL-HY-8.0-GL 7KW (app v4.0.7)
+    "2506": 8000,  # POL-HY-8.0-GL 8KW (app v4.0.7)
     "3001": 3000,
     "3002": 3600,
     "4001": 6000,
     "4002": 8000,
     "4003": 10000,
     "4004": 11000,
+    "4005": 15000,  # GIV-3HY-20-HV 15KW (app v4.0.7)
+    "4006": 20000,  # GIV-3HY-20-HV 20KW (app v4.0.7)
+    "4007": 5000,  # GIV-PM-30/50 5KW (app v4.0.7)
+    "4101": 30000,  # GIV-PM-30/50 30KW (app v4.0.7)
+    "4103": 50000,  # GIV-PM-30/50 50KW (app v4.0.7)
+    "6001": 6000,  # AcCouple 6KW (app v4.0.7)
+    "6002": 8000,  # AcCouple 8KW (app v4.0.7)
+    "6003": 10000,  # AcCouple 10KW (app v4.0.7)
+    "6004": 11000,  # AcCouple 11KW (app v4.0.7)
+    "6005": 15000,  # AcCouple 15KW (app v4.0.7)
+    "6006": 20000,  # AcCouple 20KW (app v4.0.7)
     "7001": 12000,
     "8001": 6000,
     "8002": 3600,
@@ -134,6 +160,10 @@ _DTC_RATED_POWER: dict[str, int] = {
     "8202": 8000,
     "8203": 10000,
     "8204": 12000,
+    "8205": 11000,  # All in One-HY 11KW (app v4.0.7)
+    "8301": 3600,  # Battery Ready 3.6KW (app v4.0.7)
+    "8302": 4600,  # Battery Ready 4.6KW (app v4.0.7)
+    "8303": 5000,  # Battery Ready 5KW (app v4.0.7)
     "8304": 6000,
 }
 
