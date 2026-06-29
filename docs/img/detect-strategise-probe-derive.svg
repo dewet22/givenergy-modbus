@@ -1,6 +1,6 @@
 <svg width="680" viewBox="0 0 680 572" role="img" xmlns="http://www.w3.org/2000/svg">
 <title>detect() refactored into a strategise / probe / derive loop</title>
-<desc>detect() reads the model, then loops each peripheral step through a pure _strategise policy that returns ProbeRanges, a single _probe_ranges I/O seam that issues reads and marks absent devices, populating register caches; finally a pure _derive_capabilities validates the caches into PlantCapabilities.</desc>
+<desc>detect() reads the model, then loops the routed probe steps (AIO, HV BMU, meters, LV BCU) through a pure _strategise policy that returns ProbeRanges, the shared _probe_ranges I/O seam that issues reads and marks absent devices, populating register caches; finally a pure _derive_capabilities validates the caches into PlantCapabilities.</desc>
 <style>
 text{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
 .t{font-size:14px;fill:#1a1a18}
@@ -38,14 +38,14 @@ text{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
 <line class="arr" x1="340" y1="160" x2="340" y2="190" marker-end="url(#arrow)"/>
 
 <rect class="cont" x="40" y="190" width="600" height="150" rx="12"/>
-<text class="th" x="56" y="211" text-anchor="start">per peripheral step — loop</text>
-<text class="tm" x="56" y="228" text-anchor="start">BCU · AIO · HV BMU · meters · LV batt · LV BCU · EMS</text>
+<text class="th" x="56" y="211" text-anchor="start">routed probe steps — loop</text>
+<text class="tm" x="56" y="228" text-anchor="start">AIO · HV BMU · meters · LV BCU</text>
 
 <rect class="nf-teal" x="56" y="244" width="168" height="58" rx="6"/><text class="nt-teal" x="140" y="269" text-anchor="middle">_strategise()</text><text class="nu-teal" x="140" y="287" text-anchor="middle">pure · picks ranges</text>
 <line class="arr" x1="224" y1="273" x2="270" y2="273" marker-end="url(#arrow)"/>
 <text class="ts" x="247" y="267" text-anchor="middle">ranges</text>
 
-<rect class="nf-coral" x="272" y="244" width="176" height="58" rx="6"/><text class="nt-coral" x="360" y="269" text-anchor="middle">_probe_ranges()</text><text class="nu-coral" x="360" y="287" text-anchor="middle">I/O seam · the reads</text>
+<rect class="nf-coral" x="272" y="244" width="176" height="58" rx="6"/><text class="nt-coral" x="360" y="269" text-anchor="middle">_probe_ranges()</text><text class="nu-coral" x="360" y="287" text-anchor="middle">shared probe seam</text>
 <line class="arr" x1="448" y1="273" x2="484" y2="273" marker-end="url(#arrow)"/>
 
 <rect class="nf-gray" x="486" y="244" width="140" height="58" rx="6"/><text class="nt-gray" x="556" y="269" text-anchor="middle">register caches</text><text class="nu-gray" x="556" y="287" text-anchor="middle">raw frames</text>

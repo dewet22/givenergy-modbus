@@ -142,13 +142,13 @@ After resolving the model, `detect()` runs a loop over the peripheral steps (BCU
 ![The detect() strategise, probe and derive loop](img/detect-strategise-probe-derive.png)
 
 - **`_strategise(caps, prior, step)`** — pure policy. Given the model and an optional `prior` hint, it returns the `ProbeRange`s to read for that step. Cold (no hint) yields a broad candidate sweep; hinted restricts to the addresses `prior` already knows. No I/O, so it is exhaustively unit-testable.
-- **`_probe_ranges(ranges)`** — the single I/O seam. It issues each read at its tier (fast `probe_timeout` for speculative probes, full `timeout` for known devices) and, on a probe that does not answer, calls `mark_absent()` and evicts the stale cache entry.
+- **`_probe_ranges(ranges)`** — the shared I/O seam for the `_strategise`-routed probe steps (AIO modules, HV BMUs, meters, LV BCU). It issues each read at its tier (fast `probe_timeout` for speculative probes, full `timeout` for known devices) and, on a probe that does not answer, calls `mark_absent()` and evicts the stale cache entry.
 - **`_derive_capabilities(caches, prior, on_reject)`** — pure validation. It reads the now-populated register caches, applies each device's `is_valid()` gate, and builds the authoritative `PlantCapabilities`. Rejections thread back through `on_reject` to `mark_absent()`.
 
 This split is what makes the offline `Plant.from_caches()` path possible (#268): `_derive_capabilities` is the same pure function whether the caches came from a live probe or a saved register dump.
 
 !!! note
-    Two steps stay imperative rather than routing through `_strategise`: the initial model read, and LV-battery enumeration (which carries the cold-start splice-guard re-probe, #233/#289). The loop above shows the dominant pattern, not every step literally.
+    Several reads still touch the wire outside `_probe_ranges`: the initial model read, BCU stack discovery, LV-battery enumeration, and the EMS rollup cross-check (BCU and LV-battery probing carry the cold-start splice-guard re-probe, #233/#289). The loop above shows the shared-seam pattern that the AIO, HV-BMU, meter and LV-BCU steps follow — not every read in `detect()`.
 
 #### Why three functions
 
@@ -156,7 +156,7 @@ Before #345, `detect()` fanned out to a per-device-type helper for each peripher
 
 ![Before and after: per-type helpers transposed into per-concern functions](img/detect-refactor-before-after.png)
 
-The refactor transposes that grid: instead of five helpers each doing all three jobs, there is one function per job, each spanning every device type. Candidate generation lives once (shared by `_strategise` and `_derive_capabilities`), all I/O lives in one seam, and validation lives in one place — so a change to, say, the absent-marking policy is a one-line edit rather than a five-site sweep.
+The refactor transposes that grid: instead of five helpers each doing all three jobs, there is one function per job. Candidate generation lives once (shared by `_strategise` and `_derive_capabilities`) and validation lives once in `_derive_capabilities`, both spanning every device type; the probe I/O routes through `_probe_ranges` for the AIO, HV-BMU, meter and LV-BCU steps. A change to a candidate range or a validation gate is now a one-site edit rather than a five-site sweep.
 
 ## Plant data model
 
