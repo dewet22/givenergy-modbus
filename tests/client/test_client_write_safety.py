@@ -110,6 +110,50 @@ def test_battery_limit_ac_commands_encode():
         req.encode()
 
 
+# HR 311/317 = EXPORT_PRIORITY / ENABLE_EPS — also HR(300-359) AC-output config-block registers.
+# #297 folds them into the same has_ac_config_block gate as 313/314, so they no longer ride the
+# universal allowlist (where DC hybrids and undetected clients accepted them).
+_EXPORT_EPS_REGS = (311, 317)
+
+
+def test_export_priority_eps_gated_not_universal():
+    """311/317 are AC-config-gated, not in the universal or three-phase model allowlists (#297)."""
+    from givenergy_modbus.client.commands import _AC_CONFIG_WRITE_SAFE_REGISTERS
+
+    for reg in _EXPORT_EPS_REGS:
+        assert reg in _AC_CONFIG_WRITE_SAFE_REGISTERS
+        assert reg not in _InverterCommands.WRITE_SAFE_REGISTERS
+        assert reg not in _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.AC, Model.ALL_IN_ONE])
+async def test_ac_config_models_accept_export_priority_eps_writes(model):
+    """Models that expose the HR(300-359) block (AC, AIO) may write HR311/317 (#297)."""
+    client = _client(_caps(model))
+    for reg in _EXPORT_EPS_REGS:
+        await client.one_shot_command([WriteHoldingRegisterRequest(reg, 0)], dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.HYBRID_GEN1, Model.AC_3PH, Model.HYBRID_3PH])
+async def test_non_ac_config_models_reject_export_priority_eps_writes(model):
+    """HR311/317 must be rejected unless has_ac_config_block and not three-phase (#297)."""
+    client = _client(_caps(model))
+    for reg in _EXPORT_EPS_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await client.one_shot_command([WriteHoldingRegisterRequest(reg, 0)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_undetected_rejects_export_priority_eps_writes():
+    """An undetected client (no capabilities) must reject HR311/317 — conservative fallback (#297)."""
+    client = _client(None)
+    for reg in _EXPORT_EPS_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await client.one_shot_command([WriteHoldingRegisterRequest(reg, 0)], dry_run=True)
+
+
 # ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
