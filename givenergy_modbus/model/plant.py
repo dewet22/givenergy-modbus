@@ -1,5 +1,6 @@
 import logging
 import warnings
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, ClassVar, cast
 
@@ -552,6 +553,9 @@ def _validated_serial(device: Any) -> str | None:
 _AIO_MAX_MODULES = 4
 #: HV BMU per-module address band is 0x50–0x6F; 0x70 is the first BCU.
 _HV_BMU_BAND_END = 0x70
+#: Cold candidate ranges shared between _derive_capabilities (validate) and _strategise (policy).
+_COLD_METER_RANGE: range = range(0x01, 0x09)
+_COLD_LV_BATTERY_RANGE: range = range(0x32, 0x38)
 
 
 def _hv_bmu_candidates(bcu_stacks: list[tuple[int, int]]) -> list[int]:
@@ -565,14 +569,24 @@ def _hv_bmu_candidates(bcu_stacks: list[tuple[int, int]]) -> list[int]:
     return candidates
 
 
+def _aio_module_candidates(num_modules: int) -> list[int]:
+    """Cold AIO module candidate addresses: 0x50 + i, clamped to _AIO_MAX_MODULES (0x50–0x53)."""
+    return [0x50 + i for i in range(min(num_modules, _AIO_MAX_MODULES))]
+
+
 def _derive_hv_topology(
-    register_caches: dict[int, RegisterCache], prior: "PlantCapabilities | None", caps: "PlantCapabilities"
+    register_caches: dict[int, RegisterCache],
+    prior: "PlantCapabilities | None",
+    caps: "PlantCapabilities",
+    on_reject: "Callable[[int, str, int, int], None] | None" = None,
 ) -> None:
     """Populate caps.bcu_stacks and either aio_battery_module_addresses or hv_bmu_addresses (HV plants).
 
     Cold: BMS@0xA0 IR(61) gives the BCU count; each BCU's IR(64) its module count; per-module
     candidates follow from there (AIO: 0x50–0x53; non-AIO HV: the 0x50+k band). Hinted (``prior``):
     re-check only the previously-seen addresses. is_valid()-gated like detect (see _enumerate note).
+    ``on_reject`` is called for each cache-present-but-is_valid-False address so the live detect path
+    can call mark_absent; offline passes None.
     """
     if prior is not None:
         indices: Any = [offset for offset, _ in prior.bcu_stacks]
@@ -587,12 +601,22 @@ def _derive_hv_topology(
         aio_candidates = (
             list(prior.aio_battery_module_addresses)
             if prior is not None
-            else [0x50 + i for i in range(min(caps.bcu_stacks[0][1], _AIO_MAX_MODULES))]
+            else _aio_module_candidates(caps.bcu_stacks[0][1])
         )
         for addr in aio_candidates:
             c = register_caches.get(addr)
-            if c is not None and AioBatteryModule.from_register_cache(c, addr).is_valid():
+            try:
+                valid = c is not None and AioBatteryModule.from_register_cache(c, addr).is_valid()
+            except Exception:
+                if on_reject is not None:
+                    on_reject(addr, "IR", 60, 60)
+                else:
+                    raise
+                continue
+            if valid:
                 caps.aio_battery_module_addresses.append(addr)
+            elif c is not None and on_reject is not None:
+                on_reject(addr, "IR", 60, 60)
     else:
         bmu_candidates = (
             list(prior.hv_bmu_addresses)
@@ -601,25 +625,38 @@ def _derive_hv_topology(
         )
         for addr in bmu_candidates:
             c = register_caches.get(addr)
-            if c is not None and Bmu.from_register_cache(c).is_valid():
+            try:
+                valid = c is not None and Bmu.from_register_cache(c).is_valid()
+            except Exception:
+                if on_reject is not None:
+                    on_reject(addr, "IR", 60, 60)
+                else:
+                    raise
+                continue
+            if valid:
                 caps.hv_bmu_addresses.append(addr)
+            elif c is not None and on_reject is not None:
+                on_reject(addr, "IR", 60, 60)
 
 
 def _derive_capabilities(
     register_caches: dict[int, RegisterCache],
     prior: PlantCapabilities | None = None,
+    on_reject: Callable[[int, str, int, int], None] | None = None,
 ) -> PlantCapabilities:
     """Derive PlantCapabilities from a complete register-cache set, with no wire I/O (#268).
 
     The offline counterpart to ``Client._detect()``'s enumeration: read HR(0)/HR(21) at 0x11 to
     resolve the model, then for each peripheral class check presence (``addr in register_caches``)
     and the SAME ``Model.from_register_cache(cache).is_valid()`` gate detect uses on the wire. This
-    is the cache-agnostic "validate" step the live detect loop will share in a later slice; the
-    parity test pins it equal to a live ``detect()`` over the same captures.
+    is the canonical "validate" step shared by offline Plant.from_caches() and the live detect loop;
+    the parity test pins it equal to a live ``detect()`` over the same captures.
 
     ``prior`` (v1) restricts candidate addresses to a previously-seen set, mirroring detect's hinted
     mode, but does NOT raise on mismatch (deferred to the capabilities-as-target slice). Raises
     :class:`CommunicationError` if HR(0) is absent at 0x11 (mirrors detect's identity-read failure).
+    ``on_reject`` is called for each cache-present-but-is_valid-False address so the live detect path
+    can call mark_absent; offline passes None.
     """
     cache = register_caches.get(0x11, RegisterCache())
     raw_dtc = cache.get(HR(0))
@@ -632,26 +669,48 @@ def _derive_capabilities(
     # sees already-committed, CRC-validated, decoded caches — is_valid() can't raise on those. A
     # genuinely malformed dump should fail loudly rather than silently drop a peripheral.
     if caps.is_hv:
-        _derive_hv_topology(register_caches, prior, caps)
+        _derive_hv_topology(register_caches, prior, caps, on_reject=on_reject)
 
     # Meters (0x01–0x08), validated via Meter.is_valid() to drop all-zero ghost slots.
-    meter_candidates = prior.meter_addresses if prior is not None else range(0x01, 0x09)
+    meter_candidates = prior.meter_addresses if prior is not None else _COLD_METER_RANGE
     for addr in meter_candidates:
         c = register_caches.get(addr)
         if c is not None and Meter.from_register_cache(c).is_valid():
             caps.meter_addresses.append(addr)
+        elif c is not None and on_reject is not None:
+            on_reject(addr, "IR", 60, 30)
 
     # LV batteries (0x32–0x37) + LV BCU (0x31). Skipped for HV and EMS plants.
     if not caps.is_hv and not caps.is_ems:
-        batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
+        batt_candidates = prior.lv_battery_addresses if prior is not None else _COLD_LV_BATTERY_RANGE
         for addr in batt_candidates:
             c = register_caches.get(addr)
-            if c is not None and Battery.from_register_cache(c).is_valid():
+            try:
+                valid = c is not None and Battery.from_register_cache(c).is_valid()
+            except Exception:
+                if on_reject is not None:
+                    on_reject(addr, "IR", 60, 60)
+                else:
+                    raise
+                continue
+            if valid:
                 caps.lv_battery_addresses.append(addr)
+            elif c is not None and on_reject is not None:
+                on_reject(addr, "IR", 60, 60)
         bcu_addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
         bcu_cache = register_caches.get(bcu_addr) if bcu_addr is not None else None
-        if bcu_cache and LvBcu.from_register_cache(bcu_cache).is_valid():
+        try:
+            bcu_valid = bcu_cache is not None and LvBcu.from_register_cache(bcu_cache).is_valid()
+        except Exception:
+            if on_reject is not None and bcu_addr is not None:
+                on_reject(bcu_addr, "IR", 60, 60)
+            else:
+                raise
+            bcu_valid = False
+        if bcu_valid:
             caps.lv_bcu_address = bcu_addr
+        elif bcu_cache is not None and bcu_addr is not None and on_reject is not None:
+            on_reject(bcu_addr, "IR", 60, 60)
 
     # The EMS rollup cross-check is a soft sanity log in detect — it mutates no caps fields, so offline
     # it's a no-op; the .ems/.inverters facades read the IR(2040+) rollup directly.

@@ -15,7 +15,7 @@ import pytest
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.exceptions import CommunicationError
 from givenergy_modbus.model.inverter import Model
-from givenergy_modbus.model.plant import Plant
+from givenergy_modbus.model.plant import Plant, _aio_module_candidates, _hv_bmu_candidates
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.testing import MockPlant
@@ -144,3 +144,47 @@ def test_from_caches_raises_without_identity():
     """No HR(0) at 0x11 → CommunicationError, mirroring detect's identity-read failure."""
     with pytest.raises(CommunicationError, match="HR.0."):
         Plant.from_caches({0x32: RegisterCache({HR(0): 0x2001})})  # data present, but not at 0x11
+
+
+# --- Unit tests for pure candidate helpers (#268 slice 2) ---
+
+
+def test_hv_bmu_candidates_basic():
+    """Two BCUs with 2 modules each pack into 0x50-0x53 contiguously."""
+    assert _hv_bmu_candidates([(0, 2), (1, 2)]) == [0x50, 0x51, 0x52, 0x53]
+
+
+def test_hv_bmu_candidates_single_bcu():
+    assert _hv_bmu_candidates([(0, 3)]) == [0x50, 0x51, 0x52]
+
+
+def test_hv_bmu_candidates_clamped_at_band_end():
+    """A stack whose module count would overflow 0x6F is clamped silently."""
+    result = _hv_bmu_candidates([(0, 32)])
+    assert all(addr < 0x70 for addr in result)
+    assert result == list(range(0x50, 0x70))
+
+
+def test_hv_bmu_candidates_zero_modules():
+    assert _hv_bmu_candidates([(0, 0)]) == []
+
+
+def test_hv_bmu_candidates_empty():
+    assert _hv_bmu_candidates([]) == []
+
+
+def test_aio_module_candidates_normal():
+    assert _aio_module_candidates(2) == [0x50, 0x51]
+
+
+def test_aio_module_candidates_clamped():
+    """BCU-reported count > 4 is clamped to the 0x50–0x53 band."""
+    assert _aio_module_candidates(6) == [0x50, 0x51, 0x52, 0x53]
+
+
+def test_aio_module_candidates_exact_max():
+    assert _aio_module_candidates(4) == [0x50, 0x51, 0x52, 0x53]
+
+
+def test_aio_module_candidates_zero():
+    assert _aio_module_candidates(0) == []

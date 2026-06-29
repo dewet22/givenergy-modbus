@@ -87,135 +87,6 @@ def test_plant_capabilities_round_trip_with_hv_bmu_modules():
     assert restored.hv_bmu_addresses == [0x50, 0x51]
 
 
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_modules_records_responding_addresses():
-    """A non-AIO HV stack records per-module BMU addresses at 0x50+ (#265)."""
-    client = _make_client()
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
-    for addr in (0x50, 0x51):
-        _prime_aio_module_serial(client, addr, serial=f"BM2414G83{addr - 0x50}")
-    responders = {0x50, 0x51}
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        return request.device_address in responders
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
-
-    assert caps.hv_bmu_addresses == [0x50, 0x51]
-
-
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_skips_modules_with_no_serial():
-    """An HV BMU that responds but reports no serial is not recorded (ghost guard, #265)."""
-    client = _make_client()
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
-    _prime_aio_module_serial(client, 0x50)  # 0x51 responds but has no serial primed
-    responders = {0x50, 0x51}
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        return request.device_address in responders
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
-
-    assert caps.hv_bmu_addresses == [0x50]
-    assert client.plant.block_present(0x51, "IR", 60, 60) is False  # responded but is_valid()=False → ABSENT
-
-
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_hinted_mode_uses_prior_addresses():
-    """Hinted detect re-probes only prior.hv_bmu_addresses, not the BCU module count.
-
-    If prior recorded [0x50] but the BCU now says 2 modules, only 0x50 is probed.
-    An address that no longer responds is dropped.
-    """
-    client = _make_client()
-    # BCU says 2 modules, but prior only knew about 0x50.
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 2)])
-    prior = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, hv_bmu_addresses=[0x50, 0x51])
-    _prime_aio_module_serial(client, 0x50, serial="BM2414G830")
-    # 0x51 is in prior but no longer responds.
-    probed = []
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        probed.append(request.device_address)
-        return request.device_address == 0x50
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        await client._detect_hv_bmu_modules(caps, prior, 1.0, 1)
-
-    assert probed == [0x50, 0x51], "hinted mode must probe exactly the prior addresses"
-    assert caps.hv_bmu_addresses == [0x50], "non-responding prior address must be dropped"
-    assert client.plant.block_present(0x51, "IR", 60, 60) is False  # probe timeout → ABSENT
-
-
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_skips_on_decode_exception():
-    """If Bmu.from_register_cache raises, the address is skipped without propagating."""
-    client = _make_client()
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 1)])
-    _prime_aio_module_serial(client, 0x50)
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        return True
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        with patch("givenergy_modbus.client.client.Bmu.from_register_cache", side_effect=RuntimeError("boom")):
-            await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
-
-    assert caps.hv_bmu_addresses == []
-
-
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_empty_prior_falls_back_to_cold_detect():
-    """Prior with empty hv_bmu_addresses (pre-#326 upgrade) falls back to cold candidate derivation.
-
-    An upgraded system whose prior PlantCapabilities predate the hv_bmu_addresses field will have
-    prior.hv_bmu_addresses == [] even though bcu_stacks is populated. The hinted path must treat
-    this like a cold detect rather than silently probing nothing.
-    """
-    client = _make_client()
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 1)])
-    # prior exists but has no BMU addresses (simulates a pre-#326 persisted capability)
-    prior = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, bcu_stacks=[(0, 1)])
-    assert prior.hv_bmu_addresses == []
-    _prime_aio_module_serial(client, 0x50, serial="BM2414G830")
-    probed = []
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        probed.append(request.device_address)
-        return request.device_address == 0x50
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        await client._detect_hv_bmu_modules(caps, prior, 1.0, 1)
-
-    assert 0x50 in probed, "cold fallback must probe 0x50 derived from bcu_stacks"
-    assert caps.hv_bmu_addresses == [0x50]
-
-
-@pytest.mark.asyncio
-async def test_detect_hv_bmu_clamps_to_band_on_corrupt_module_count(caplog):
-    """A corrupt or unexpectedly large num_modules is clamped so probes stay within 0x50-0x6F."""
-    import logging
-
-    client = _make_client()
-    # BCU claims 100 modules — would spill into 0x70+ BCU territory without the clamp.
-    caps = PlantCapabilities(device_type=Model.HYBRID_HV_GEN3, inverter_address=0x11, bcu_stacks=[(0, 100)])
-    probed = []
-
-    async def _probe_side_effect(request, *, timeout, retries):
-        probed.append(request.device_address)
-        return False
-
-    with patch.object(client, "_probe", side_effect=_probe_side_effect):
-        with caplog.at_level(logging.WARNING):
-            await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
-
-    assert all(0x50 <= addr < 0x70 for addr in probed), "all probed addresses must be within the BMU band"
-    assert "clamped" in caplog.text
-
-
 def test_plant_capabilities_round_trip_with_lv_bcu():
     caps = PlantCapabilities(
         device_type=Model.HYBRID,
@@ -709,7 +580,7 @@ async def test_detect_lv_bcu_decode_error_is_swallowed():
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", side_effect=_probe_succeed_at_0x31):
-            with _patch("givenergy_modbus.client.client.LvBcu.from_register_cache", side_effect=ValueError("corrupt")):
+            with _patch("givenergy_modbus.model.plant.LvBcu.from_register_cache", side_effect=ValueError("corrupt")):
                 caps = await client.detect()
 
     assert caps.lv_bcu_address is None

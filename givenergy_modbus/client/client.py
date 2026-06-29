@@ -6,6 +6,7 @@ import socket
 import warnings
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Literal
 
 from givenergy_modbus.client.commands import (
@@ -25,14 +26,18 @@ from givenergy_modbus.exceptions import (
     RefreshPartiallySucceeded,
 )
 from givenergy_modbus.framer import ClientFramer, Framer
-from givenergy_modbus.model.aio_battery import AioBatteryModule
-from givenergy_modbus.model.battery import Battery
 from givenergy_modbus.model.ems import EmsRegisterGetter
-from givenergy_modbus.model.hv_bcu import Bmu
 from givenergy_modbus.model.inverter import Model, resolve_model
-from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS, LvBcu
-from givenergy_modbus.model.meter import Meter
-from givenergy_modbus.model.plant import Plant, PlantCapabilities
+from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS
+from givenergy_modbus.model.plant import (
+    _COLD_LV_BATTERY_RANGE,
+    _COLD_METER_RANGE,
+    Plant,
+    PlantCapabilities,
+    _aio_module_candidates,
+    _derive_capabilities,
+    _hv_bmu_candidates,
+)
 from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -251,6 +256,61 @@ class FrameRedactor:
         return pdu.encode()
 
 
+@dataclass(frozen=True)
+class ProbeRange:
+    """A single Modbus read to issue during detect, with its timeout tier.
+
+    ``tier="known"`` → full ``timeout``/``retries``; ``tier="probe"`` → fast
+    ``probe_timeout``/``probe_retries`` and ``retry_delay=0``.
+    """
+
+    reg_type: str  # "HR" or "IR"
+    device_address: int
+    base_register: int
+    register_count: int
+    tier: str  # "known" | "probe"
+
+
+def _strategise(
+    caps: PlantCapabilities,
+    prior: PlantCapabilities | None,
+    step: str,
+) -> list[ProbeRange]:
+    """Pure: return the ProbeRanges for one detect step given current caps and prior hint.
+
+    Calls the same candidate helpers as ``_derive_capabilities`` so candidate generation
+    has one implementation.  No I/O.
+    """
+    if step == "aio_modules":
+        num = caps.bcu_stacks[0][1] if caps.bcu_stacks else 0
+        addrs: list[int] | range = (
+            list(prior.aio_battery_module_addresses) if prior is not None else _aio_module_candidates(num)
+        )
+        return [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
+
+    if step == "hv_bmus":
+        if not (caps.is_hv and caps.device_type is not Model.ALL_IN_ONE and caps.bcu_stacks):
+            return []
+        addrs = (
+            list(prior.hv_bmu_addresses)
+            if prior is not None and prior.hv_bmu_addresses
+            else _hv_bmu_candidates(caps.bcu_stacks)
+        )
+        return [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
+
+    if step == "meters":
+        addrs = prior.meter_addresses if prior is not None else _COLD_METER_RANGE
+        return [ProbeRange("IR", addr, 60, 30, "probe") for addr in addrs]
+
+    if step == "lv_bcu":
+        addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
+        if addr is None:
+            return []
+        return [ProbeRange("IR", addr, 60, 60, "probe")]
+
+    raise ValueError(f"_strategise: unknown step {step!r}")
+
+
 class Client:
     """Asynchronous client for talking to a GivEnergy inverter over Modbus TCP.
 
@@ -462,6 +522,28 @@ class Client:
         except TimeoutError:
             return False
 
+    async def _probe_ranges(
+        self,
+        ranges: list[ProbeRange],
+        timeout: float,
+        retries: int,
+        probe_timeout: float,
+        probe_retries: int,
+    ) -> None:
+        """Issue each ProbeRange in order by tier; mark_absent on probe-tier failures."""
+        for pr in ranges:
+            req_cls = ReadHoldingRegistersRequest if pr.reg_type == "HR" else ReadInputRegistersRequest
+            request = req_cls(
+                base_register=pr.base_register,
+                register_count=pr.register_count,
+                device_address=pr.device_address,
+            )
+            if pr.tier == "known":
+                await self.send_request_and_await_response(request, timeout=timeout, retries=retries)
+            else:
+                if not await self._probe(request, timeout=probe_timeout, retries=probe_retries):
+                    self.plant.mark_absent(pr.device_address, pr.reg_type, pr.base_register, pr.register_count)
+
     async def _detect_bcu_stacks(
         self,
         caps: PlantCapabilities,
@@ -516,155 +598,6 @@ class Client:
 
     #: Maximum number of battery modules on a single-BCU AIO (addresses 0x50–0x53).
     _AIO_MAX_MODULES = 4
-
-    async def _detect_aio_battery_modules(
-        self,
-        caps: PlantCapabilities,
-        prior: PlantCapabilities | None,
-        probe_timeout: float,
-        probe_retries: int,
-    ) -> None:
-        """Populate caps.aio_battery_module_addresses for an All-in-One (#192).
-
-        Hinted mode (prior is not None): probe only the previously-seen module addresses
-        so detect() stays a confirmation pass rather than a fresh sweep — consistent with
-        the meter and battery hinted contracts.
-
-        Cold mode: derive candidates from the BCU-reported module count (IR 64), bounded
-        to _AIO_MAX_MODULES (0x50–0x53) to guard against stale or corrupt register values.
-
-        Single-BCU AIO only — multi-BCU module addressing is a future extension.
-        """
-        if prior is not None:
-            candidates: list[int] = list(prior.aio_battery_module_addresses)
-        else:
-            if not caps.bcu_stacks:
-                return
-            _offset, num_modules = caps.bcu_stacks[0]
-            if num_modules > self._AIO_MAX_MODULES:
-                _logger.warning(
-                    "detect: BCU reports %d modules but AIO maximum is %d — clamping",
-                    num_modules,
-                    self._AIO_MAX_MODULES,
-                )
-                num_modules = self._AIO_MAX_MODULES
-            candidates = [0x50 + i for i in range(num_modules)]
-        for addr in candidates:
-            if not await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
-                timeout=probe_timeout,
-                retries=probe_retries,
-            ):
-                self.plant.mark_absent(addr, "IR", 60, 60)
-                continue
-            cache = self.plant.register_caches.get(addr)
-            try:
-                if cache is None or not AioBatteryModule.from_register_cache(cache, addr).is_valid():
-                    _logger.debug("detect: AIO module probe at 0x%02x responded but is_valid()=False — skipping", addr)
-                    self.plant.mark_absent(addr, "IR", 60, 60)
-                    continue
-            except Exception:
-                _logger.debug("detect: AIO module probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
-                self.plant.mark_absent(addr, "IR", 60, 60)
-                continue
-            caps.aio_battery_module_addresses.append(addr)
-
-    async def _detect_hv_bmu_modules(
-        self,
-        caps: PlantCapabilities,
-        prior: PlantCapabilities | None,
-        probe_timeout: float,
-        probe_retries: int,
-    ) -> None:
-        """Populate caps.hv_bmu_addresses for a non-AIO HV stack (#265).
-
-        Each HV battery module answers at its own device address (0x50 + running module index,
-        contiguous across stacks) with the same IR(60-119) per-cell block AIO modules use — the
-        earlier stride-within-the-BCU decode read the BCU's cluster registers as cell data.
-        Installer-confirmed, not yet wire-confirmed: probing here both populates the addresses to
-        poll and surfaces whether the band actually responds on real HV hardware.
-
-        Hinted mode (prior is not None): re-probe only the previously-seen addresses. Cold mode:
-        derive candidates 0x50 + k from each BCU's module count. Self-gated: a no-op unless this
-        is a non-AIO HV stack with detected BCUs (AIO modules use aio_battery_module_addresses).
-        """
-        if not (caps.is_hv and caps.device_type is not Model.ALL_IN_ONE and caps.bcu_stacks):
-            return
-        if prior is not None and prior.hv_bmu_addresses:
-            # Hinted mode: re-probe only the addresses the prior recorded.
-            candidates: list[int] = list(prior.hv_bmu_addresses)
-        else:
-            # Cold mode (also used when prior exists but predates this field): derive from BCU module counts.
-            candidates = []
-            next_addr = 0x50
-            for _offset, num_modules in caps.bcu_stacks:
-                end_addr = min(next_addr + max(num_modules, 0), 0x70)
-                candidates.extend(range(next_addr, end_addr))
-                if end_addr < next_addr + num_modules:
-                    _logger.warning(
-                        "detect: BCU module count %d exceeds HV BMU address band (0x50-0x6F) — clamped",
-                        num_modules,
-                    )
-                next_addr = end_addr
-        for addr in candidates:
-            if not await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr),
-                timeout=probe_timeout,
-                retries=probe_retries,
-            ):
-                self.plant.mark_absent(addr, "IR", 60, 60)
-                continue
-            cache = self.plant.register_caches.get(addr)
-            try:
-                if cache is None or not Bmu.from_register_cache(cache).is_valid():
-                    _logger.debug("detect: HV BMU probe at 0x%02x responded but is_valid()=False — skipping", addr)
-                    self.plant.mark_absent(addr, "IR", 60, 60)
-                    continue
-            except Exception:
-                _logger.debug("detect: HV BMU probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
-                self.plant.mark_absent(addr, "IR", 60, 60)
-                continue
-            caps.hv_bmu_addresses.append(addr)
-        _logger.info("detect: hv_bmu_modules=[%s]", ", ".join(f"0x{a:02x}" for a in caps.hv_bmu_addresses))
-
-    async def _detect_lv_bcu(
-        self,
-        caps: PlantCapabilities,
-        prior: PlantCapabilities | None,
-        probe_timeout: float,
-        probe_retries: int,
-    ) -> None:
-        """Probe the LV BCU page and set caps.lv_bcu_address when present (#241).
-
-        The stack-level BMS block (doc §4.4.1.1) answers at 0x31 IR(60-63) on LV
-        systems, firmware-gated: absent units still respond, just with an all-zero
-        block, so is_valid() (any-word-non-zero) is the presence test and the probe
-        costs nothing on healthy systems. Hinted mode follows the meter convention:
-        only re-check an address the prior captured — prior None-ness is trusted, so
-        a firmware upgrade that adds the block needs a cold detect to notice.
-        """
-        bcu_addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
-        if bcu_addr is None:
-            return
-        if not await self._probe(
-            ReadInputRegistersRequest(base_register=60, register_count=60, device_address=bcu_addr),
-            timeout=probe_timeout,
-            retries=probe_retries,
-        ):
-            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
-            return
-        bcu_cache = self.plant.register_caches.get(bcu_addr)
-        if not bcu_cache:
-            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
-            return
-        try:
-            if LvBcu.from_register_cache(bcu_cache).is_valid():
-                caps.lv_bcu_address = bcu_addr
-            else:
-                self.plant.mark_absent(bcu_addr, "IR", 60, 60)
-        except (KeyError, ValueError):
-            _logger.debug("detect: LV BCU probe at 0x%02x failed to decode — skipping", bcu_addr, exc_info=True)
-            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
 
     async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
         """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
@@ -804,27 +737,25 @@ class Client:
 
     async def _detect_lv_batteries(
         self,
-        caps: PlantCapabilities,
         prior: PlantCapabilities | None,
         timeout: float,
         retries: int,
         probe_timeout: float,
         probe_retries: int,
     ) -> None:
-        """Enumerate LV battery packs into ``caps.lv_battery_addresses`` (detect step 4).
+        """Populate register caches for LV battery addresses (detect step 4).
 
         Battery pack #1 is at 0x32, additional packs at 0x33–0x37 (the inverter lives at 0x11, not
-        0x32 — issues #119/#189); each slot is validated via ``Battery.is_valid()``. Per-slot (not
-        break-on-fail) like the meter sweep: addresses can be non-contiguous (DIP-switch
-        misconfiguration) and a transient BMS timeout on pack N must not drop pack N+1 onward. Cold
-        detect is affordable since the probe budget only applies on cold sweeps.
+        0x32 — issues #119/#189). Per-slot (not break-on-fail) like the meter sweep: addresses can be
+        non-contiguous and a transient BMS timeout on pack N must not drop pack N+1 onward.
+        is_valid() gating and caps population are handled by _derive_capabilities.
         """
         await self.send_request_and_await_response(
             ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
             timeout=timeout,
             retries=retries,
         )
-        batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
+        batt_candidates = prior.lv_battery_addresses if prior is not None else _COLD_LV_BATTERY_RANGE
         for batt_addr in batt_candidates:
             if batt_addr > 0x32:
                 if not await self._probe(
@@ -849,23 +780,6 @@ class Client:
                     )
                 if not self.plant.register_caches.get(batt_addr):
                     self.plant.mark_absent(batt_addr, "IR", 60, 60)
-                    continue
-            try:
-                if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
-                    _logger.debug(
-                        "detect: battery probe responded at 0x%02x but is_valid()=False — skipping",
-                        batt_addr,
-                    )
-                    self.plant.mark_absent(batt_addr, "IR", 60, 60)
-                    continue
-            except (KeyError, ValueError):
-                self.plant.mark_absent(batt_addr, "IR", 60, 60)
-                continue
-            caps.lv_battery_addresses.append(batt_addr)
-        _logger.info(
-            "detect: lv_battery_addresses=[%s]",
-            ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
-        )
 
     async def _detect(
         self,
@@ -928,72 +842,66 @@ class Client:
         # battery module at its own device address (0x50+), distinct from the bcu_stacks
         # stride layout, so its per-module cell/temperature/serial data is reachable.
         if caps.device_type is Model.ALL_IN_ONE and caps.bcu_stacks:
-            await self._detect_aio_battery_modules(caps, prior, probe_timeout, probe_retries)
-            _logger.info(
-                "detect: aio_battery_modules=[%s]",
-                ", ".join(f"0x{a:02x}" for a in caps.aio_battery_module_addresses),
+            _offset, num_modules = caps.bcu_stacks[0]
+            if num_modules > self._AIO_MAX_MODULES:
+                _logger.warning(
+                    "detect: BCU reports %d modules but AIO maximum is %d — clamping",
+                    num_modules,
+                    self._AIO_MAX_MODULES,
+                )
+            await self._probe_ranges(
+                _strategise(caps, prior, "aio_modules"), timeout, retries, probe_timeout, probe_retries
             )
 
         # Step 2c — HV BMU per-module probing (#265). Non-AIO HV stacks expose per-cell data at
         # their own BMU addresses (0x50+), distinct from the bcu_stacks stride decode (which read
-        # the BCU's cluster registers as cells). Self-gated to non-AIO HV; a no-op otherwise.
-        await self._detect_hv_bmu_modules(caps, prior, probe_timeout, probe_retries)
+        # the BCU's cluster registers as cells). Self-gated inside _strategise to non-AIO HV.
+        await self._probe_ranges(_strategise(caps, prior, "hv_bmus"), timeout, retries, probe_timeout, probe_retries)
 
         # Step 3 — meter probing. Hinted: only previously-seen addresses. Cold: full 0x01–0x08 sweep.
         # In both modes, a probe response is necessary but not sufficient — some EMS firmwares
         # ACK every slot in 0x01..0x08 with all-zero registers regardless of whether a meter is
-        # actually wired. Validate via Meter.is_valid() to filter those ghosts, matching the
-        # convention used for Battery and BCU validation. Per-slot (not break-on-fail) because
-        # meters can be non-contiguous (e.g. ports 1 and 3 populated, port 2 empty). See #95.
-        meter_candidates = prior.meter_addresses if prior is not None else range(0x01, 0x09)
-        for meter_addr in meter_candidates:
-            if not await self._probe(
-                ReadInputRegistersRequest(base_register=60, register_count=30, device_address=meter_addr),
-                timeout=probe_timeout,
-                retries=probe_retries,
-            ):
-                self.plant.mark_absent(meter_addr, "IR", 60, 30)
-                continue
-            meter_cache = self.plant.register_caches.get(meter_addr)
-            if meter_cache is None or not Meter.from_register_cache(meter_cache).is_valid():
-                _logger.debug(
-                    "detect: meter probe responded at 0x%02x but is_valid()=False — skipping",
-                    meter_addr,
-                )
-                self.plant.mark_absent(meter_addr, "IR", 60, 30)
-                continue
-            caps.meter_addresses.append(meter_addr)
-        _logger.info(
-            "detect: meter_addresses=[%s]",
-            ", ".join(f"0x{a:02x}" for a in caps.meter_addresses),
-        )
+        # actually wired. Validate via Meter.is_valid() to filter those ghosts (in the validate step
+        # below). Per-slot (not break-on-fail): meters can be non-contiguous. See #95.
+        await self._probe_ranges(_strategise(caps, prior, "meters"), timeout, retries, probe_timeout, probe_retries)
 
         # Step 4 — LV battery + LV BCU detection. Skipped for HV systems (handled at step 2) and
         # EMS plant controllers (don't expose IR at the inverter address — see #86).
         if not caps.is_hv and not caps.is_ems:
-            await self._detect_lv_batteries(caps, prior, timeout, retries, probe_timeout, probe_retries)
+            # _detect_lv_batteries stays imperative: it issues a known-tier preamble read
+            # at 0x32 and contains the cold-start splice-guard reprobe (#233/#289/#213).
+            await self._detect_lv_batteries(prior, timeout, retries, probe_timeout, probe_retries)
 
             # Step 4b — LV BCU page probe (#241).
-            await self._detect_lv_bcu(caps, prior, probe_timeout, probe_retries)
-            _logger.info(
-                "detect: lv_bcu_address=%s",
-                f"0x{caps.lv_bcu_address:02x}" if caps.lv_bcu_address is not None else "None",
-            )
+            await self._probe_ranges(_strategise(caps, prior, "lv_bcu"), timeout, retries, probe_timeout, probe_retries)
 
         # Step 5 — EMS rollup cross-check. See `_ems_rollup_cross_check()` for the contract.
         if caps.is_ems:
             await self._ems_rollup_cross_check(timeout=timeout, retries=retries)
 
-        if prior is not None and prior != caps:
+        # Validate: derive the authoritative capabilities from the now-populated register_caches.
+        # is_valid() gating, mark_absent on invalid, and all candidate logic live in _derive_capabilities;
+        # no duplicated enumeration here. on_reject threads mark_absent into the validate step.
+        final_caps = _derive_capabilities(self.plant.register_caches, prior, on_reject=self.plant.mark_absent)
+        _logger.info(
+            "detect: meters=[%s], lv_batteries=[%s], lv_bcu=%s, aio_modules=[%s], hv_bmus=[%s]",
+            ", ".join(f"0x{a:02x}" for a in final_caps.meter_addresses),
+            ", ".join(f"0x{a:02x}" for a in final_caps.lv_battery_addresses),
+            f"0x{final_caps.lv_bcu_address:02x}" if final_caps.lv_bcu_address is not None else "None",
+            ", ".join(f"0x{a:02x}" for a in final_caps.aio_battery_module_addresses),
+            ", ".join(f"0x{a:02x}" for a in final_caps.hv_bmu_addresses),
+        )
+
+        if prior is not None and prior != final_caps:
             self.plant.capabilities = None
             raise PlantTopologyMismatch(
-                f"detect: plant topology does not match prior — prior={prior!r}, actual={caps!r}",
+                f"detect: plant topology does not match prior — prior={prior!r}, actual={final_caps!r}",
                 prior=prior,
-                actual=caps,
+                actual=final_caps,
             )
 
-        self.plant.capabilities = caps
-        return caps
+        self.plant.capabilities = final_caps
+        return final_caps
 
     async def _execute_reads(
         self,
