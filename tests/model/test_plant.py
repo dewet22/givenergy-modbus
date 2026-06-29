@@ -2018,12 +2018,12 @@ def test_invalidate_presence_clears_marker_and_registers(plant: Plant):
     assert plant.register_caches[0x32].get(IR(5)) is None  # registers evicted
 
 
-def test_invalidate_presence_leaves_freshness_stamp(plant: Plant):
-    """invalidate_presence() leaves register_block_updated_at intact (age is orthogonal to presence)."""
+def test_invalidate_presence_clears_freshness_stamp(plant: Plant):
+    """invalidate_presence() clears register_block_updated_at so skip-if-fresh won't suppress the re-probe."""
     t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
     plant.update(_make_ir_pdu({5: 42}, base_register=0), received_at=t)
     plant.invalidate_presence(0x32, "IR", 0, 60)
-    assert plant.block_age(0x32, "IR", 0, 60, now=t) == 0.0  # timestamp untouched
+    assert plant.block_age(0x32, "IR", 0, 60, now=t) is None  # timestamp evicted
 
 
 def test_invalidate_presence_noop_for_unknown_block(plant: Plant):

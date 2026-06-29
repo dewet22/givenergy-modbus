@@ -487,6 +487,8 @@ class Client:
                     bcu_cache = self.plant.register_caches.get(0x70 + offset, RegisterCache())
                     actual_modules = bcu_cache.get(IR(64)) or 0
                     caps.bcu_stacks.append((offset, actual_modules))
+                else:
+                    self.plant.mark_absent(0x70 + offset, "IR", 60, 5)
             return
 
         # Cold path: ask the BMS how many BCUs exist, then probe each.
@@ -496,6 +498,7 @@ class Client:
             timeout=probe_timeout,
             retries=probe_retries,
         ):
+            self.plant.mark_absent(0xA0, "IR", 60, 5)
             return
         bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
         num_bcus = bms_cache.get(IR(61)) or 0
@@ -508,6 +511,8 @@ class Client:
                 bcu_cache = self.plant.register_caches.get(0x70 + i, RegisterCache())
                 num_modules = bcu_cache.get(IR(64)) or 0
                 caps.bcu_stacks.append((i, num_modules))
+            else:
+                self.plant.mark_absent(0x70 + i, "IR", 60, 60)
 
     #: Maximum number of battery modules on a single-BCU AIO (addresses 0x50–0x53).
     _AIO_MAX_MODULES = 4
@@ -550,14 +555,17 @@ class Client:
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
+                self.plant.mark_absent(addr, "IR", 60, 60)
                 continue
             cache = self.plant.register_caches.get(addr)
             try:
                 if cache is None or not AioBatteryModule.from_register_cache(cache, addr).is_valid():
                     _logger.debug("detect: AIO module probe at 0x%02x responded but is_valid()=False — skipping", addr)
+                    self.plant.mark_absent(addr, "IR", 60, 60)
                     continue
             except Exception:
                 _logger.debug("detect: AIO module probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
+                self.plant.mark_absent(addr, "IR", 60, 60)
                 continue
             caps.aio_battery_module_addresses.append(addr)
 
@@ -604,14 +612,17 @@ class Client:
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
+                self.plant.mark_absent(addr, "IR", 60, 60)
                 continue
             cache = self.plant.register_caches.get(addr)
             try:
                 if cache is None or not Bmu.from_register_cache(cache).is_valid():
                     _logger.debug("detect: HV BMU probe at 0x%02x responded but is_valid()=False — skipping", addr)
+                    self.plant.mark_absent(addr, "IR", 60, 60)
                     continue
             except Exception:
                 _logger.debug("detect: HV BMU probe at 0x%02x failed to decode — skipping", addr, exc_info=True)
+                self.plant.mark_absent(addr, "IR", 60, 60)
                 continue
             caps.hv_bmu_addresses.append(addr)
         _logger.info("detect: hv_bmu_modules=[%s]", ", ".join(f"0x{a:02x}" for a in caps.hv_bmu_addresses))

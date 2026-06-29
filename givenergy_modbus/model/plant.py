@@ -1435,15 +1435,17 @@ class Plant(GivEnergyBaseModel):
         base_register: int,
         register_count: int,
     ) -> None:
-        """Drop both the presence marker and the positive registers for a block → UNKNOWN.
+        """Drop the presence marker, cached registers, and freshness stamps for a block → UNKNOWN.
 
         A stale "present" must not outlive a topology change: invalidating removes the marker so
-        the next poll resolves absence/presence from scratch, and clears the cached registers so
-        the typed views don't serve stale data. The freshness timestamp (``register_block_updated_at``)
-        is intentionally left untouched — age is orthogonal to presence.
+        the next poll resolves absence/presence from scratch, clears the cached registers so the
+        typed views don't serve stale data, and clears the freshness stamp so skip-if-fresh
+        (``refresh(ir0_max_age=...)``) does not suppress the re-probe.
         """
         key = (device_address, reg_type, base_register, register_count)
         self.register_block_present.pop(key, None)
+        self.register_block_updated_at.pop(key, None)
+        self._block_unchanged_since.pop(key, None)
         cache = self.register_caches.get(device_address)
         if cache is not None:
             reg_cls = HR if reg_type == "HR" else IR

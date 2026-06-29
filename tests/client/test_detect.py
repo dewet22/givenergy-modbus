@@ -120,6 +120,7 @@ async def test_detect_hv_bmu_skips_modules_with_no_serial():
         await client._detect_hv_bmu_modules(caps, None, 1.0, 1)
 
     assert caps.hv_bmu_addresses == [0x50]
+    assert client.plant.block_present(0x51, "IR", 60, 60) is False  # responded but is_valid()=False → ABSENT
 
 
 @pytest.mark.asyncio
@@ -146,6 +147,7 @@ async def test_detect_hv_bmu_hinted_mode_uses_prior_addresses():
 
     assert probed == [0x50, 0x51], "hinted mode must probe exactly the prior addresses"
     assert caps.hv_bmu_addresses == [0x50], "non-responding prior address must be dropped"
+    assert client.plant.block_present(0x51, "IR", 60, 60) is False  # probe timeout → ABSENT
 
 
 @pytest.mark.asyncio
@@ -789,6 +791,7 @@ async def test_detect_aio_module_decode_error_skips_address(monkeypatch):
             caps = await client.detect()
 
     assert caps.aio_battery_module_addresses == []
+    assert client.plant.block_present(0x50, "IR", 60, 60) is False  # decode exception → ABSENT
 
 
 @pytest.mark.asyncio
