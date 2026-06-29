@@ -664,10 +664,10 @@ def _derive_capabilities(
         raise CommunicationError("from_caches: HR(0) not present at device 0x11 — cannot determine device type")
     caps = PlantCapabilities(device_type=resolve_model(raw_dtc, cache.get(HR(21)) or 0))
 
-    # HV topology (BCU stacks + AIO/HV-BMU per-module addresses). No try/except around the is_valid()
-    # gates here or below: unlike detect's helpers (which guard against wire garbage), this only ever
-    # sees already-committed, CRC-validated, decoded caches — is_valid() can't raise on those. A
-    # genuinely malformed dump should fail loudly rather than silently drop a peripheral.
+    # HV topology (BCU stacks + AIO/HV-BMU per-module addresses). The is_valid() gates below and in
+    # _derive_hv_topology wrap in try/except only when on_reject is not None (live detect path, where
+    # wire data arrives fresh); on the offline path (on_reject=None) the else: raise branch keeps the
+    # "fail loud on a genuinely malformed dump" contract.
     if caps.is_hv:
         _derive_hv_topology(register_caches, prior, caps, on_reject=on_reject)
 
