@@ -135,6 +135,29 @@ client.load_config()   re-read after any write to confirm the change landed
 
 `detect()` is intentionally slow — a correct topology is more important than fast startup. It uses a two-tier timeout: full retries for known devices, short probe retries for speculative addresses (meters, batteries, BCU stacks) where absence is the common case.
 
+### Inside `detect()`: strategise / probe / derive
+
+After resolving the model, `detect()` runs a loop over the peripheral steps (BCU, AIO, HV BMU, meters, LV batteries, LV BCU, EMS). Each step is split into three roles, separated by whether they touch the wire:
+
+![The detect() strategise, probe and derive loop](img/detect-strategise-probe-derive.png)
+
+- **`_strategise(caps, prior, step)`** — pure policy. Given the model and an optional `prior` hint, it returns the `ProbeRange`s to read for that step. Cold (no hint) yields a broad candidate sweep; hinted restricts to the addresses `prior` already knows. No I/O, so it is exhaustively unit-testable.
+- **`_probe_ranges(ranges)`** — the single I/O seam. It issues each read at its tier (fast `probe_timeout` for speculative probes, full `timeout` for known devices) and, on a probe that does not answer, calls `mark_absent()` and evicts the stale cache entry.
+- **`_derive_capabilities(caches, prior, on_reject)`** — pure validation. It reads the now-populated register caches, applies each device's `is_valid()` gate, and builds the authoritative `PlantCapabilities`. Rejections thread back through `on_reject` to `mark_absent()`.
+
+This split is what makes the offline `Plant.from_caches()` path possible (#268): `_derive_capabilities` is the same pure function whether the caches came from a live probe or a saved register dump.
+
+!!! note
+    Two steps stay imperative rather than routing through `_strategise`: the initial model read, and LV-battery enumeration (which carries the cold-start splice-guard re-probe, #233/#289). The loop above shows the dominant pattern, not every step literally.
+
+#### Why three functions
+
+Before #345, `detect()` fanned out to a per-device-type helper for each peripheral, and every helper independently tangled all three concerns — pick candidates, probe, then validate-and-mutate `caps`:
+
+![Before and after: per-type helpers transposed into per-concern functions](img/detect-refactor-before-after.png)
+
+The refactor transposes that grid: instead of five helpers each doing all three jobs, there is one function per job, each spanning every device type. Candidate generation lives once (shared by `_strategise` and `_derive_capabilities`), all I/O lives in one seam, and validation lives in one place — so a change to, say, the absent-marking policy is a one-line edit rather than a five-site sweep.
+
 ## Plant data model
 
 `Plant` is passive — it stores data, drives no I/O. Its two responsibilities are:

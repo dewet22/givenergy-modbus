@@ -90,6 +90,16 @@ When adding, removing, or changing any function in `client/commands.py`, update
 `docs/usage.md` in the same commit. That commands table is the primary reference for
 downstream consumers.
 
+## Docs diagrams
+Diagrams under `docs/img/` are committed as both an editable `.svg` source and a
+rendered `.png` (the docs embed the PNG; there is no CI rasterisation step). The SVGs
+are standalone — hardcoded hex palette and explicit fonts, no external CSS — so they
+render the same in a browser, on GitHub, or via `rsvg-convert`. After editing an SVG,
+re-render its PNG at 2× and commit both:
+```
+rsvg-convert -w 1360 docs/img/<name>.svg -o docs/img/<name>.png
+```
+
 ## Conventions
 - Inclusive terminology only: `device_address`, never `slave_address`; no master/slave
   in code, comments, commit messages, or docs (quote legacy protocol terms verbatim,

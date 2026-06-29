@@ -1,0 +1,68 @@
+<svg width="680" viewBox="0 0 680 572" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>detect() refactored into a strategise / probe / derive loop</title>
+<desc>detect() reads the model, then loops each peripheral step through a pure _strategise policy that returns ProbeRanges, a single _probe_ranges I/O seam that issues reads and marks absent devices, populating register caches; finally a pure _derive_capabilities validates the caches into PlantCapabilities.</desc>
+<style>
+text{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+.t{font-size:14px;fill:#1a1a18}
+.ts{font-size:12px;fill:#6b6a64}
+.th{font-size:14px;font-weight:500;fill:#1a1a18}
+.tm{font-size:12px;fill:#8a887f}
+.box{fill:#ffffff;stroke:#d3d1c7;stroke-width:.5}
+.nf-teal{fill:#E1F5EE;stroke:#0F6E56;stroke-width:.5}
+.nt-teal{font-size:14px;fill:#085041}
+.nu-teal{font-size:12px;fill:#0F6E56}
+.nf-coral{fill:#FAECE7;stroke:#993C1D;stroke-width:.5}
+.nt-coral{font-size:14px;fill:#712B13}
+.nu-coral{font-size:12px;fill:#993C1D}
+.nf-purple{fill:#EEEDFE;stroke:#534AB7;stroke-width:.5}
+.nt-purple{font-size:14px;fill:#3C3489}
+.nu-purple{font-size:12px;fill:#534AB7}
+.nf-gray{fill:#F1EFE8;stroke:#5F5E5A;stroke-width:.5}
+.nt-gray{font-size:14px;fill:#444441}
+.nu-gray{font-size:12px;fill:#5F5E5A}
+.ch-teal{fill:#5DCAA5;stroke:#0F6E56;stroke-width:.5}
+.ch-coral{fill:#F0997B;stroke:#993C1D;stroke-width:.5}
+.ch-gray{fill:#B4B2A9;stroke:#5F5E5A;stroke-width:.5}
+.arr{stroke:#73726c;stroke-width:1.5;fill:none}
+.dash{stroke:#908e86;stroke-width:1;fill:none;stroke-dasharray:4 3}
+.lead{stroke:#b4b2a9;stroke-width:.5;fill:none;stroke-dasharray:3 2}
+.cont{fill:none;stroke:#a6a49b;stroke-width:.5;stroke-dasharray:5 4}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#73726c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="0" y="0" width="680" height="572" fill="#fcfbf8"/>
+
+<rect class="nf-purple" x="270" y="40" width="140" height="46" rx="6"/><text class="nt-purple" x="340" y="60" text-anchor="middle">detect(prior?)</text><text class="nu-purple" x="340" y="76" text-anchor="middle">cold or hinted</text>
+<line class="arr" x1="340" y1="86" x2="340" y2="112" marker-end="url(#arrow)"/>
+
+<rect class="nf-gray" x="250" y="114" width="180" height="46" rx="6"/><text class="nt-gray" x="340" y="134" text-anchor="middle">read model</text><text class="nu-gray" x="340" y="150" text-anchor="middle">HR(0)/HR(21) · known tier</text>
+<line class="arr" x1="340" y1="160" x2="340" y2="190" marker-end="url(#arrow)"/>
+
+<rect class="cont" x="40" y="190" width="600" height="150" rx="12"/>
+<text class="th" x="56" y="211" text-anchor="start">per peripheral step — loop</text>
+<text class="tm" x="56" y="228" text-anchor="start">BCU · AIO · HV BMU · meters · LV batt · LV BCU · EMS</text>
+
+<rect class="nf-teal" x="56" y="244" width="168" height="58" rx="6"/><text class="nt-teal" x="140" y="269" text-anchor="middle">_strategise()</text><text class="nu-teal" x="140" y="287" text-anchor="middle">pure · picks ranges</text>
+<line class="arr" x1="224" y1="273" x2="270" y2="273" marker-end="url(#arrow)"/>
+<text class="ts" x="247" y="267" text-anchor="middle">ranges</text>
+
+<rect class="nf-coral" x="272" y="244" width="176" height="58" rx="6"/><text class="nt-coral" x="360" y="269" text-anchor="middle">_probe_ranges()</text><text class="nu-coral" x="360" y="287" text-anchor="middle">I/O seam · the reads</text>
+<line class="arr" x1="448" y1="273" x2="484" y2="273" marker-end="url(#arrow)"/>
+
+<rect class="nf-gray" x="486" y="244" width="140" height="58" rx="6"/><text class="nt-gray" x="556" y="269" text-anchor="middle">register caches</text><text class="nu-gray" x="556" y="287" text-anchor="middle">raw frames</text>
+
+<line class="dash" x1="360" y1="302" x2="360" y2="315" marker-end="url(#arrow)"/>
+<text class="ts" x="360" y="329" text-anchor="middle">absent → mark_absent + evict</text>
+
+<line class="arr" x1="340" y1="340" x2="340" y2="378" marker-end="url(#arrow)"/>
+
+<rect class="nf-teal" x="200" y="380" width="280" height="58" rx="6"/><text class="nt-teal" x="340" y="405" text-anchor="middle">_derive_capabilities()</text><text class="nu-teal" x="340" y="423" text-anchor="middle">pure validate · is_valid() gating</text>
+<line class="lead" x1="480" y1="409" x2="490" y2="409"/>
+<text class="ts" x="494" y="412" text-anchor="start">on_reject → mark_absent</text>
+<line class="arr" x1="340" y1="438" x2="340" y2="468" marker-end="url(#arrow)"/>
+
+<rect class="nf-purple" x="260" y="470" width="160" height="46" rx="6"/><text class="nt-purple" x="340" y="490" text-anchor="middle">PlantCapabilities</text><text class="nu-purple" x="340" y="506" text-anchor="middle">stored on plant</text>
+
+<rect class="ch-teal" x="176" y="536" width="14" height="14" rx="3"/><text class="ts" x="196" y="547" text-anchor="start">pure · no I/O</text>
+<rect class="ch-coral" x="300" y="536" width="14" height="14" rx="3"/><text class="ts" x="320" y="547" text-anchor="start">I/O seam</text>
+<rect class="ch-gray" x="400" y="536" width="14" height="14" rx="3"/><text class="ts" x="420" y="547" text-anchor="start">data</text>
+</svg>
