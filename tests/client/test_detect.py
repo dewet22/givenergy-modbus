@@ -1542,6 +1542,37 @@ async def test_detect_stale_cache_not_admitted_on_probe_failure_battery():
 
 
 @pytest.mark.asyncio
+async def test_detect_stale_cache_not_admitted_on_probe_failure_bcu():
+    """A stale BCU cache from a prior detect must not re-appear when the probe now times out.
+
+    Regression: _derive_hv_topology reads register_caches.get(0x70+i) directly to populate
+    bcu_stacks. A stale cache from a prior run would re-admit the BCU even though the probe
+    failed and mark_absent was called.
+    """
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    client = _make_client()
+    # ALL_IN_ONE with two BCU stacks in the prior.
+    _prime_cache(client, 0x11, {HR(0): 0x8001, HR(21): 612})
+    # Stale caches for BCU offset 0 (0x70) and offset 1 (0x71) — a prior detect left them.
+    client.plant.register_caches[0x70] = RegisterCache({IR(64): 3})
+    client.plant.register_caches[0x71] = RegisterCache({IR(64): 2})
+    prior = PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11, bcu_stacks=[(0, 3), (1, 2)])
+
+    # Only 0x70 responds; 0x71 probe fails.
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x70
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            with pytest.raises(Exception):  # PlantTopologyMismatch or similar — topology changed
+                await client.detect(prior=prior)
+
+    assert client.plant.block_present(0x71, "IR", 60, 5) is False
+    assert 0x71 not in client.plant.register_caches, "stale BCU cache must be evicted when probe fails"
+
+
+@pytest.mark.asyncio
 async def test_detect_success_leaves_connected():
     """A successful detect() leaves the connection up (regression guard)."""
     client = _make_client()

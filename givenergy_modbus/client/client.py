@@ -572,6 +572,7 @@ class Client:
                     caps.bcu_stacks.append((offset, actual_modules))
                 else:
                     self.plant.mark_absent(0x70 + offset, "IR", 60, 5)
+                    self.plant.register_caches.pop(0x70 + offset, None)
             return
 
         # Cold path: ask the BMS how many BCUs exist, then probe each.
@@ -582,6 +583,7 @@ class Client:
             retries=probe_retries,
         ):
             self.plant.mark_absent(0xA0, "IR", 60, 5)
+            self.plant.register_caches.pop(0xA0, None)
             return
         bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
         num_bcus = bms_cache.get(IR(61)) or 0
@@ -596,6 +598,7 @@ class Client:
                 caps.bcu_stacks.append((i, num_modules))
             else:
                 self.plant.mark_absent(0x70 + i, "IR", 60, 60)
+                self.plant.register_caches.pop(0x70 + i, None)
 
     #: Maximum number of battery modules on a single-BCU AIO (addresses 0x50–0x53).
     _AIO_MAX_MODULES = 4
