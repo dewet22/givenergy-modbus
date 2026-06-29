@@ -1291,7 +1291,8 @@ def test_from_actual():
         "e_battery_charge_today_alt1": 5.7,  # IR(36)
         "e_battery_discharge_today_alt1": 5.9,  # IR(37)
         "countdown": 0,
-        "fault_code": "00000000",
+        "inverter_fault_code": "0000",
+        "inverter_warning_code": "0000",
         "t_inverter_heatsink": 32.2,
         "p_load_demand": 745,
         "p_grid_apparent": 654,
