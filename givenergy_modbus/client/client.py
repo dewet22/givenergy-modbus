@@ -640,15 +640,20 @@ class Client:
             timeout=probe_timeout,
             retries=probe_retries,
         ):
+            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
             return
         bcu_cache = self.plant.register_caches.get(bcu_addr)
         if not bcu_cache:
+            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
             return
         try:
             if LvBcu.from_register_cache(bcu_cache).is_valid():
                 caps.lv_bcu_address = bcu_addr
+            else:
+                self.plant.mark_absent(bcu_addr, "IR", 60, 60)
         except (KeyError, ValueError):
             _logger.debug("detect: LV BCU probe at 0x%02x failed to decode — skipping", bcu_addr, exc_info=True)
+            self.plant.mark_absent(bcu_addr, "IR", 60, 60)
 
     async def _ems_rollup_cross_check(self, timeout: float, retries: int) -> None:
         """Read IR(2040,55) at detect time and sanity-check the per-managed-inverter rollup.
@@ -816,6 +821,7 @@ class Client:
                     timeout=probe_timeout,
                     retries=probe_retries,
                 ):
+                    self.plant.mark_absent(batt_addr, "IR", 60, 60)
                     continue
                 # #233/#289: the first battery bank against an empty cache is held by the cold-start
                 # splice guard (the cache stays empty pending a corroborating re-read). detect()
@@ -831,6 +837,7 @@ class Client:
                         retries=probe_retries,
                     )
                 if not self.plant.register_caches.get(batt_addr):
+                    self.plant.mark_absent(batt_addr, "IR", 60, 60)
                     continue
             try:
                 if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
@@ -838,8 +845,10 @@ class Client:
                         "detect: battery probe responded at 0x%02x but is_valid()=False — skipping",
                         batt_addr,
                     )
+                    self.plant.mark_absent(batt_addr, "IR", 60, 60)
                     continue
             except (KeyError, ValueError):
+                self.plant.mark_absent(batt_addr, "IR", 60, 60)
                 continue
             caps.lv_battery_addresses.append(batt_addr)
         _logger.info(
@@ -932,6 +941,7 @@ class Client:
                 timeout=probe_timeout,
                 retries=probe_retries,
             ):
+                self.plant.mark_absent(meter_addr, "IR", 60, 30)
                 continue
             meter_cache = self.plant.register_caches.get(meter_addr)
             if meter_cache is None or not Meter.from_register_cache(meter_cache).is_valid():
@@ -939,6 +949,7 @@ class Client:
                     "detect: meter probe responded at 0x%02x but is_valid()=False — skipping",
                     meter_addr,
                 )
+                self.plant.mark_absent(meter_addr, "IR", 60, 30)
                 continue
             caps.meter_addresses.append(meter_addr)
         _logger.info(

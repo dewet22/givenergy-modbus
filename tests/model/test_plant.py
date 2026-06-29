@@ -1965,6 +1965,92 @@ def test_commit_allows_mixed_bank_with_some_nonzero(plant: Plant):
     assert plant.register_caches[0x32][IR(1)] == 5
 
 
+def test_block_present_none_for_never_probed(plant: Plant):
+    """block_present returns None (UNKNOWN) for a block that has never been probed or committed."""
+    assert plant.block_present(0x99, "IR", 60, 60) is None
+
+
+def test_block_present_true_on_commit(plant: Plant):
+    """A committed bank marks the block PRESENT (True) in register_block_present."""
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0))
+    assert plant.block_present(0x32, "IR", 0, 60) is True
+
+
+def test_block_present_commit_sets_true_for_hr(plant: Plant):
+    """HR commit also marks the block PRESENT."""
+    plant.update(_make_hr_pdu({20: 1}, base_register=0))
+    assert plant.block_present(0x32, "HR", 0, 60) is True
+
+
+def test_mark_absent_sets_false(plant: Plant):
+    """mark_absent() sets the presence marker to False (ABSENT)."""
+    plant.mark_absent(0x33, "IR", 60, 60)
+    assert plant.block_present(0x33, "IR", 60, 60) is False
+
+
+def test_mark_absent_independent_of_block_age(plant: Plant):
+    """Marking a block absent leaves register_block_updated_at unchanged (age is orthogonal)."""
+    t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    plant.mark_absent(0x32, "IR", 0, 60)  # overwrite the present marker
+    # The freshness stamp is untouched; block_age still reflects the last commit.
+    assert plant.block_age(0x32, "IR", 0, 60, now=t) == 0.0
+    assert plant.block_present(0x32, "IR", 0, 60) is False
+
+
+def test_discarded_bank_does_not_set_present(plant: Plant):
+    """A rejected bank (incoherent/all-zero) must not set the presence marker to True."""
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33, base_register=60)
+    plant.update(pdu)
+    assert plant.block_present(0x33, "IR", 60, 60) is None  # not present, not absent — still unknown
+
+
+def test_invalidate_presence_clears_marker_and_registers(plant: Plant):
+    """invalidate_presence() drops the marker (→ UNKNOWN) AND removes the cached register values."""
+    t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 42}, base_register=0), received_at=t)
+    assert plant.block_present(0x32, "IR", 0, 60) is True
+    assert plant.register_caches[0x32].get(IR(5)) == 42
+
+    plant.invalidate_presence(0x32, "IR", 0, 60)
+
+    assert plant.block_present(0x32, "IR", 0, 60) is None  # UNKNOWN
+    assert plant.register_caches[0x32].get(IR(5)) is None  # registers evicted
+
+
+def test_invalidate_presence_leaves_freshness_stamp(plant: Plant):
+    """invalidate_presence() leaves register_block_updated_at intact (age is orthogonal to presence)."""
+    t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 42}, base_register=0), received_at=t)
+    plant.invalidate_presence(0x32, "IR", 0, 60)
+    assert plant.block_age(0x32, "IR", 0, 60, now=t) == 0.0  # timestamp untouched
+
+
+def test_invalidate_presence_noop_for_unknown_block(plant: Plant):
+    """invalidate_presence() on a never-probed block is a no-op (no key error)."""
+    plant.invalidate_presence(0xFF, "IR", 60, 60)  # must not raise
+    assert plant.block_present(0xFF, "IR", 60, 60) is None
+
+
+def test_block_present_overwrite_absent_to_present(plant: Plant):
+    """A subsequent commit after mark_absent updates the marker to PRESENT (topology reappears)."""
+    plant.mark_absent(0x32, "IR", 0, 60)
+    assert plant.block_present(0x32, "IR", 0, 60) is False
+    plant.update(_make_ir_pdu({5: 7}))
+    assert plant.block_present(0x32, "IR", 0, 60) is True
+
+
+def test_redact_copies_register_block_present(plant: Plant):
+    """redact() includes register_block_present so the snapshot stays independent of later updates."""
+    plant.mark_absent(0x33, "IR", 60, 60)
+    plant.update(_make_ir_pdu({5: 1}))
+    snapshot = plant.redact()
+    assert snapshot.register_block_present == plant.register_block_present
+    # Mutations to the original don't leak into the snapshot.
+    plant.mark_absent(0x34, "IR", 60, 60)
+    assert 0x34 not in {dev for dev, *_ in snapshot.register_block_present}
+
+
 def test_allzero_rejection_preserves_staleness(plant: Plant):
     """A rejected all-zero bank records no ingestion timestamp, so block_age keeps growing (#65/#206)."""
     t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
