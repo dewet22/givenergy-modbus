@@ -337,3 +337,112 @@ async def test_refresh_default_always_solicits_ir0():
 
     recorded = await _refresh_recording_requests(client, timeout=0.1, retries=0)
     assert _ir0_requested(recorded, inverter)
+
+
+# ---------------------------------------------------------------------------
+# _refresh_ranges — pure function unit tests (#268 slice 4)
+# ---------------------------------------------------------------------------
+
+
+def test_refresh_ranges_no_max_age_includes_all_banks():
+    """With max_age=None every bank for a HYBRID plant is included."""
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    plant, caps = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33]).plant, None
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33])
+    plant = client.plant
+    caps = client.plant.capabilities
+    reqs = _refresh_ranges(caps, None, plant)
+    addrs = [(r.device_address, r.base_register) for r in reqs]
+    assert (caps.inverter_address, 0) in addrs  # IR(0,60)
+    assert (caps.inverter_address, 180) in addrs  # IR(180,60)
+    assert (0x33, 60) in addrs  # LV battery
+
+
+def test_refresh_ranges_max_age_skips_fresh_ir0():
+    """Fresh IR(0,60) is excluded when max_age is set and block is within budget."""
+    from datetime import UTC, datetime
+
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID)
+    plant, caps = client.plant, client.plant.capabilities
+    inverter = caps.inverter_address
+    plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC)
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert not any(r.device_address == inverter and r.base_register == 0 for r in reqs)
+    assert any(r.device_address == inverter and r.base_register == 180 for r in reqs)
+
+
+def test_refresh_ranges_max_age_skips_fresh_battery_bank():
+    """Fresh battery IR(60,60) is excluded when max_age is set."""
+    from datetime import UTC, datetime
+
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33])
+    plant, caps = client.plant, client.plant.capabilities
+    plant.register_block_updated_at[(0x33, "IR", 60, 60)] = datetime.now(UTC)
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert not any(r.device_address == 0x33 for r in reqs)
+
+
+def test_refresh_ranges_max_age_skips_fresh_meter_bank():
+    """Fresh meter IR(60,30) is excluded when max_age is set."""
+    from datetime import UTC, datetime
+
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID, meter_addresses=[0x01])
+    plant, caps = client.plant, client.plant.capabilities
+    plant.register_block_updated_at[(0x01, "IR", 60, 30)] = datetime.now(UTC)
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert not any(r.device_address == 0x01 for r in reqs)
+
+
+def test_refresh_ranges_solicits_stale_block():
+    """A block older than max_age is always included."""
+    from datetime import UTC, datetime, timedelta
+
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID)
+    plant, caps = client.plant, client.plant.capabilities
+    inverter = caps.inverter_address
+    plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC) - timedelta(seconds=120)
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert any(r.device_address == inverter and r.base_register == 0 for r in reqs)
+
+
+def test_refresh_ranges_solicits_never_seen_block():
+    """A block with no timestamp (never ingested) is always included."""
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID)
+    plant, caps = client.plant, client.plant.capabilities
+    inverter = caps.inverter_address
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert any(r.device_address == inverter and r.base_register == 0 for r in reqs)
+
+
+@pytest.mark.asyncio
+async def test_refresh_ir0_max_age_emits_deprecation_warning():
+    """ir0_max_age= still works but emits DeprecationWarning; behaviour matches max_age=."""
+    import warnings
+    from datetime import UTC, datetime
+
+    client = _client_with_caps(Model.HYBRID)
+    inverter = client.plant.capabilities.inverter_address
+    client.plant.register_block_updated_at[(inverter, "IR", 0, 60)] = datetime.now(UTC)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        recorded = await _refresh_recording_requests(client, ir0_max_age=30, timeout=0.1, retries=0)
+
+    assert any(issubclass(x.category, DeprecationWarning) and "ir0_max_age" in str(x.message) for x in w)
+    assert not _ir0_requested(recorded, inverter)

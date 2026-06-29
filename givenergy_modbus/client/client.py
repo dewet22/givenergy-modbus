@@ -7,6 +7,7 @@ import warnings
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal
 
 from givenergy_modbus.client.commands import (
@@ -323,6 +324,71 @@ def _strategise(
         [(f"0x{r.device_address:02x}", r.reg_type, r.base_register, r.register_count) for r in ranges],
     )
     return ranges
+
+
+def _refresh_banks(caps: PlantCapabilities) -> list[tuple[int, int, int]]:
+    """Return (device_address, base_register, register_count) for every IR bank to poll."""
+    inverter = caps.inverter_address
+    banks: list[tuple[int, int, int]] = []
+    if not caps.is_ems:
+        banks += [(inverter, 0, 60), (inverter, 180, 60)]
+    if caps.is_three_phase:
+        for base in range(1000, 1414, 60):
+            banks.append((inverter, base, min(60, 1414 - base)))
+    if caps.is_ems:
+        banks.append((inverter, 2040, 55))
+    if caps.is_gateway:
+        for base in range(1600, 1860, 60):
+            banks.append((inverter, base, min(60, 1860 - base)))
+    for addr in caps.lv_battery_addresses:
+        banks.append((addr, 60, 60))
+    if caps.lv_bcu_address is not None:
+        banks.append((caps.lv_bcu_address, 60, 60))
+    for addr in caps.meter_addresses:
+        banks.append((addr, 60, 30))
+    for offset, _ in caps.bcu_stacks:
+        banks.append((0x70 + offset, 60, 60))
+    for addr in caps.aio_battery_module_addresses:
+        banks.append((addr, 60, 60))
+    for addr in caps.hv_bmu_addresses:
+        banks.append((addr, 60, 60))
+    return banks
+
+
+def _refresh_ranges(
+    caps: PlantCapabilities,
+    max_age: float | None,
+    plant: Plant,
+    *,
+    now: datetime | None = None,
+) -> list[TransparentRequest]:
+    """Return the TransparentRequests for one refresh cycle, skipping fresh banks.
+
+    When ``max_age`` is None every bank is included (bit-identical to the pre-#268
+    behaviour). When set, any bank whose ``plant.block_age()`` is not None and ≤
+    ``max_age`` seconds is omitted. No I/O.
+    """
+    banks = _refresh_banks(caps)
+    if max_age is None:
+        return [
+            ReadInputRegistersRequest(base_register=base, register_count=count, device_address=addr)
+            for addr, base, count in banks
+        ]
+    reqs: list[TransparentRequest] = []
+    for addr, base, count in banks:
+        age = plant.block_age(addr, "IR", base, count, now=now)
+        if age is not None and age <= max_age:
+            _logger.debug(
+                "refresh: skipping IR(%d,%d)@0x%02x — %.1fs ≤ %.1fs max_age",
+                base,
+                count,
+                addr,
+                age,
+                max_age,
+            )
+            continue
+        reqs.append(ReadInputRegistersRequest(base_register=base, register_count=count, device_address=addr))
+    return reqs
 
 
 class Client:
@@ -1070,6 +1136,7 @@ class Client:
         timeout: float = 2.0,
         retries: int = 1,
         retry_delay: float = 0.5,
+        max_age: float | None = None,
         ir0_max_age: float | None = None,
     ) -> Plant:
         """Read IR measurement blocks for all known devices.
@@ -1088,15 +1155,17 @@ class Client:
         though the device is responsive (#132). Pass a tighter budget if you own the
         bus exclusively and want genuine failures surfaced faster.
 
-        ``ir0_max_age`` (seconds) opts in to skip-if-fresh for the IR(0,60) live block
-        (#196): GivEnergy dongles fan out the responses to whoever is polling them (the
-        cloud, the app, another client), so the network consumer often already has a
-        recent IR(0,60) in cache without us asking. When set, if IR(0,60) was committed
-        within ``ir0_max_age`` seconds it is not re-solicited this cycle, sparing the
-        (often flaky) dongle a request. Defaults to ``None`` — always solicit, the
-        historic behaviour. Scoped to IR(0,60) only for now; broaden once soak-tested.
-        Note the fan-out only exists while something else is polling the unit; on a
-        cloud-disconnected dongle the block ages out and we solicit it as normal.
+        ``max_age`` (seconds) opts in to skip-if-fresh for any IR bank (#196, #207):
+        GivEnergy dongles fan out the responses to whoever is polling them (the cloud,
+        the app, another client), so the consumer often already has recent data in cache
+        without us asking. When set, any IR bank committed within ``max_age`` seconds
+        is not re-solicited this cycle. Defaults to ``None`` — always solicit, the
+        historic behaviour. Note the fan-out only exists while something else is polling
+        the unit; on a cloud-disconnected dongle the blocks age out and we solicit them.
+
+        ``ir0_max_age`` is deprecated — use ``max_age`` instead. It applied the same
+        logic to IR(0,60) only; ``max_age`` extends it to every bank. Will be removed
+        in 3.0.
         """
         caps = self.plant.capabilities
         if caps is None:
@@ -1104,60 +1173,22 @@ class Client:
                 "refresh() requires plant capabilities — call detect() once first, "
                 "or restore a persisted PlantCapabilities onto client.plant.capabilities."
             )
-        inverter = caps.inverter_address
-        reqs: list[TransparentRequest] = []
-        # EMS plant controllers don't expose IR(0,60) or IR(180,60) — see load_config() and #86.
-        if not caps.is_ems:
-            ir0_age = self.plant.block_age(inverter, "IR", 0, 60) if ir0_max_age is not None else None
-            if ir0_max_age is not None and ir0_age is not None and ir0_age <= ir0_max_age:
-                _logger.debug(
-                    "Skipping IR(0,60) solicit for device 0x%02x — fan-out kept it fresh (%.1fs <= %.1fs)",
-                    inverter,
-                    ir0_age,
-                    ir0_max_age,
-                )
-            else:
-                reqs.append(ReadInputRegistersRequest(base_register=0, register_count=60, device_address=inverter))
-            reqs.append(ReadInputRegistersRequest(base_register=180, register_count=60, device_address=inverter))
-        if caps.is_three_phase:
-            for base in range(1000, 1414, 60):
-                reqs.append(
-                    ReadInputRegistersRequest(
-                        base_register=base,
-                        register_count=min(60, 1414 - base),
-                        device_address=inverter,
-                    )
-                )
-        if caps.is_ems:
-            reqs.append(ReadInputRegistersRequest(base_register=2040, register_count=55, device_address=inverter))
-        if caps.is_gateway:
-            for base in range(1600, 1860, 60):
-                reqs.append(
-                    ReadInputRegistersRequest(
-                        base_register=base,
-                        register_count=min(60, 1860 - base),
-                        device_address=inverter,
-                    )
-                )
-        for addr in caps.lv_battery_addresses:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
-        if caps.lv_bcu_address is not None:
-            # LV BCU stack-level page (#241) — count 60 matches the field-validated probe shape.
-            reqs.append(
-                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=caps.lv_bcu_address)
+        if ir0_max_age is not None:
+            warnings.warn(
+                "refresh(ir0_max_age=...) is deprecated; use max_age= instead "
+                "(applies to all banks, not just IR(0,60)). ir0_max_age will be "
+                "removed in 3.0.",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        for addr in caps.meter_addresses:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=30, device_address=addr))
-        for offset, _ in caps.bcu_stacks:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + offset))
-        # AIO per-module battery caches (#192) — each module answers at its own address.
-        for addr in caps.aio_battery_module_addresses:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
-        # HV BMU per-module per-cell caches (#265) — each module answers at its own 0x50+ address
-        # (installer-confirmed, not yet wire-confirmed). Empty until detect probes the band.
-        for addr in caps.hv_bmu_addresses:
-            reqs.append(ReadInputRegistersRequest(base_register=60, register_count=60, device_address=addr))
-        await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
+            if max_age is None:
+                max_age = ir0_max_age
+        await self._execute_reads(
+            _refresh_ranges(caps, max_age, self.plant),
+            timeout=timeout,
+            retries=retries,
+            retry_delay=retry_delay,
+        )
         return self.plant
 
     async def refresh_plant(
