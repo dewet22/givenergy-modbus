@@ -69,19 +69,32 @@ _FALLBACK_SERIAL = "MK0000G000"
 def _iter_capture_frames(*paths: str | Path) -> list[bytes]:
     """Return complete rx frames from one or more capture ``.log`` files, ts-sorted.
 
-    Each line is ``<ts> rx <hex>``; the hex is a socket chunk, so frames may span lines.
-    We concatenate the rx stream in timestamp order and split on the frame marker using
-    the MBAP length field — the same framing the wire uses.
+    Two line shapes are accepted: the canonical ``<ts> rx <hex>`` and the integration
+    capture's ``rx: <hex>`` / ``tx: <hex>`` (no timestamp, colon-suffixed direction). Only
+    rx lines are kept; the hex is a socket chunk, so frames may span lines, so we concatenate
+    the rx stream in timestamp order and split on the frame marker using the MBAP length
+    field — the same framing the wire uses. Timestamp-less lines sort stably in file order.
     """
     entries: list[tuple[str, bytes]] = []
     for path in paths:
         for line in Path(path).read_text(encoding="utf-8").splitlines():
             parts = line.split()
-            if len(parts) >= 3 and parts[1] == "rx":
-                try:
-                    entries.append((parts[0], bytes.fromhex(parts[-1])))
-                except ValueError:
-                    continue
+            if len(parts) < 2:
+                continue
+            # Direction token is either parts[0] ("rx:"/"tx:", no timestamp) or parts[1]
+            # ("rx"/"tx", canonical with timestamp). Tolerate a trailing colon either way.
+            if parts[0].rstrip(":").lower() in ("rx", "tx"):
+                direction, ts = parts[0].rstrip(":").lower(), ""
+            elif len(parts) >= 3 and parts[1].rstrip(":").lower() in ("rx", "tx"):
+                direction, ts = parts[1].rstrip(":").lower(), parts[0]
+            else:
+                continue
+            if direction != "rx":
+                continue
+            try:
+                entries.append((ts, bytes.fromhex(parts[-1])))
+            except ValueError:
+                continue
     entries.sort(key=lambda e: e[0])
     buf = b"".join(raw for _, raw in entries)
 
@@ -110,8 +123,17 @@ def plant_from_capture(*paths: str | Path) -> Plant:
     ``plant.register_caches`` (keyed by device address) is exactly what the library would
     hold after polling the real plant.
     """
+    frames = _iter_capture_frames(*paths)
+    if not frames:
+        # Zero frames means none of the lines matched the accepted shapes — almost always a
+        # capture-format mismatch. Fail loudly rather than silently serving an empty plant
+        # (which would report "0 devices seeded" and answer "absent" for every read). See #322.
+        joined = ", ".join(str(p) for p in paths)
+        raise ValueError(
+            f"No rx frames parsed from capture(s): {joined}. Expected lines shaped '<ts> rx <hex>' or 'rx: <hex>'."
+        )
     plant = Plant()
-    for frame in _iter_capture_frames(*paths):
+    for frame in frames:
         try:
             pdu = ClientIncomingMessage.decode_bytes(frame)
         except Exception:  # noqa: BLE001  # nosec B112 — skipping an undecodable frame is intended  # pragma: no cover

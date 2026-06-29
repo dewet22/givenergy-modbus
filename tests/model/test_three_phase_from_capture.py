@@ -13,52 +13,27 @@ real wire→model path, and it locks in the fixes these frames drove:
 See ``tests/fixtures/captures/three_phase_hv_a/README.md`` for provenance.
 """
 
-import asyncio
 from pathlib import Path
 
 import pytest
 
-from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.model.hv_bcu import Bcu
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
 from givenergy_modbus.model.plant import Plant
-from givenergy_modbus.pdu.transparent import TransparentResponse
+from givenergy_modbus.testing.mock_plant import plant_from_capture
 
 _CAPTURE = Path(__file__).parents[1] / "fixtures" / "captures" / "three_phase_hv_a" / "giv3hy11_hass174_180s.txt"
-
-
-def _frames() -> list[bytes]:
-    """Read frames from the integration's ``tx:/rx: <hex>`` capture format."""
-    frames: list[bytes] = []
-    for line in _CAPTURE.read_text(encoding="utf-8").splitlines():
-        for prefix in ("rx: ", "tx: "):
-            if line.startswith(prefix):
-                try:
-                    frames.append(bytes.fromhex(line[len(prefix) :]))
-                except ValueError:
-                    pass
-    return frames
-
-
-async def _replay() -> Plant:
-    """Decode the capture into a bare (no-capabilities) Plant — raw caches keyed by wire address."""
-    framer = ClientFramer()
-    plant = Plant()
-    for raw in _frames():
-        async for pdu in framer.decode(raw):
-            if isinstance(pdu, TransparentResponse) and not pdu.error:
-                plant.update(pdu)
-    return plant
 
 
 @pytest.fixture(scope="module")
 def replayed_plant() -> Plant:
     """Decode the capture once for the module (the frames are immutable, so share the Plant).
 
-    A plain sync fixture wrapping ``asyncio.run`` rather than a module-scoped async fixture,
-    which is brittle under pytest-asyncio's per-function event-loop scoping.
+    Routed through the shared ``plant_from_capture`` loader, which now parses this fixture's
+    ``rx:/tx: <hex>`` line form directly (#322) — so this also regression-tests that the
+    integration capture loads through the same path ``mock-server`` uses.
     """
-    return asyncio.run(_replay())
+    return plant_from_capture(_CAPTURE)
 
 
 @pytest.mark.timeout(15)
