@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-06-29
+
+### ✨ Added
+
+- extend _DTC_RATED_POWER from the app v4.0.7 model-code table (#320) (#340) ([bd4416b](https://github.com/dewet22/givenergy-modbus/commit/bd4416bec76fe6858faadfc3d8989e7710894196))
+
+### 🐛 Fixed
+
+- split single-phase fault_code into inverter_fault_code + inverter_warning_code (#330) (#335) ([ab3e11e](https://github.com/dewet22/givenergy-modbus/commit/ab3e11ee7a5b823fbaa32a25ea547c25e1b4fd65))
+- mock-server fails loud on a capture that parses to zero frames (#322) (#336) ([fdf234c](https://github.com/dewet22/givenergy-modbus/commit/fdf234c3cf36a66e56df03b028d6230c6644d8ad))
+- HR1063 is an export-rate %, not a power — rename + correct bound + add setter (#263) (#337) ([b74fe0c](https://github.com/dewet22/givenergy-modbus/commit/b74fe0c636209fe402e9fe0b91752e8151f36063))
+- gate HR311/317 (export priority, EPS enable) on has_ac_config_block (#297) (#338) ([a2058b1](https://github.com/dewet22/givenergy-modbus/commit/a2058b14dbb660fc329a35cbf82d9c50502690c1))
+- decode 3ph per-phase active power as signed watts; rename off p_load_ac*/p_out_ac* (#185) (#341) ([40425e3](https://github.com/dewet22/givenergy-modbus/commit/40425e36d02226a9422471ee16e0da786b17c4f8))
+- scale e_inverter_export_total as 0.1 kWh (#182) (#339) ([7df4f9d](https://github.com/dewet22/givenergy-modbus/commit/7df4f9daab90155ec4ae040f92b2bd2fc313e406))
+
 ## [2.7.1] - 2026-06-29
 
 ### 🐛 Fixed
