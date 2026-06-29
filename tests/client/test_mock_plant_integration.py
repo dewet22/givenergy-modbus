@@ -23,7 +23,7 @@ from givenergy_modbus.pdu import (
     WriteHoldingRegisterRequest,
 )
 from givenergy_modbus.testing import MockPlant
-from givenergy_modbus.testing.mock_plant import _iter_capture_frames
+from givenergy_modbus.testing.mock_plant import _iter_capture_frames, plant_from_capture
 
 _CAPTURES = Path(__file__).parents[1] / "fixtures" / "captures"
 
@@ -130,6 +130,24 @@ def test_iter_capture_frames_skips_non_rx(tmp_path: Path):
     log = tmp_path / "tx.log"
     log.write_text("2026-01-01T00:00:00Z tx 5959000100060102ab0000003c000f\n")
     assert _iter_capture_frames(log) == []
+
+
+def test_iter_capture_frames_tolerates_colon_rx_form(tmp_path: Path):
+    """The integration capture's ``rx:/tx: <hex>`` form (no timestamp) is parsed; tx excluded (#322)."""
+    good_frame = ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11).encode()
+    log = tmp_path / "colon.log"
+    # Blank and single-token lines are skipped; only the rx line yields a frame (tx excluded).
+    log.write_text(f"\nheader-line\ntx: {good_frame.hex()}\nrx: {good_frame.hex()}\n")
+    frames = _iter_capture_frames(log)
+    assert frames == [good_frame]  # only the rx line, decoded as one frame
+
+
+def test_plant_from_capture_raises_on_zero_frames(tmp_path: Path):
+    """A capture that parses to zero rx frames fails loudly rather than serving an empty plant (#322)."""
+    log = tmp_path / "wrongformat.log"
+    log.write_text("nothing here matches the expected line shape\n")
+    with pytest.raises(ValueError, match="No rx frames parsed"):
+        plant_from_capture(log)
 
 
 def test_iter_capture_frames_handles_junk_before_marker(tmp_path: Path):
