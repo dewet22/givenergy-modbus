@@ -1549,6 +1549,16 @@ def test_fault_code_split_and_deprecated_alias():
         assert empty.fault_code is None
 
 
+def test_e_inverter_export_total_deci_scale():
+    """HR4141/4142 e_inverter_export_total is 0.1 kWh (C.deci), not raw uint32 (#182)."""
+    from givenergy_modbus.model.register import HR
+
+    # raw uint32 = 12345 → 1234.5 kWh under deci (was 12345 when read raw — 10× too high).
+    cache = RegisterCache({HR(4141): 0, HR(4142): 12345})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.e_inverter_export_total == pytest.approx(1234.5)  # type: ignore[attr-defined]
+
+
 def _cache(**entries):
     from givenergy_modbus.model.register import IR
 

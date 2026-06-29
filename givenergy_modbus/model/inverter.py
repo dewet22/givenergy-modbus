@@ -841,7 +841,12 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         # Holding Registers, block 4140-4199
         #
-        "e_inverter_export_total": Def(C.uint32, None, HR(4141), HR(4142)),
+        # 0.1 kWh per the v4.1.6 doc, matching the sibling cumulative totals (e_pv_total,
+        # e_battery_throughput) which already use C.deci; raw uint32 over-reported 10×. Not
+        # currently in the library poll path (max base HR240), so this corrects any direct read
+        # (#182). Doc-driven — no wire capture confirms the magnitude, as for the adjacent _alt
+        # energy block.
+        "e_inverter_export_total": Def(C.uint32, C.deci, HR(4141), HR(4142)),
         #
         # Input Registers, block 0-59
         #
