@@ -165,10 +165,10 @@ The polling path mirrors `detect()`'s split — pure policy decides *what* to re
 ![The refresh() decomposition: _refresh_banks, _refresh_ranges and _execute_reads](img/refresh-decomposition.png)
 
 - **`_refresh_banks(caps)`** — pure topology. Turns `PlantCapabilities` into the ordered list of IR banks the plant exposes (inverter measurement blocks, per-battery, per-meter, BCU / AIO / HV-BMU pages). No I/O, no policy.
-- **`_refresh_ranges(caps, max_age, plant)`** — pure policy. Walks the bank list and applies two skip gates per bank: drop it if `detect()` marked it absent (`block_present(...) is False`, #268), then drop it if `max_age` says it is still fresh (`block_age(...) <= max_age`, #196/#207). Whatever survives becomes a `ReadInputRegistersRequest`.
+- **`_refresh_ranges(caps, max_age, plant)`** — pure policy. Walks the bank list and applies two skip gates per bank: drop it if `detect()` marked it absent (`plant.block_present(...) is False`, #268), then drop it if `max_age` says it is still fresh (`plant.block_age(...) <= max_age`, #196/#207). Whatever survives becomes a `ReadInputRegistersRequest`.
 - **`_execute_reads(...)`** — the I/O seam. Issues the batch and tolerates partial failure (`RefreshPartiallySucceeded` / `RefreshFailed`).
 
-`refresh()` itself is a thin shell around these: check that capabilities exist, map the deprecated `ir0_max_age` onto `max_age`, then `_execute_reads(_refresh_ranges(...))`.
+`refresh()` itself is a thin shell around these: check that capabilities exist, map the deprecated `ir0_max_age` onto `max_age`, then `await self._execute_reads(_refresh_ranges(...))`.
 
 Unlike `detect()`, there is no validate stage. `refresh()` decides only what to *ask* for; whether to *believe* a response is the cache layer's call — the keep-last-good guards (CRC #255, sub-bus splice #256, bank holds) validate each frame as it commits. The skip-if-fresh gate also makes `refresh()` cooperative with the dongle fan-out: GivEnergy dongles echo responses to every connected client, so a bank another poller just refreshed can be left alone (#196).
 
