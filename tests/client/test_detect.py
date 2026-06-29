@@ -519,6 +519,78 @@ async def test_detect_finds_lv_batteries():
     assert caps.lv_battery_addresses == [0x32, 0x33]
 
 
+@pytest.mark.asyncio
+async def test_detect_enumerates_battery_held_on_first_frame():
+    """detect() must enumerate a battery whose first probe is cold-start-held (#233/#289).
+
+    The #289 cold-start guard holds the first bank against an empty cache (the cache stays empty,
+    pending a corroborating re-read). detect() probes each address once, so without a confirming
+    read the address is dropped at the ``register_caches`` gate and refresh() never re-polls it — a
+    permanent hold for a recovered/returned pack (hass#233). The confirming re-read corroborates a
+    healthy bank so the returned battery re-enumerates within a single detect pass.
+
+    Unlike test_detect_finds_lv_batteries, this drives the response through the REAL guard via
+    plant.update() rather than pre-priming the cache — that is what exercises the cold-start hold.
+    """
+    from tests.model.test_plant import _coherent_battery_bank, _make_ir_pdu
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)  # primary pack commits first-read via the inverter getter
+    probes: list[int] = []
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        addr = request.device_address
+        if addr != 0x33:
+            return False
+        probes.append(addr)
+        # First call: the guard holds it (cache stays empty). The confirming re-read feeds the same
+        # healthy bank, which corroborates and commits.
+        client.plant.update(
+            _make_ir_pdu(_coherent_battery_bank(), device_address=0x33, base_register=60, register_count=60)
+        )
+        return True
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert 0x33 in caps.lv_battery_addresses, "a cold-start-held battery must still be enumerated"
+    assert probes.count(0x33) == 2, "detect must issue one confirming re-read when the first frame is held"
+
+
+@pytest.mark.asyncio
+async def test_detect_does_not_enumerate_flapping_battery():
+    """A battery that responds but never corroborates is NOT enumerated (#289 safety at detect layer).
+
+    The confirming re-read must not enumerate a pack whose two reads disagree by >=2 physics-impossible
+    deltas (a sub-bus splice / flapping BMS) — it stays held with an empty cache, exactly as a transient
+    splice should.
+    """
+    from tests.model.test_plant import _coherent_battery_bank, _make_ir_pdu
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # Two disagreeing reads: healthy, then the temp-zero corruption cohort (4 temps 250→0 = >=2 physics).
+    banks = [_coherent_battery_bank(), _coherent_battery_bank({76 + i: 0 for i in range(4)})]
+    calls = {"n": 0}
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        if request.device_address != 0x33:
+            return False
+        bank = banks[min(calls["n"], len(banks) - 1)]
+        calls["n"] += 1
+        client.plant.update(_make_ir_pdu(bank, device_address=0x33, base_register=60, register_count=60))
+        return True
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", side_effect=_probe_side_effect):
+            caps = await client.detect()
+
+    assert 0x33 not in caps.lv_battery_addresses, "a flapping/uncorroborated battery must not enumerate"
+
+
 async def test_detect_finds_lv_bcu():
     """A populated BCU block at 0x31 sets lv_bcu_address (#241)."""
     client = _make_client()
