@@ -620,7 +620,9 @@ class Plant(GivEnergyBaseModel):
     # value held). A held bank never updates the cache, so the next poll re-compares against
     # the same last-good; the held value commits only if the device reads it again within
     # threshold (genuine step persists) rather than snapping back (transient splice reverts).
-    # Ephemeral runtime state, rebuilt with a fresh Plant on reconnect; not serialised.
+    # Ephemeral runtime state, not serialised. It lives on the Plant instance and persists across
+    # connect()/close()/detect() — Client builds self.plant once (__init__) and reconnecting reuses
+    # it, so this state is cleared only by constructing a new Client/Plant, never by a reconnect.
     _splice_escrow: dict[int, tuple[int, int]] = PrivateAttr(default_factory=dict)
 
     # Cold-start baseline confirmation (#289): per battery device address, the first full bank seen
@@ -630,7 +632,8 @@ class Plant(GivEnergyBaseModel):
     # garbage each poll — never corroborates and never poisons the baseline. Most-recent-wins on a
     # disagreement. A persistently-identical scalar-immutable poison corroborates and is left to the
     # #286 heal; a corroborated temp-zero corruption cohort is refused outright (it would hard-reject
-    # all healthy data, which the scalar heal can't recover). Ephemeral; rebuilt on reconnect.
+    # all healthy data, which the scalar heal can't recover). Ephemeral; not serialised; persists
+    # across reconnect on the same Plant instance (see _splice_escrow).
     _splice_pending_baseline: dict[int, tuple[list[int], datetime]] = PrivateAttr(default_factory=dict)
 
     # Splice-guard observation clock (#256): per battery device address, the ingestion time of the
@@ -638,8 +641,8 @@ class Plant(GivEnergyBaseModel):
     # keys off this, NOT the last accepted commit: a sustained corruption run (every poll rejected)
     # leaves the last-good commit ageing past the bypass window, but keeps arriving each poll, so
     # this clock stays ~one poll old and the bypass never fires. Only a genuine polling gap (real
-    # outage, no banks at all) makes it stale and resets to cold-start adoption. Ephemeral; resets
-    # with a fresh Plant on reconnect; not serialised.
+    # outage, no banks at all) makes it stale and resets to cold-start adoption. Ephemeral; not
+    # serialised; persists across reconnect on the same Plant instance (see _splice_escrow).
     _splice_last_seen: dict[int, datetime] = PrivateAttr(default_factory=dict)
 
     # Scalar-immutable poison-recovery streak (#281): per battery device address,

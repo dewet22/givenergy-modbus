@@ -786,6 +786,67 @@ class Client:
                 _logger.exception("detect: error during connection teardown after failure")
             raise
 
+    async def _detect_lv_batteries(
+        self,
+        caps: PlantCapabilities,
+        prior: PlantCapabilities | None,
+        timeout: float,
+        retries: int,
+        probe_timeout: float,
+        probe_retries: int,
+    ) -> None:
+        """Enumerate LV battery packs into ``caps.lv_battery_addresses`` (detect step 4).
+
+        Battery pack #1 is at 0x32, additional packs at 0x33–0x37 (the inverter lives at 0x11, not
+        0x32 — issues #119/#189); each slot is validated via ``Battery.is_valid()``. Per-slot (not
+        break-on-fail) like the meter sweep: addresses can be non-contiguous (DIP-switch
+        misconfiguration) and a transient BMS timeout on pack N must not drop pack N+1 onward. Cold
+        detect is affordable since the probe budget only applies on cold sweeps.
+        """
+        await self.send_request_and_await_response(
+            ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
+            timeout=timeout,
+            retries=retries,
+        )
+        batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
+        for batt_addr in batt_candidates:
+            if batt_addr > 0x32:
+                if not await self._probe(
+                    ReadInputRegistersRequest(base_register=60, register_count=60, device_address=batt_addr),
+                    timeout=probe_timeout,
+                    retries=probe_retries,
+                ):
+                    continue
+                # #233/#289: the first battery bank against an empty cache is held by the cold-start
+                # splice guard (the cache stays empty pending a corroborating re-read). detect()
+                # probes each address once, so without this confirming read the address is dropped at
+                # the gate below and refresh() never re-polls it — a permanent hold for a recovered/
+                # returned pack. One healthy re-read corroborates and commits; a flapping/spliced bank
+                # fails to corroborate and correctly stays out (#289 anti-poison intact). Removed once
+                # #213's placeholder model decouples enumeration from data adoption.
+                if not self.plant.register_caches.get(batt_addr):
+                    await self._probe(
+                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=batt_addr),
+                        timeout=probe_timeout,
+                        retries=probe_retries,
+                    )
+                if not self.plant.register_caches.get(batt_addr):
+                    continue
+            try:
+                if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
+                    _logger.debug(
+                        "detect: battery probe responded at 0x%02x but is_valid()=False — skipping",
+                        batt_addr,
+                    )
+                    continue
+            except (KeyError, ValueError):
+                continue
+            caps.lv_battery_addresses.append(batt_addr)
+        _logger.info(
+            "detect: lv_battery_addresses=[%s]",
+            ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
+        )
+
     async def _detect(
         self,
         timeout: float,
@@ -885,45 +946,10 @@ class Client:
             ", ".join(f"0x{a:02x}" for a in caps.meter_addresses),
         )
 
-        # Step 4 — LV battery detection. Battery pack #1 is at 0x32, additional batteries at
-        # 0x33–0x37 (the inverter itself lives at 0x11, not 0x32 — issues #119/#189). All
-        # slots are validated via Battery.is_valid(). Skipped for HV systems (handled at step 2)
-        # and EMS plant controllers (don't expose IR at the inverter address — see #86).
-        # Per-slot (not break-on-fail) for the same reasons as the meter sweep above: battery
-        # addresses can be non-contiguous (DIP-switch misconfiguration) and a transient BMS
-        # timeout on pack N must not silently drop pack N+1 onward. Cold detect is affordable
-        # since the probe budget only applies on cold sweeps; warm/hinted starts skip this.
+        # Step 4 — LV battery + LV BCU detection. Skipped for HV systems (handled at step 2) and
+        # EMS plant controllers (don't expose IR at the inverter address — see #86).
         if not caps.is_hv and not caps.is_ems:
-            await self.send_request_and_await_response(
-                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
-                timeout=timeout,
-                retries=retries,
-            )
-            batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
-            for batt_addr in batt_candidates:
-                if batt_addr > 0x32:
-                    if not await self._probe(
-                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=batt_addr),
-                        timeout=probe_timeout,
-                        retries=probe_retries,
-                    ):
-                        continue
-                    if not self.plant.register_caches.get(batt_addr):
-                        continue
-                try:
-                    if not Battery.from_register_cache(self.plant.register_caches[batt_addr]).is_valid():
-                        _logger.debug(
-                            "detect: battery probe responded at 0x%02x but is_valid()=False — skipping",
-                            batt_addr,
-                        )
-                        continue
-                except (KeyError, ValueError):
-                    continue
-                caps.lv_battery_addresses.append(batt_addr)
-            _logger.info(
-                "detect: lv_battery_addresses=[%s]",
-                ", ".join(f"0x{a:02x}" for a in caps.lv_battery_addresses),
-            )
+            await self._detect_lv_batteries(caps, prior, timeout, retries, probe_timeout, probe_retries)
 
             # Step 4b — LV BCU page probe (#241).
             await self._detect_lv_bcu(caps, prior, probe_timeout, probe_retries)
