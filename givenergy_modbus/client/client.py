@@ -281,34 +281,48 @@ def _strategise(
     Calls the same candidate helpers as ``_derive_capabilities`` so candidate generation
     has one implementation.  No I/O.
     """
+    ranges: list[ProbeRange]
+
     if step == "aio_modules":
         num = caps.bcu_stacks[0][1] if caps.bcu_stacks else 0
         addrs: list[int] | range = (
             list(prior.aio_battery_module_addresses) if prior is not None else _aio_module_candidates(num)
         )
-        return [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
+        ranges = [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
 
-    if step == "hv_bmus":
+    elif step == "hv_bmus":
         if not (caps.is_hv and caps.device_type is not Model.ALL_IN_ONE and caps.bcu_stacks):
-            return []
-        addrs = (
-            list(prior.hv_bmu_addresses)
-            if prior is not None and prior.hv_bmu_addresses
-            else _hv_bmu_candidates(caps.bcu_stacks)
-        )
-        return [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
+            ranges = []
+        else:
+            addrs = (
+                list(prior.hv_bmu_addresses)
+                if prior is not None and prior.hv_bmu_addresses
+                else _hv_bmu_candidates(caps.bcu_stacks)
+            )
+            ranges = [ProbeRange("IR", addr, 60, 60, "probe") for addr in addrs]
 
-    if step == "meters":
+    elif step == "meters":
         addrs = prior.meter_addresses if prior is not None else _COLD_METER_RANGE
-        return [ProbeRange("IR", addr, 60, 30, "probe") for addr in addrs]
+        ranges = [ProbeRange("IR", addr, 60, 30, "probe") for addr in addrs]
 
-    if step == "lv_bcu":
+    elif step == "lv_bcu":
         addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
         if addr is None:
-            return []
-        return [ProbeRange("IR", addr, 60, 60, "probe")]
+            ranges = []
+        else:
+            ranges = [ProbeRange("IR", addr, 60, 60, "probe")]
 
-    raise ValueError(f"_strategise: unknown step {step!r}")
+    else:
+        raise ValueError(f"_strategise: unknown step {step!r}")
+
+    _logger.debug(
+        "_strategise(%s, prior=%s): %d range(s) → %s",
+        step,
+        "hinted" if prior is not None else "cold",
+        len(ranges),
+        [(f"0x{r.device_address:02x}", r.reg_type, r.base_register, r.register_count) for r in ranges],
+    )
+    return ranges
 
 
 class Client:
@@ -541,7 +555,16 @@ class Client:
             if pr.tier == "known":
                 await self.send_request_and_await_response(request, timeout=timeout, retries=retries)
             else:
-                if not await self._probe(request, timeout=probe_timeout, retries=probe_retries):
+                ok = await self._probe(request, timeout=probe_timeout, retries=probe_retries)
+                _logger.debug(
+                    "_probe_ranges: 0x%02x %s(%d,%d) → %s",
+                    pr.device_address,
+                    pr.reg_type,
+                    pr.base_register,
+                    pr.register_count,
+                    "present" if ok else "absent",
+                )
+                if not ok:
                     self.plant.mark_absent(pr.device_address, pr.reg_type, pr.base_register, pr.register_count)
                     self.plant.register_caches.pop(pr.device_address, None)
 
