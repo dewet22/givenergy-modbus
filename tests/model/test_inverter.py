@@ -164,7 +164,8 @@ def test_inverter():
             "e_battery_charge_today_alt1": None,
             "e_battery_discharge_today_alt1": None,
             "countdown": None,
-            "fault_code": None,
+            "inverter_fault_code": None,
+            "inverter_warning_code": None,
             "t_inverter_heatsink": None,
             "p_load_demand": None,
             "p_grid_apparent": None,
@@ -715,7 +716,8 @@ def test_from_registers(register_cache):
         "e_battery_charge_today_alt1": 9.0,  # IR(36)
         "e_battery_discharge_today_alt1": 8.9,  # IR(37)
         "countdown": 30,
-        "fault_code": "00000000",
+        "inverter_fault_code": "0000",
+        "inverter_warning_code": "0000",
         "t_inverter_heatsink": 22.2,
         "p_load_demand": 342,
         "p_grid_apparent": 680,
@@ -1202,7 +1204,8 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "e_battery_charge_today_alt1": 9.1,  # IR(36)
         "e_battery_discharge_today_alt1": 3.4,  # IR(37)
         "countdown": 0,
-        "fault_code": "00000000",
+        "inverter_fault_code": "0000",
+        "inverter_warning_code": "0000",
         "t_inverter_heatsink": 24.4,
         "p_load_demand": 515,
         "p_grid_apparent": 554,
@@ -1512,6 +1515,38 @@ def test_single_phase_inverter_p_pv_and_e_pv_day():
     inv = SinglePhaseInverter.from_register_cache(cache)
     assert inv.p_pv() == 1500  # type: ignore[attr-defined]
     assert inv.e_pv_day() == 2.0  # type: ignore[attr-defined]
+
+
+def test_fault_code_split_and_deprecated_alias():
+    """IR(39)/IR(40) split into inverter_fault_code/inverter_warning_code; fault_code recombines."""
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache({IR(39): 0x1234, IR(40): 0x5678})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert inv.inverter_fault_code == "1234"  # type: ignore[attr-defined]
+        assert inv.inverter_warning_code == "5678"  # type: ignore[attr-defined]
+    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
+
+    dumped = inv.model_dump()
+    assert dumped["inverter_fault_code"] == "1234"
+    assert dumped["inverter_warning_code"] == "5678"
+    assert "fault_code" not in dumped
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert inv.fault_code == "12345678"  # recombined to the old 8-hex form
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "inverter_fault_code" in str(deprecations[0].message)
+
+    # Either word absent → the recombined alias is None (matches the old uint32 None behaviour).
+    empty = SinglePhaseInverter.from_register_cache(RegisterCache())
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        assert empty.fault_code is None
 
 
 def _cache(**entries):

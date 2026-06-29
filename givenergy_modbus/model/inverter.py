@@ -905,7 +905,14 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "e_battery_charge_today_alt1": Def(C.deci, None, IR(36)),
         "e_battery_discharge_today_alt1": Def(C.deci, None, IR(37)),
         "countdown": Def(C.uint16, None, IR(38)),
-        "fault_code": Def(C.uint32, (C.hex, 8), IR(39), IR(40)),
+        # IR(39)/IR(40) are two distinct 16-bit words per the GivEnergy installer app
+        # v1.154.3 (IR39 INVERTER_FAULT_CODE, IR40 INVERTER_WARNING_CODE), not one uint32.
+        # The old combined "fault_code" (uint32 over both) is kept as a deprecated alias on
+        # SinglePhaseInverter that recombines them. Left as raw hex words — IR(39)'s bitfield
+        # enum isn't confirmed, and the separate HR(223/224) inverter_fault_messages source
+        # is unreconciled (see #330), so no message decode here.
+        "inverter_fault_code": Def(C.uint16, (C.hex, 4), IR(39)),
+        "inverter_warning_code": Def(C.uint16, (C.hex, 4), IR(40)),
         "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
         # House load / consumption at the busbar, independently sensed — empirically NOT
         # a derived IR(24)−IR(30) identity (residual non-zero in 68% of samples, though
@@ -1281,6 +1288,25 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
+
+    # Plain @property so the deprecated alias doesn't appear in model_dump().
+    # IR(39)/IR(40) were decoded as one uint32 "fault_code"; the installer app names them as
+    # two distinct words (IR39 fault, IR40 warning), now split into inverter_fault_code /
+    # inverter_warning_code. This alias recombines them into the old 8-hex form for a release.
+    @property
+    def fault_code(self) -> str | None:
+        """Deprecated alias for `inverter_fault_code` + `inverter_warning_code` (recombined)."""
+        warnings.warn(
+            "SinglePhaseInverter.fault_code is deprecated; use inverter_fault_code "
+            "(IR39) and inverter_warning_code (IR40)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        fault = self.inverter_fault_code  # type: ignore[attr-defined]
+        warning = self.inverter_warning_code  # type: ignore[attr-defined]
+        if fault is None or warning is None:
+            return None
+        return f"{fault}{warning}"
 
     # Plain @property so the deprecated alias doesn't appear in model_dump().
     # HR(199) was decoded as enable_standard_self_consumption_logic (GivTCP-era guess);
