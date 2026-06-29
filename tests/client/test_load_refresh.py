@@ -244,6 +244,30 @@ async def test_refresh_single_phase_no_peripherals():
     assert _reqs(mock_exec) == [_ir(0, 60), _ir(180, 60)]
 
 
+async def test_refresh_hybrid_with_peripherals_golden_sequence():
+    """Golden: HYBRID with meter + LV battery — full ordered sequence must not drift.
+
+    Pins the relative order of inverter blocks, battery, and meter reads so that
+    _refresh_ranges extraction in Slice 4 cannot accidentally reorder or drop a bank.
+    """
+    client = _client_with_caps(
+        Model.HYBRID,
+        meter_addresses=[0x01],
+        lv_battery_addresses=[0x33, 0x34],
+        lv_bcu_address=0x31,
+    )
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.refresh()
+    assert _reqs(mock_exec) == [
+        _ir(0, 60),  # inverter live block
+        _ir(180, 60),  # inverter second block
+        _ir(60, 60, device=0x33),  # LV battery 1
+        _ir(60, 60, device=0x34),  # LV battery 2
+        _ir(60, 60, device=0x31),  # LV BCU
+        _ir(60, 30, device=0x01),  # meter
+    ]
+
+
 async def test_refresh_three_phase():
     """Three-phase adds IR 1000–1413 as seven reads."""
     client = _client_with_caps(Model.HYBRID_3PH)
