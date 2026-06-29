@@ -348,7 +348,6 @@ def test_refresh_ranges_no_max_age_includes_all_banks():
     """With max_age=None every bank for a HYBRID plant is included."""
     from givenergy_modbus.client.client import _refresh_ranges
 
-    plant, caps = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33]).plant, None
     client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33])
     plant = client.plant
     caps = client.plant.capabilities
