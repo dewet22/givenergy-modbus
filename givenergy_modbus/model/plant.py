@@ -5,6 +5,7 @@ from typing import Any, ClassVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
+from givenergy_modbus.exceptions import CommunicationError
 from givenergy_modbus.model import GivEnergyBaseModel
 from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
@@ -34,7 +35,7 @@ from givenergy_modbus.model.inverter import (
     resolve_model,
 )
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
-from givenergy_modbus.model.lv_bcu import LvBcu, LvBcuRegisterGetter
+from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS, LvBcu, LvBcuRegisterGetter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, Converter, Register, RegisterGetter, is_valid_serial
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -547,6 +548,116 @@ def _validated_serial(device: Any) -> str | None:
     return getattr(device, "serial_number", None) or None
 
 
+#: Maximum battery modules on a single-BCU AIO (addresses 0x50–0x53). Mirrors Client._AIO_MAX_MODULES.
+_AIO_MAX_MODULES = 4
+#: HV BMU per-module address band is 0x50–0x6F; 0x70 is the first BCU.
+_HV_BMU_BAND_END = 0x70
+
+
+def _hv_bmu_candidates(bcu_stacks: list[tuple[int, int]]) -> list[int]:
+    """Cold HV BMU candidate addresses: 0x50 + running module index, clamped to the 0x50–0x6F band."""
+    candidates: list[int] = []
+    next_addr = 0x50
+    for _offset, num_modules in bcu_stacks:
+        end_addr = min(next_addr + max(num_modules, 0), _HV_BMU_BAND_END)
+        candidates.extend(range(next_addr, end_addr))
+        next_addr = end_addr
+    return candidates
+
+
+def _derive_hv_topology(
+    register_caches: dict[int, RegisterCache], prior: "PlantCapabilities | None", caps: "PlantCapabilities"
+) -> None:
+    """Populate caps.bcu_stacks and either aio_battery_module_addresses or hv_bmu_addresses (HV plants).
+
+    Cold: BMS@0xA0 IR(61) gives the BCU count; each BCU's IR(64) its module count; per-module
+    candidates follow from there (AIO: 0x50–0x53; non-AIO HV: the 0x50+k band). Hinted (``prior``):
+    re-check only the previously-seen addresses. is_valid()-gated like detect (see _enumerate note).
+    """
+    if prior is not None:
+        indices: Any = [offset for offset, _ in prior.bcu_stacks]
+    else:
+        bms = register_caches.get(0xA0)
+        indices = range((bms.get(IR(61)) or 0) if bms else 0)
+    caps.bcu_stacks.extend((i, c.get(IR(64)) or 0) for i in indices if (c := register_caches.get(0x70 + i)))
+    if not caps.bcu_stacks:
+        return
+
+    if caps.device_type is Model.ALL_IN_ONE:
+        aio_candidates = (
+            list(prior.aio_battery_module_addresses)
+            if prior is not None
+            else [0x50 + i for i in range(min(caps.bcu_stacks[0][1], _AIO_MAX_MODULES))]
+        )
+        for addr in aio_candidates:
+            c = register_caches.get(addr)
+            if c is not None and AioBatteryModule.from_register_cache(c, addr).is_valid():
+                caps.aio_battery_module_addresses.append(addr)
+    else:
+        bmu_candidates = (
+            list(prior.hv_bmu_addresses)
+            if prior is not None and prior.hv_bmu_addresses
+            else _hv_bmu_candidates(caps.bcu_stacks)
+        )
+        for addr in bmu_candidates:
+            c = register_caches.get(addr)
+            if c is not None and Bmu.from_register_cache(c).is_valid():
+                caps.hv_bmu_addresses.append(addr)
+
+
+def _derive_capabilities(
+    register_caches: dict[int, RegisterCache],
+    prior: PlantCapabilities | None = None,
+) -> PlantCapabilities:
+    """Derive PlantCapabilities from a complete register-cache set, with no wire I/O (#268).
+
+    The offline counterpart to ``Client._detect()``'s enumeration: read HR(0)/HR(21) at 0x11 to
+    resolve the model, then for each peripheral class check presence (``addr in register_caches``)
+    and the SAME ``Model.from_register_cache(cache).is_valid()`` gate detect uses on the wire. This
+    is the cache-agnostic "validate" step the live detect loop will share in a later slice; the
+    parity test pins it equal to a live ``detect()`` over the same captures.
+
+    ``prior`` (v1) restricts candidate addresses to a previously-seen set, mirroring detect's hinted
+    mode, but does NOT raise on mismatch (deferred to the capabilities-as-target slice). Raises
+    :class:`CommunicationError` if HR(0) is absent at 0x11 (mirrors detect's identity-read failure).
+    """
+    cache = register_caches.get(0x11, RegisterCache())
+    raw_dtc = cache.get(HR(0))
+    if raw_dtc is None:
+        raise CommunicationError("from_caches: HR(0) not present at device 0x11 — cannot determine device type")
+    caps = PlantCapabilities(device_type=resolve_model(raw_dtc, cache.get(HR(21)) or 0))
+
+    # HV topology (BCU stacks + AIO/HV-BMU per-module addresses). No try/except around the is_valid()
+    # gates here or below: unlike detect's helpers (which guard against wire garbage), this only ever
+    # sees already-committed, CRC-validated, decoded caches — is_valid() can't raise on those. A
+    # genuinely malformed dump should fail loudly rather than silently drop a peripheral.
+    if caps.is_hv:
+        _derive_hv_topology(register_caches, prior, caps)
+
+    # Meters (0x01–0x08), validated via Meter.is_valid() to drop all-zero ghost slots.
+    meter_candidates = prior.meter_addresses if prior is not None else range(0x01, 0x09)
+    for addr in meter_candidates:
+        c = register_caches.get(addr)
+        if c is not None and Meter.from_register_cache(c).is_valid():
+            caps.meter_addresses.append(addr)
+
+    # LV batteries (0x32–0x37) + LV BCU (0x31). Skipped for HV and EMS plants.
+    if not caps.is_hv and not caps.is_ems:
+        batt_candidates = prior.lv_battery_addresses if prior is not None else range(0x32, 0x38)
+        for addr in batt_candidates:
+            c = register_caches.get(addr)
+            if c is not None and Battery.from_register_cache(c).is_valid():
+                caps.lv_battery_addresses.append(addr)
+        bcu_addr = prior.lv_bcu_address if prior is not None else LV_BCU_ADDRESS
+        bcu_cache = register_caches.get(bcu_addr) if bcu_addr is not None else None
+        if bcu_cache and LvBcu.from_register_cache(bcu_cache).is_valid():
+            caps.lv_bcu_address = bcu_addr
+
+    # The EMS rollup cross-check is a soft sanity log in detect — it mutates no caps fields, so offline
+    # it's a no-op; the .ems/.inverters facades read the IR(2040+) rollup directly.
+    return caps
+
+
 class Plant(GivEnergyBaseModel):
     """Representation of a complete GivEnergy plant."""
 
@@ -678,6 +789,32 @@ class Plant(GivEnergyBaseModel):
         """Ensure a default register cache is always present."""
         if not self.register_caches:
             self.register_caches = {0x32: RegisterCache()}
+
+    @classmethod
+    def from_caches(
+        cls,
+        register_caches: dict[int, RegisterCache],
+        prior: PlantCapabilities | None = None,
+        *,
+        inverter_serial_number: str = "",
+        data_adapter_serial_number: str = "",
+    ) -> "Plant":
+        """Build a fully-typed Plant from an injected register-cache set, with no live client (#268).
+
+        Capabilities are derived from the caches (no wire I/O) via :func:`_derive_capabilities`, so
+        every typed view (``.inverter``/``.batteries``/``.meters``/``.hv_stacks``/``.ems``/
+        ``.inverters``) works exactly as on a live-detected plant. The recipe for a capture dump is
+        ``Plant.from_caches(plant_from_capture(path).register_caches)``.
+
+        Raises :class:`CommunicationError` if HR(0) is absent at device 0x11.
+        """
+        plant = cls(
+            register_caches=register_caches,
+            inverter_serial_number=inverter_serial_number,
+            data_adapter_serial_number=data_adapter_serial_number,
+        )
+        plant.capabilities = _derive_capabilities(register_caches, prior)
+        return plant
 
     # Authoritative device-address map (GivEnergy installer app v1.154.3 `device_address_map`),
     # for orientation — not every band is modelled/routed below:
