@@ -107,10 +107,10 @@ def _tap_outbound(client: Client) -> list[tuple[str, int, int, int]]:
 
     async def _recording(request: TransparentRequest, *args: object, **kwargs: object) -> object:
         reg_type = "HR" if isinstance(request, ReadHoldingRegistersRequest) else "IR"
-        recorded.append((reg_type, request.device_address, request.base_register, request.register_count))
+        recorded.append((reg_type, request.device_address, request.base_register, request.register_count))  # type: ignore[attr-defined]
         return await original(request, *args, **kwargs)  # type: ignore[arg-type]
 
-    client.send_request_and_await_response = _recording  # type: ignore[method-assign]
+    client.send_request_and_await_response = _recording  # type: ignore[assignment]
     return recorded
 
 
@@ -124,7 +124,7 @@ async def test_detect_wire_sequence_is_bit_identical(relpath: str):
     await client.connect()
     recorded = _tap_outbound(client)
     try:
-        caps = await client.detect(**_DETECT)
+        caps = await client.detect(**_DETECT)  # type: ignore[arg-type]
     finally:
         await client.close()
         await mock.aclose()
