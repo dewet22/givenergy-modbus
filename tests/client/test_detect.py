@@ -536,7 +536,7 @@ async def test_detect_enumerates_battery_held_on_first_frame():
 
     client = _make_client()
     _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
-    _prime_battery_serial(client, 0x32)  # master commits first-read via the inverter getter
+    _prime_battery_serial(client, 0x32)  # primary pack commits first-read via the inverter getter
     probes: list[int] = []
 
     async def _probe_side_effect(request, *, timeout, retries):
