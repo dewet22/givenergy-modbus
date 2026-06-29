@@ -362,31 +362,33 @@ def _refresh_ranges(
     *,
     now: datetime | None = None,
 ) -> list[TransparentRequest]:
-    """Return the TransparentRequests for one refresh cycle, skipping fresh banks.
+    """Return the TransparentRequests for one refresh cycle, skipping absent and fresh banks.
 
-    When ``max_age`` is None every bank is included (bit-identical to the pre-#268
-    behaviour). When set, any bank whose ``plant.block_age()`` is not None and ≤
-    ``max_age`` seconds is omitted. No I/O.
+    A bank that detect marked ABSENT (``plant.block_present()`` is False) is skipped
+    unconditionally — the presence marker is a stronger, cheaper signal than a timeout,
+    so a known-absent device is never re-solicited (call ``detect()`` or
+    ``invalidate_presence()`` to recheck). Of the remaining banks, when ``max_age`` is
+    set any whose ``plant.block_age()`` is not None and ≤ ``max_age`` seconds is also
+    omitted. With ``max_age`` None and no absent banks every bank is included
+    (bit-identical to the pre-#268 behaviour). No I/O.
     """
-    banks = _refresh_banks(caps)
-    if max_age is None:
-        return [
-            ReadInputRegistersRequest(base_register=base, register_count=count, device_address=addr)
-            for addr, base, count in banks
-        ]
     reqs: list[TransparentRequest] = []
-    for addr, base, count in banks:
-        age = plant.block_age(addr, "IR", base, count, now=now)
-        if age is not None and age <= max_age:
-            _logger.debug(
-                "refresh: skipping IR(%d,%d)@0x%02x — %.1fs ≤ %.1fs max_age",
-                base,
-                count,
-                addr,
-                age,
-                max_age,
-            )
+    for addr, base, count in _refresh_banks(caps):
+        if plant.block_present(addr, "IR", base, count) is False:
+            _logger.debug("refresh: skipping IR(%d,%d)@0x%02x — detect marked it absent", base, count, addr)
             continue
+        if max_age is not None:
+            age = plant.block_age(addr, "IR", base, count, now=now)
+            if age is not None and age <= max_age:
+                _logger.debug(
+                    "refresh: skipping IR(%d,%d)@0x%02x — %.1fs ≤ %.1fs max_age",
+                    base,
+                    count,
+                    addr,
+                    age,
+                    max_age,
+                )
+                continue
         reqs.append(ReadInputRegistersRequest(base_register=base, register_count=count, device_address=addr))
     return reqs
 
