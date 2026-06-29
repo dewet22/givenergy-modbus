@@ -1,0 +1,78 @@
+<svg width="680" viewBox="0 0 680 562" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>refresh() decomposition: _refresh_banks, _refresh_ranges and _execute_reads</title>
+<desc>refresh() is a thin shell: _refresh_banks turns capabilities into an ordered IR bank list, _refresh_ranges filters it per bank by two skip gates (drop if detect marked the bank absent, or if max_age says it is still fresh) and emits read requests, and _execute_reads issues them on the wire. There is no validate stage — the CRC and splice commit guards validate each frame on ingest.</desc>
+<style>
+text{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif}
+.t{font-size:14px;fill:#1a1a18}
+.ts{font-size:12px;fill:#6b6a64}
+.th{font-size:14px;font-weight:500;fill:#1a1a18}
+.tm{font-size:12px;fill:#8a887f}
+.box{fill:#ffffff;stroke:#d3d1c7;stroke-width:.5}
+.nf-teal{fill:#E1F5EE;stroke:#0F6E56;stroke-width:.5}
+.nt-teal{font-size:14px;fill:#085041}
+.nu-teal{font-size:12px;fill:#0F6E56}
+.nf-coral{fill:#FAECE7;stroke:#993C1D;stroke-width:.5}
+.nt-coral{font-size:14px;fill:#712B13}
+.nu-coral{font-size:12px;fill:#993C1D}
+.nf-purple{fill:#EEEDFE;stroke:#534AB7;stroke-width:.5}
+.nt-purple{font-size:14px;fill:#3C3489}
+.nu-purple{font-size:12px;fill:#534AB7}
+.nf-gray{fill:#F1EFE8;stroke:#5F5E5A;stroke-width:.5}
+.nt-gray{font-size:14px;fill:#444441}
+.nu-gray{font-size:12px;fill:#5F5E5A}
+.ch-teal{fill:#5DCAA5;stroke:#0F6E56;stroke-width:.5}
+.ch-coral{fill:#F0997B;stroke:#993C1D;stroke-width:.5}
+.ch-gray{fill:#B4B2A9;stroke:#5F5E5A;stroke-width:.5}
+.arr{stroke:#73726c;stroke-width:1.5;fill:none}
+.cont-teal{fill:none;stroke:#5DCAA5;stroke-width:.5;stroke-dasharray:5 4}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#73726c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="0" y="0" width="680" height="562" fill="#fcfbf8"/>
+
+<rect class="nf-purple" x="270" y="40" width="140" height="46" rx="6"/><text class="nt-purple" x="340" y="60" text-anchor="middle">refresh()</text><text class="nu-purple" x="340" y="76" text-anchor="middle">thin shell</text>
+<line class="arr" x1="340" y1="86" x2="340" y2="112" marker-end="url(#arrow)"/>
+<text class="tm" x="350" y="103" text-anchor="start">caps</text>
+
+<rect class="nf-teal" x="250" y="112" width="180" height="46" rx="6"/><text class="nt-teal" x="340" y="132" text-anchor="middle">_refresh_banks()</text><text class="nu-teal" x="340" y="148" text-anchor="middle">topology → bank list</text>
+<line class="arr" x1="340" y1="158" x2="340" y2="212" marker-end="url(#arrow)"/>
+<text class="tm" x="350" y="190" text-anchor="start">every IR bank · ordered</text>
+
+<rect class="cont-teal" x="40" y="212" width="600" height="160" rx="12"/>
+<text class="th" x="56" y="233" text-anchor="start">_refresh_ranges() — per bank, two skip gates</text>
+
+<rect class="nf-gray" x="52" y="266" width="66" height="44" rx="6"/><text class="nt-gray" x="85" y="292" text-anchor="middle">bank</text>
+<line class="arr" x1="118" y1="288" x2="150" y2="288" marker-end="url(#arrow)"/>
+
+<rect class="box" x="150" y="262" width="164" height="52" rx="6"/><text class="t" x="232" y="284" text-anchor="middle">block_present</text><text class="ts" x="232" y="301" text-anchor="middle">is False?</text>
+<line class="arr" x1="314" y1="288" x2="344" y2="288" marker-end="url(#arrow)"/>
+<text class="tm" x="329" y="282" text-anchor="middle">no</text>
+
+<rect class="box" x="344" y="262" width="150" height="52" rx="6"/><text class="t" x="419" y="284" text-anchor="middle">block_age</text><text class="ts" x="419" y="301" text-anchor="middle">≤ max_age?</text>
+<line class="arr" x1="494" y1="288" x2="526" y2="288" marker-end="url(#arrow)"/>
+<text class="tm" x="510" y="282" text-anchor="middle">no</text>
+
+<rect class="nf-gray" x="526" y="262" width="106" height="52" rx="6"/><text class="nt-gray" x="579" y="284" text-anchor="middle">emit</text><text class="nu-gray" x="579" y="301" text-anchor="middle">request</text>
+
+<line class="arr" x1="232" y1="314" x2="232" y2="338" marker-end="url(#arrow)"/>
+<text class="tm" x="240" y="330" text-anchor="start">yes</text>
+<rect class="box" x="172" y="338" width="120" height="24" rx="6"/><text class="tm" x="232" y="353" text-anchor="middle">skip · absent</text>
+
+<line class="arr" x1="419" y1="314" x2="419" y2="338" marker-end="url(#arrow)"/>
+<text class="tm" x="427" y="330" text-anchor="start">yes</text>
+<rect class="box" x="359" y="338" width="120" height="24" rx="6"/><text class="tm" x="419" y="353" text-anchor="middle">skip · fresh</text>
+
+<line class="arr" x1="340" y1="372" x2="340" y2="400" marker-end="url(#arrow)"/>
+<text class="tm" x="350" y="390" text-anchor="start">request list</text>
+
+<rect class="nf-coral" x="245" y="400" width="190" height="46" rx="6"/><text class="nt-coral" x="340" y="420" text-anchor="middle">_execute_reads()</text><text class="nu-coral" x="340" y="436" text-anchor="middle">I/O seam · partial-tolerant</text>
+<line class="arr" x1="340" y1="446" x2="340" y2="472" marker-end="url(#arrow)"/>
+<text class="tm" x="350" y="462" text-anchor="start">→ the wire</text>
+
+<rect class="nf-gray" x="270" y="472" width="140" height="40" rx="6"/><text class="nt-gray" x="340" y="491" text-anchor="middle">register caches</text><text class="nu-gray" x="340" y="505" text-anchor="middle">via commit guards</text>
+
+<rect class="box" x="444" y="470" width="196" height="42" rx="6"/><text class="ts" x="454" y="486" text-anchor="start">no validate stage — the CRC /</text><text class="ts" x="454" y="501" text-anchor="start">splice guards validate on ingest</text>
+
+<rect class="ch-teal" x="176" y="528" width="14" height="14" rx="3"/><text class="ts" x="196" y="539" text-anchor="start">pure · no I/O</text>
+<rect class="ch-coral" x="300" y="528" width="14" height="14" rx="3"/><text class="ts" x="320" y="539" text-anchor="start">I/O seam</text>
+<rect class="ch-gray" x="400" y="528" width="14" height="14" rx="3"/><text class="ts" x="420" y="539" text-anchor="start">data</text>
+</svg>
