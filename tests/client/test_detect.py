@@ -1565,7 +1565,7 @@ async def test_detect_stale_cache_not_admitted_on_probe_failure_bcu():
 
     with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
         with patch.object(client, "_probe", side_effect=_probe_side_effect):
-            with pytest.raises(Exception):  # PlantTopologyMismatch or similar — topology changed
+            with pytest.raises(PlantTopologyMismatch):
                 await client.detect(prior=prior)
 
     assert client.plant.block_present(0x71, "IR", 60, 5) is False
