@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-06-29
+
+### ✨ Added
+
+- Plant.from_caches() — derive a fully-typed plant from a register dump, no live client (#268) (#343) ([098f1bf](https://github.com/dewet22/givenergy-modbus/commit/098f1bf5e8e3504d15a24cf348e49978224bdbd1))
+- tri-state register-block presence marker (#268 slice 1) (#344) ([d0324c8](https://github.com/dewet22/givenergy-modbus/commit/d0324c8eca1aaf081800ebc69555ceb1f3806b41))
+- extract detect() into strategise/probe/validate loop (#268 slice 2) (#345) ([eedec43](https://github.com/dewet22/givenergy-modbus/commit/eedec43d15094eee2300c9509a1b8d52eafbaf59))
+
 ## [2.8.0] - 2026-06-29
 
 ### ✨ Added
