@@ -1067,6 +1067,53 @@ async def test_detect_hv_probes_bcus():
 
 
 @pytest.mark.asyncio
+async def test_detect_bcu_stacks_bms_timeout_marks_absent():
+    """Cold path BMS probe timeout stamps 0xA0 IR(60,5) ABSENT."""
+    client = _make_client()
+    caps = PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11)
+    with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+        await client._detect_bcu_stacks(caps, None, 1.0, 1)
+    assert caps.bcu_stacks == []
+    assert client.plant.block_present(0xA0, "IR", 60, 5) is False
+
+
+@pytest.mark.asyncio
+async def test_detect_bcu_stacks_cold_bcu_timeout_marks_absent():
+    """Cold path: a BCU probe timeout stamps that BCU address ABSENT."""
+    client = _make_client()
+    _prime_cache(client, 0xA0, {IR(61): 2})
+    _prime_cache(client, 0x70, {IR(64): 3})
+    caps = PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11)
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address != 0x71
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_bcu_stacks(caps, None, 1.0, 1)
+
+    assert caps.bcu_stacks[0][0] == 0
+    assert client.plant.block_present(0x71, "IR", 60, 60) is False
+
+
+@pytest.mark.asyncio
+async def test_detect_bcu_stacks_hinted_bcu_timeout_marks_absent():
+    """Hinted path: a BCU probe timeout stamps that BCU address ABSENT."""
+    client = _make_client()
+    _prime_cache(client, 0x70, {IR(64): 3})
+    caps = PlantCapabilities(device_type=Model.ALL_IN_ONE, inverter_address=0x11)
+    prior = PlantCapabilities(device_type=Model.ALL_IN_ONE, bcu_stacks=[(0, 3), (1, 2)])
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return request.device_address == 0x70
+
+    with patch.object(client, "_probe", side_effect=_probe_side_effect):
+        await client._detect_bcu_stacks(caps, prior, 1.0, 1)
+
+    assert caps.bcu_stacks == [(0, 3)]
+    assert client.plant.block_present(0x71, "IR", 60, 5) is False
+
+
+@pytest.mark.asyncio
 async def test_detect_hv_skips_lv_battery_probing():
     client = _make_client()
     _prime_cache(client, 0x11, {HR(0): 0x8000, HR(21): 0})
