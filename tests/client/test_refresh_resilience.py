@@ -445,3 +445,57 @@ async def test_refresh_ir0_max_age_emits_deprecation_warning():
 
     assert any(issubclass(x.category, DeprecationWarning) and "ir0_max_age" in str(x.message) for x in w)
     assert not _ir0_requested(recorded, inverter)
+
+
+# ---------------------------------------------------------------------------
+# _refresh_ranges — ABSENT presence-marker skip (#268 slice 5)
+# ---------------------------------------------------------------------------
+
+
+def test_refresh_ranges_skips_absent_bank_even_without_max_age():
+    """A detect-marked-absent bank is skipped on the default (max_age=None) path; siblings still polled."""
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33, 0x34])
+    plant, caps = client.plant, client.plant.capabilities
+    plant.mark_absent(0x34, "IR", 60, 60)
+
+    reqs = _refresh_ranges(caps, None, plant)
+    assert any(r.device_address == 0x33 for r in reqs)
+    assert not any(r.device_address == 0x34 for r in reqs)
+
+
+def test_refresh_ranges_skips_absent_bank_regardless_of_freshness():
+    """The absent skip applies even with max_age set (presence beats freshness)."""
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x34])
+    plant, caps = client.plant, client.plant.capabilities
+    plant.mark_absent(0x34, "IR", 60, 60)
+
+    reqs = _refresh_ranges(caps, 30, plant)
+    assert not any(r.device_address == 0x34 for r in reqs)
+
+
+def test_refresh_ranges_includes_present_bank():
+    """An explicitly-PRESENT bank is not over-skipped."""
+    from givenergy_modbus.client.client import _refresh_ranges
+
+    client = _client_with_caps(Model.HYBRID)
+    plant, caps = client.plant, client.plant.capabilities
+    inverter = caps.inverter_address
+    plant.register_block_present[(inverter, "IR", 0, 60)] = True
+
+    reqs = _refresh_ranges(caps, None, plant)
+    assert any(r.device_address == inverter and r.base_register == 0 for r in reqs)
+
+
+@pytest.mark.asyncio
+async def test_refresh_does_not_solicit_absent_device():
+    """End-to-end: refresh() never puts a marked-absent battery on the wire."""
+    client = _client_with_caps(Model.HYBRID, lv_battery_addresses=[0x33, 0x34])
+    client.plant.mark_absent(0x34, "IR", 60, 60)
+
+    recorded = await _refresh_recording_requests(client, timeout=0.1, retries=0)
+    assert not any(r.device_address == 0x34 for r in recorded)
+    assert any(r.device_address == 0x33 for r in recorded)
