@@ -294,7 +294,13 @@ _THREE_PHASE_LUT = {
     "f_under_derate_stop": Def(C.centi, None, HR(1074), min=40.0, max=70.0),
     "f_under_derate_recovery_delay": Def(C.centi, None, HR(1075)),
     "pv_input_mode": Def(C.uint16, None, HR(1077)),
-    "p_export_limit": Def(C.deci, None, HR(1063), max=6500),
+    # HR(1063) is the export power RATE cap as a percentage of rated power, not a power in
+    # watts: the v4.1.6 doc names it BackflowPowerRateSet (unit 0.1%, range 0~1000) and the
+    # installer app names it EXPORT_LIMIT_POWER_SET on the three-phase register map. C.deci
+    # scales the 0.1% raw to 0-100.0%. The old name "p_export_limit" (with max=6500, modelled
+    # like the watt-valued p_load_ac* fields) was wrong on both count and contract; it now
+    # hard-fails as a property. set_export_power_rate() writes this register.
+    "export_power_rate": Def(C.deci, None, HR(1063), min=0.0, max=100.0),
     "battery_reserve_soc": Def(C.uint16, None, HR(1078)),
     "ac_power_derate_delay": Def(C.centi, None, HR(1079)),
     # battery_type at HR(1080) shadows the single-phase HR(54)
@@ -317,7 +323,7 @@ _THREE_PHASE_LUT = {
     "bypass_enable": Def(C.bool, None, HR(1100)),
     "npe_enable": Def(C.bool, None, HR(1101)),
     # HR(1102-1103): installer-tier export-limit pair from the GivEnergy app v4.0.7. Distinct
-    # registers from p_export_limit (HR1063); the relationship between the two is unconfirmed.
+    # registers from export_power_rate (HR1063); the relationship between the two is unconfirmed.
     # set_enable_export_limit_3ph() writes HR1103, so it decodes as a bool.
     "export_power_limit": Def(C.uint16, None, HR(1102)),
     "enable_export_limit": Def(C.bool, None, HR(1103)),
@@ -657,6 +663,19 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
             stacklevel=2,
         )
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
+
+    # HR(1063) was exposed as p_export_limit and modelled as a power (max=6500, like the
+    # watt-valued p_load_ac* fields). It is actually an export-rate percentage (0-100%), so
+    # the old name and bound were always wrong. Renamed to export_power_rate; the old name
+    # hard-fails rather than silently returning a differently-scaled, differently-meaning value.
+    @property
+    def p_export_limit(self) -> float | None:
+        """Removed: HR(1063) is an export-rate %, not a power. Use `export_power_rate`."""
+        raise AttributeError(
+            "ThreePhaseInverter.p_export_limit has been removed: HR(1063) is an export power "
+            "RATE (0-100% of rated power), not a power in watts as the old name and max=6500 "
+            "bound implied. Use export_power_rate (and set_export_power_rate to write it)."
+        )
 
     @property
     def enable_standard_self_consumption_logic(self) -> bool | None:

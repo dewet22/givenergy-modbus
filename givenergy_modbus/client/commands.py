@@ -153,6 +153,7 @@ class RegisterMap:
     SMART_LOAD_CONTROL_SOC = 541
     GENERAL_LOAD_CONTROL_SOC = 543
     GENERATOR_CONTROL_SOC = 544
+    EXPORT_POWER_RATE = 1063
     ENABLE_EXPORT_LIMIT_3PH = 1103
     ENABLE_IMPORT_LIMIT_3PH = 1131
     PEAK_SHAVING_EXPORT_LIMIT_ENABLED = 20000
@@ -1000,6 +1001,19 @@ def set_generator_control_soc(soc: int) -> list[WriteHoldingRegisterRequest]:
     if not (10 <= val <= 90):
         raise ValueError(f"Generator control SOC must be 10–90, got {val}")
     return [WriteHoldingRegisterRequest(RegisterMap.GENERATOR_CONTROL_SOC, val, installer=True)]
+
+
+def set_export_power_rate(rate: float) -> list[WriteHoldingRegisterRequest]:
+    """Set the three-phase export power rate cap (HR1063) as a percentage of rated power. Installer-tier.
+
+    ``rate`` is a percentage in [0, 100]; the register is written in its native 0.1% units
+    (raw = round(rate * 10), 0~1000). HR1063 is confirmed present on three-phase hardware via the
+    installer app (EXPORT_LIMIT_POWER_SET), but the write itself hasn't been validated against a
+    real three-phase unit yet — see #263. Use `export_power_rate` to read it back.
+    """
+    if not 0 <= rate <= 100:
+        raise ValueError(f"Export power rate ({rate}) must be in [0-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.EXPORT_POWER_RATE, round(rate * 10), installer=True)]
 
 
 def set_enable_export_limit_3ph(enabled: bool) -> list[WriteHoldingRegisterRequest]:

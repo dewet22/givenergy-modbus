@@ -315,6 +315,27 @@ def test_battery_reserve_soc_rename_and_deprecated_alias():
     assert "battery_power_cutoff" not in dumped
 
 
+def test_export_power_rate_rename_and_hard_fail():
+    """HR1063 renamed p_export_limit → export_power_rate (0-100% via deci); old name hard-fails."""
+    # raw 1000 → 100.0% (0.1% units scaled by deci); the old max=6500 power bound is gone.
+    cache = _cache({HR(1063): 1000})
+    tph = ThreePhaseInverter.from_register_cache(cache)
+    assert tph.export_power_rate == pytest.approx(100.0)  # type: ignore[attr-defined]
+
+    # Out-of-range raw (>100% post-deci) is rejected by the bound, as for the other rate fields.
+    over = ThreePhaseInverter.from_register_cache(_cache({HR(1063): 1500}))
+    assert over.export_power_rate is None  # type: ignore[attr-defined]
+
+    dumped = tph.model_dump()
+    assert "export_power_rate" in dumped
+    assert "p_export_limit" not in dumped
+
+    # The old name's contract (power in watts, max 6500) was always wrong, so it hard-fails
+    # rather than silently returning a differently-scaled, differently-meaning value.
+    with pytest.raises(AttributeError, match="export_power_rate"):
+        _ = tph.p_export_limit  # type: ignore[attr-defined]
+
+
 def test_p_pv_sum():
     tph = ThreePhaseInverter.from_register_cache(_cache({IR(1017): 0, IR(1018): 3000, IR(1019): 0, IR(1020): 2000}))
     assert tph.p_pv() == pytest.approx(300.0 + 200.0)  # type: ignore[attr-defined]
