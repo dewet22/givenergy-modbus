@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-06-29
+
+### ✨ Added
+
+- skip detect-confirmed-absent banks in refresh() (#268 slice 5) (#347) ([282a95e](https://github.com/dewet22/givenergy-modbus/commit/282a95efa38427c99abeb9cc4afc79cd7e9c5dba))
+
 ## [2.9.1] - 2026-06-29
 
 ### ✨ Added
