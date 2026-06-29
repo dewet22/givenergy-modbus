@@ -681,6 +681,13 @@ class Plant(GivEnergyBaseModel):
     # skip-if-fresh path, #196) use block_age() to reason about freshness. Excluded from
     # model_dump(): it's ephemeral runtime bookkeeping, not part of the plant's dumpable state.
     register_block_updated_at: dict[tuple[int, str, int, int], datetime] = Field(default_factory=dict, exclude=True)
+    # Per-block presence marker (slice 1 of #268): distinguishes "probed, confirmed absent" (False)
+    # from "probed, confirmed present" (True) from "never probed / unknown" (missing key). Keyed
+    # identically to register_block_updated_at; updated by mark_absent() (detect-helper rejections)
+    # and set True alongside _stamp_block() (commit → present). invalidate_presence() drops the
+    # marker and registers together, so a stale "present" never outlives a topology change. Excluded
+    # from model_dump() — runtime instrumentation, not dumpable state.
+    register_block_present: dict[tuple[int, str, int, int], bool] = Field(default_factory=dict, exclude=True)
 
     # Per-device comms-quality counters (#284): cumulative, monotonic event counts keyed by
     # device_address, for a consumer to surface a plant's "noise floor" without grepping logs.
@@ -881,6 +888,7 @@ class Plant(GivEnergyBaseModel):
                 "inverter_serial_number": Converter.redact_serial_strict(self.inverter_serial_number),
                 "data_adapter_serial_number": Converter.redact_serial_strict(self.data_adapter_serial_number),
                 "register_block_updated_at": dict(self.register_block_updated_at),
+                "register_block_present": dict(self.register_block_present),
             }
         )
 
@@ -958,6 +966,7 @@ class Plant(GivEnergyBaseModel):
             incoming = {HR(k): v for k, v in pdu.to_dict().items()}
             if self._commit_bank(device_address, incoming, pdu.register_count, received_at=received_at):
                 self._stamp_block(device_address, "HR", pdu.base_register, pdu.register_count, received_at)
+                self.register_block_present[(device_address, "HR", pdu.base_register, pdu.register_count)] = True
                 self._track_content_change(
                     device_address, "HR", pdu.base_register, pdu.register_count, incoming, received_at
                 )
@@ -969,6 +978,7 @@ class Plant(GivEnergyBaseModel):
             incoming = {IR(k): v for k, v in pdu.to_dict().items()}  # type: ignore[misc]
             if self._commit_bank(device_address, incoming, pdu.register_count, received_at=received_at):
                 self._stamp_block(device_address, "IR", pdu.base_register, pdu.register_count, received_at)
+                self.register_block_present[(device_address, "IR", pdu.base_register, pdu.register_count)] = True
                 self._track_content_change(
                     device_address, "IR", pdu.base_register, pdu.register_count, incoming, received_at
                 )
@@ -1524,6 +1534,64 @@ class Plant(GivEnergyBaseModel):
         if effective_now.tzinfo is None:
             effective_now = effective_now.replace(tzinfo=UTC)
         return (effective_now - ts).total_seconds()
+
+    def block_present(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+    ) -> bool | None:
+        """Return presence status of a register block: True = present, False = absent, None = unknown.
+
+        Parallel to ``block_age()``'s None-for-never semantics. Present means a bank was committed
+        (``update()`` stamped it); absent means ``mark_absent()`` was called (detect found nothing
+        usable); None means the block has never been attempted on this Plant instance.
+        """
+        return self.register_block_present.get((device_address, reg_type, base_register, register_count))
+
+    def mark_absent(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+    ) -> None:
+        """Record that a probe found this block absent (probe timeout, all-zero, or is_valid() False).
+
+        Only called from detect-helper rejection sites in client.py, not from update() — a rejected
+        bank during a live refresh is not "absent", just noisy. Consumers can read this to distinguish
+        "device never responded" from "device unknown" without grepping logs.
+        """
+        self.register_block_present[(device_address, reg_type, base_register, register_count)] = False
+
+    def invalidate_presence(
+        self,
+        device_address: int,
+        reg_type: str,
+        base_register: int,
+        register_count: int,
+    ) -> None:
+        """Drop the presence marker, cached registers, and freshness stamps for a block → UNKNOWN.
+
+        A stale "present" must not outlive a topology change: invalidating removes the marker so
+        the next poll resolves absence/presence from scratch, clears the cached registers so the
+        typed views don't serve stale data, and clears the freshness stamp so skip-if-fresh
+        (``refresh(ir0_max_age=...)``) does not suppress the re-probe.
+        """
+        key = (device_address, reg_type, base_register, register_count)
+        self.register_block_present.pop(key, None)
+        self.register_block_updated_at.pop(key, None)
+        self._block_unchanged_since.pop(key, None)
+        cache = self.register_caches.get(device_address)
+        if cache is not None:
+            reg_cls = HR if reg_type == "HR" else IR
+            for idx in range(base_register, base_register + register_count):
+                cache.pop(reg_cls(idx), None)
+        # Battery cold-start: a pending baseline for this device must not survive invalidation —
+        # the next probe should start fresh, not corroborate against a pre-invalidation frame.
+        if reg_type == "IR" and base_register == 60 and register_count == 60:
+            self._splice_pending_baseline.pop(device_address, None)
 
     def register_age(
         self,
