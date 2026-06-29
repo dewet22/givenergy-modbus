@@ -1451,6 +1451,10 @@ class Plant(GivEnergyBaseModel):
             reg_cls = HR if reg_type == "HR" else IR
             for idx in range(base_register, base_register + register_count):
                 cache.pop(reg_cls(idx), None)
+        # Battery cold-start: a pending baseline for this device must not survive invalidation —
+        # the next probe should start fresh, not corroborate against a pre-invalidation frame.
+        if reg_type == "IR" and base_register == 60 and register_count == 60:
+            self._splice_pending_baseline.pop(device_address, None)
 
     def register_age(
         self,
