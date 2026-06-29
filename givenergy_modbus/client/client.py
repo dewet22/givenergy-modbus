@@ -543,6 +543,7 @@ class Client:
             else:
                 if not await self._probe(request, timeout=probe_timeout, retries=probe_retries):
                     self.plant.mark_absent(pr.device_address, pr.reg_type, pr.base_register, pr.register_count)
+                    self.plant.register_caches.pop(pr.device_address, None)
 
     async def _detect_bcu_stacks(
         self,
@@ -764,6 +765,7 @@ class Client:
                     retries=probe_retries,
                 ):
                     self.plant.mark_absent(batt_addr, "IR", 60, 60)
+                    self.plant.register_caches.pop(batt_addr, None)
                     continue
                 # #233/#289: the first battery bank against an empty cache is held by the cold-start
                 # splice guard (the cache stays empty pending a corroborating re-read). detect()

@@ -1495,6 +1495,53 @@ async def test_detect_topology_mismatch_keeps_connection():
 
 
 @pytest.mark.asyncio
+async def test_detect_stale_cache_not_admitted_on_probe_failure_meter():
+    """A stale meter cache from a prior detect must not re-appear when the probe now times out.
+
+    Regression for the probe-then-validate split: _probe_ranges marks the address absent but
+    previously left the stale RegisterCache entry in place, so _derive_capabilities re-admitted
+    the device from stale data. Cold detect (no prior) avoids the topology-mismatch raise.
+    """
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # Stale valid-looking meter cache at 0x02 — a previous detect run left it there.
+    client.plant.register_caches[0x02] = RegisterCache({IR(60): 1})
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert 0x02 not in caps.meter_addresses, "stale meter cache must be evicted when probe fails"
+    assert client.plant.block_present(0x02, "IR", 60, 30) is False
+
+
+@pytest.mark.asyncio
+async def test_detect_stale_cache_not_admitted_on_probe_failure_battery():
+    """A stale battery cache from a prior detect must not re-appear when the probe now times out.
+
+    Same regression as the meter case, but through _detect_lv_batteries's imperative probe loop.
+    0x32 is always found via the known-tier preamble; 0x33's stale cache must be evicted.
+    """
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+    _prime_battery_serial(client, 0x32)
+    # Stale valid-looking battery cache at 0x33 — a previous detect run left it there.
+    client.plant.register_caches[0x33] = RegisterCache({IR(60): 1})
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock):
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert 0x33 not in caps.lv_battery_addresses, "stale battery cache must be evicted when probe fails"
+    assert client.plant.block_present(0x33, "IR", 60, 60) is False
+
+
+@pytest.mark.asyncio
 async def test_detect_success_leaves_connected():
     """A successful detect() leaves the connection up (regression guard)."""
     client = _make_client()
