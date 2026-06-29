@@ -1,7 +1,7 @@
 """GivEnergy three-phase inverter data model."""
 
 import warnings
-from typing import ClassVar
+from typing import ClassVar, NoReturn
 
 from pydantic import ConfigDict, computed_field, create_model
 
@@ -203,6 +203,18 @@ _DROP_ON_THREE_PHASE = (
     "enable_battery_self_heating",
 )
 
+# IR(1083-1085)/IR(1091-1093) per-phase active power were renamed (#185): the old p_load_ac*/p_out_ac*
+# names decoded unsigned C.deci (10x low, negatives silently dropped), so their contract was always
+# wrong. The new names decode signed watts. Old names hard-fail rather than return a wrong value.
+_RENAMED_PER_PHASE_POWER = {
+    "p_load_ac1": "p_meter_active_ac1",
+    "p_load_ac2": "p_meter_active_ac2",
+    "p_load_ac3": "p_meter_active_ac3",
+    "p_out_ac1": "p_inverter_active_ac1",
+    "p_out_ac2": "p_inverter_active_ac2",
+    "p_out_ac3": "p_inverter_active_ac3",
+}
+
 # Registers that are three-phase specific or that shadow single-phase registers at higher addresses.
 # When merged with InverterRegisterGetter.REGISTER_LUT these entries win (dict update semantics).
 _THREE_PHASE_LUT = {
@@ -298,7 +310,7 @@ _THREE_PHASE_LUT = {
     # watts: the v4.1.6 doc names it BackflowPowerRateSet (unit 0.1%, range 0~1000) and the
     # installer app names it EXPORT_LIMIT_POWER_SET on the three-phase register map. C.deci
     # scales the 0.1% raw to 0-100.0%. The old name "p_export_limit" (with max=6500, modelled
-    # like the watt-valued p_load_ac* fields) was wrong on both count and contract; it now
+    # like the per-phase power fields) was wrong on both count and contract; it now
     # hard-fails as a property. set_export_power_rate() writes this register.
     "export_power_rate": Def(C.deci, None, HR(1063), min=0.0, max=100.0),
     "battery_reserve_soc": Def(C.uint16, None, HR(1078)),
@@ -395,13 +407,20 @@ _THREE_PHASE_LUT = {
     "start_delay_time": Def(C.uint16, None, IR(1077)),
     "p_meter_import": Def(C.uint32, C.deci, IR(1079), IR(1080), max=100000),
     "p_meter_export": Def(C.uint32, C.deci, IR(1081), IR(1082), max=100000),
-    "p_load_ac1": Def(C.deci, None, IR(1083), max=6500),
-    "p_load_ac2": Def(C.deci, None, IR(1084), max=6500),
-    "p_load_ac3": Def(C.deci, None, IR(1085), max=6500),
+    # IR(1083-1085): per-phase grid-METER active power (installer METER_ACTIVE_POWER_R/S/T), and
+    # IR(1091-1093): per-phase INVERTER active power (installer ACTIVE_POWER_R/S/T). Both are signed
+    # 16-bit watts (installer: signed, no divide_by; doc: 1W) — not the unsigned C.deci the library
+    # had, which read 10× low and dropped negatives entirely. Corroborated on the lamztib GIV-3HY-11
+    # capture: the three meter phases (-80/-185/+269 W) sum to +4 W, matching p_meter_export (4.0 W);
+    # under deci they'd sum to 0.4 W. Renamed from p_load_ac*/p_out_ac* (the old unsigned-deci, and
+    # "load"-mislabelled, contract was always wrong); the old names hard-fail. See #185.
+    "p_meter_active_ac1": Def(C.int16, None, IR(1083)),
+    "p_meter_active_ac2": Def(C.int16, None, IR(1084)),
+    "p_meter_active_ac3": Def(C.int16, None, IR(1085)),
     "p_load_all": Def(C.uint32, C.deci, IR(1089), IR(1090), max=100000),
-    "p_out_ac1": Def(C.deci, None, IR(1091), max=6500),
-    "p_out_ac2": Def(C.deci, None, IR(1092), max=6500),
-    "p_out_ac3": Def(C.deci, None, IR(1093), max=6500),
+    "p_inverter_active_ac1": Def(C.int16, None, IR(1091)),
+    "p_inverter_active_ac2": Def(C.int16, None, IR(1092)),
+    "p_inverter_active_ac3": Def(C.int16, None, IR(1093)),
     "v_out_ac1": Def(C.deci, None, IR(1094), min=0.0, max=500.0),
     "v_out_ac2": Def(C.deci, None, IR(1095), min=0.0, max=500.0),
     "v_out_ac3": Def(C.deci, None, IR(1096), min=0.0, max=500.0),
@@ -665,7 +684,7 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         return self.work_time_total_hours  # type: ignore[attr-defined,no-any-return]
 
     # HR(1063) was exposed as p_export_limit and modelled as a power (max=6500, like the
-    # watt-valued p_load_ac* fields). It is actually an export-rate percentage (0-100%), so
+    # per-phase power fields). It is actually an export-rate percentage (0-100%), so
     # the old name and bound were always wrong. Renamed to export_power_rate; the old name
     # hard-fails rather than silently returning a differently-scaled, differently-meaning value.
     @property
@@ -947,6 +966,25 @@ THREE_PHASE_MODELS: frozenset[Model] = frozenset(
         Model.ALL_IN_ONE_HYBRID,
     }
 )
+
+
+def _removed_per_phase_power_property(old: str, new: str) -> property:
+    """Build a hard-failing property for a per-phase active-power field renamed in #185."""
+
+    def _fail(self: "ThreePhaseInverter") -> NoReturn:
+        raise AttributeError(
+            f"ThreePhaseInverter.{old} has been removed: per-phase active power is signed watts, "
+            f"not the unsigned C.deci the old name decoded (10x low, negatives dropped). Use {new}."
+        )
+
+    _fail.__doc__ = f"Removed: use `{new}` (signed-watt per-phase active power)."
+    return property(_fail)
+
+
+# Attach the six removed names as hard-failing properties (kept off the model fields, so model_dump
+# is unaffected; accessing one raises rather than silently returning a wrong value).
+for _old_name, _new_name in _RENAMED_PER_PHASE_POWER.items():
+    setattr(ThreePhaseInverter, _old_name, _removed_per_phase_power_property(_old_name, _new_name))
 
 
 def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | ThreePhaseInverter":

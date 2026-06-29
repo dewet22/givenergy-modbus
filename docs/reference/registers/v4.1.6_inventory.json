@@ -11152,13 +11152,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_load_ac1"
+          "inverter_3ph.p_meter_active_ac1"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1084",
@@ -11166,13 +11166,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_load_ac2"
+          "inverter_3ph.p_meter_active_ac2"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1085",
@@ -11180,13 +11180,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_load_ac3"
+          "inverter_3ph.p_meter_active_ac3"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1091",
@@ -11194,13 +11194,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_out_ac1"
+          "inverter_3ph.p_inverter_active_ac1"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1092",
@@ -11208,13 +11208,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_out_ac2"
+          "inverter_3ph.p_inverter_active_ac2"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1093",
@@ -11222,13 +11222,13 @@
         "doc_unit": "1W",
         "doc_scale": 1.0,
         "code_attrs": [
-          "inverter_3ph.p_out_ac3"
+          "inverter_3ph.p_inverter_active_ac3"
         ],
         "code_convs": [
-          "deci"
+          "int16"
         ],
-        "code_scale": 0.1,
-        "factor_off": 0.1
+        "code_scale": 1.0,
+        "factor_off": 1.0
       },
       {
         "reg": "IR1140",

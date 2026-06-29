@@ -336,6 +336,30 @@ def test_export_power_rate_rename_and_hard_fail():
         _ = tph.p_export_limit  # type: ignore[attr-defined]
 
 
+def test_per_phase_active_power_signed_watts_and_rename():
+    """IR(1083-1085)/IR(1091-1093) are signed watts (#185), renamed off p_load_ac*/p_out_ac*."""
+    from givenergy_modbus.model.inverter_threephase import _RENAMED_PER_PHASE_POWER
+
+    # Signed int16 raw watts: 65456 → -80, 65351 → -185, 269 → +269; inverter side raw 0 → 0.
+    cache = _cache({IR(1083): 65456, IR(1084): 65351, IR(1085): 269, IR(1091): 0, IR(1092): 1234, IR(1093): 65036})
+    tph = ThreePhaseInverter.from_register_cache(cache)
+    assert tph.p_meter_active_ac1 == -80  # type: ignore[attr-defined]
+    assert tph.p_meter_active_ac2 == -185  # type: ignore[attr-defined]
+    assert tph.p_meter_active_ac3 == 269  # type: ignore[attr-defined]
+    assert tph.p_inverter_active_ac1 == 0  # type: ignore[attr-defined]
+    assert tph.p_inverter_active_ac2 == 1234  # type: ignore[attr-defined]
+    assert tph.p_inverter_active_ac3 == -500  # raw 65036 → int16 -500  # type: ignore[attr-defined]
+
+    dumped = tph.model_dump()
+    for new in _RENAMED_PER_PHASE_POWER.values():
+        assert new in dumped
+    # Every old name is removed from the model and hard-fails on access (contract was always wrong).
+    for old in _RENAMED_PER_PHASE_POWER:
+        assert old not in dumped
+        with pytest.raises(AttributeError, match=_RENAMED_PER_PHASE_POWER[old]):
+            getattr(tph, old)
+
+
 def test_p_pv_sum():
     tph = ThreePhaseInverter.from_register_cache(_cache({IR(1017): 0, IR(1018): 3000, IR(1019): 0, IR(1020): 2000}))
     assert tph.p_pv() == pytest.approx(300.0 + 200.0)  # type: ignore[attr-defined]
