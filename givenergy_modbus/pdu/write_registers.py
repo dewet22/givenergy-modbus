@@ -270,6 +270,7 @@ INSTALLER_WRITE_REGISTERS: frozenset[int] = frozenset(
         553,  # Smart Load Delay Time
         # --- Three-phase grid/power quality ---
         1048,  # Q Lock Out Power
+        1063,  # Export Power Rate / backflow limit (three-phase; 0.1% of rated, 0~1000)
         1077,  # PV Input Mode
         1081,  # QU Curve Volt High Point 1
         1082,  # QU Curve Volt High Point 2

@@ -503,6 +503,29 @@ def test_set_battery_nominal_current():
 # --- Bounded installer wrappers not yet covered ---
 
 
+def test_set_export_power_rate_valid():
+    from givenergy_modbus.client.commands import set_export_power_rate
+    from givenergy_modbus.pdu.write_registers import INSTALLER_WRITE_REGISTERS
+
+    reqs = set_export_power_rate(50)
+    assert len(reqs) == 1
+    assert reqs[0].installer
+    assert reqs[0].register == 1063
+    assert reqs[0].value == 500  # native 0.1% units: 50% → raw 500
+    # 0.1% resolution is honoured, and the register is gated installer-tier.
+    assert set_export_power_rate(33.3)[0].value == 333
+    assert 1063 in INSTALLER_WRITE_REGISTERS
+
+
+def test_set_export_power_rate_out_of_range():
+    from givenergy_modbus.client.commands import set_export_power_rate
+
+    with pytest.raises(ValueError, match=r"\[0-100\]"):
+        set_export_power_rate(101)
+    with pytest.raises(ValueError, match=r"\[0-100\]"):
+        set_export_power_rate(-1)
+
+
 def test_set_ev_charger_soc_limit_valid():
     from givenergy_modbus.client.commands import set_ev_charger_soc_limit
 
