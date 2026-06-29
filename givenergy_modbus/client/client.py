@@ -1136,8 +1136,9 @@ class Client:
         timeout: float = 2.0,
         retries: int = 1,
         retry_delay: float = 0.5,
-        max_age: float | None = None,
         ir0_max_age: float | None = None,
+        *,
+        max_age: float | None = None,
     ) -> Plant:
         """Read IR measurement blocks for all known devices.
 
