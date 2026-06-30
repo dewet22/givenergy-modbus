@@ -211,6 +211,44 @@ def is_corruption_cohort(frame: list[int], present: set[int] | None = None) -> b
     return zeros >= 2
 
 
+#: Cell-voltage bank indices (IR60-75), the firmware immutable (IR98), and the remaining-capacity
+#: pair (IR88-89) — the registers that decide whether an all-cells-zero frame is a live pack or noise.
+_CELL_IDXS: tuple[int, ...] = tuple(range(16))
+_FIRMWARE_IDX: int = 38
+_CAP_REMAINING_IDXS: tuple[int, int] = (28, 29)
+
+
+def is_internally_impossible(frame: list[int], present: set[int] | None = None) -> bool:
+    """True if a bank is internally self-contradictory — every cell 0 V while firmware/capacity persist.
+
+    A live battery that reports a firmware version and remaining capacity cannot have all cells at
+    0 V — the frame is a partial sub-bus splice (cell block zeroed, scalars intact) and must never
+    seed or be defended as a last-good baseline (#350). Once such a frame is cached every healthy
+    read trips >=2 physics deltas (0->~3300 mV) and is hard-rejected forever; no existing heal
+    recovers it. Distinct from :func:`is_corruption_cohort`, which inspects only the IR76-79
+    cell-mass temps and so misses this cell-voltage-zero shape entirely. An all-zero bank (no
+    firmware, no capacity) is *not* impossible — that is an empty/short read, handled elsewhere.
+
+    ``present`` (bank-relative indices actually read this frame) makes the verdict presence-aware,
+    mirroring :func:`is_corruption_cohort`: a register absent from the frame is *unknown*, not zero,
+    so the impossible shape is asserted only when the cell block is observed all-zero AND the scalar
+    evidence (firmware/capacity) is observed non-zero. Without it, a sparse or non-IR60-based read
+    that omits the cells could be misread as impossible. ``None`` = treat the frame as fully present.
+    """
+    if len(frame) < 60:
+        return False
+    if present is not None and not all(i in present for i in _CELL_IDXS):
+        return False
+    if any(frame[i] != 0 for i in _CELL_IDXS):
+        return False
+    if present is None:
+        return bool(frame[_FIRMWARE_IDX] or any(frame[i] for i in _CAP_REMAINING_IDXS))
+    return bool(
+        (_FIRMWARE_IDX in present and frame[_FIRMWARE_IDX])
+        or any(i in present and frame[i] for i in _CAP_REMAINING_IDXS)
+    )
+
+
 def heal_eligible(phys: list[Trip]) -> bool:
     """True if every physics trip is a voltage/capacity-class surge within absolute range (#299).
 

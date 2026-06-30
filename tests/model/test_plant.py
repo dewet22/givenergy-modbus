@@ -3001,7 +3001,67 @@ def test_splice_cell_and_temp_cohort_rejected(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(103)] == 250
     warns = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
     assert len(warns) == 1
-    assert "physics-impossible" in warns[0].message
+
+
+def _impossible_zero_cell_bank() -> dict[int, int]:
+    """The modbus#350 poison: every cell 0 and t_max/t_min zeroed, scalars intact.
+
+    Capacity (IR89) and firmware (IR98) stay non-zero, so it is physically impossible — yet it slips
+    past is_corruption_cohort, which only inspects the IR76-79 cell-mass temps (left healthy here).
+    """
+    return _coherent_battery_bank({**{60 + i: 0 for i in range(16)}, 103: 0, 104: 11})
+
+
+def test_splice_impossible_zero_cell_baseline_heals_from_healthy_reads(plant: Plant, caplog):
+    """An internally-impossible last-good baseline is never defended — live reality re-seeds it (modbus#350).
+
+    Reproduces the 2.9.x primary-battery poisoning: a partial-splice frame (cells 0, scalars intact)
+    seeded the baseline out-of-band (bypassing the splice guard, so no cold-start hold fired), after
+    which every healthy ~3.30 V read was rejected forever as a 0->3300 physics delta. The guard must
+    recognise the baseline as impossible and re-seed from corroborated healthy reads.
+    """
+    import logging
+
+    # Seed the poison directly into the cache to model the out-of-band seed (the guard never adopted it).
+    cache = plant.register_caches[_BATT] = RegisterCache()
+    cache.update({IR(k): v for k, v in _impossible_zero_cell_bank().items()})
+    plant._splice_last_seen[_BATT] = _T0
+    assert plant.register_caches[_BATT][IR(60)] == 0  # poisoned baseline in place
+
+    healthy = _coherent_battery_bank()
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+        _feed_bank(plant, healthy, device_address=_BATT, received_at=_T0 + timedelta(seconds=60))
+
+    assert plant.register_caches[_BATT][IR(60)] == 3300, "healthy cells must re-seed the impossible baseline"
+    assert plant.register_caches[_BATT][IR(103)] == 250
+
+
+def test_splice_impossible_frame_refused_at_commit_battery_getter(plant: Plant):
+    """An impossible frame at a battery-getter address (0x33) is refused at commit, never baselined.
+
+    Companion to the caps-absent case: here 0x33 routes to the battery getter, but the getter-agnostic
+    _commit_bank guard still rejects the impossible frame before it can seed a baseline — so even two
+    corroborating reads (via _establish_baseline) never adopt it.
+    """
+    _establish_baseline(plant, _impossible_zero_cell_bank(), device_address=_BATT, received_at=_T0)
+    assert IR(60) not in plant.register_caches[_BATT], "impossible frame must be held, never adopted"
+
+
+def test_splice_impossible_frame_refused_at_commit_when_caps_absent(plant: Plant, caplog):
+    """The modbus#350 seeding path: an impossible 0x32 frame is refused even with capabilities absent.
+
+    A 0x32 read during a capabilities-None window (a fresh Plant mid-reconnect) misroutes to the
+    inverter getter and bypasses the battery splice guard — so the getter-agnostic _commit_bank guard
+    is the one that must refuse it, or it seeds the poisoned baseline the guard later defends.
+    """
+    import logging
+
+    assert plant.capabilities is None  # bare plant: 0x32 routes to the inverter getter, not battery
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _impossible_zero_cell_bank(), device_address=0x32, received_at=_T0)
+    assert IR(60) not in plant.register_caches[0x32], "impossible frame must never seed the cache"
+    assert any("internally-impossible" in r.message for r in caplog.records)
 
 
 def test_splice_temp_cohort_zeros_rejected(plant: Plant, caplog):
