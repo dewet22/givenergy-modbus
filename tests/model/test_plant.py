@@ -1564,9 +1564,9 @@ def _make_hr_pdu(
 def test_commit_bank_valid_registers_are_committed(plant: Plant):
     """A bank with all values within bounds must be written to the cache."""
     # IR(5) = v_ac1, deci, bounds 0–300. Raw 2367 → 236.7 V — valid.
-    pdu = _make_ir_pdu({5: 2367})
+    pdu = _make_ir_pdu({5: 2367}, device_address=0x11)
     plant.update(pdu)
-    assert plant.register_caches[0x32].get(IR(5)) == 2367
+    assert plant.register_caches[0x11].get(IR(5)) == 2367
 
 
 def test_commit_bank_bounds_violation_logs_and_commits(plant: Plant, caplog):
@@ -1574,22 +1574,22 @@ def test_commit_bank_bounds_violation_logs_and_commits(plant: Plant, caplog):
     import logging
 
     # IR(5) = v_ac1; raw 65535 → 6553.5 V, exceeds max=500.0.
-    pdu = _make_ir_pdu({5: 65535, 59: 50})
+    pdu = _make_ir_pdu({5: 65535, 59: 50}, device_address=0x11)
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.plant"):
         plant.update(pdu)
-    assert IR(5) in plant.register_caches[0x32]
-    assert IR(59) in plant.register_caches[0x32]
+    assert IR(5) in plant.register_caches[0x11]
+    assert IR(59) in plant.register_caches[0x11]
     assert any("bounds" in r.message.lower() for r in caplog.records)
 
 
 def test_commit_bank_out_of_bounds_overwrites_prior_data(plant: Plant):
     """An out-of-bounds bank is committed and does overwrite previously committed values."""
-    plant.register_caches[0x32].update({IR(5): 2367})  # prime with known-good value
+    plant.register_caches.setdefault(0x11, RegisterCache()).update({IR(5): 2367})  # prime with known-good value
 
-    pdu = _make_ir_pdu({5: 65535})
+    pdu = _make_ir_pdu({5: 65535}, device_address=0x11)
     plant.update(pdu)
 
-    assert plant.register_caches[0x32].get(IR(5)) == 65535  # overwritten by incoming bank
+    assert plant.register_caches[0x11].get(IR(5)) == 65535  # overwritten by incoming bank
 
 
 def test_commit_bank_unknown_device_skips_validation(plant: Plant):
@@ -1851,26 +1851,26 @@ def test_update_pattern_a_signature_is_recognised_and_discarded(plant: Plant):
 def test_update_stamps_ingestion_timestamp_on_commit(plant: Plant):
     """A committed IR bank records its ingestion time keyed by (device, type, base)."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
-    assert plant.register_block_updated_at[(0x32, "IR", 0, 60)] == t
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x11, "IR", 0, 60)] == t
     # block_age measured from a later 'now' is the elapsed seconds.
-    assert plant.block_age(0x32, "IR", 0, 60, now=t + timedelta(seconds=9)) == 9.0
+    assert plant.block_age(0x11, "IR", 0, 60, now=t + timedelta(seconds=9)) == 9.0
 
 
 def test_update_stamps_hr_block_distinctly(plant: Plant):
     """HR and IR blocks at the same base are tracked under separate keys."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_hr_pdu({20: 1}, base_register=0), received_at=t)
-    assert plant.register_block_updated_at[(0x32, "HR", 0, 60)] == t
-    assert (0x32, "IR", 0, 60) not in plant.register_block_updated_at
+    plant.update(_make_hr_pdu({20: 1}, device_address=0x11, base_register=0), received_at=t)
+    assert plant.register_block_updated_at[(0x11, "HR", 0, 60)] == t
+    assert (0x11, "IR", 0, 60) not in plant.register_block_updated_at
 
 
 def test_update_stamps_block_at_its_base_register(plant: Plant):
     """The timestamp key uses the response's base_register, not a fixed 0."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({180: 1}, base_register=180), received_at=t)
-    assert plant.block_age(0x32, "IR", 180, 60, now=t) == 0.0
-    assert plant.block_age(0x32, "IR", 0, 60) is None  # a different block was never seen
+    plant.update(_make_ir_pdu({180: 1}, device_address=0x11, base_register=180), received_at=t)
+    assert plant.block_age(0x11, "IR", 180, 60, now=t) == 0.0
+    assert plant.block_age(0x11, "IR", 0, 60) is None  # a different block was never seen
 
 
 def test_discarded_bank_is_not_stamped(plant: Plant):
@@ -1890,31 +1890,31 @@ def test_block_age_none_for_never_seen_block(plant: Plant):
 def test_stamp_block_normalises_naive_received_at(plant: Plant):
     """A timezone-naive received_at is treated as UTC rather than raising TypeError (#208 Gemini)."""
     naive = datetime(2026, 6, 6, 12, 0, 0)  # no tzinfo
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=naive)
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=naive)
     # Should have been stamped at UTC; block_age at the same naive-but-equivalent UTC moment is ~0.
-    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 5, tzinfo=UTC))
+    age = plant.block_age(0x11, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 5, tzinfo=UTC))
     assert age == 5.0
 
 
 def test_block_age_normalises_naive_now(plant: Plant):
     """A timezone-naive now is treated as UTC rather than raising TypeError (#208 Gemini)."""
     t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t)
     # Pass a naive now that is 7 seconds later; should compute without TypeError.
-    age = plant.block_age(0x32, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 7))
+    age = plant.block_age(0x11, "IR", 0, 60, now=datetime(2026, 6, 6, 12, 0, 7))
     assert age == 7.0
 
 
 def test_hr_bank_rejected_by_commit_is_not_stamped(plant: Plant):
     """An incoherent HR bank must not record an ingestion timestamp."""
     # Seed non-zero HR data, then push all-zero (Pattern B) to trigger rejection.
-    plant.update(_make_hr_pdu({0: 1, 20: 100}, base_register=0))
-    plant.update(_make_hr_pdu({0: 0, 20: 0}, base_register=0))
+    plant.update(_make_hr_pdu({0: 1, 20: 100}, device_address=0x11, base_register=0))
+    plant.update(_make_hr_pdu({0: 0, 20: 0}, device_address=0x11, base_register=0))
     # Cache should still hold the good values; the all-zero bank was rejected.
     from givenergy_modbus.model.register import HR
 
-    assert plant.register_caches[0x32][HR(0)] == 1
-    assert plant.register_caches[0x32][HR(20)] == 100
+    assert plant.register_caches[0x11][HR(0)] == 1
+    assert plant.register_caches[0x11][HR(20)] == 100
 
 
 # ---------------------------------------------------------------------------
@@ -1930,11 +1930,11 @@ def test_commit_rejects_allzero_over_nonzero_inverter_bank(plant: Plant, caplog)
     """
     import logging
 
-    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32))
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x11))
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
-        plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32))
-    assert plant.register_caches[0x32][IR(5)] == 2367  # last-good retained, not zeroed
-    assert plant.register_caches[0x32][IR(0)] == 1
+        plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x11))
+    assert plant.register_caches[0x11][IR(5)] == 2367  # last-good retained, not zeroed
+    assert plant.register_caches[0x11][IR(0)] == 1
     warns = [r for r in caplog.records if r.levelno == logging.WARNING and "Pattern B" in r.message]
     assert len(warns) == 1, "an all-zero bank rejected over good data must log once at WARNING"
 
@@ -1961,8 +1961,8 @@ def test_commit_allows_allzero_on_first_read(plant: Plant):
 
 def test_commit_allows_mixed_bank_with_some_nonzero(plant: Plant):
     """A bank with any non-zero value commits normally — the all-zero gate must not catch it."""
-    plant.update(_make_ir_pdu({0: 0, 1: 5, 2: 0}, device_address=0x32))
-    assert plant.register_caches[0x32][IR(1)] == 5
+    plant.update(_make_ir_pdu({0: 0, 1: 5, 2: 0}, device_address=0x11))
+    assert plant.register_caches[0x11][IR(1)] == 5
 
 
 def test_block_present_none_for_never_probed(plant: Plant):
@@ -1972,14 +1972,14 @@ def test_block_present_none_for_never_probed(plant: Plant):
 
 def test_block_present_true_on_commit(plant: Plant):
     """A committed bank marks the block PRESENT (True) in register_block_present."""
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0))
-    assert plant.block_present(0x32, "IR", 0, 60) is True
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0))
+    assert plant.block_present(0x11, "IR", 0, 60) is True
 
 
 def test_block_present_commit_sets_true_for_hr(plant: Plant):
     """HR commit also marks the block PRESENT."""
-    plant.update(_make_hr_pdu({20: 1}, base_register=0))
-    assert plant.block_present(0x32, "HR", 0, 60) is True
+    plant.update(_make_hr_pdu({20: 1}, device_address=0x11, base_register=0))
+    assert plant.block_present(0x11, "HR", 0, 60) is True
 
 
 def test_mark_absent_sets_false(plant: Plant):
@@ -1991,11 +1991,11 @@ def test_mark_absent_sets_false(plant: Plant):
 def test_mark_absent_independent_of_block_age(plant: Plant):
     """Marking a block absent leaves register_block_updated_at unchanged (age is orthogonal)."""
     t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
-    plant.mark_absent(0x32, "IR", 0, 60)  # overwrite the present marker
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t)
+    plant.mark_absent(0x11, "IR", 0, 60)  # overwrite the present marker
     # The freshness stamp is untouched; block_age still reflects the last commit.
-    assert plant.block_age(0x32, "IR", 0, 60, now=t) == 0.0
-    assert plant.block_present(0x32, "IR", 0, 60) is False
+    assert plant.block_age(0x11, "IR", 0, 60, now=t) == 0.0
+    assert plant.block_present(0x11, "IR", 0, 60) is False
 
 
 def test_discarded_bank_does_not_set_present(plant: Plant):
@@ -2008,14 +2008,14 @@ def test_discarded_bank_does_not_set_present(plant: Plant):
 def test_invalidate_presence_clears_marker_and_registers(plant: Plant):
     """invalidate_presence() drops the marker (→ UNKNOWN) AND removes the cached register values."""
     t = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 42}, base_register=0), received_at=t)
-    assert plant.block_present(0x32, "IR", 0, 60) is True
-    assert plant.register_caches[0x32].get(IR(5)) == 42
+    plant.update(_make_ir_pdu({5: 42}, device_address=0x11, base_register=0), received_at=t)
+    assert plant.block_present(0x11, "IR", 0, 60) is True
+    assert plant.register_caches[0x11].get(IR(5)) == 42
 
-    plant.invalidate_presence(0x32, "IR", 0, 60)
+    plant.invalidate_presence(0x11, "IR", 0, 60)
 
-    assert plant.block_present(0x32, "IR", 0, 60) is None  # UNKNOWN
-    assert plant.register_caches[0x32].get(IR(5)) is None  # registers evicted
+    assert plant.block_present(0x11, "IR", 0, 60) is None  # UNKNOWN
+    assert plant.register_caches[0x11].get(IR(5)) is None  # registers evicted
 
 
 def test_invalidate_presence_clears_freshness_stamp(plant: Plant):
@@ -2034,10 +2034,10 @@ def test_invalidate_presence_noop_for_unknown_block(plant: Plant):
 
 def test_block_present_overwrite_absent_to_present(plant: Plant):
     """A subsequent commit after mark_absent updates the marker to PRESENT (topology reappears)."""
-    plant.mark_absent(0x32, "IR", 0, 60)
-    assert plant.block_present(0x32, "IR", 0, 60) is False
-    plant.update(_make_ir_pdu({5: 7}))
-    assert plant.block_present(0x32, "IR", 0, 60) is True
+    plant.mark_absent(0x11, "IR", 0, 60)
+    assert plant.block_present(0x11, "IR", 0, 60) is False
+    plant.update(_make_ir_pdu({5: 7}, device_address=0x11))
+    assert plant.block_present(0x11, "IR", 0, 60) is True
 
 
 def test_redact_copies_register_block_present(plant: Plant):
@@ -2054,11 +2054,11 @@ def test_redact_copies_register_block_present(plant: Plant):
 def test_allzero_rejection_preserves_staleness(plant: Plant):
     """A rejected all-zero bank records no ingestion timestamp, so block_age keeps growing (#65/#206)."""
     t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x32), received_at=t0)
+    plant.update(_make_ir_pdu({0: 1, 5: 2367}, device_address=0x11), received_at=t0)
     t1 = t0 + timedelta(seconds=30)
-    plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x32), received_at=t1)  # rejected
+    plant.update(_make_ir_pdu({0: 0, 5: 0}, device_address=0x11), received_at=t1)  # rejected
     # age reflects t0 (last good commit), not t1 — the rejected bank left no fresh stamp.
-    assert plant.block_age(0x32, "IR", 0, 60, now=t0 + timedelta(seconds=45)) == 45.0
+    assert plant.block_age(0x11, "IR", 0, 60, now=t0 + timedelta(seconds=45)) == 45.0
 
 
 def test_commit_allows_short_read_zero_transition(plant: Plant):
@@ -2300,26 +2300,26 @@ _T0 = datetime(2026, 6, 9, 12, 0, 0, tzinfo=UTC)
 
 def test_content_unchanged_seconds_none_for_never_seen(plant: Plant):
     """A block that has never committed reports None, not a spurious duration."""
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60) is None
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60) is None
 
 
 def test_content_unchanged_seconds_accumulates_while_identical(plant: Plant):
     """Identical consecutive banks hold unchanged_since at the first commit, so the duration grows."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
-    _feed_bank(plant, bank, received_at=_T0)
-    _feed_bank(plant, bank, received_at=_T0 + timedelta(seconds=30))
+    _feed_bank(plant, bank, device_address=0x11, received_at=_T0)
+    _feed_bank(plant, bank, device_address=0x11, received_at=_T0 + timedelta(seconds=30))
     # Measured from a later 'now', the duration is since the FIRST identical commit.
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=90)) == 90.0
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=_T0 + timedelta(seconds=90)) == 90.0
 
 
 def test_content_unchanged_seconds_resets_on_change(plant: Plant):
     """A register change resets unchanged_since to that commit's timestamp."""
     bank_a = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
     bank_b = {**bank_a, 60: 5678}
-    _feed_bank(plant, bank_a, received_at=_T0)
-    _feed_bank(plant, bank_a, received_at=_T0 + timedelta(seconds=30))
-    _feed_bank(plant, bank_b, received_at=_T0 + timedelta(seconds=60))  # content changed → reset
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=75)) == 15.0
+    _feed_bank(plant, bank_a, device_address=0x11, received_at=_T0)
+    _feed_bank(plant, bank_a, device_address=0x11, received_at=_T0 + timedelta(seconds=30))
+    _feed_bank(plant, bank_b, device_address=0x11, received_at=_T0 + timedelta(seconds=60))  # content changed → reset
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=_T0 + timedelta(seconds=75)) == 15.0
 
 
 def test_content_unchanged_survives_run_longer_than_old_deque(plant: Plant):
@@ -2330,54 +2330,54 @@ def test_content_unchanged_survives_run_longer_than_old_deque(plant: Plant):
     """
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832, 60: 1234}
     for i in range(20):  # well beyond the former 10-entry deque cap
-        _feed_bank(plant, bank, received_at=_T0 + timedelta(seconds=30 * i))
+        _feed_bank(plant, bank, device_address=0x11, received_at=_T0 + timedelta(seconds=30 * i))
     # Duration spans from the first commit, not just the last 10.
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=600)) == 600.0
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=_T0 + timedelta(seconds=600)) == 600.0
 
 
 def test_content_unchanged_seconds_keyed_per_block(plant: Plant):
     """Distinct (device, type, base, count) blocks track unchanged_since independently."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    _feed_bank(plant, bank, base=60, count=60, received_at=_T0)
-    _feed_bank(plant, {0: 1}, base=0, count=60, received_at=_T0 + timedelta(seconds=10))
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=10)) == 10.0
-    assert plant.content_unchanged_seconds(0x32, "IR", 0, 60, now=_T0 + timedelta(seconds=10)) == 0.0
+    _feed_bank(plant, bank, device_address=0x11, base=60, count=60, received_at=_T0)
+    _feed_bank(plant, {0: 1}, device_address=0x11, base=0, count=60, received_at=_T0 + timedelta(seconds=10))
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=_T0 + timedelta(seconds=10)) == 10.0
+    assert plant.content_unchanged_seconds(0x11, "IR", 0, 60, now=_T0 + timedelta(seconds=10)) == 0.0
 
 
 def test_discarded_bank_does_not_update_unchanged_since(plant: Plant):
     """A bank rejected by _commit_bank (Pattern B all-zero) leaves unchanged_since untouched."""
     seed = {60: 3221, 110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    _feed_bank(plant, seed, received_at=_T0)
-    _feed_bank(plant, dict.fromkeys(seed, 0), received_at=_T0 + timedelta(seconds=30))  # rejected
+    _feed_bank(plant, seed, device_address=0x11, received_at=_T0)
+    _feed_bank(plant, dict.fromkeys(seed, 0), device_address=0x11, received_at=_T0 + timedelta(seconds=30))  # rejected
     # unchanged_since still anchored at the committed bank; the rejected bank changed nothing.
-    assert plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=_T0 + timedelta(seconds=30)) == 30.0
+    assert plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=_T0 + timedelta(seconds=30)) == 30.0
 
 
 def test_crc_failed_frame_does_not_overwrite_cache(plant: Plant):
     """A CRC-failed response must not commit its payload over previously-good cache data."""
     good_bank = {60: 3221, 110: 0x4358, 111: 0x3232}
-    _feed_bank(plant, good_bank, received_at=_T0)
+    _feed_bank(plant, good_bank, device_address=0x11, received_at=_T0)
 
-    pdu = _make_ir_pdu({60: 0, 110: 0, 111: 0}, base_register=60, register_count=60)
+    pdu = _make_ir_pdu({60: 0, 110: 0, 111: 0}, device_address=0x11, base_register=60, register_count=60)
     pdu.crc_failed = True
     setattr(pdu, "lenient_crc_commit", False)
     plant.update(pdu, received_at=_T0 + timedelta(seconds=10))
 
     # Cache must still reflect the good bank, not the zeroed CRC-failed payload.
-    cache = plant.register_caches[0x32]
+    cache = plant.register_caches[0x11]
     assert cache[IR(60)] == 3221
     assert cache[IR(110)] == 0x4358
 
 
 def test_crc_failed_cold_start_leaves_cache_empty(plant: Plant):
     """A CRC-failed response on an empty cache must not touch Plant state at all."""
-    pdu = _make_ir_pdu({0: 9999}, base_register=0, register_count=60)
+    pdu = _make_ir_pdu({0: 9999}, device_address=0x11, base_register=0, register_count=60)
     pdu.crc_failed = True
     setattr(pdu, "lenient_crc_commit", False)
     plant.update(pdu)
 
-    # No register data committed (Plant() pre-creates the 0x32 entry, but it stays empty).
-    assert IR(0) not in plant.register_caches[0x32]
+    # No register data committed: the CRC-failed frame never created a cache entry for 0x11.
+    assert IR(0) not in plant.register_caches.get(0x11, {})
 
 
 def test_crc_failed_frame_does_not_clobber_inverter_serial(plant: Plant):
@@ -2400,13 +2400,13 @@ def test_crc_failed_frame_does_not_clobber_inverter_serial(plant: Plant):
 
 def test_crc_failed_lenient_commit_allows_data(plant: Plant):
     """With lenient_crc_commit=True, a CRC-failed response is committed as normal."""
-    pdu = _make_ir_pdu({60: 42, 61: 7}, base_register=60, register_count=60)
+    pdu = _make_ir_pdu({60: 42, 61: 7}, device_address=0x11, base_register=60, register_count=60)
     pdu.crc_failed = True
     setattr(pdu, "lenient_crc_commit", True)
     plant.update(pdu)
 
-    assert plant.register_caches[0x32][IR(60)] == 42
-    assert plant.register_caches[0x32][IR(61)] == 7
+    assert plant.register_caches[0x11][IR(60)] == 42
+    assert plant.register_caches[0x11][IR(61)] == 7
 
 
 # --- comms-quality counters (#284) ------------------------------------------
@@ -2461,8 +2461,8 @@ def test_splice_held_count_tracks_scalar_immutable_coherent_hold(plant: Plant):
 def test_content_unchanged_seconds_normalises_naive_now(plant: Plant):
     """A timezone-naive now is treated as UTC rather than raising TypeError (mirrors block_age)."""
     bank = {110: 0x4358, 111: 0x3232, 112: 0x3331, 113: 0x4734, 114: 0x3832}
-    _feed_bank(plant, bank, received_at=_T0)
-    age = plant.content_unchanged_seconds(0x32, "IR", 60, 60, now=datetime(2026, 6, 9, 12, 0, 7))
+    _feed_bank(plant, bank, device_address=0x11, received_at=_T0)
+    age = plant.content_unchanged_seconds(0x11, "IR", 60, 60, now=datetime(2026, 6, 9, 12, 0, 7))
     assert age == 7.0
 
 
@@ -2694,12 +2694,12 @@ def test_register_age_finds_containing_window(plant: Plant):
     from givenergy_modbus.model.register import IR
 
     t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367, 42: 3685}, base_register=0), received_at=t)
+    plant.update(_make_ir_pdu({5: 2367, 42: 3685}, device_address=0x11, base_register=0), received_at=t)
     now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
     # IR(42) sits inside the stamped IR(0,60) window.
-    assert plant.register_age(0x32, IR(42), now=now) == 30.0
+    assert plant.register_age(0x11, IR(42), now=now) == 30.0
     # Outside any stamped window → None; wrong device → None.
-    assert plant.register_age(0x32, IR(180), now=now) is None
+    assert plant.register_age(0x11, IR(180), now=now) is None
     assert plant.register_age(0x99, IR(42), now=now) is None
 
 
@@ -2709,13 +2709,15 @@ def test_register_age_freshest_of_overlapping_windows(plant: Plant):
 
     t0 = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
     t1 = datetime(2026, 6, 11, 12, 0, 20, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t0)  # IR(0,60) @ t0
-    plant.update(_make_ir_pdu({5: 2368}, base_register=0, register_count=10), received_at=t1)  # IR(0,10) @ t1
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t0)  # IR(0,60) @ t0
+    plant.update(
+        _make_ir_pdu({5: 2368}, device_address=0x11, base_register=0, register_count=10), received_at=t1
+    )  # IR(0,10) @ t1
     now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
     # IR(5) is covered by both; the fresher IR(0,10) stamp wins.
-    assert plant.register_age(0x32, IR(5), now=now) == 10.0
+    assert plant.register_age(0x11, IR(5), now=now) == 10.0
     # IR(42) is only covered by the older full-width window.
-    assert plant.register_age(0x32, IR(42), now=now) == 30.0
+    assert plant.register_age(0x11, IR(42), now=now) == 30.0
 
 
 def test_register_age_pairs_with_registers_of(plant: Plant):
@@ -2723,11 +2725,11 @@ def test_register_age_pairs_with_registers_of(plant: Plant):
     from givenergy_modbus.model.inverter import SinglePhaseInverterRegisterGetter
 
     t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({42: 3685}, base_register=0), received_at=t)
+    plant.update(_make_ir_pdu({42: 3685}, device_address=0x11, base_register=0), received_at=t)
     regs = SinglePhaseInverterRegisterGetter.registers_of("p_load_demand")
     assert regs, "p_load_demand must be register-backed"
     now = datetime(2026, 6, 11, 12, 0, 15, tzinfo=UTC)
-    ages = [plant.register_age(0x32, r, now=now) for r in regs]
+    ages = [plant.register_age(0x11, r, now=now) for r in regs]
     assert ages == [15.0]
 
 
@@ -2736,8 +2738,8 @@ def test_register_age_normalises_naive_now(plant: Plant):
     from givenergy_modbus.model.register import IR
 
     t = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t)
-    assert plant.register_age(0x32, IR(5), now=datetime(2026, 6, 11, 12, 0, 7)) == 7.0
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t)
+    assert plant.register_age(0x11, IR(5), now=datetime(2026, 6, 11, 12, 0, 7)) == 7.0
 
 
 def test_register_age_keeps_freshest_when_older_window_seen_later(plant: Plant):
@@ -2747,10 +2749,10 @@ def test_register_age_keeps_freshest_when_older_window_seen_later(plant: Plant):
     t_new = datetime(2026, 6, 11, 12, 0, 20, tzinfo=UTC)
     t_old = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
     # Stamp the fresher narrow window FIRST so iteration meets the older one second.
-    plant.update(_make_ir_pdu({5: 2368}, base_register=0, register_count=10), received_at=t_new)
-    plant.update(_make_ir_pdu({5: 2367}, base_register=0), received_at=t_old)  # IR(0,60), older
+    plant.update(_make_ir_pdu({5: 2368}, device_address=0x11, base_register=0, register_count=10), received_at=t_new)
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t_old)  # IR(0,60), older
     now = datetime(2026, 6, 11, 12, 0, 30, tzinfo=UTC)
-    assert plant.register_age(0x32, IR(5), now=now) == 10.0
+    assert plant.register_age(0x11, IR(5), now=now) == 10.0
 
 
 # ---------------------------------------------------------------------------
