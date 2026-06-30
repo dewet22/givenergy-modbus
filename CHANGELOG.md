@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.4] - 2026-06-30
+
+### 🐛 Fixed
+
+- route caps-absent 0x32 reads to the battery guard (#352) (#354) ([a923197](https://github.com/dewet22/givenergy-modbus/commit/a92319739b50c133f7c128738d40f36c27bc0cf6))
+
+### 🔧 Maintenance
+
+- address inverter-bank tests at 0x11, not 0x32 (#352 prep) (#353) ([9b32b84](https://github.com/dewet22/givenergy-modbus/commit/9b32b840c04b3f87f6caf44ad7c6548958b303a5))
+
 ## [2.9.3] - 2026-06-30
 
 ### 🐛 Fixed
