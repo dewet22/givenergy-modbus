@@ -21,6 +21,7 @@ from givenergy_modbus.model.battery_splice import (
     classify_transition,
     heal_eligible,
     is_corruption_cohort,
+    is_internally_impossible,
 )
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
@@ -1106,6 +1107,24 @@ class Plant(GivEnergyBaseModel):
                 device_address,
             )
             return False
+        # Internally-impossible battery frame (#350): a partial sub-bus splice (cell block zeroed,
+        # scalars intact) is physically impossible. Refuse it at the door — getter-agnostic, because a
+        # 0x32 read during a capabilities-None window (e.g. a fresh Plant mid-reconnect) is routed to the
+        # inverter getter and so bypasses the battery splice guard below; without this it seeds a poisoned
+        # baseline the guard then defends once capabilities resolve 0x32 to a battery. Gated to the LV
+        # battery range, where IR(60-75) are cell voltages on every model.
+        if (
+            register_count >= 60
+            and 0x32 <= device_address <= 0x37
+            and is_internally_impossible([incoming.get(IR(BANK_BASE + i), 0) for i in range(60)])
+        ):
+            self._bump(self.splice_reject_count, device_address)
+            _logger.warning(
+                "Rejected internally-impossible battery bank for device 0x%02x — all cells 0 with "
+                "firmware/capacity present; refusing to cache it. Please report if seen.",
+                device_address,
+            )
+            return False
         getter_cls = self._getter_for_device_address(device_address)
         if getter_cls is not None:
             if not getter_cls.is_coherent(incoming, self.register_caches[device_address]):
@@ -1203,6 +1222,22 @@ class Plant(GivEnergyBaseModel):
             # transient splice would poison the baseline (#289). Hold it until a second poll
             # corroborates it (incoming_present, not present, since the cache is empty here).
             return self._confirm_cold_start_baseline(device_address, list(new), incoming_present, now_ts)
+
+        # Internally-impossible last-good (#350): an out-of-band partial splice can seed a baseline
+        # with every cell 0 but firmware/capacity intact — physically impossible, and once cached
+        # every healthy read trips >=2 physics deltas (0->~3300 mV) and is rejected forever (no
+        # existing heal covers a cell-voltage-zero baseline). Don't defend it: route the live read
+        # through cold-start corroboration to re-seed. Checked BEFORE the pending-baseline pop below
+        # so the held first healthy frame survives to be corroborated by the next poll.
+        if is_internally_impossible(prev) and not is_internally_impossible(new):
+            _logger.warning(
+                "Battery bank for device 0x%02x: last-good baseline is internally impossible (all "
+                "cells 0 with firmware/capacity present) — re-seeding from corroborated live reads. "
+                "Please report if seen.",
+                device_address,
+            )
+            return self._confirm_cold_start_baseline(device_address, list(new), incoming_present, now_ts)
+
         # Past cold start — a real baseline exists, so any pending first frame is moot. Clear it so a
         # short read that seeded the cache mid-confirmation can't leave an orphan around.
         self._splice_pending_baseline.pop(device_address, None)
@@ -1358,6 +1393,17 @@ class Plant(GivEnergyBaseModel):
 
         Returns True to adopt (corroborated), False to keep holding last-good ("unknown").
         """
+        if is_internally_impossible(frame):
+            # All cells 0 while firmware/capacity are present is physically impossible (#350) — never
+            # baseline it, corroborated or not. Hold for a healthy read (cache untouched, serves unknown).
+            self._bump(self.cold_start_held_count, device_address)
+            _logger.warning(
+                "Battery bank for device 0x%02x: cold-start frame is internally impossible (all cells 0 "
+                "with firmware/capacity present); refusing to baseline it, holding for a healthy read. "
+                "Please report if seen.",
+                device_address,
+            )
+            return False
         pending = self._splice_pending_baseline.get(device_address)
         # A pending older than the stale-bypass window straddles a genuine polling gap — don't
         # corroborate across it; treat the incoming frame as a fresh first read.
