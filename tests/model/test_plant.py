@@ -82,8 +82,10 @@ def test_plant(
         "register_caches": {0x32: {}},
     }
 
-    # inject register values
-    plant.register_caches[0x32].update(register_cache_inverter_daytime_discharging_with_solar_generation)
+    # inject register values: inverter identity at 0x11, LV battery pack #1 at 0x32 (#352)
+    plant.register_caches.setdefault(0x11, RegisterCache()).update(
+        register_cache_inverter_daytime_discharging_with_solar_generation
+    )
     plant.register_caches[0x32].update(register_cache_battery_daytime_discharging)
 
     assert plant.model_dump() == {
@@ -982,6 +984,10 @@ def test_from_actual():
         ),
     }
 
+    # 0x11 decodes the inverter identity (#352); 0x32 stays LV battery pack #1 — both
+    # from the same real capture, which historically sat at a single 0x32 address.
+    register_caches[0x11] = register_caches[0x32]
+
     p = Plant(register_caches=register_caches)
     i = p.inverter
     assert i.model_dump() == {
@@ -1712,6 +1718,19 @@ def test_getter_for_device_address_with_capabilities():
     assert plant._getter_for_device_address(0x32).__name__ == "BatteryRegisterGetter"
     assert plant._getter_for_device_address(0x05).__name__ == "MeterRegisterGetter"
     assert plant._getter_for_device_address(0x99) is None
+
+
+def test_getter_for_device_address_without_capabilities():
+    """Without capabilities, 0x32-0x37 are batteries and only 0x11/0x31 are the inverter (#352).
+
+    Retires the pre-#189 fallback that aliased a bare Plant's 0x32 to the inverter getter — the gap
+    that let a caps-None 0x32 read bypass the battery splice guard (#350).
+    """
+    plant = Plant()  # no capabilities
+    assert plant._getter_for_device_address(0x11).__name__ == "SinglePhaseInverterRegisterGetter"
+    assert plant._getter_for_device_address(0x31).__name__ == "SinglePhaseInverterRegisterGetter"
+    assert plant._getter_for_device_address(0x32).__name__ == "BatteryRegisterGetter"
+    assert plant._getter_for_device_address(0x33).__name__ == "BatteryRegisterGetter"
 
 
 def test_getter_for_device_address_lv_bcu():
@@ -2760,9 +2779,9 @@ def test_register_age_keeps_freshest_when_older_window_seen_later(plant: Plant):
 #
 # Tests that the splice guard correctly rejects or escrows LV battery banks
 # carrying physics-impossible register deltas, even when CRC, bounds, and
-# serial-coherence checks pass. All tests target device 0x33: on a bare
-# Plant, 0x32 → SinglePhaseInverterRegisterGetter and 0x33–0x37 →
-# BatteryRegisterGetter, so only 0x33+ is guarded.
+# serial-coherence checks pass. All tests target device 0x33: since #352
+# every 0x32–0x37 address routes to BatteryRegisterGetter, and 0x33 is used
+# as a clean, non-pre-seeded battery address for these guard tests.
 # ---------------------------------------------------------------------------
 
 
@@ -2805,7 +2824,7 @@ def _coherent_battery_bank(overrides: dict[int, int] | None = None) -> dict[int,
     return bank
 
 
-_BATT = 0x33  # battery pack #1 on bare Plant; 0x32 → inverter getter on bare Plant
+_BATT = 0x33  # an LV battery address (0x32–0x37 all route to the battery getter, #352)
 
 
 def _establish_baseline(
@@ -3051,19 +3070,38 @@ def test_splice_impossible_frame_refused_at_commit_battery_getter(plant: Plant):
 
 
 def test_splice_impossible_frame_refused_at_commit_when_caps_absent(plant: Plant, caplog):
-    """The modbus#350 seeding path: an impossible 0x32 frame is refused even with capabilities absent.
+    """The modbus#350 impossible-frame refusal holds with capabilities absent.
 
-    A 0x32 read during a capabilities-None window (a fresh Plant mid-reconnect) misroutes to the
-    inverter getter and bypasses the battery splice guard — so the getter-agnostic _commit_bank guard
-    is the one that must refuse it, or it seeds the poisoned baseline the guard later defends.
+    Since #352 a caps-None 0x32 read routes to the battery getter, so the splice guard now engages —
+    but the getter-agnostic _commit_bank impossible-guard still fires first, refusing an all-cells-zero
+    frame before it can seed a baseline regardless of getter routing.
     """
     import logging
 
-    assert plant.capabilities is None  # bare plant: 0x32 routes to the inverter getter, not battery
+    assert plant.capabilities is None  # bare plant: 0x32 → battery getter (#352); impossible frame refused either way
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
         _feed_bank(plant, _impossible_zero_cell_bank(), device_address=0x32, received_at=_T0)
     assert IR(60) not in plant.register_caches[0x32], "impossible frame must never seed the cache"
     assert any("internally-impossible" in r.message for r in caplog.records)
+
+
+def test_caps_none_0x32_bank_splice_guarded_and_cold_start_held(caplog):
+    """A bare-Plant 0x32 bank now gets the full splice guard — cold-start-held, not committed unchecked.
+
+    Since #352 a caps-None 0x32 read routes to the battery getter, so a healthy first frame is held for
+    cold-start corroboration (it would have committed silently via the inverter getter before) and a
+    second corroborating read commits it — closing the #350 seeding window for every corruption shape.
+    """
+    import logging
+
+    plant = Plant()  # no capabilities
+    healthy = _coherent_battery_bank()
+    with caplog.at_level(logging.INFO, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, healthy, device_address=0x32, received_at=_T0)
+        assert IR(60) not in plant.register_caches[0x32], "first frame must be held pending corroboration"
+        _feed_bank(plant, healthy, device_address=0x32, received_at=_T0 + timedelta(seconds=30))
+    assert plant.register_caches[0x32][IR(60)] == 3300, "corroborated frame commits"
+    assert any("cold-start" in r.message for r in caplog.records)
 
 
 def test_splice_temp_cohort_zeros_rejected(plant: Plant, caplog):
@@ -3525,18 +3563,22 @@ def test_splice_short_read_refuses_temp_zero_cohort(plant: Plant, caplog):
 
 
 def test_splice_non_battery_device_skips_guard(plant: Plant, caplog):
-    """On a bare Plant, 0x32 → inverter getter; the splice guard is not applied there."""
+    """On a bare Plant, 0x11 → inverter getter; the splice guard is not applied there (#352).
+
+    Since #352 every 0x32–0x37 address routes to the battery getter, so the inverter
+    address 0x11 is the natural non-battery device that bypasses the splice guard.
+    """
     import logging
 
-    # Seed 0x32 with a battery-shaped bank (committed under the inverter getter).
-    _feed_bank(plant, _coherent_battery_bank(), device_address=0x32, received_at=_T0)
-    # Two battery-physics trips — would be rejected on 0x33, but 0x32 is not BatteryRegisterGetter.
+    # Seed 0x11 (the inverter) with a battery-shaped bank — committed under the inverter getter.
+    _feed_bank(plant, _coherent_battery_bank(), device_address=0x11, received_at=_T0)
+    # Two battery-physics trips — would be rejected on a battery address, but 0x11 is not BatteryRegisterGetter.
     wild = _coherent_battery_bank({60: 3700, 76: 0})
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
-        _feed_bank(plant, wild, device_address=0x32, received_at=_T0 + timedelta(seconds=30))
+        _feed_bank(plant, wild, device_address=0x11, received_at=_T0 + timedelta(seconds=30))
     warns = [r for r in caplog.records if "splice" in r.message.lower() or "Held battery bank" in r.message]
     assert not warns
-    assert plant.register_caches[0x32][IR(60)] == 3700  # committed
+    assert plant.register_caches[0x11][IR(60)] == 3700  # committed
 
 
 def test_splice_escrow_isolated_per_device(plant: Plant):
