@@ -984,9 +984,9 @@ def test_from_actual():
         ),
     }
 
-    # 0x11 decodes the inverter identity (#352); 0x32 stays LV battery pack #1 — both
-    # from the same real capture, which historically sat at a single 0x32 address.
-    register_caches[0x11] = register_caches[0x32]
+    # 0x11 decodes the inverter identity (#352); 0x32 stays LV battery pack #1 — an
+    # independent copy of the same real capture, which historically sat at one 0x32 address.
+    register_caches[0x11] = RegisterCache(register_caches[0x32])
 
     p = Plant(register_caches=register_caches)
     i = p.inverter

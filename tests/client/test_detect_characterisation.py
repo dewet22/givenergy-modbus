@@ -15,7 +15,7 @@ from the unchanged `detect()` over each MockPlant fixture.
 Coverage — the three identity-complete fixtures that drive a live detect over MockPlant
 deterministically (the same set `test_offline_from_caches.py` uses, for the same reason):
   - hybrid_gen1: Step 1 (identity), Step 3 (meter sweep), Step 4 (LV batteries — incl. the cold-start
-    re-read at 0x33, #233/#289), Step 4b (LV BCU).
+    re-read at 0x32 (#352) and 0x33 (#233/#289)), Step 4b (LV BCU).
   - aio:         Step 1, Step 2 (BMS@0xA0 + BCU@0x70), Step 2b (AIO modules 0x50–0x53), Step 3.
   - ems:         Step 1, Step 3, Step 5 (EMS rollup IR(2040,55) — a known-tier read).
 The non-AIO HV BMU path (Step 2c) has no live-drivable fixture (three_phase_hv_a is a passive refresh
@@ -39,9 +39,9 @@ _DETECT = dict(timeout=1.0, retries=0, probe_timeout=0.1, probe_retries=0)
 # Golden outbound sequences as (reg_type, device_address, base_register, register_count) — literal
 # recordings from the unchanged detect(). Order is significant.
 _GOLDEN: dict[str, list[tuple[str, int, int, int]]] = {
-    # HYBRID_GEN1 — meters (Step 3) precede the LV battery sweep (Step 4); 0x32 is read once via the
-    # known-tier preamble, 0x33 twice (the cold-start corroborating re-read), 0x34–0x37 once each
-    # (absent → mark_absent), then the LV BCU at 0x31 (Step 4b).
+    # HYBRID_GEN1 — meters (Step 3) precede the LV battery sweep (Step 4); 0x32 and 0x33 are each read
+    # twice (the cold-start corroborating re-read — for 0x32 since #352 routes it through the battery
+    # getter too), 0x34–0x37 once each (absent → mark_absent), then the LV BCU at 0x31 (Step 4b).
     "hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log": [
         ("HR", 0x11, 0, 60),
         ("IR", 0x01, 60, 30),
@@ -52,6 +52,7 @@ _GOLDEN: dict[str, list[tuple[str, int, int, int]]] = {
         ("IR", 0x06, 60, 30),
         ("IR", 0x07, 60, 30),
         ("IR", 0x08, 60, 30),
+        ("IR", 0x32, 60, 60),
         ("IR", 0x32, 60, 60),
         ("IR", 0x33, 60, 60),
         ("IR", 0x33, 60, 60),

@@ -9,6 +9,7 @@ from givenergy_modbus.exceptions import CommunicationError, PlantTopologyMismatc
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
+from givenergy_modbus.pdu import ReadInputRegistersResponse
 
 
 def _make_client() -> Client:
@@ -1394,6 +1395,66 @@ async def test_detect_lv_batteries_invalid_slot_skipped_not_aborted():
     assert 0x32 in caps.lv_battery_addresses
     assert 0x33 not in caps.lv_battery_addresses  # ghost — skipped
     assert 0x34 in caps.lv_battery_addresses
+
+
+def _healthy_battery_bank() -> dict[int, int]:
+    """A coherent LV battery bank (IR60–119) with a valid serial — commits through the splice guard."""
+    bank: dict[int, int] = {60 + i: 3300 for i in range(16)}  # 16 cells @ 3.300 V
+    bank.update({76 + i: 250 for i in range(4)})  # cell-mass temps @ 25.0 °C
+    bank.update({80: 52800, 97: 16, 98: 3005, 100: 55})  # v_sum, num_cells, bms_fw, soc
+    # valid serial "SA1234A567" at IR(110–114), matching _prime_battery_serial
+    bank.update({110: 0x5341, 111: 0x3132, 112: 0x3334, 113: 0x4135, 114: 0x3637})
+    return bank
+
+
+def _battery_ir_response(device_address: int, bank: dict[int, int]) -> MagicMock:
+    """A minimal ReadInputRegistersResponse mock that update() commits via the battery getter."""
+    pdu = MagicMock(spec=ReadInputRegistersResponse)
+    pdu.device_address = device_address
+    pdu.base_register = 60
+    pdu.register_count = 60
+    pdu.error = False
+    pdu.crc_failed = False
+    pdu.inverter_serial_number = ""
+    pdu.data_adapter_serial_number = ""
+    pdu.to_dict.return_value = bank
+    pdu.is_suspicious.return_value = False
+    return pdu
+
+
+@pytest.mark.asyncio
+async def test_detect_primary_battery_survives_cold_start_hold():
+    """The primary 0x32 LV battery is still detected when its first frame is cold-start-held (#352).
+
+    Since #352 a caps-absent 0x32 read routes through the battery getter, so the detect() preamble
+    frame is held by the cold-start splice guard (#289) — the cache stays empty pending corroboration.
+    Without a confirming re-read the primary pack is dropped from lv_battery_addresses and refresh()
+    never re-polls it. This feeds a healthy 0x32 bank through the real plant.update() path (exercising
+    the guard rather than pre-priming the cache) and asserts the corroborating re-read commits it.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})  # inverter/model only — 0x32 NOT pre-primed
+    bank = _healthy_battery_bank()
+
+    async def _send_side_effect(request, *, timeout, retries):
+        # Feed the healthy 0x32 bank through update() so the cold-start guard runs; detect issues this
+        # twice (preamble + corroborating re-read), and the second commits the held baseline.
+        if request.device_address == 0x32 and getattr(request, "base_register", None) == 60:
+            client.plant.update(_battery_ir_response(0x32, bank))
+        return MagicMock()
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return False  # no additional packs at 0x33+
+
+    with (
+        patch.object(client, "send_request_and_await_response", side_effect=_send_side_effect),
+        patch.object(client, "_probe", side_effect=_probe_side_effect),
+    ):
+        caps = await client.detect()
+
+    assert 0x32 in caps.lv_battery_addresses  # the corroborating re-read committed the held frame
+    assert client.plant.cold_start_held_count.get(0x32, 0) >= 1  # proves the guard actually engaged
+    assert client.plant.register_caches[0x32][IR(60)] == 3300  # healthy data committed
 
 
 # ---------------------------------------------------------------------------
