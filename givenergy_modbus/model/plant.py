@@ -1113,11 +1113,12 @@ class Plant(GivEnergyBaseModel):
         # inverter getter and so bypasses the battery splice guard below; without this it seeds a poisoned
         # baseline the guard then defends once capabilities resolve 0x32 to a battery. Gated to the LV
         # battery range, where IR(60-75) are cell voltages on every model.
-        if (
-            register_count >= 60
-            and 0x32 <= device_address <= 0x37
-            and is_internally_impossible([incoming.get(IR(BANK_BASE + i), 0) for i in range(60)])
-        ):
+        if register_count >= 60 and 0x32 <= device_address <= 0x37:
+            bank = [incoming.get(IR(BANK_BASE + i), 0) for i in range(60)]
+            bank_present = {i for i in range(60) if IR(BANK_BASE + i) in incoming}
+        else:
+            bank = bank_present = None
+        if bank is not None and is_internally_impossible(bank, bank_present):
             self._bump(self.splice_reject_count, device_address)
             _logger.warning(
                 "Rejected internally-impossible battery bank for device 0x%02x — all cells 0 with "
@@ -1229,7 +1230,8 @@ class Plant(GivEnergyBaseModel):
         # existing heal covers a cell-voltage-zero baseline). Don't defend it: route the live read
         # through cold-start corroboration to re-seed. Checked BEFORE the pending-baseline pop below
         # so the held first healthy frame survives to be corroborated by the next poll.
-        if is_internally_impossible(prev) and not is_internally_impossible(new):
+        cache_present = {i for i in range(60) if cache.get(IR(BANK_BASE + i)) is not None}
+        if is_internally_impossible(prev, cache_present) and not is_internally_impossible(new, incoming_present):
             _logger.warning(
                 "Battery bank for device 0x%02x: last-good baseline is internally impossible (all "
                 "cells 0 with firmware/capacity present) — re-seeding from corroborated live reads. "
@@ -1393,17 +1395,6 @@ class Plant(GivEnergyBaseModel):
 
         Returns True to adopt (corroborated), False to keep holding last-good ("unknown").
         """
-        if is_internally_impossible(frame):
-            # All cells 0 while firmware/capacity are present is physically impossible (#350) — never
-            # baseline it, corroborated or not. Hold for a healthy read (cache untouched, serves unknown).
-            self._bump(self.cold_start_held_count, device_address)
-            _logger.warning(
-                "Battery bank for device 0x%02x: cold-start frame is internally impossible (all cells 0 "
-                "with firmware/capacity present); refusing to baseline it, holding for a healthy read. "
-                "Please report if seen.",
-                device_address,
-            )
-            return False
         pending = self._splice_pending_baseline.get(device_address)
         # A pending older than the stale-bypass window straddles a genuine polling gap — don't
         # corroborate across it; treat the incoming frame as a fresh first read.

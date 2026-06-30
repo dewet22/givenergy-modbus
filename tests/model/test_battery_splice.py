@@ -12,6 +12,7 @@ from givenergy_modbus.model.battery_splice import (
     IMMUTABLE_SERIAL,
     THRESHOLD_BY_CLASS,
     classify_transition,
+    is_internally_impossible,
 )
 
 
@@ -204,3 +205,28 @@ def test_heal_eligible_rejects_out_of_range_value():
 
     assert not heal_eligible([(60, "cell_mV", 3300, 5200), (65, "cell_mV", 3300, 5200)])  # >5.0 V
     assert not heal_eligible([(60, "cell_mV", 3300, 500)])  # <1.0 V
+
+
+def test_is_internally_impossible_flags_zero_cells_with_live_scalars():
+    """All cells 0 while firmware/capacity persist is the #350 impossible shape."""
+    bank = _baseline()
+    for i in range(16):
+        bank[i] = 0  # zero every cell, leave firmware (idx 38) + capacity (idx 29) intact
+    assert is_internally_impossible(bank) is True
+
+
+def test_is_internally_impossible_passes_healthy_bank():
+    assert is_internally_impossible(_baseline()) is False
+
+
+def test_is_internally_impossible_is_presence_aware():
+    """Cells absent from the frame are unknown, not zero — never judged impossible from filled zeros."""
+    bank = _baseline()
+    for i in range(16):
+        bank[i] = 0
+    assert is_internally_impossible(bank, set(range(60))) is True  # cells observed all-zero
+    assert is_internally_impossible(bank, {28, 29, 38}) is False  # only scalars observed → unknown
+
+
+def test_is_internally_impossible_short_frame_is_safe():
+    assert is_internally_impossible([0, 0, 0]) is False

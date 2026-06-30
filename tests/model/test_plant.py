@@ -3037,11 +3037,12 @@ def test_splice_impossible_zero_cell_baseline_heals_from_healthy_reads(plant: Pl
     assert plant.register_caches[_BATT][IR(103)] == 250
 
 
-def test_splice_impossible_zero_cell_frame_refused_at_cold_start(plant: Plant):
-    """An impossible cold-start frame is never baselined, even corroborated.
+def test_splice_impossible_frame_refused_at_commit_battery_getter(plant: Plant):
+    """An impossible frame at a battery-getter address (0x33) is refused at commit, never baselined.
 
-    All cells zero with non-zero capacity/firmware is physically impossible — defence-in-depth so the
-    poison can't seed via the guard's own cold-start path.
+    Companion to the caps-absent case: here 0x33 routes to the battery getter, but the getter-agnostic
+    _commit_bank guard still rejects the impossible frame before it can seed a baseline — so even two
+    corroborating reads (via _establish_baseline) never adopt it.
     """
     _establish_baseline(plant, _impossible_zero_cell_bank(), device_address=_BATT, received_at=_T0)
     assert IR(60) not in plant.register_caches[_BATT], "impossible frame must be held, never adopted"
