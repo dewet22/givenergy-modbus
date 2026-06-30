@@ -450,6 +450,51 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Client lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inside-detect-strategise-probe-derive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inside detect(): strategise / probe / derive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inside detect(): strategise / probe / derive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-three-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why three functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-refresh-decomposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How refresh() decomposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -951,6 +996,51 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Client lifecycle">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inside-detect-strategise-probe-derive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inside detect(): strategise / probe / derive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Inside detect(): strategise / probe / derive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-three-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why three functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-refresh-decomposes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How refresh() decomposes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1162,6 +1252,33 @@ client.load_config()   fetch HR configuration banks (slots, targets, limits)
 client.load_config()   re-read after any write to confirm the change landed
 </code></pre></div>
 <p><code>detect()</code> is intentionally slow — a correct topology is more important than fast startup. It uses a two-tier timeout: full retries for known devices, short probe retries for speculative addresses (meters, batteries, BCU stacks) where absence is the common case.</p>
+<h4 id="inside-detect-strategise-probe-derive">Inside <code>detect()</code>: strategise / probe / derive<a class="headerlink" href="#inside-detect-strategise-probe-derive" title="Permanent link">&para;</a></h4>
+<p>After resolving the model, <code>detect()</code> runs a loop over the peripheral steps (BCU, AIO, HV BMU, meters, LV batteries, LV BCU, EMS). Each step is split into three roles, separated by whether they touch the wire:</p>
+<p><img alt="The detect() strategise, probe and derive loop" src="../img/detect-strategise-probe-derive.png" /></p>
+<ul>
+<li><strong><code>_strategise(caps, prior, step)</code></strong> — pure policy. Given the model and an optional <code>prior</code> hint, it returns the <code>ProbeRange</code>s to read for that step. Cold (no hint) yields a broad candidate sweep; hinted restricts to the addresses <code>prior</code> already knows. No I/O, so it is exhaustively unit-testable.</li>
+<li><strong><code>_probe_ranges(ranges)</code></strong> — the shared I/O seam for the <code>_strategise</code>-routed probe steps (AIO modules, HV BMUs, meters, LV BCU). It issues each read at its tier (fast <code>probe_timeout</code> for speculative probes, full <code>timeout</code> for known devices) and, on a probe that does not answer, calls <code>mark_absent()</code> and evicts the stale cache entry.</li>
+<li><strong><code>_derive_capabilities(caches, prior, on_reject)</code></strong> — pure validation. It reads the now-populated register caches, applies each device's <code>is_valid()</code> gate, and builds the authoritative <code>PlantCapabilities</code>. Rejections thread back through <code>on_reject</code> to <code>mark_absent()</code>.</li>
+</ul>
+<p>This split is what makes the offline <code>Plant.from_caches()</code> path possible (#268): <code>_derive_capabilities</code> is the same pure function whether the caches came from a live probe or a saved register dump.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Several reads still touch the wire outside <code>_probe_ranges</code>: the initial model read, BCU stack discovery, LV-battery enumeration, and the EMS rollup cross-check (BCU and LV-battery probing carry the cold-start splice-guard re-probe, #233/#289). The loop above shows the shared-seam pattern that the AIO, HV-BMU, meter and LV-BCU steps follow — not every read in <code>detect()</code>.</p>
+</div>
+<h5 id="why-three-functions">Why three functions<a class="headerlink" href="#why-three-functions" title="Permanent link">&para;</a></h5>
+<p>Before #345, <code>detect()</code> fanned out to a per-device-type helper for each peripheral, and every helper independently tangled all three concerns — pick candidates, probe, then validate-and-mutate <code>caps</code>:</p>
+<p><img alt="Before and after: per-type helpers transposed into per-concern functions" src="../img/detect-refactor-before-after.png" /></p>
+<p>The refactor transposes that grid: instead of five helpers each doing all three jobs, there is one function per job. Candidate generation lives once (shared by <code>_strategise</code> and <code>_derive_capabilities</code>) and validation lives once in <code>_derive_capabilities</code>, both spanning every device type; the probe I/O routes through <code>_probe_ranges</code> for the AIO, HV-BMU, meter and LV-BCU steps. A change to a candidate range or a validation gate is now a one-site edit rather than a five-site sweep.</p>
+<h4 id="how-refresh-decomposes">How <code>refresh()</code> decomposes<a class="headerlink" href="#how-refresh-decomposes" title="Permanent link">&para;</a></h4>
+<p>The polling path mirrors <code>detect()</code>'s split — pure policy decides <em>what</em> to read, a single seam does the I/O:</p>
+<p><img alt="The refresh() decomposition: _refresh_banks, _refresh_ranges and _execute_reads" src="../img/refresh-decomposition.png" /></p>
+<ul>
+<li><strong><code>_refresh_banks(caps)</code></strong> — pure topology. Turns <code>PlantCapabilities</code> into the ordered list of IR banks the plant exposes (inverter measurement blocks, per-battery, per-meter, BCU / AIO / HV-BMU pages). No I/O, no policy.</li>
+<li><strong><code>_refresh_ranges(caps, max_age, plant)</code></strong> — pure policy. Walks the bank list and applies two skip gates per bank: drop it if <code>detect()</code> marked it absent (<code>plant.block_present(...) is False</code>, #268), then drop it if <code>max_age</code> says it is still fresh (<code>plant.block_age(...) &lt;= max_age</code>, #196/#207). Whatever survives becomes a <code>ReadInputRegistersRequest</code>.</li>
+<li><strong><code>_execute_reads(...)</code></strong> — the I/O seam. Issues the batch and tolerates partial failure (<code>RefreshPartiallySucceeded</code> / <code>RefreshFailed</code>).</li>
+</ul>
+<p><code>refresh()</code> itself is a thin shell around these: check that capabilities exist, map the deprecated <code>ir0_max_age</code> onto <code>max_age</code>, then <code>await self._execute_reads(_refresh_ranges(...))</code>.</p>
+<p>Unlike <code>detect()</code>, there is no validate stage. <code>refresh()</code> decides only what to <em>ask</em> for; whether to <em>believe</em> a response is the cache layer's call — the keep-last-good guards (CRC #255, sub-bus splice #256, bank holds) validate each frame as it commits. The skip-if-fresh gate also makes <code>refresh()</code> cooperative with the dongle fan-out: GivEnergy dongles echo responses to every connected client, so a bank another poller just refreshed can be left alone (#196).</p>
 <h3 id="plant-data-model">Plant data model<a class="headerlink" href="#plant-data-model" title="Permanent link">&para;</a></h3>
 <p><code>Plant</code> is passive — it stores data, drives no I/O. Its two responsibilities are:</p>
 <ol>
