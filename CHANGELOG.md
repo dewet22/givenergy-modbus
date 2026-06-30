@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3] - 2026-06-30
+
+### 🐛 Fixed
+
+- refuse internally-impossible battery baselines and heal poisoned caches (#350) (#351) ([27aff26](https://github.com/dewet22/givenergy-modbus/commit/27aff2681cb7c734ff648ae719b29f1c72b81d2c))
+
+### 🔧 Maintenance
+
+- diagram detect()'s strategise/probe/derive loop (#268) (#348) ([c1893a9](https://github.com/dewet22/givenergy-modbus/commit/c1893a93b73281a4c1b2b413f26b66e54f581882))
+- diagram the refresh() decomposition (#268) (#349) ([81cb29b](https://github.com/dewet22/givenergy-modbus/commit/81cb29bfa88e2ab9c56eac4752c9a9701c1ecbe3))
+
 ## [2.9.2] - 2026-06-29
 
 ### ✨ Added
