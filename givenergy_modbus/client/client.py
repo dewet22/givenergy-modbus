@@ -850,6 +850,18 @@ class Client:
             timeout=timeout,
             retries=retries,
         )
+        # #352/#289: since #352 a caps-absent 0x32 read routes through the battery getter, so its first
+        # preamble frame is held by the cold-start splice guard (the cache stays empty pending a
+        # corroborating re-read) exactly like 0x33+. detect() reads each address once, so without this
+        # confirming read the primary pack is dropped at the _derive_capabilities gate below and
+        # refresh() never re-polls it. One healthy re-read corroborates and commits; a flapping/spliced
+        # bank fails to corroborate and correctly stays out (#289 anti-poison intact).
+        if not self.plant.register_caches.get(0x32):
+            await self.send_request_and_await_response(
+                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
+                timeout=timeout,
+                retries=retries,
+            )
         batt_candidates = prior.lv_battery_addresses if prior is not None else _COLD_LV_BATTERY_RANGE
         for batt_addr in batt_candidates:
             if batt_addr > 0x32:

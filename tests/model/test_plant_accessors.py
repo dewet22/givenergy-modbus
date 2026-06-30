@@ -7,7 +7,7 @@ from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
 from givenergy_modbus.model.meter import Meter
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
-from givenergy_modbus.model.register import IR
+from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
@@ -28,12 +28,17 @@ def _prime(plant: Plant, device_addr: int, registers: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_inverter_falls_back_without_capabilities():
-    plant = Plant()
-    # No capabilities: returns SinglePhaseInverter from 0x32 cache as before.
+def test_inverter_falls_back_to_0x11_without_capabilities():
+    """Without capabilities, .inverter reads the inverter identity at 0x11, not battery pack 1 at 0x32 (#352)."""
     from givenergy_modbus.model.inverter import SinglePhaseInverter
 
+    plant = Plant()
+    # Empty bare Plant: still an empty SinglePhaseInverter, no KeyError (0x11 is not pre-allocated).
     assert isinstance(plant.inverter, SinglePhaseInverter)
+    # Inverter serial (HR13-17 → "SA1234G567") lives at 0x11; battery cell data sits at 0x32.
+    _prime(plant, 0x11, {HR(13): 0x5341, HR(14): 0x3132, HR(15): 0x3334, HR(16): 0x4735, HR(17): 0x3637})
+    _prime(plant, 0x32, {IR(60): 3300})  # battery cell — must not surface through .inverter
+    assert plant.inverter.serial_number == "SA1234G567"  # decoded from 0x11, not the 0x32 battery cache
 
 
 def test_inverter_returns_threephase_for_threephase_model():

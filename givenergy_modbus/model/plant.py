@@ -214,7 +214,7 @@ class PlantCapabilities(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     device_type: Model
-    inverter_address: int = 0x32
+    inverter_address: int = 0x11  # 0x11 since #189; _derive_inverter_address overwrites per model (#352)
     meter_addresses: list[int] = Field(default_factory=list)
     lv_battery_addresses: list[int] = Field(default_factory=list)
     # Each entry is (bcu_offset, num_modules) where the BCU device address is 0x70 + bcu_offset.
@@ -901,11 +901,13 @@ class Plant(GivEnergyBaseModel):
         With capabilities the inverter lives at ``capabilities.inverter_address``
         (0x11 since #189; 0x31 may persist from pre-#189 state and the AC/
         HYBRID_GEN1 hardware facade still answers there) and 0x32 is LV battery
-        pack #1. Without capabilities we fall back to the legacy mapping where
-        the inverter was cached at 0x32, and also treat 0x11/0x31 as inverter so
-        replay/debug tooling (which feeds PDUs to a bare Plant) keeps validating
-        inverter banks at either wire address — including passive captures of
-        other consumers still polling the 0x31 facade.
+        pack #1. Without capabilities the separation is unconditional (#352): only
+        0x11/0x31 are the inverter and 0x32–0x37 are LV battery packs. This means a
+        0x32 read issued before detect() sets capabilities still routes through the
+        battery splice guard rather than the inverter getter — closing the #350
+        seeding window. (The pre-#189 layout where 0x32 carried inverter data is no
+        longer aliased here, consistent with a persisted 0x32 surfacing as a
+        PlantTopologyMismatch; live use always has capabilities after detect().)
         """
         if self.capabilities is not None:
             if device_address == self.capabilities.inverter_address:
@@ -919,9 +921,9 @@ class Plant(GivEnergyBaseModel):
             if 0x32 <= device_address <= 0x37:
                 return BatteryRegisterGetter
         else:
-            if device_address in (0x11, 0x31, 0x32):
+            if device_address in (0x11, 0x31):
                 return SinglePhaseInverterRegisterGetter
-            if 0x33 <= device_address <= 0x37:
+            if 0x32 <= device_address <= 0x37:
                 return BatteryRegisterGetter
         if 0x01 <= device_address <= 0x08:
             return MeterRegisterGetter
@@ -1791,12 +1793,14 @@ class Plant(GivEnergyBaseModel):
         capability may still point at 0x31, which detect() doesn't populate (it reads
         identity at 0x11), so this would otherwise KeyError between detect() and the
         first poll. Returns an empty-cache model in that window, matching the
-        .ems / .gateway accessors. (#119, #189)
+        .ems / .gateway accessors. Without capabilities the inverter is read at its
+        canonical address 0x11 (#352) — not 0x32, which is LV battery pack #1 — via
+        ``.get`` since 0x11 is not pre-allocated on a bare Plant. (#119, #189)
         """
         if self.capabilities:
             cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
             return select_inverter(self.capabilities.device_type, cache)
-        return SinglePhaseInverter.from_register_cache(self.register_caches[0x32])
+        return SinglePhaseInverter.from_register_cache(self.register_caches.get(0x11, RegisterCache()))
 
     @property
     def inverter_serial(self) -> str:
