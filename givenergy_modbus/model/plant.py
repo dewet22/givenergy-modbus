@@ -1113,12 +1113,14 @@ class Plant(GivEnergyBaseModel):
         # inverter getter and so bypasses the battery splice guard below; without this it seeds a poisoned
         # baseline the guard then defends once capabilities resolve 0x32 to a battery. Gated to the LV
         # battery range, where IR(60-75) are cell voltages on every model.
-        if register_count >= 60 and 0x32 <= device_address <= 0x37:
-            bank = [incoming.get(IR(BANK_BASE + i), 0) for i in range(60)]
-            bank_present = {i for i in range(60) if IR(BANK_BASE + i) in incoming}
-        else:
-            bank = bank_present = None
-        if bank is not None and is_internally_impossible(bank, bank_present):
+        if (
+            register_count >= 60
+            and 0x32 <= device_address <= 0x37
+            and is_internally_impossible(
+                [incoming.get(IR(BANK_BASE + i), 0) for i in range(60)],
+                {i for i in range(60) if IR(BANK_BASE + i) in incoming},
+            )
+        ):
             self._bump(self.splice_reject_count, device_address)
             _logger.warning(
                 "Rejected internally-impossible battery bank for device 0x%02x — all cells 0 with "
