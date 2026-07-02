@@ -1140,3 +1140,30 @@ async def test_send_blocked_in_full_queue_raises_connection_lost_on_abort():
 
     with pytest.raises(ConnectionLost):
         await asyncio.wait_for(send, timeout=2.0)
+
+
+async def test_producer_emits_tx_frames_to_capture_sink():
+    """A frame sent while a capture is active is redacted and handed to the sink.
+
+    Covers the producer's capture-emit path (now inside the write/drain try —
+    _emit_to_sink swallows sink errors internally, so it cannot trip the
+    OSError teardown arm).
+    """
+    client = Client(host="foo", port=4321, tx_message_wait=0, tx_jitter=0)
+    writer = MagicMock()
+    writer.is_closing.side_effect = [False, True]  # one loop pass, then exit
+    writer.drain = AsyncMock()
+    client.writer = writer
+    client._shutting_down = True  # quiet DEBUG exit; no teardown side effects in play
+    sink = MagicMock()
+    redactor = MagicMock()
+    redactor.feed.return_value = b"redacted-frame"
+    client._capture_sink = sink
+    client._capture_redactor_tx = redactor
+    client.tx_queue.put_nowait((b"raw-frame", None, None))
+
+    await asyncio.wait_for(client._task_network_producer(), timeout=2.0)
+
+    redactor.feed.assert_called_once_with(b"raw-frame")
+    sink.assert_called_once_with("tx", b"redacted-frame")
+    writer.write.assert_called_once_with(b"raw-frame")
