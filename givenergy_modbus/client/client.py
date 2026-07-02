@@ -18,6 +18,7 @@ from givenergy_modbus.client.commands import (
 )
 from givenergy_modbus.exceptions import (
     CommunicationError,
+    ConnectionLost,
     ExceptionBase,
     InvalidPduState,
     PlantNotDetected,
@@ -127,6 +128,12 @@ _FRAME_MARKER = bytes.fromhex("59590001")
 # also scales with the queue backlog (see send_request_and_await_response); this floor keeps
 # it sane when the queue is idle. Module-level so tests can shrink it.
 _FRAME_SENT_MIN_TIMEOUT = 5.0
+
+# Upper bound on writer.drain() inside the producer loop (#356). On a healthy link
+# drain completes near-instantly (it's local socket-buffer backpressure); a stall
+# means the peer stopped ACKing — a half-open connection — so it's treated as
+# connection loss rather than left to wedge the producer until close() (hass#233).
+_DRAIN_TIMEOUT = 10.0
 
 
 class FrameRedactor:
@@ -435,9 +442,12 @@ class Client:
     - Take a per-client lock around ``refresh_plant()`` so successive polls don't
       overlap. Writes don't need the same lock — they're free to land between
       polls.
-    - Connection loss is surfaced via ``self.connected`` flipping to ``False``;
-      the reader/writer tasks log a WARNING when this happens (a peer-initiated
-      drop is recoverable via reconnect). ``connect()`` is
+    - Connection loss is surfaced three ways: ``self.connected`` flips to
+      ``False``, the noticing task logs a WARNING, and every in-flight or
+      subsequently attempted request raises ``ConnectionLost`` (a
+      ``CommunicationError`` that is also a ``TimeoutError``, so legacy
+      ``except TimeoutError`` handling keeps working — catch ``ConnectionLost``
+      first to distinguish reconnect-me from a genuine stall). ``connect()`` is
       idempotent and tears down the previous connection on its own, so it can
       be called directly as a reconnect primitive.
     """
@@ -517,6 +527,7 @@ class Client:
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
+        self._connection_lost = False
         self.network_producer_task: Task | None = None
         self.network_consumer_task: Task | None = None
         # self.debug_frames = {
@@ -547,6 +558,7 @@ class Client:
         ):
             await self.close()
         self._shutting_down = False
+        self._connection_lost = False
         try:
             connection = asyncio.open_connection(host=self.host, port=self.port, flags=socket.TCP_NODELAY)
             self.reader, self.writer = await asyncio.wait_for(connection, timeout=self.connect_timeout)
@@ -589,6 +601,49 @@ class Client:
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),
         # }
+
+    def _abort_connection(self, exc: ConnectionLost) -> None:
+        """Tear down shared state after an UNEXPECTED connection drop (#356).
+
+        Called by whichever network task notices death (reader EOF, writer
+        closing, stalled drain) — and by the send path's stuck-producer
+        safety net. Idempotent: the ``_connection_lost`` flag guards re-entry,
+        and every operation is a no-op the second time. Intentional shutdown
+        (``close()``) early-returns: the #50 quiet paths stay close()'s job.
+
+        Deliberately does NOT touch reader/writer/task attributes — connect()'s
+        leftover-check and close() own that cleanup (#274 atomicity).
+        """
+        if self._shutting_down or self._connection_lost:
+            return
+        self._connection_lost = True
+        self.connected = False
+        # Unblock in-flight senders awaiting a response.
+        aborted = 0
+        for fut in self.expected_responses.values():
+            if not fut.done():
+                fut.set_exception(exc)
+                aborted += 1
+        self.expected_responses = {}
+        # Unblock senders awaiting frame-sent for still-queued frames.
+        drained = 0
+        while not self.tx_queue.empty():
+            _, frame_sent, response_future = self.tx_queue.get_nowait()
+            for queued_fut in (frame_sent, response_future):
+                if queued_fut is not None and not queued_fut.done():
+                    queued_fut.set_exception(exc)
+            drained += 1
+        # Cancel the sibling task; the noticing task (if any) exits on its own.
+        current = asyncio.current_task()
+        for task in (self.network_consumer_task, self.network_producer_task):
+            if task is not None and task is not current and not task.done():
+                task.cancel()
+        _logger.debug(
+            "Connection teardown: aborted %d in-flight request(s), drained %d queued frame(s) (%s)",
+            aborted,
+            drained,
+            exc,
+        )
 
     async def _probe(self, request: TransparentRequest, timeout: float, retries: int) -> bool:
         """Send a request; return True on success, False on TimeoutError.
@@ -1493,6 +1548,7 @@ class Client:
         else:
             self.connected = False
             _logger.warning("network_consumer: connection lost (reader at EOF)")
+            self._abort_connection(ConnectionLost("reader at EOF — connection lost"))
 
     async def _task_network_producer(self):
         """Producer loop to transmit queued frames with an appropriate delay.
@@ -1516,10 +1572,38 @@ class Client:
                 if frame_sent and not frame_sent.done():
                     frame_sent.set_result(True)
                 continue
-            self.writer.write(message)
-            if self._capture_sink is not None and self._capture_redactor_tx is not None:
-                self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
-            await self.writer.drain()
+            try:
+                self.writer.write(message)
+                if self._capture_sink is not None and self._capture_redactor_tx is not None:
+                    self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
+                await asyncio.wait_for(self.writer.drain(), timeout=_DRAIN_TIMEOUT)
+            except TimeoutError:
+                _logger.warning(
+                    "network_producer: writer drain stalled >%.0fs — treating connection as lost",
+                    _DRAIN_TIMEOUT,
+                )
+                exc = ConnectionLost("writer drain stalled — connection lost")
+                # This frame is already dequeued, so the teardown's queue-drain
+                # can't reach it — fail its futures here.
+                for fut in (frame_sent, response_future):
+                    if fut is not None and not fut.done():
+                        fut.set_exception(exc)
+                self.tx_queue.task_done()
+                self._abort_connection(exc)
+                return
+            except OSError as e:
+                _logger.warning(
+                    "network_producer: socket error during write/drain (%s) — treating connection as lost", e
+                )
+                exc = ConnectionLost(f"socket error during write/drain — connection lost: {e}")
+                # This frame is already dequeued, so the teardown's queue-drain
+                # can't reach it — fail its futures here.
+                for fut in (frame_sent, response_future):
+                    if fut is not None and not fut.done():
+                        fut.set_exception(exc)
+                self.tx_queue.task_done()
+                self._abort_connection(exc)
+                return
             self.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
@@ -1530,6 +1614,7 @@ class Client:
         else:
             self.connected = False
             _logger.warning("network_producer: connection lost (writer closing)")
+            self._abort_connection(ConnectionLost("writer closing — connection lost"))
 
     # async def _task_dump_queues_to_files(self):
     #     """Task to periodically dump debug message frames to disk for debugging."""
@@ -1562,7 +1647,7 @@ class Client:
             return_exceptions=return_exceptions,
         )
 
-    async def send_request_and_await_response(
+    async def send_request_and_await_response(  # noqa: C901
         self,
         request: TransparentRequest,
         timeout: float,
@@ -1580,6 +1665,9 @@ class Client:
         original "retry immediately" behaviour (e.g. fast probes, latency-
         sensitive interactive commands) should pass ``retry_delay=0``.
         """
+        if self._connection_lost:
+            raise ConnectionLost("connection lost — reconnect before sending")
+
         # mark the expected response
         expected_response = request.expected_response()
         expected_shape_hash = expected_response.shape_hash()
@@ -1609,6 +1697,13 @@ class Client:
             except TimeoutError as exc:
                 _discard(response_future)
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
+            if self._connection_lost:
+                # Lost the race with _abort_connection's queue-drain: our frame was
+                # enqueued after the drain and will never be sent. _discard cancels the
+                # response future, so a post-reconnect producer skips the stale frame
+                # (the queue-front skip-if-resolved check).
+                _discard(response_future)
+                raise ConnectionLost("connection lost while enqueueing — reconnect before sending")
             # Safety-net wait for the producer to actually send this frame. Worst case the
             # frame sits behind a full queue, and the producer sleeps tx_message_wait + up to
             # tx_jitter (plus a drain) between sends — so scale the bound by the full queue
@@ -1622,13 +1717,21 @@ class Client:
             )
             try:
                 await asyncio.wait_for(frame_sent, timeout=frame_sent_timeout)
-            except TimeoutError as exc:
-                # Producer is genuinely stuck. Drop the orphaned future so a late send can't
-                # resolve a stale request, and surface a clear error.
+            except ConnectionLost:
+                # Teardown failed this frame's future — propagate the typed signal.
                 _discard(response_future)
+                raise
+            except TimeoutError as exc:
+                # Drain is bounded (#356), so reaching this means the producer is
+                # wedged somewhere unknown — a genuine bug. Tear down so the
+                # system recovers, and keep the honest 'stuck' signal.
+                _discard(response_future)
+                self._abort_connection(ConnectionLost("producer stuck — tearing down"))
                 raise TimeoutError("Producer task is stuck — frame not sent") from exc
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
+            except ConnectionLost:
+                raise  # a drop mid-await propagates immediately; never a retry
             except TimeoutError:
                 tries += 1
                 _logger.debug(

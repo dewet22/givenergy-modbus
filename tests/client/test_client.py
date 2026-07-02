@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from givenergy_modbus.client.client import Client
+from givenergy_modbus.exceptions import ConnectionLost
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.pdu import HeartbeatRequest, ReadInputRegistersResponse
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
@@ -32,6 +33,7 @@ async def test_expected_response():
 
     # simulate receiving a response, which enables the consumer task to mark response_future as done
     client.reader.feed_data(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20).encode())
+    client._shutting_down = True
     client.reader.feed_eof()
 
     # check the response
@@ -51,6 +53,7 @@ async def test_consumer_auto_responds_to_heartbeat_request():
     client = Client(host="foo", port=4321)
     client.reader = StreamReader()
     client.reader.feed_data(HeartbeatRequest(data_adapter_serial_number="AB1234G567", data_adapter_type=2).encode())
+    client._shutting_down = True
     client.reader.feed_eof()
 
     await client._task_network_consumer()
@@ -337,6 +340,7 @@ async def test_consumer_does_not_resolve_future_for_crc_failed_frame():
 
     with patch.object(client.framer, "decode", new=fake_decode):
         client.reader.feed_data(b"\x00")
+        client._shutting_down = True
         client.reader.feed_eof()
         await client._task_network_consumer()
 
@@ -832,11 +836,13 @@ async def test_frame_sent_timeout_cleans_up_stale_future(monkeypatch):
 
 
 async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
-    """A timed-out call must not evict a newer same-shaped caller's response future (PR #225).
+    """A timed-out call's stuck-producer teardown now aborts the whole connection (#356).
 
-    Same-shaped requests deliberately replace one another. If call A is still waiting on
-    frame_sent when call B installs its own future under the shared shape_hash, A's timeout
-    cleanup must be identity-conditional — it must not delete B's mapping.
+    Originally (PR #225) call A's frame_sent timeout only evicted its own mapping, identity-
+    conditionally, so a newer same-shaped caller B was untouched. Since #356, a frame_sent
+    timeout means the producer is confirmed wedged, so the whole connection is torn down —
+    B's future is correctly failed with ConnectionLost too, not silently preserved as if the
+    connection were still healthy.
     """
     from givenergy_modbus.client import client as client_mod
 
@@ -853,8 +859,311 @@ async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
     b_future: asyncio.Future = asyncio.get_running_loop().create_future()
     client.expected_responses[shape_hash] = b_future
 
-    with pytest.raises(TimeoutError):
-        await task_a  # A times out (~0.05s)
+    with pytest.raises(TimeoutError, match="stuck"):
+        await task_a  # A times out (~0.05s) and tears down the connection
 
-    assert client.expected_responses.get(shape_hash) is b_future, "A's cleanup must not evict B's future"
-    b_future.cancel()
+    assert client.expected_responses.get(shape_hash) is None  # teardown clears the whole map
+    assert isinstance(b_future.exception(), ConnectionLost)  # B aborted too — connection is dead
+    assert client._connection_lost is True
+
+
+def test_connection_lost_is_communication_error_and_timeout():
+    """Dual inheritance is the compat contract (#356): typed for new consumers.
+
+    Still a TimeoutError so legacy `except TimeoutError` paths keep working.
+    """
+    from givenergy_modbus.exceptions import CommunicationError
+
+    exc = ConnectionLost("connection dropped")
+    assert isinstance(exc, CommunicationError)
+    assert isinstance(exc, TimeoutError)
+
+
+def test_connection_lost_caught_by_legacy_timeout_handler():
+    """A consumer catching bare TimeoutError (e.g. released hass coordinator).
+
+    Must catch it.
+    """
+    try:
+        raise ConnectionLost("connection dropped")
+    except TimeoutError as e:
+        assert "connection dropped" in str(e)
+
+
+async def test_abort_connection_fails_inflight_and_queued_with_connection_lost():
+    """_abort_connection unblocks every waiter fast with the typed exception (#356)."""
+    client = Client(host="foo", port=4321)
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[1234] = inflight
+    q_frame_sent = asyncio.get_running_loop().create_future()
+    q_response = asyncio.get_running_loop().create_future()
+    client.tx_queue.put_nowait((b"frame", q_frame_sent, q_response))
+
+    client._abort_connection(ConnectionLost("test drop"))
+
+    assert client._connection_lost is True
+    assert client.connected is False
+    assert isinstance(inflight.exception(), ConnectionLost)
+    assert isinstance(q_frame_sent.exception(), ConnectionLost)
+    assert isinstance(q_response.exception(), ConnectionLost)
+    assert client.expected_responses == {}
+    assert client.tx_queue.empty()
+
+
+async def test_abort_connection_is_idempotent_and_respects_shutdown():
+    """Second call is a no-op; a call during intentional close() is a no-op."""
+    client = Client(host="foo", port=4321)
+    client._abort_connection(ConnectionLost("first"))
+    client._abort_connection(ConnectionLost("second"))  # must not raise (futures done, dict clear)
+    assert client._connection_lost is True
+
+    quiet = Client(host="bar", port=4321)
+    quiet._shutting_down = True
+    fut = asyncio.get_running_loop().create_future()
+    quiet.expected_responses[1] = fut
+    quiet._abort_connection(ConnectionLost("during close"))
+    assert quiet._connection_lost is False  # early-returned
+    assert not fut.done()  # close() owns intentional-shutdown cleanup
+
+
+async def test_abort_connection_cancels_only_the_other_task():
+    """The task NOT calling abort is cancelled; the caller is left to exit on its own."""
+    client = Client(host="foo", port=4321)
+
+    async def _sleeper():
+        await asyncio.sleep(30)
+
+    other = asyncio.create_task(_sleeper())
+    client.network_consumer_task = other
+    client.network_producer_task = None
+
+    client._abort_connection(ConnectionLost("drop"))
+    await asyncio.sleep(0)  # let cancellation propagate
+    assert other.cancelled()
+
+
+async def test_connect_resets_connection_lost_flag():
+    """connect() re-arms the client after a prior abort (mirrors _shutting_down reset)."""
+    client = Client(host="foo", port=4321)
+    client._connection_lost = True
+    reader, writer = MagicMock(spec=StreamReader), MagicMock()
+    writer.wait_closed = AsyncMock()
+    with patch("asyncio.open_connection", _stub_open_connection(reader, writer)):
+        await client.connect()  # existing _stub_open_connection pattern; no wait_for patch needed
+    assert client._connection_lost is False
+    await client.close()
+
+
+async def test_producer_drain_stall_aborts_connection(monkeypatch, caplog):
+    """A wedged writer.drain() (half-open socket, hass#233) is bounded.
+
+    The producer treats the stall as connection loss, fails the current frame's
+    frame_sent, and tears down — instead of hanging until close().
+    """
+    monkeypatch.setattr("givenergy_modbus.client.client._DRAIN_TIMEOUT", 0.05)
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    never = asyncio.get_running_loop().create_future()  # drain() that never completes
+    writer.drain = MagicMock(return_value=never)
+    client.writer = writer
+
+    frame_sent = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
+    client.expected_responses[99] = response_future
+    client.tx_queue.put_nowait((b"frame", frame_sent, response_future))
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await asyncio.wait_for(client._task_network_producer(), timeout=2.0)
+
+    assert isinstance(frame_sent.exception(), ConnectionLost)  # current frame unblocked
+    assert isinstance(response_future.exception(), ConnectionLost)
+    assert client._connection_lost is True
+    assert client.connected is False
+    assert any("drain stalled" in r.message for r in caplog.records if r.levelno == logging.WARNING)
+
+
+async def test_producer_unexpected_writer_close_aborts_connection():
+    """The existing writer-closing exit path now also runs the shared teardown."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = True
+    client.writer = writer
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[7] = inflight
+
+    await client._task_network_producer()
+
+    assert client._connection_lost is True
+    assert isinstance(inflight.exception(), ConnectionLost)
+
+
+async def test_consumer_unexpected_eof_aborts_connection():
+    """Unexpected reader EOF runs the shared teardown.
+
+    In-flight senders unblock immediately with ConnectionLost instead of
+    burning their full timeouts.
+    """
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[11] = inflight
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    await client._task_network_consumer()
+
+    assert client._connection_lost is True
+    assert isinstance(inflight.exception(), ConnectionLost)
+
+
+async def test_send_fails_fast_when_connection_known_dead():
+    """After teardown, sends raise ConnectionLost immediately.
+
+    A dead-window refresh batch fails in ms instead of burning per-read
+    timeouts. Never-connected clients are NOT guarded (the flag is set only
+    by _abort_connection).
+    """
+    client = Client(host="foo", port=4321)
+    client._abort_connection(ConnectionLost("prior drop"))
+
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    with pytest.raises(ConnectionLost):
+        await client.send_request_and_await_response(req, timeout=5.0, retries=2)
+    assert client.tx_queue.empty()  # nothing was queued
+
+
+async def test_send_propagates_connection_lost_without_burning_retries():
+    """ConnectionLost IS a TimeoutError; the retry arm must not swallow it.
+
+    A drop mid-response-await propagates immediately instead of retrying
+    into the guard.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    send = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=5))
+    # simulate the producer sending the frame
+    _, frame_sent, _ = await asyncio.wait_for(client.tx_queue.get(), timeout=1.0)
+    client.tx_queue.task_done()
+    frame_sent.set_result(True)
+    await asyncio.sleep(0)  # let send advance to the response await
+    client._abort_connection(ConnectionLost("mid-flight drop"))
+
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send, timeout=1.0)  # well under timeout=30 × 6 tries
+
+
+async def test_send_stuck_producer_aborts_connection(monkeypatch):
+    """The frame_sent timeout keeps its 'stuck' TimeoutError but also tears down.
+
+    Drain is bounded now, so reaching this means a genuinely wedged producer
+    — a real bug — and the system must recover.
+    """
+    monkeypatch.setattr("givenergy_modbus.client.client._FRAME_SENT_MIN_TIMEOUT", 0.05)
+    client = Client(host="foo", port=4321)
+    client.tx_queue = asyncio.Queue(maxsize=1)  # rescale the depth-scaled timeout
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    with pytest.raises(TimeoutError, match="stuck"):
+        await client.send_request_and_await_response(req, timeout=5.0, retries=0)
+    assert client._connection_lost is True  # teardown ran
+
+
+async def test_discard_identity_guard_preserves_newer_caller_future():
+    """Caller A's cleanup must not evict a newer same-shaped caller B's future (PR #225 invariant).
+
+    A's frame_sent fails with ConnectionLost (directly, NOT via _abort_connection, so B's
+    registration survives to observe the guard); by then B has replaced A's registration in
+    expected_responses. A's _discard must leave B's future registered and pending.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    shape = req.expected_response().shape_hash()
+
+    send_a = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=0))
+    _, frame_sent_a, future_a = await asyncio.wait_for(client.tx_queue.get(), timeout=1.0)
+    client.tx_queue.task_done()
+
+    # A newer same-shaped caller B replaces A's registration (B's future is a fresh one).
+    future_b = asyncio.get_running_loop().create_future()
+    client.expected_responses[shape] = future_b
+
+    # A's frame_sent fails with ConnectionLost — A's cleanup path (_discard) runs.
+    frame_sent_a.set_exception(ConnectionLost("test drop"))
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send_a, timeout=1.0)
+
+    # The identity guard must have left B's registration alone.
+    assert client.expected_responses.get(shape) is future_b
+    assert not future_b.done()
+
+
+async def test_producer_socket_error_during_drain_aborts_connection(caplog):
+    """A peer reset surfacing as OSError from write/drain must run the shared teardown (#356).
+
+    Previously the raw exception propagated out of the producer task, leaving the
+    dequeued frame's futures to burn the slow frame_sent timeout.
+    """
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock(side_effect=ConnectionResetError("peer reset"))
+    client.writer = writer
+    frame_sent = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
+    client.expected_responses[42] = response_future
+    client.tx_queue.put_nowait((b"frame", frame_sent, response_future))
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.client.client"):
+        await asyncio.wait_for(client._task_network_producer(), timeout=2.0)  # must NOT raise
+
+    assert isinstance(frame_sent.exception(), ConnectionLost)
+    assert isinstance(response_future.exception(), ConnectionLost)
+    assert client._connection_lost is True
+    assert any("socket error" in r.message for r in caplog.records if r.levelno == logging.WARNING)
+
+
+async def test_send_blocked_in_full_queue_raises_connection_lost_on_abort():
+    """A sender blocked in tx_queue.put() when the abort fires must get ConnectionLost.
+
+    The abort's queue-drain wakes the blocked putter, which would otherwise enqueue
+    into the dead queue and ride the misleading 'Producer task is stuck' path.
+    """
+    client = Client(host="foo", port=4321)
+    client.tx_queue = asyncio.Queue(maxsize=1)
+    client.tx_queue.put_nowait((b"filler", None, None))  # fill the queue so put() blocks
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    send = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=0))
+    await asyncio.sleep(0.05)  # let the sender block in tx_queue.put()
+    client._abort_connection(ConnectionLost("drop while putter blocked"))
+
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send, timeout=2.0)
+
+
+async def test_producer_emits_tx_frames_to_capture_sink():
+    """A frame sent while a capture is active is redacted and handed to the sink.
+
+    Covers the producer's capture-emit path (now inside the write/drain try —
+    _emit_to_sink swallows sink errors internally, so it cannot trip the
+    OSError teardown arm).
+    """
+    client = Client(host="foo", port=4321, tx_message_wait=0, tx_jitter=0)
+    writer = MagicMock()
+    writer.is_closing.side_effect = [False, True]  # one loop pass, then exit
+    writer.drain = AsyncMock()
+    client.writer = writer
+    client._shutting_down = True  # quiet DEBUG exit; no teardown side effects in play
+    sink = MagicMock()
+    redactor = MagicMock()
+    redactor.feed.return_value = b"redacted-frame"
+    client._capture_sink = sink
+    client._capture_redactor_tx = redactor
+    client.tx_queue.put_nowait((b"raw-frame", None, None))
+
+    await asyncio.wait_for(client._task_network_producer(), timeout=2.0)
+
+    redactor.feed.assert_called_once_with(b"raw-frame")
+    sink.assert_called_once_with("tx", b"redacted-frame")
+    writer.write.assert_called_once_with(b"raw-frame")
