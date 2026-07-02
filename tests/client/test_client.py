@@ -169,8 +169,8 @@ async def test_consumer_logs_debug_not_critical_on_intentional_shutdown(caplog):
     assert any("intentional shutdown" in r.message for r in caplog.records)
 
 
-async def test_consumer_still_logs_critical_on_unexpected_eof(caplog):
-    """When the reader hits EOF without a shutdown signal, CRITICAL is preserved."""
+async def test_consumer_logs_warning_on_unexpected_eof(caplog):
+    """A peer-initiated EOF (no shutdown signal) is a recoverable drop → WARNING, not CRITICAL."""
     client = Client(host="foo", port=4321)
     client.reader = StreamReader()
     client.reader.feed_eof()  # _shutting_down stays False
@@ -178,7 +178,8 @@ async def test_consumer_still_logs_critical_on_unexpected_eof(caplog):
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
         await client._task_network_consumer()
 
-    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)  # a routine drop must not alarm
 
 
 async def test_producer_logs_debug_not_critical_on_intentional_shutdown(caplog):
@@ -198,8 +199,8 @@ async def test_producer_logs_debug_not_critical_on_intentional_shutdown(caplog):
     assert any("intentional shutdown" in r.message for r in caplog.records)
 
 
-async def test_producer_still_logs_critical_on_unexpected_writer_close(caplog):
-    """When the writer is closing without a shutdown signal, CRITICAL is preserved."""
+async def test_producer_logs_warning_on_unexpected_writer_close(caplog):
+    """A peer-initiated writer close (no shutdown signal) is a recoverable drop → WARNING, not CRITICAL."""
     client = Client(host="foo", port=4321)
     writer = MagicMock()
     writer.is_closing.return_value = True
@@ -208,7 +209,8 @@ async def test_producer_still_logs_critical_on_unexpected_writer_close(caplog):
     with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
         await client._task_network_producer()
 
-    assert any(r.levelno == logging.CRITICAL for r in caplog.records)
+    assert any(r.levelno == logging.WARNING for r in caplog.records)
+    assert not any(r.levelno >= logging.ERROR for r in caplog.records)  # a routine drop must not alarm
 
 
 async def test_close_sets_shutting_down_flag():

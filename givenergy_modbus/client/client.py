@@ -436,7 +436,8 @@ class Client:
       overlap. Writes don't need the same lock — they're free to land between
       polls.
     - Connection loss is surfaced via ``self.connected`` flipping to ``False``;
-      the consumer task logs CRITICAL when this happens. ``connect()`` is
+      the reader/writer tasks log a WARNING when this happens (a peer-initiated
+      drop is recoverable via reconnect). ``connect()`` is
       idempotent and tears down the previous connection on its own, so it can
       be called directly as a reconnect primitive.
     """
@@ -1491,7 +1492,7 @@ class Client:
             _logger.debug("network_consumer exiting on intentional shutdown")
         else:
             self.connected = False
-            _logger.critical("network_consumer reader at EOF, cannot continue")
+            _logger.warning("network_consumer: connection lost (reader at EOF)")
 
     async def _task_network_producer(self):
         """Producer loop to transmit queued frames with an appropriate delay.
@@ -1528,7 +1529,7 @@ class Client:
             _logger.debug("network_producer exiting on intentional shutdown")
         else:
             self.connected = False
-            _logger.critical("network_producer writer is closing, cannot continue")
+            _logger.warning("network_producer: connection lost (writer closing)")
 
     # async def _task_dump_queues_to_files(self):
     #     """Task to periodically dump debug message frames to disk for debugging."""
