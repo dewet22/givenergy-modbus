@@ -901,24 +901,43 @@ class Client:
         non-contiguous and a transient BMS timeout on pack N must not drop pack N+1 onward.
         is_valid() gating and caps population are handled by _derive_capabilities.
         """
-        await self.send_request_and_await_response(
-            ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
-            timeout=timeout,
-            retries=retries,
-        )
-        # #352/#289: since #352 a caps-absent 0x32 read routes through the battery getter, so its first
-        # preamble frame is held by the cold-start splice guard (the cache stays empty pending a
-        # corroborating re-read) exactly like 0x33+. detect() reads each address once, so without this
-        # confirming read the primary pack is dropped at the _derive_capabilities gate below and
-        # refresh() never re-polls it. One healthy re-read corroborates and commits; a flapping/spliced
-        # bank fails to corroborate and correctly stays out (#289 anti-poison intact).
-        if not self.plant.register_caches.get(0x32):
-            await self.send_request_and_await_response(
-                ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
-                timeout=timeout,
-                retries=retries,
-            )
         batt_candidates = prior.lv_battery_addresses if prior is not None else _COLD_LV_BATTERY_RANGE
+        # The 0x32 preamble keeps the patient known-tier treatment (the primary pack matters — the
+        # #350 family), but silence is NOT fatal (#358): gateways keep battery data register-embedded
+        # in the rollup, and a hybrid with no pack attached is a valid AC/PV-only plant. Skipped
+        # entirely when prior capabilities carry no 0x32 (a hinted gateway reconnect would otherwise
+        # stall the full timeout on a read that can never answer, every reconnect).
+        if 0x32 in batt_candidates:
+            try:
+                await self.send_request_and_await_response(
+                    ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
+                    timeout=timeout,
+                    retries=retries,
+                    warn_timeout=False,  # expected-absence probe semantics: don't pollute retry counters
+                )
+                # #352/#289: since #352 a caps-absent 0x32 read routes through the battery getter, so
+                # its first preamble frame is held by the cold-start splice guard (the cache stays empty
+                # pending a corroborating re-read) exactly like 0x33+. detect() reads each address once,
+                # so without this confirming read the primary pack is dropped at the _derive_capabilities
+                # gate below and refresh() never re-polls it. One healthy re-read corroborates and
+                # commits; a flapping/spliced bank fails to corroborate and correctly stays out (#289
+                # anti-poison intact).
+                if not self.plant.register_caches.get(0x32):
+                    await self.send_request_and_await_response(
+                        ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x32),
+                        timeout=timeout,
+                        retries=retries,
+                        warn_timeout=False,
+                    )
+            except ConnectionLost:
+                raise  # a dead connection is not an absent battery (#356 dual-base ordering)
+            except TimeoutError:
+                _logger.info("No LV battery answered at 0x32 — valid for gateways and battery-less plants (#358)")
+                self.plant.mark_absent(0x32, "IR", 60, 60)
+                self.plant.register_caches.pop(0x32, None)
+            else:
+                if not self.plant.register_caches.get(0x32):
+                    self.plant.mark_absent(0x32, "IR", 60, 60)
         for batt_addr in batt_candidates:
             if batt_addr > 0x32:
                 if not await self._probe(
