@@ -129,6 +129,12 @@ _FRAME_MARKER = bytes.fromhex("59590001")
 # it sane when the queue is idle. Module-level so tests can shrink it.
 _FRAME_SENT_MIN_TIMEOUT = 5.0
 
+# Upper bound on writer.drain() inside the producer loop (#356). On a healthy link
+# drain completes near-instantly (it's local socket-buffer backpressure); a stall
+# means the peer stopped ACKing — a half-open connection — so it's treated as
+# connection loss rather than left to wedge the producer until close() (hass#233).
+_DRAIN_TIMEOUT = 10.0
+
 
 class FrameRedactor:
     """Frame-aware stateful redactor for a captured GivEnergy byte stream.
@@ -1565,7 +1571,22 @@ class Client:
             self.writer.write(message)
             if self._capture_sink is not None and self._capture_redactor_tx is not None:
                 self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
-            await self.writer.drain()
+            try:
+                await asyncio.wait_for(self.writer.drain(), timeout=_DRAIN_TIMEOUT)
+            except TimeoutError:
+                _logger.warning(
+                    "network_producer: writer drain stalled >%.0fs — treating connection as lost",
+                    _DRAIN_TIMEOUT,
+                )
+                exc = ConnectionLost("writer drain stalled — connection lost")
+                # This frame is already dequeued, so the teardown's queue-drain
+                # can't reach it — fail its futures here.
+                for fut in (frame_sent, response_future):
+                    if fut is not None and not fut.done():
+                        fut.set_exception(exc)
+                self.tx_queue.task_done()
+                self._abort_connection(exc)
+                return
             self.tx_queue.task_done()
             if frame_sent and not frame_sent.done():
                 frame_sent.set_result(True)
@@ -1576,6 +1597,7 @@ class Client:
         else:
             self.connected = False
             _logger.warning("network_producer: connection lost (writer closing)")
+            self._abort_connection(ConnectionLost("writer closing — connection lost"))
 
     # async def _task_dump_queues_to_files(self):
     #     """Task to periodically dump debug message frames to disk for debugging."""

@@ -946,3 +946,47 @@ async def test_connect_resets_connection_lost_flag():
         await client.connect()  # existing _stub_open_connection pattern; no wait_for patch needed
     assert client._connection_lost is False
     await client.close()
+
+
+async def test_producer_drain_stall_aborts_connection(monkeypatch, caplog):
+    """A wedged writer.drain() (half-open socket, hass#233) is bounded.
+
+    The producer treats the stall as connection loss, fails the current frame's
+    frame_sent, and tears down — instead of hanging until close().
+    """
+    monkeypatch.setattr("givenergy_modbus.client.client._DRAIN_TIMEOUT", 0.05)
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    never = asyncio.get_running_loop().create_future()  # drain() that never completes
+    writer.drain = MagicMock(return_value=never)
+    client.writer = writer
+
+    frame_sent = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
+    client.expected_responses[99] = response_future
+    client.tx_queue.put_nowait((b"frame", frame_sent, response_future))
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await asyncio.wait_for(client._task_network_producer(), timeout=2.0)
+
+    assert isinstance(frame_sent.exception(), ConnectionLost)  # current frame unblocked
+    assert isinstance(response_future.exception(), ConnectionLost)
+    assert client._connection_lost is True
+    assert client.connected is False
+    assert any("drain stalled" in r.message for r in caplog.records if r.levelno == logging.WARNING)
+
+
+async def test_producer_unexpected_writer_close_aborts_connection():
+    """The existing writer-closing exit path now also runs the shared teardown."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = True
+    client.writer = writer
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[7] = inflight
+
+    await client._task_network_producer()
+
+    assert client._connection_lost is True
+    assert isinstance(inflight.exception(), ConnectionLost)
