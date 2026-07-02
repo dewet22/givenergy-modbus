@@ -1572,10 +1572,10 @@ class Client:
                 if frame_sent and not frame_sent.done():
                     frame_sent.set_result(True)
                 continue
-            self.writer.write(message)
-            if self._capture_sink is not None and self._capture_redactor_tx is not None:
-                self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
             try:
+                self.writer.write(message)
+                if self._capture_sink is not None and self._capture_redactor_tx is not None:
+                    self._emit_to_sink("tx", self._capture_redactor_tx.feed(message))
                 await asyncio.wait_for(self.writer.drain(), timeout=_DRAIN_TIMEOUT)
             except TimeoutError:
                 _logger.warning(
@@ -1583,6 +1583,19 @@ class Client:
                     _DRAIN_TIMEOUT,
                 )
                 exc = ConnectionLost("writer drain stalled — connection lost")
+                # This frame is already dequeued, so the teardown's queue-drain
+                # can't reach it — fail its futures here.
+                for fut in (frame_sent, response_future):
+                    if fut is not None and not fut.done():
+                        fut.set_exception(exc)
+                self.tx_queue.task_done()
+                self._abort_connection(exc)
+                return
+            except OSError as e:
+                _logger.warning(
+                    "network_producer: socket error during write/drain (%s) — treating connection as lost", e
+                )
+                exc = ConnectionLost(f"socket error during write/drain — connection lost: {e}")
                 # This frame is already dequeued, so the teardown's queue-drain
                 # can't reach it — fail its futures here.
                 for fut in (frame_sent, response_future):
@@ -1684,6 +1697,13 @@ class Client:
             except TimeoutError as exc:
                 _discard(response_future)
                 raise TimeoutError("TX queue full — producer task has likely died") from exc
+            if self._connection_lost:
+                # Lost the race with _abort_connection's queue-drain: our frame was
+                # enqueued after the drain and will never be sent. _discard cancels the
+                # response future, so a post-reconnect producer skips the stale frame
+                # (the queue-front skip-if-resolved check).
+                _discard(response_future)
+                raise ConnectionLost("connection lost while enqueueing — reconnect before sending")
             # Safety-net wait for the producer to actually send this frame. Worst case the
             # frame sits behind a full queue, and the producer sleeps tx_message_wait + up to
             # tx_jitter (plus a drain) between sends — so scale the bound by the full queue

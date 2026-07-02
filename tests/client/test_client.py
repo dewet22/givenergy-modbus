@@ -1096,3 +1096,47 @@ async def test_discard_identity_guard_preserves_newer_caller_future():
     # The identity guard must have left B's registration alone.
     assert client.expected_responses.get(shape) is future_b
     assert not future_b.done()
+
+
+async def test_producer_socket_error_during_drain_aborts_connection(caplog):
+    """A peer reset surfacing as OSError from write/drain must run the shared teardown (#356).
+
+    Previously the raw exception propagated out of the producer task, leaving the
+    dequeued frame's futures to burn the slow frame_sent timeout.
+    """
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.is_closing.return_value = False
+    writer.drain = AsyncMock(side_effect=ConnectionResetError("peer reset"))
+    client.writer = writer
+    frame_sent = asyncio.get_running_loop().create_future()
+    response_future = asyncio.get_running_loop().create_future()
+    client.expected_responses[42] = response_future
+    client.tx_queue.put_nowait((b"frame", frame_sent, response_future))
+
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.client.client"):
+        await asyncio.wait_for(client._task_network_producer(), timeout=2.0)  # must NOT raise
+
+    assert isinstance(frame_sent.exception(), ConnectionLost)
+    assert isinstance(response_future.exception(), ConnectionLost)
+    assert client._connection_lost is True
+    assert any("socket error" in r.message for r in caplog.records if r.levelno == logging.WARNING)
+
+
+async def test_send_blocked_in_full_queue_raises_connection_lost_on_abort():
+    """A sender blocked in tx_queue.put() when the abort fires must get ConnectionLost.
+
+    The abort's queue-drain wakes the blocked putter, which would otherwise enqueue
+    into the dead queue and ride the misleading 'Producer task is stuck' path.
+    """
+    client = Client(host="foo", port=4321)
+    client.tx_queue = asyncio.Queue(maxsize=1)
+    client.tx_queue.put_nowait((b"filler", None, None))  # fill the queue so put() blocks
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    send = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=0))
+    await asyncio.sleep(0.05)  # let the sender block in tx_queue.put()
+    client._abort_connection(ConnectionLost("drop while putter blocked"))
+
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send, timeout=2.0)
