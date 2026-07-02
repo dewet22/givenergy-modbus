@@ -38,6 +38,18 @@ class CommunicationError(ExceptionBase):
     """Exception to indicate a communication error."""
 
 
+class ConnectionLost(CommunicationError, TimeoutError):
+    """The TCP connection dropped mid-operation (peer disconnect, half-open stall).
+
+    Deliberately inherits BOTH CommunicationError and TimeoutError (#356): the
+    dual base is a compatibility contract, not an accident. Consumers that catch
+    bare ``TimeoutError`` (the historical error type for a dead connection) see
+    no behaviour change; consumers may catch ``ConnectionLost`` explicitly —
+    ordered before ``TimeoutError`` — to opt into immediate-reconnect policy.
+    Do not "simplify" to a single base.
+    """
+
+
 class PlantNotDetected(CommunicationError):
     """Raised when a capability-aware poll is attempted before ``detect()`` has run.
 

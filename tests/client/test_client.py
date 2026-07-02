@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from givenergy_modbus.client.client import Client
+from givenergy_modbus.exceptions import ConnectionLost
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.pdu import HeartbeatRequest, ReadInputRegistersResponse
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest, WriteHoldingRegisterResponse
@@ -858,3 +859,26 @@ async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
 
     assert client.expected_responses.get(shape_hash) is b_future, "A's cleanup must not evict B's future"
     b_future.cancel()
+
+
+def test_connection_lost_is_communication_error_and_timeout():
+    """Dual inheritance is the compat contract (#356): typed for new consumers.
+
+    Still a TimeoutError so legacy `except TimeoutError` paths keep working.
+    """
+    from givenergy_modbus.exceptions import CommunicationError
+
+    exc = ConnectionLost("connection dropped")
+    assert isinstance(exc, CommunicationError)
+    assert isinstance(exc, TimeoutError)
+
+
+def test_connection_lost_caught_by_legacy_timeout_handler():
+    """A consumer catching bare TimeoutError (e.g. released hass coordinator).
+
+    Must catch it.
+    """
+    try:
+        raise ConnectionLost("connection dropped")
+    except TimeoutError as e:
+        assert "connection dropped" in str(e)
