@@ -1,6 +1,6 @@
 [project]
 name = "givenergy-modbus"
-version = "2.9.4"
+version = "2.9.5"
 description = "A python library to access GivEnergy inverters via Modbus TCP, with no dependency on the GivEnergy Cloud."
 authors = [
     {name = "Dewet Diener", email = "givenergy-modbus@dewet.org"},

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.5] - 2026-07-02
+
+### 🐛 Fixed
+
+- downgrade peer-initiated disconnect logs from CRITICAL to WARNING ([92c9112](https://github.com/dewet22/givenergy-modbus/commit/92c91120ecbd1511a9d817867b4f9cde7d8d325f))
+- graceful connection teardown + typed ConnectionLost on unexpected drops (#356) (#357) ([de2b778](https://github.com/dewet22/givenergy-modbus/commit/de2b77893b623c68ebb6a901999e55e0d2a372f1))
+
 ## [2.9.4] - 2026-06-30
 
 ### 🐛 Fixed
