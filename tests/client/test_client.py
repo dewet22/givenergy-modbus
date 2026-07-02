@@ -33,6 +33,7 @@ async def test_expected_response():
 
     # simulate receiving a response, which enables the consumer task to mark response_future as done
     client.reader.feed_data(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20).encode())
+    client._shutting_down = True
     client.reader.feed_eof()
 
     # check the response
@@ -52,6 +53,7 @@ async def test_consumer_auto_responds_to_heartbeat_request():
     client = Client(host="foo", port=4321)
     client.reader = StreamReader()
     client.reader.feed_data(HeartbeatRequest(data_adapter_serial_number="AB1234G567", data_adapter_type=2).encode())
+    client._shutting_down = True
     client.reader.feed_eof()
 
     await client._task_network_consumer()
@@ -338,6 +340,7 @@ async def test_consumer_does_not_resolve_future_for_crc_failed_frame():
 
     with patch.object(client.framer, "decode", new=fake_decode):
         client.reader.feed_data(b"\x00")
+        client._shutting_down = True
         client.reader.feed_eof()
         await client._task_network_consumer()
 
@@ -987,6 +990,24 @@ async def test_producer_unexpected_writer_close_aborts_connection():
     client.expected_responses[7] = inflight
 
     await client._task_network_producer()
+
+    assert client._connection_lost is True
+    assert isinstance(inflight.exception(), ConnectionLost)
+
+
+async def test_consumer_unexpected_eof_aborts_connection():
+    """Unexpected reader EOF runs the shared teardown.
+
+    In-flight senders unblock immediately with ConnectionLost instead of
+    burning their full timeouts.
+    """
+    client = Client(host="foo", port=4321)
+    client.reader = StreamReader()
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[11] = inflight
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    await client._task_network_consumer()
 
     assert client._connection_lost is True
     assert isinstance(inflight.exception(), ConnectionLost)

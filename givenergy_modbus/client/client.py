@@ -1545,6 +1545,7 @@ class Client:
         else:
             self.connected = False
             _logger.warning("network_consumer: connection lost (reader at EOF)")
+            self._abort_connection(ConnectionLost("reader at EOF — connection lost"))
 
     async def _task_network_producer(self):
         """Producer loop to transmit queued frames with an appropriate delay.
