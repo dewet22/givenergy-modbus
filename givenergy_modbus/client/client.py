@@ -442,9 +442,12 @@ class Client:
     - Take a per-client lock around ``refresh_plant()`` so successive polls don't
       overlap. Writes don't need the same lock — they're free to land between
       polls.
-    - Connection loss is surfaced via ``self.connected`` flipping to ``False``;
-      the reader/writer tasks log a WARNING when this happens (a peer-initiated
-      drop is recoverable via reconnect). ``connect()`` is
+    - Connection loss is surfaced three ways: ``self.connected`` flips to
+      ``False``, the noticing task logs a WARNING, and every in-flight or
+      subsequently attempted request raises ``ConnectionLost`` (a
+      ``CommunicationError`` that is also a ``TimeoutError``, so legacy
+      ``except TimeoutError`` handling keeps working — catch ``ConnectionLost``
+      first to distinguish reconnect-me from a genuine stall). ``connect()`` is
       idempotent and tears down the previous connection on its own, so it can
       be called directly as a reconnect primitive.
     """
