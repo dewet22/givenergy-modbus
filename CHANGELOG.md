@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.6] - 2026-07-02
+
+### 🐛 Fixed
+
+- tolerate silence at 0x32 in the detect LV preamble (#358) (#359) ([65686ac](https://github.com/dewet22/givenergy-modbus/commit/65686ac718775757bed997361088d537fa8b6276))
+
 ## [2.9.5] - 2026-07-02
 
 ### 🐛 Fixed
