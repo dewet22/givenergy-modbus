@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from givenergy_modbus.client.client import Client
-from givenergy_modbus.exceptions import CommunicationError, PlantTopologyMismatch
+from givenergy_modbus.exceptions import CommunicationError, ConnectionLost, PlantTopologyMismatch
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
 from givenergy_modbus.model.register import HR, IR
@@ -1436,7 +1436,7 @@ async def test_detect_primary_battery_survives_cold_start_hold():
     _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})  # inverter/model only — 0x32 NOT pre-primed
     bank = _healthy_battery_bank()
 
-    async def _send_side_effect(request, *, timeout, retries):
+    async def _send_side_effect(request, *args, **kwargs):
         # Feed the healthy 0x32 bank through update() so the cold-start guard runs; detect issues this
         # twice (preamble + corroborating re-read), and the second commits the held baseline.
         if request.device_address == 0x32 and getattr(request, "base_register", None) == 60:
@@ -1647,3 +1647,85 @@ async def test_detect_success_leaves_connected():
 
     assert client.connected is True
     assert client.plant.capabilities is caps
+
+
+@pytest.mark.asyncio
+async def test_detect_completes_on_gateway_with_no_lv_battery_at_0x32():
+    """detect() must complete when nothing answers at 0x32 — gateways and battery-less hybrids (#358).
+
+    Field case: AberDino's Gen1 Gateway (hass#95) — identity resolves Model.GATEWAY, then the
+    mandatory 0x32 LV preamble times out against total silence and aborted the whole detect().
+    Silence at 0x32 is a valid topology: the pack is marked ABSENT and lv_battery_addresses
+    stays empty.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x7001, HR(21): 0})  # Gen1 Gateway identity
+
+    async def _send_side_effect(request, *args, **kwargs):
+        if getattr(request, "device_address", None) == 0x32:
+            raise TimeoutError()  # total silence at 0x32, full retries exhausted
+        return MagicMock()
+
+    async def _probe_side_effect(request, *, timeout, retries):
+        return False  # nothing else answers either
+
+    with (
+        patch.object(client, "send_request_and_await_response", side_effect=_send_side_effect),
+        patch.object(client, "_probe", side_effect=_probe_side_effect),
+    ):
+        caps = await client.detect()  # must NOT raise
+
+    assert caps.device_type is Model.GATEWAY
+    assert caps.lv_battery_addresses == []
+    assert client.plant.block_present(0x32, "IR", 60, 60) is False
+    assert 0x32 not in client.plant.register_caches
+
+
+@pytest.mark.asyncio
+async def test_detect_lv_preamble_does_not_swallow_connection_lost():
+    """A ConnectionLost from the 0x32 preamble must propagate, not be treated as pack-absent (#358).
+
+    ConnectionLost IS a TimeoutError (#356 compat dual-base), so the absence-tolerant except arm
+    must re-raise it first — a dead connection is not an absent battery.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+
+    async def _send_side_effect(request, *args, **kwargs):
+        if getattr(request, "device_address", None) == 0x32:
+            raise ConnectionLost("drop mid-detect")
+        return MagicMock()
+
+    with (
+        patch.object(client, "send_request_and_await_response", side_effect=_send_side_effect),
+        patch.object(client, "_probe", side_effect=AsyncMock(return_value=False)),
+    ):
+        with pytest.raises(ConnectionLost):
+            await client.detect()
+
+
+@pytest.mark.asyncio
+async def test_detect_skips_lv_preamble_when_prior_has_no_0x32():
+    """Hinted re-detect on a plant whose prior caps carry no 0x32 must not read 0x32 at all (#358).
+
+    A gateway reconnect would otherwise stall the full known-tier timeout on a read that can
+    never answer, every single reconnect.
+    """
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x7001, HR(21): 0})
+    prior = PlantCapabilities(device_type=Model.GATEWAY, lv_battery_addresses=[])
+
+    sent_addresses = []
+
+    async def _send_side_effect(request, *args, **kwargs):
+        sent_addresses.append(getattr(request, "device_address", None))
+        return MagicMock()
+
+    with (
+        patch.object(client, "send_request_and_await_response", side_effect=_send_side_effect),
+        patch.object(client, "_probe", side_effect=AsyncMock(return_value=False)),
+    ):
+        caps = await client.detect(prior=prior)
+
+    assert 0x32 not in sent_addresses
+    assert caps.lv_battery_addresses == []
