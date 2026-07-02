@@ -882,3 +882,67 @@ def test_connection_lost_caught_by_legacy_timeout_handler():
         raise ConnectionLost("connection dropped")
     except TimeoutError as e:
         assert "connection dropped" in str(e)
+
+
+async def test_abort_connection_fails_inflight_and_queued_with_connection_lost():
+    """_abort_connection unblocks every waiter fast with the typed exception (#356)."""
+    client = Client(host="foo", port=4321)
+    inflight = asyncio.get_running_loop().create_future()
+    client.expected_responses[1234] = inflight
+    q_frame_sent = asyncio.get_running_loop().create_future()
+    q_response = asyncio.get_running_loop().create_future()
+    client.tx_queue.put_nowait((b"frame", q_frame_sent, q_response))
+
+    client._abort_connection(ConnectionLost("test drop"))
+
+    assert client._connection_lost is True
+    assert client.connected is False
+    assert isinstance(inflight.exception(), ConnectionLost)
+    assert isinstance(q_frame_sent.exception(), ConnectionLost)
+    assert isinstance(q_response.exception(), ConnectionLost)
+    assert client.expected_responses == {}
+    assert client.tx_queue.empty()
+
+
+async def test_abort_connection_is_idempotent_and_respects_shutdown():
+    """Second call is a no-op; a call during intentional close() is a no-op."""
+    client = Client(host="foo", port=4321)
+    client._abort_connection(ConnectionLost("first"))
+    client._abort_connection(ConnectionLost("second"))  # must not raise (futures done, dict clear)
+    assert client._connection_lost is True
+
+    quiet = Client(host="bar", port=4321)
+    quiet._shutting_down = True
+    fut = asyncio.get_running_loop().create_future()
+    quiet.expected_responses[1] = fut
+    quiet._abort_connection(ConnectionLost("during close"))
+    assert quiet._connection_lost is False  # early-returned
+    assert not fut.done()  # close() owns intentional-shutdown cleanup
+
+
+async def test_abort_connection_cancels_only_the_other_task():
+    """The task NOT calling abort is cancelled; the caller is left to exit on its own."""
+    client = Client(host="foo", port=4321)
+
+    async def _sleeper():
+        await asyncio.sleep(30)
+
+    other = asyncio.create_task(_sleeper())
+    client.network_consumer_task = other
+    client.network_producer_task = None
+
+    client._abort_connection(ConnectionLost("drop"))
+    await asyncio.sleep(0)  # let cancellation propagate
+    assert other.cancelled()
+
+
+async def test_connect_resets_connection_lost_flag():
+    """connect() re-arms the client after a prior abort (mirrors _shutting_down reset)."""
+    client = Client(host="foo", port=4321)
+    client._connection_lost = True
+    reader, writer = MagicMock(spec=StreamReader), MagicMock()
+    writer.wait_closed = AsyncMock()
+    with patch("asyncio.open_connection", _stub_open_connection(reader, writer)):
+        await client.connect()  # existing _stub_open_connection pattern; no wait_for patch needed
+    assert client._connection_lost is False
+    await client.close()

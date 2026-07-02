@@ -18,6 +18,7 @@ from givenergy_modbus.client.commands import (
 )
 from givenergy_modbus.exceptions import (
     CommunicationError,
+    ConnectionLost,
     ExceptionBase,
     InvalidPduState,
     PlantNotDetected,
@@ -517,6 +518,7 @@ class Client:
         self.tx_queue = Queue(maxsize=20)
         self.expected_responses = {}
         self._shutting_down = False
+        self._connection_lost = False
         self.network_producer_task: Task | None = None
         self.network_consumer_task: Task | None = None
         # self.debug_frames = {
@@ -547,6 +549,7 @@ class Client:
         ):
             await self.close()
         self._shutting_down = False
+        self._connection_lost = False
         try:
             connection = asyncio.open_connection(host=self.host, port=self.port, flags=socket.TCP_NODELAY)
             self.reader, self.writer = await asyncio.wait_for(connection, timeout=self.connect_timeout)
@@ -589,6 +592,49 @@ class Client:
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),
         # }
+
+    def _abort_connection(self, exc: ConnectionLost) -> None:
+        """Tear down shared state after an UNEXPECTED connection drop (#356).
+
+        Called by whichever network task notices death (reader EOF, writer
+        closing, stalled drain) — and by the send path's stuck-producer
+        safety net. Idempotent: the ``_connection_lost`` flag guards re-entry,
+        and every operation is a no-op the second time. Intentional shutdown
+        (``close()``) early-returns: the #50 quiet paths stay close()'s job.
+
+        Deliberately does NOT touch reader/writer/task attributes — connect()'s
+        leftover-check and close() own that cleanup (#274 atomicity).
+        """
+        if self._shutting_down or self._connection_lost:
+            return
+        self._connection_lost = True
+        self.connected = False
+        # Unblock in-flight senders awaiting a response.
+        aborted = 0
+        for fut in self.expected_responses.values():
+            if not fut.done():
+                fut.set_exception(exc)
+                aborted += 1
+        self.expected_responses = {}
+        # Unblock senders awaiting frame-sent for still-queued frames.
+        drained = 0
+        while not self.tx_queue.empty():
+            _, frame_sent, response_future = self.tx_queue.get_nowait()
+            for fut in (frame_sent, response_future):
+                if fut is not None and not fut.done():
+                    fut.set_exception(exc)
+            drained += 1
+        # Cancel the sibling task; the noticing task (if any) exits on its own.
+        current = asyncio.current_task()
+        for task in (self.network_consumer_task, self.network_producer_task):
+            if task is not None and task is not current and not task.done():
+                task.cancel()
+        _logger.debug(
+            "Connection teardown: aborted %d in-flight request(s), drained %d queued frame(s) (%s)",
+            aborted,
+            drained,
+            exc,
+        )
 
     async def _probe(self, request: TransparentRequest, timeout: float, retries: int) -> bool:
         """Send a request; return True on success, False on TimeoutError.
