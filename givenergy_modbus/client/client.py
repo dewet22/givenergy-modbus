@@ -626,9 +626,9 @@ class Client:
         drained = 0
         while not self.tx_queue.empty():
             _, frame_sent, response_future = self.tx_queue.get_nowait()
-            for fut in (frame_sent, response_future):
-                if fut is not None and not fut.done():
-                    fut.set_exception(exc)
+            for queued_fut in (frame_sent, response_future):
+                if queued_fut is not None and not queued_fut.done():
+                    queued_fut.set_exception(exc)
             drained += 1
         # Cancel the sibling task; the noticing task (if any) exits on its own.
         current = asyncio.current_task()

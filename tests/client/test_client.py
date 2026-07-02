@@ -1067,3 +1067,32 @@ async def test_send_stuck_producer_aborts_connection(monkeypatch):
     with pytest.raises(TimeoutError, match="stuck"):
         await client.send_request_and_await_response(req, timeout=5.0, retries=0)
     assert client._connection_lost is True  # teardown ran
+
+
+async def test_discard_identity_guard_preserves_newer_caller_future():
+    """Caller A's cleanup must not evict a newer same-shaped caller B's future (PR #225 invariant).
+
+    A's frame_sent fails with ConnectionLost (directly, NOT via _abort_connection, so B's
+    registration survives to observe the guard); by then B has replaced A's registration in
+    expected_responses. A's _discard must leave B's future registered and pending.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    shape = req.expected_response().shape_hash()
+
+    send_a = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=0))
+    _, frame_sent_a, future_a = await asyncio.wait_for(client.tx_queue.get(), timeout=1.0)
+    client.tx_queue.task_done()
+
+    # A newer same-shaped caller B replaces A's registration (B's future is a fresh one).
+    future_b = asyncio.get_running_loop().create_future()
+    client.expected_responses[shape] = future_b
+
+    # A's frame_sent fails with ConnectionLost — A's cleanup path (_discard) runs.
+    frame_sent_a.set_exception(ConnectionLost("test drop"))
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send_a, timeout=1.0)
+
+    # The identity guard must have left B's registration alone.
+    assert client.expected_responses.get(shape) is future_b
+    assert not future_b.done()
