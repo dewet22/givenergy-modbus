@@ -1631,7 +1631,7 @@ class Client:
             return_exceptions=return_exceptions,
         )
 
-    async def send_request_and_await_response(
+    async def send_request_and_await_response(  # noqa: C901
         self,
         request: TransparentRequest,
         timeout: float,
@@ -1649,6 +1649,9 @@ class Client:
         original "retry immediately" behaviour (e.g. fast probes, latency-
         sensitive interactive commands) should pass ``retry_delay=0``.
         """
+        if self._connection_lost:
+            raise ConnectionLost("connection lost — reconnect before sending")
+
         # mark the expected response
         expected_response = request.expected_response()
         expected_shape_hash = expected_response.shape_hash()
@@ -1691,13 +1694,21 @@ class Client:
             )
             try:
                 await asyncio.wait_for(frame_sent, timeout=frame_sent_timeout)
-            except TimeoutError as exc:
-                # Producer is genuinely stuck. Drop the orphaned future so a late send can't
-                # resolve a stale request, and surface a clear error.
+            except ConnectionLost:
+                # Teardown failed this frame's future — propagate the typed signal.
                 _discard(response_future)
+                raise
+            except TimeoutError as exc:
+                # Drain is bounded (#356), so reaching this means the producer is
+                # wedged somewhere unknown — a genuine bug. Tear down so the
+                # system recovers, and keep the honest 'stuck' signal.
+                _discard(response_future)
+                self._abort_connection(ConnectionLost("producer stuck — tearing down"))
                 raise TimeoutError("Producer task is stuck — frame not sent") from exc
             try:
                 await asyncio.wait_for(response_future, timeout=timeout)
+            except ConnectionLost:
+                raise  # a drop mid-await propagates immediately; never a retry
             except TimeoutError:
                 tries += 1
                 _logger.debug(

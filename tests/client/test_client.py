@@ -836,11 +836,13 @@ async def test_frame_sent_timeout_cleans_up_stale_future(monkeypatch):
 
 
 async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
-    """A timed-out call must not evict a newer same-shaped caller's response future (PR #225).
+    """A timed-out call's stuck-producer teardown now aborts the whole connection (#356).
 
-    Same-shaped requests deliberately replace one another. If call A is still waiting on
-    frame_sent when call B installs its own future under the shared shape_hash, A's timeout
-    cleanup must be identity-conditional — it must not delete B's mapping.
+    Originally (PR #225) call A's frame_sent timeout only evicted its own mapping, identity-
+    conditionally, so a newer same-shaped caller B was untouched. Since #356, a frame_sent
+    timeout means the producer is confirmed wedged, so the whole connection is torn down —
+    B's future is correctly failed with ConnectionLost too, not silently preserved as if the
+    connection were still healthy.
     """
     from givenergy_modbus.client import client as client_mod
 
@@ -857,11 +859,12 @@ async def test_frame_sent_timeout_does_not_evict_newer_future(monkeypatch):
     b_future: asyncio.Future = asyncio.get_running_loop().create_future()
     client.expected_responses[shape_hash] = b_future
 
-    with pytest.raises(TimeoutError):
-        await task_a  # A times out (~0.05s)
+    with pytest.raises(TimeoutError, match="stuck"):
+        await task_a  # A times out (~0.05s) and tears down the connection
 
-    assert client.expected_responses.get(shape_hash) is b_future, "A's cleanup must not evict B's future"
-    b_future.cancel()
+    assert client.expected_responses.get(shape_hash) is None  # teardown clears the whole map
+    assert isinstance(b_future.exception(), ConnectionLost)  # B aborted too — connection is dead
+    assert client._connection_lost is True
 
 
 def test_connection_lost_is_communication_error_and_timeout():
@@ -1011,3 +1014,56 @@ async def test_consumer_unexpected_eof_aborts_connection():
 
     assert client._connection_lost is True
     assert isinstance(inflight.exception(), ConnectionLost)
+
+
+async def test_send_fails_fast_when_connection_known_dead():
+    """After teardown, sends raise ConnectionLost immediately.
+
+    A dead-window refresh batch fails in ms instead of burning per-read
+    timeouts. Never-connected clients are NOT guarded (the flag is set only
+    by _abort_connection).
+    """
+    client = Client(host="foo", port=4321)
+    client._abort_connection(ConnectionLost("prior drop"))
+
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    with pytest.raises(ConnectionLost):
+        await client.send_request_and_await_response(req, timeout=5.0, retries=2)
+    assert client.tx_queue.empty()  # nothing was queued
+
+
+async def test_send_propagates_connection_lost_without_burning_retries():
+    """ConnectionLost IS a TimeoutError; the retry arm must not swallow it.
+
+    A drop mid-response-await propagates immediately instead of retrying
+    into the guard.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    send = asyncio.create_task(client.send_request_and_await_response(req, timeout=30.0, retries=5))
+    # simulate the producer sending the frame
+    _, frame_sent, _ = await asyncio.wait_for(client.tx_queue.get(), timeout=1.0)
+    client.tx_queue.task_done()
+    frame_sent.set_result(True)
+    await asyncio.sleep(0)  # let send advance to the response await
+    client._abort_connection(ConnectionLost("mid-flight drop"))
+
+    with pytest.raises(ConnectionLost):
+        await asyncio.wait_for(send, timeout=1.0)  # well under timeout=30 × 6 tries
+
+
+async def test_send_stuck_producer_aborts_connection(monkeypatch):
+    """The frame_sent timeout keeps its 'stuck' TimeoutError but also tears down.
+
+    Drain is bounded now, so reaching this means a genuinely wedged producer
+    — a real bug — and the system must recover.
+    """
+    monkeypatch.setattr("givenergy_modbus.client.client._FRAME_SENT_MIN_TIMEOUT", 0.05)
+    client = Client(host="foo", port=4321)
+    client.tx_queue = asyncio.Queue(maxsize=1)  # rescale the depth-scaled timeout
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+
+    with pytest.raises(TimeoutError, match="stuck"):
+        await client.send_request_and_await_response(req, timeout=5.0, retries=0)
+    assert client._connection_lost is True  # teardown ran
