@@ -552,10 +552,12 @@ def test_serial_groups_pinned_floor():
         ("HR", 13, 5),
         ("IR", 110, 5),
         ("IR", 1627, 5),
-        ("IR", 1831, 5),
-        ("IR", 1838, 5),
+        # Gateway V1 AIO serials: live-confirmed contiguous stride from IR(1841)
+        # (#360/#361 — the old 1831/1838/1845 pre-live layout exempted the real
+        # aio2 slot at IR(1846) from redaction)
         ("IR", 1841, 5),
-        ("IR", 1845, 5),
+        ("IR", 1846, 5),
+        ("IR", 1851, 5),
         ("IR", 1848, 5),
         ("IR", 1855, 5),
         ("IR", 2066, 5),

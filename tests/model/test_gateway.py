@@ -52,10 +52,26 @@ def test_select_gateway_returns_gateway_for_v9():
     assert isinstance(gw, GatewayV1)
 
 
-def test_select_gateway_returns_gateway2_for_v10():
+def test_select_gateway_returns_v1_even_for_v10():
+    """The GA000010+ swapped-word claim was falsified by the first live unit (#360).
+
+    GAAA0014 ("version 14") is V1-ordered on the wire, so the version split cannot
+    be trusted as a selector. V1 is the default until a real V2 unit is sighted.
+    """
     cache = _cache(_fw_cache(10))
     gw = select_gateway(cache)
-    assert isinstance(gw, GatewayV2)
+    assert isinstance(gw, GatewayV1)
+
+
+def test_select_gateway_returns_v1_for_live_gaaa0014_shape():
+    """Regression pin for #360: the exact IR(1600-1603) raws from AberDino's live unit.
+
+    Raw IR(1603)=0x0104 (260) tripped the old `>= 10` raw-value test into selecting
+    the V2 swapped-word layout, decoding energy totals 10^4-10^5 too large.
+    """
+    cache = _cache({IR(1600): 0x4741, IR(1601): 0x4141, IR(1602): 0x0000, IR(1603): 0x0104})
+    gw = select_gateway(cache)
+    assert isinstance(gw, GatewayV1)
 
 
 def test_select_gateway_returns_gateway_for_empty_cache():
@@ -112,17 +128,24 @@ def test_gateway_first_inverter_serial():
 
 
 def test_gateway_v1_aio_serial_address():
+    """V1 AIO serials: live-confirmed contiguous 5-register stride from IR(1841) (#360)."""
     cache = _cache(
         {
-            IR(1831): 0x5152,
-            IR(1832): 0x5354,
-            IR(1833): 0x5556,
-            IR(1834): 0x5758,
-            IR(1835): 0x5900,
+            IR(1841): 0x5152,
+            IR(1842): 0x5354,
+            IR(1843): 0x5556,
+            IR(1844): 0x5758,
+            IR(1845): 0x5900,
+            IR(1846): 0x4142,
+            IR(1847): 0x4344,
+            IR(1848): 0x4546,
+            IR(1849): 0x4748,
+            IR(1850): 0x4900,
         }
     )
     gw = GatewayV1.from_register_cache(cache)
     assert gw.aio1_serial_number == "QRSTUVWXY"  # type: ignore[attr-defined]
+    assert gw.aio2_serial_number == "ABCDEFGHI"  # type: ignore[attr-defined]
 
 
 def test_gateway2_aio_serial_address_different():
