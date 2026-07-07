@@ -1810,10 +1810,11 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     """IR(44) is e_pv_generation_today (#174); e_inverter_out_day is a deprecated alias.
 
     The two classes behave slightly differently:
-    - SinglePhaseInverter: alias returns e_inverter_out_today (#293) — None here, since
-      this cache has no HR(0)/HR(21) and the model is unresolvable, so the identity
-      override never fires (status quo: e_pv_generation_today carries the live value).
-      On AC/AIO the override moves the value across and the alias follows it.
+    - SinglePhaseInverter: alias prefers e_inverter_out_today (#293), falling back to
+      e_pv_generation_today when that's None — this cache has no HR(0)/HR(21) so the
+      model is unresolvable, the identity override never fires, and the alias falls
+      back to the live e_pv_generation_today value (status quo preserved for hybrids).
+      On AC/AIO the override moves the value across and the alias follows it there.
     - ThreePhaseInverter: alias returns e_pv_today (IR1412/3, the verified 3ph register),
       so warning and return value agree. IR44 still leaks as e_pv_generation_today via
       single-phase LUT inheritance, but the alias migration path is unambiguous.
@@ -1832,7 +1833,8 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        assert sp.e_inverter_out_day is None  # (#293) unresolvable model → no override
+        # (#293) unresolvable model → no override → alias falls back to e_pv_generation_today
+        assert sp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
     sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
     assert len(sp_deprecations) == 1
     assert "e_inverter_out_today" in str(sp_deprecations[0].message)
@@ -1848,6 +1850,17 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         assert sp_ac.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
+    assert len([x for x in w if issubclass(x.category, DeprecationWarning)]) == 1
+
+    # Single-phase, resolved DC hybrid: (#293) not in the override set, so
+    # e_inverter_out_today stays None and the alias falls back to
+    # e_pv_generation_today — the exact backward-compatibility case flagged in review.
+    sp_hybrid_cache = RegisterCache({HR(0): 0x2001, HR(21): 449, IR(44): 81})
+    sp_hybrid = SinglePhaseInverter.from_register_cache(sp_hybrid_cache)
+    assert sp_hybrid.e_inverter_out_today is None  # type: ignore[attr-defined]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp_hybrid.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
     assert len([x for x in w if issubclass(x.category, DeprecationWarning)]) == 1
 
     # Three-phase: IR44 leaks as e_pv_generation_today (unverified); the alias

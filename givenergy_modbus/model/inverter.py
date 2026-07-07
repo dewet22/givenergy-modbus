@@ -1401,14 +1401,16 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 
     @property
     def e_inverter_out_day(self) -> float | None:
-        """Deprecated alias for `e_inverter_out_today` (live on AC/AIO; None on hybrids, #293)."""
+        """Deprecated alias for `e_inverter_out_today` (AC/AIO) or `e_pv_generation_today` (hybrids, #293)."""
         warnings.warn(
             "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_inverter_out_today "
             "(AC/AIO) or e_pv_generation_today (DC hybrids)",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.e_inverter_out_today
+        if self.e_inverter_out_today is not None:
+            return self.e_inverter_out_today
+        return self.e_pv_generation_today  # type: ignore[attr-defined]
 
     # HR(63-82) renamed: _1/_2/_3 → _trip/_reconnect/_grid (installer-confirmed band structure).
     # Aliases preserve back-compat for a release.
