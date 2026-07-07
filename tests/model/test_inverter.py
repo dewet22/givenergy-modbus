@@ -2205,7 +2205,7 @@ def test_battery_energy_facade_routes_by_model():
     """Battery-energy facade routes each metric to the model's declared altN (#76).
 
     Which register a firmware populates is a static property of the model, declared in
-    _BATTERY_ENERGY_SOURCE — not inferred from live values (the #119 / #150-Codex
+    manifest.VALUE_SOURCES — not inferred from live values (the #119 / #150-Codex
     lesson). The declared source is returned verbatim, including a legitimate 0.0; an
     undeclared model or metric returns None, with no value inspection and no
     cross-source fallback. The specific model is resolved via DTC+arm_fw like slot_map,

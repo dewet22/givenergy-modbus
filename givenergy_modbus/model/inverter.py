@@ -862,7 +862,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # (our max poll base is HR(240); GivTCP's add_regs detect-probe candidates top
         # out at HR(300)). Defined for naming symmetry with the IR alt sources and as
         # scaffold for a future #48 "does this block respond on real hardware?" probe;
-        # no model's _BATTERY_ENERGY_SOURCE routes here. The C.deci scaling diverges
+        # no model's manifest.VALUE_SOURCES entry routes here. The C.deci scaling diverges
         # from GivTCP's raw (None) defs — moot while unpolled, reconcile under #48.
         "e_battery_discharge_total_alt2": Def(C.uint32, C.deci, HR(4109), HR(4110)),
         "e_battery_charge_total_alt2": Def(C.uint32, C.deci, HR(4111), HR(4112)),
@@ -1326,7 +1326,7 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         candidate corrected-AIO formula was evaluated against wire evidence and failed
         the evidence gate; see manifest.py's module comment. In practice
         e_battery_charge_today only routes on HYBRID_GEN1 today (see
-        _BATTERY_ENERGY_SOURCE / #184), so the field is currently GEN1-effective and
+        manifest.VALUE_SOURCES / #184), so the field is currently GEN1-effective and
         returns None on other DC models until that map widens.
 
         Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which
