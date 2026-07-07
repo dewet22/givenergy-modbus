@@ -1163,11 +1163,16 @@ class Plant(GivEnergyBaseModel):
         if getter_cls is BatteryRegisterGetter:
             if not self._splice_guard(device_address, incoming, register_count, now=received_at):
                 return False
-            # A committing battery bank closes out any coalesced reject burst (#355).
-            commit_ts = received_at if received_at is not None else datetime.now(UTC)
-            if commit_ts.tzinfo is None:
-                commit_ts = commit_ts.replace(tzinfo=UTC)
-            self._splice_burst_note_commit(device_address, commit_ts)
+            # A committing FULL battery bank closes out any coalesced reject burst (#355).
+            # Short reads (register_count < 60) pass the guard unevaluated — mirroring the
+            # guard's own gate — so a count=1 fan-out commit between corrupt full banks
+            # must not pop the burst (it would log a misleading 'cleared' and re-spam
+            # fresh onsets).
+            if register_count >= 60:
+                commit_ts = received_at if received_at is not None else datetime.now(UTC)
+                if commit_ts.tzinfo is None:
+                    commit_ts = commit_ts.replace(tzinfo=UTC)
+                self._splice_burst_note_commit(device_address, commit_ts)
         self.register_caches[device_address].update(incoming)
         return True
 

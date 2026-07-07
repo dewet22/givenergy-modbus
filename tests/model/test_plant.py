@@ -3864,3 +3864,28 @@ def test_splice_burst_isolated_per_device(plant: Plant, caplog):
         _feed_bank(plant, _corrupt_tempzero_bank(), device_address=0x34, received_at=_T0 + timedelta(seconds=11))
     warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
     assert len(warns) == 2
+
+
+def test_splice_burst_short_read_does_not_clear(plant: Plant, caplog):
+    """A short battery read (unguarded, register_count<60) must not close a reject burst (#364 review).
+
+    Only an accepted FULL bank is a burst-ending observation — a count=1 fan-out commit between
+    corrupt full banks would otherwise log a misleading 'cleared' and re-spam fresh onsets.
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=20))
+        # a legitimate single-register fan-out read commits via the unguarded short-read path
+        _feed_bank(plant, {100: 56}, device_address=_BATT, count=1, received_at=_T0 + timedelta(seconds=25))
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=30))
+    assert not [r for r in caplog.records if "splice burst cleared" in r.message]
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
+    assert len(warns) == 1, "burst must survive the short read — no fresh onset"
+    # the eventual full-bank recovery still closes it out with the full tally
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=40))
+    clears = [r for r in caplog.records if "splice burst cleared" in r.message]
+    assert len(clears) == 1 and "3 rejection" in clears[0].message
