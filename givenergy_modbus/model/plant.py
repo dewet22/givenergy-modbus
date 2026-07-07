@@ -164,6 +164,7 @@ class PlantCapabilities(BaseModel):
         aio_battery_module_addresses: list[int] | None = None,
         lv_bcu_address: int | None = None,
         hv_bmu_addresses: list[int] | None = None,
+        arm_firmware_version: int | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -190,6 +191,8 @@ class PlantCapabilities(BaseModel):
             kwargs["lv_bcu_address"] = lv_bcu_address
         if hv_bmu_addresses is not None:
             kwargs["hv_bmu_addresses"] = hv_bmu_addresses
+        if arm_firmware_version is not None:
+            kwargs["arm_firmware_version"] = arm_firmware_version
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 

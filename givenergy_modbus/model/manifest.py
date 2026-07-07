@@ -148,9 +148,12 @@ CAPABILITIES: dict[str, frozenset[Model]] = {
 }
 
 
-def has_capability(name: str, model: Model, arm_fw: int | None = None) -> bool:
+def has_capability(name: str, model: Model | None, arm_fw: int | None = None) -> bool:
     """Return True if `model` has the named capability fact.
 
+    `model` accepts `None` because callers pass `self.model`, which is `None` when
+    the device type code hasn't been read yet — `None in CAPABILITIES[name]` is a
+    safe, honest `False` rather than forcing every call site to guard first.
     `name` must be a key in `CAPABILITIES` — an unknown name raises `KeyError` rather
     than silently returning False, since every call site is our own static-string
     code and a typo should fail loudly. `arm_fw` is accepted for signature consistency
