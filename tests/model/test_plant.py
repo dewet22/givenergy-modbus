@@ -3889,3 +3889,29 @@ def test_splice_burst_short_read_does_not_clear(plant: Plant, caplog):
         _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=40))
     clears = [r for r in caplog.records if "splice burst cleared" in r.message]
     assert len(clears) == 1 and "3 rejection" in clears[0].message
+
+
+def test_splice_reject_report_plea_gated_on_novel_signature(plant: Plant, caplog):
+    """ "Please report if seen" only solicits shapes we haven't characterised (#355).
+
+    The temp-zero cohort is corpus-characterised to death — a report adds nothing, so its
+    onset drops the plea. A novel ≥2-physics shape (voltage-class trips) keeps it: that is
+    exactly the evidence the corpus model and the #299 heal question hinge on.
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+    known = [r for r in caplog.records if "sub-bus splice" in r.message]
+    assert len(known) == 1 and "Please report if seen" not in known[0].message
+
+    caplog.clear()
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=20))
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        # two cell-voltage physics trips, temps intact — NOT the known cohort
+        _feed_bank(
+            plant, _coherent_battery_bank({60: 0, 61: 0}), device_address=_BATT, received_at=_T0 + timedelta(seconds=30)
+        )
+    novel = [r for r in caplog.records if "sub-bus splice" in r.message]
+    assert len(novel) == 1 and "Please report if seen" in novel[0].message

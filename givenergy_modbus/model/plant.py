@@ -1336,12 +1336,20 @@ class Plant(GivEnergyBaseModel):
             self._splice_reject_streak.pop(device_address, None)
             self._bump(self.splice_reject_count, device_address)
             warn_now, suffix = self._splice_burst_note_reject(device_address, phys, now_ts)
+            # "Please report if seen" solicits UNcharacterised shapes only (#355): the corpus's
+            # sole corruption signature is the temperature family (cell-mass IR76-79/103-104 +
+            # mosfet IR81 — the temp-zero cohort and its partial variants), characterised to
+            # death, so reporting it adds nothing. Any trip OUTSIDE the temp family is a novel
+            # shape — exactly the evidence the corpus model and the #299 heal question still want.
+            _TEMP_FAMILY = ("cell_temp_deci", "mosfet_temp_deci")
+            plea = "" if all(name in _TEMP_FAMILY for _ir, name, _o, _n in phys) else " Please report if seen."
             (_logger.warning if warn_now else _logger.debug)(
                 "Rejected battery bank for device 0x%02x — sub-bus splice (>=2 physics-impossible "
-                "deltas); keeping last-good. Trips: %s%s. Please report if seen.",
+                "deltas); keeping last-good. Trips: %s%s.%s",
                 device_address,
                 self._format_splice_trips(phys),
                 suffix,
+                plea,
             )
             return False
 
