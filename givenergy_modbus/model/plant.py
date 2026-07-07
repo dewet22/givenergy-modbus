@@ -398,7 +398,8 @@ class PlantCapabilities(BaseModel):
             f"bcu_stacks=[{bcus}], "
             f"aio_battery_module_addresses=[{aio_mods}], "
             f"hv_bmu_addresses=[{hv_bmus}], "
-            f"lv_bcu_address={lv_bcu})"
+            f"lv_bcu_address={lv_bcu}, "
+            f"arm_firmware_version={self.arm_firmware_version})"
         )
 
     @property
