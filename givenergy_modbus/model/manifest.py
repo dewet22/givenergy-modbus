@@ -218,9 +218,29 @@ LOAD_CONFIG_THREE_PHASE_RANGES: list[RegisterRange] = [
 # is_three_phase/has_extended_slots in the original code — safe to drive off one
 # generic table+loop in this exact insertion order (#293 Slice C1).
 LOAD_CONFIG_RANGES: dict[str, list[RegisterRange]] = {
+    # HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Gated because the
+    # block was added from the app's Direct Control catalogue (writable surface only
+    # — never confirmed to answer a live read) and HYBRID_GEN1 times out on it (#179).
+    # The gate set is currently empty, so this is off for every model pending
+    # hardware confirmation. Unmodelled registers in 540-553 and 574-599 are
+    # silently ignored by Plant.update(). (#48, #179)
     "has_smart_load_block": [RegisterRange("HR", 540, 60)],
+    # HR(499-510) — HV cabinet topology (12 registers: counts, ratings). Gated
+    # because the block is from the GivEnergy app v4.0.7 and no model has been
+    # confirmed to answer a live read. The gate set is empty until a capture
+    # confirms the block responds. (#265)
     "has_hv_cabinet_block": [RegisterRange("HR", 499, 12)],
+    # HR(20000-20051) — peak-shaving / valley-filling (sparse: 20000-20003,
+    # 20020-20021, 20050-20051). Gated because the block is from the GivEnergy app
+    # v4.0.7 and no model has been confirmed to answer a live read. The 52-register
+    # window covers all defined offsets; undefined registers in the middle are
+    # silently ignored by Plant.update().
     "has_peak_shaving_block": [RegisterRange("HR", 20000, 52)],
+    # HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac
+    # (HR313/314), enable_eps (HR317), pause mode/slot (HR318-320). Present on
+    # AC-coupled inverters AND the All-in-One; DC-coupled/hybrid models time out on
+    # this block (#162). Confirmed present on Model.AC (hass#52 portal writes) and
+    # the AIO (live poll populated these fields, #105).
     "has_ac_config_block": [RegisterRange("HR", 300, 60)],
     "is_ems": [RegisterRange("HR", 2040, 36)],
 }
