@@ -1614,8 +1614,12 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 def __getattr__(name: str):
     """PEP 562 module attribute deprecation shim.
 
-    AC_COUPLED_MODELS moved to manifest.CAPABILITIES["is_ac_coupled"] (#293 Slice B);
-    kept accessible here for backward compatibility until the 3.0 deprecation horizon.
+    Serves two deprecated names — the pre-existing `Inverter` rename alias, and
+    AC_COUPLED_MODELS (moved to manifest.CAPABILITIES["is_ac_coupled"], #293 Slice B).
+    Both are kept accessible here for backward compatibility until the 3.0
+    deprecation horizon. Deliberately a single `__getattr__`: Python only honours the
+    last one defined at module scope, so a second definition would silently shadow
+    this one rather than raising or merging.
     """
     if name == "Inverter":
         warnings.warn(

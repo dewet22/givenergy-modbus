@@ -1001,6 +1001,10 @@ class Client:
                 "detect: HR(0) not populated after reading device 0x11 — cannot determine device type"
             )
         arm_fw = cache.get(HR(21)) or 0
+        # arm_firmware_version here is consistency-only: this intermediate `caps` only
+        # feeds the probing steps below (is_hv, device_type), none of which read
+        # firmware. The object detect() actually returns is built separately in
+        # _derive_capabilities() (#293 Slice B), which populates the field for real.
         caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw), arm_firmware_version=arm_fw or None)
         _logger.info("detect: device_type=Model.%s", caps.device_type.name)
 
