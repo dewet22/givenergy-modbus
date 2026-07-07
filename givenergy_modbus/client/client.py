@@ -351,14 +351,10 @@ def _refresh_banks(caps: PlantCapabilities) -> list[tuple[int, int, int]]:
     banks: list[tuple[int, int, int]] = []
     if not caps.is_ems:
         banks += [(inverter, 0, 60), (inverter, 180, 60)]
-    if caps.is_three_phase:
-        for base in range(1000, 1414, 60):
-            banks.append((inverter, base, min(60, 1414 - base)))
-    if caps.is_ems:
-        banks.append((inverter, 2040, 55))
-    if caps.is_gateway:
-        for base in range(1600, 1860, 60):
-            banks.append((inverter, base, min(60, 1860 - base)))
+    banks += [
+        (inverter, r.base_register, r.register_count)
+        for r in manifest.gated_ranges(manifest.REFRESH_IR_RANGES, caps.device_type, caps.arm_firmware_version)
+    ]
     for addr in caps.lv_battery_addresses:
         banks.append((addr, 60, 60))
     if caps.lv_bcu_address is not None:
