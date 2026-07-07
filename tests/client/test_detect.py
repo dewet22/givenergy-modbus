@@ -331,6 +331,28 @@ async def test_detect_arm_firmware_version_none_when_hr21_zero():
     assert caps.arm_firmware_version is None
 
 
+@pytest.mark.asyncio
+async def test_detect_firmware_only_change_does_not_raise_topology_mismatch():
+    """A firmware upgrade on unchanged hardware must not raise PlantTopologyMismatch.
+
+    arm_firmware_version is informational, not part of the topology contract — the
+    equality check in Client.detect() must exclude it (#293 Slice B).
+    """
+    client = _make_client()
+    # DTC 0x2001 + arm_fw=300 → century 3 → Model.HYBRID_GEN3 (see test_detect_resolves_model_from_hr0_hr21).
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 300})
+
+    prior = PlantCapabilities(device_type=Model.HYBRID_GEN3, arm_firmware_version=100)
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = object()
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect(prior=prior)
+
+    assert caps.arm_firmware_version == 300
+    assert client.plant.capabilities is caps
+
+
 def _prime_battery_serial(client: Client, device_address: int) -> None:
     """Prime a device cache with a valid battery serial number (IR 110–114)."""
     # "SA1234A567" encoded as five big-endian 16-bit register values.

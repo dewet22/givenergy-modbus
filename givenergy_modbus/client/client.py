@@ -1079,7 +1079,13 @@ class Client:
             ", ".join(f"0x{a:02x}" for a in final_caps.hv_bmu_addresses),
         )
 
-        if prior is not None and prior != final_caps:
+        # arm_firmware_version is informational, not part of the topology contract — a
+        # firmware upgrade on otherwise-unchanged hardware must not raise a mismatch
+        # here (#293 Slice B added the field; excluding it from this comparison keeps
+        # PlantTopologyMismatch scoped to genuine address/device-type/count changes).
+        if prior is not None and prior.model_dump(exclude={"arm_firmware_version"}) != final_caps.model_dump(
+            exclude={"arm_firmware_version"}
+        ):
             self.plant.capabilities = None
             raise PlantTopologyMismatch(
                 f"detect: plant topology does not match prior — prior={prior!r}, actual={final_caps!r}",
