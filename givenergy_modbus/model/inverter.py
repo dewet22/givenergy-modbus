@@ -3,7 +3,7 @@ import warnings
 from enum import Enum, IntEnum, StrEnum
 from typing import ClassVar
 
-from pydantic import ConfigDict, computed_field, create_model
+from pydantic import ConfigDict, computed_field, create_model, model_validator
 
 from givenergy_modbus.client.commands import _InverterCommands
 from givenergy_modbus.model.battery import ExportPriority
@@ -959,10 +959,13 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
         # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
-        # IR(44) is PV-generation-today and IR(45/46) is PV-generation-total (both
-        # sentinel cross-correlation, #174), not the inverter AC output. Renamed from
-        # "e_inverter_out_day" / "e_inverter_out_total"; the old names are kept as
-        # deprecated @property aliases for a release.
+        # IR(44) is PV-generation-today and IR(45/46) is PV-generation-total on most
+        # models (sentinel cross-correlation, #174) — but on AC/ALL_IN_ONE they carry
+        # the inverter's battery-discharge AC output instead (#293): see
+        # _apply_field_identity below, which moves the decoded value across to
+        # e_inverter_out_today/_total on exactly those two models. Renamed from
+        # "e_inverter_out_day" / "e_inverter_out_total"; "day" is kept as a deprecated
+        # @property alias for a release ("total" is now a real field, live on AC/AIO).
         # NB: this rename is single-phase only. ThreePhaseInverter has its OWN native
         # e_inverter_out_total (IR1362/3) — a genuine, distinct register from its PV
         # total (e_pv_total, IR1374/5) — so the 3ph field is left untouched.
@@ -1041,6 +1044,45 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         if self.e_pv1_day is None or self.e_pv2_day is None:  # type: ignore[attr-defined]
             return None
         return self.e_pv1_day + self.e_pv2_day  # type: ignore[attr-defined]
+
+    # Accurate per-model identity for IR(44)/IR(45-46) on AC/AIO (#293): the inverter's
+    # battery-discharge AC output. Populated ONLY by _apply_field_identity below; on
+    # DC hybrids these stay None and e_pv_generation_* carries the (genuine) PV values.
+    e_inverter_out_today: float | None = None
+    e_inverter_out_total: float | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_field_identity(cls, values: dict) -> dict:
+        """Route model-dependent register identities per the manifest (#293).
+
+        Runs on the raw values dict (the model is frozen, so after-mode mutation is
+        unavailable). Overrides-only: unresolvable models keep the status quo.
+        Input-driven, so re-validation is idempotent: a value moves only when the
+        source field actually carries one, and re-validating a dumped model (where
+        e_pv_generation_* is already None) passes the moved values through untouched.
+        """
+        from givenergy_modbus.model.manifest import ir44_is_inverter_output
+
+        if not isinstance(values, dict):
+            return values
+        dtc = values.get("device_type_code")
+        arm_fw = values.get("arm_firmware_version")
+        if dtc is None or arm_fw is None:
+            return values
+        try:
+            model = resolve_model(int(dtc, 16), int(arm_fw))
+        except (TypeError, ValueError):
+            return values
+        if ir44_is_inverter_output(model, arm_fw=int(arm_fw)):
+            for src, dst in (
+                ("e_pv_generation_today", "e_inverter_out_today"),
+                ("e_pv_generation_total", "e_inverter_out_total"),
+            ):
+                if values.get(src) is not None:
+                    values[dst] = values.pop(src)
+                    values[src] = None
+        return values
 
     def _battery_energy(self, direction: str, metric: str) -> float | None:
         """Route a battery-energy metric to this model's authoritative alt register.
@@ -1340,34 +1382,16 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         )
         return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
 
-    # Plain @property so the deprecated alias doesn't appear in model_dump().
-    # IR(44) was decoded as e_inverter_out_day (GivTCP-era guess); sentinel
-    # cross-correlation (#174) confirmed it is PV-generation-today. Renamed to
-    # e_pv_generation_today; this alias preserves back-compat for a release.
     @property
     def e_inverter_out_day(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_today`."""
+        """Deprecated alias for `e_inverter_out_today` (live on AC/AIO; None on hybrids, #293)."""
         warnings.warn(
-            "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today",
+            "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_inverter_out_today "
+            "(AC/AIO) or e_pv_generation_today (DC hybrids)",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
-
-    # IR(45/46) was decoded as e_inverter_out_total (GivTCP-era guess); the same
-    # sentinel cross-correlation (#174) confirmed it is PV-generation-total. Renamed
-    # to e_pv_generation_total; this alias preserves back-compat for a release.
-    # Single-phase only: ThreePhaseInverter keeps its native e_inverter_out_total
-    # (IR1362/3), which is a genuine register there, so no alias is defined on 3ph.
-    @property
-    def e_inverter_out_total(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_total`."""
-        warnings.warn(
-            "SinglePhaseInverter.e_inverter_out_total is deprecated; use e_pv_generation_total",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
+        return self.e_inverter_out_today
 
     # HR(63-82) renamed: _1/_2/_3 → _trip/_reconnect/_grid (installer-confirmed band structure).
     # Aliases preserve back-compat for a release.

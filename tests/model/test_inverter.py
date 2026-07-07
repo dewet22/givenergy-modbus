@@ -171,6 +171,8 @@ def test_inverter():
             "p_grid_apparent": None,
             "e_pv_generation_today": None,
             "e_pv_generation_total": None,
+            "e_inverter_out_today": None,
+            "e_inverter_out_total": None,
             "work_time_total_hours": None,
             "system_mode": None,
             "v_battery": None,
@@ -723,6 +725,8 @@ def test_from_registers(register_cache):
         "p_grid_apparent": 680,
         "e_pv_generation_today": 8.1,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_pv_generation_total": 93.0,
+        "e_inverter_out_today": None,  # HYBRID_GEN1 keeps the status quo (#293)
+        "e_inverter_out_total": None,
         "work_time_total_hours": 213,
         "system_mode": 1,
         "v_battery": 49.91,
@@ -1211,6 +1215,8 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_grid_apparent": 554,
         "e_pv_generation_today": 3.8,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_pv_generation_total": 172.5,
+        "e_inverter_out_today": None,  # HYBRID_GEN1 keeps the status quo (#293)
+        "e_inverter_out_total": None,
         "work_time_total_hours": 385,
         "system_mode": 1,
         "v_battery": 51.73,
@@ -1804,7 +1810,10 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     """IR(44) is e_pv_generation_today (#174); e_inverter_out_day is a deprecated alias.
 
     The two classes behave slightly differently:
-    - SinglePhaseInverter: alias returns e_pv_generation_today (IR44, verified).
+    - SinglePhaseInverter: alias returns e_inverter_out_today (#293) — None here, since
+      this cache has no HR(0)/HR(21) and the model is unresolvable, so the identity
+      override never fires (status quo: e_pv_generation_today carries the live value).
+      On AC/AIO the override moves the value across and the alias follows it.
     - ThreePhaseInverter: alias returns e_pv_today (IR1412/3, the verified 3ph register),
       so warning and return value agree. IR44 still leaks as e_pv_generation_today via
       single-phase LUT inheritance, but the alias migration path is unambiguous.
@@ -1823,14 +1832,23 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        assert sp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]  # returns e_pv_generation_today
+        assert sp.e_inverter_out_day is None  # (#293) unresolvable model → no override
     sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
     assert len(sp_deprecations) == 1
-    assert "e_pv_generation_today" in str(sp_deprecations[0].message)
+    assert "e_inverter_out_today" in str(sp_deprecations[0].message)
 
     sp_dumped = sp.model_dump()
     assert "e_pv_generation_today" in sp_dumped
     assert "e_inverter_out_day" not in sp_dumped
+
+    # Single-phase, AC model: (#293) the identity override moves IR44 across, and the
+    # deprecated alias follows the live field to its new home.
+    sp_ac_cache = RegisterCache({HR(0): 0x3001, HR(21): 282, IR(44): 81})
+    sp_ac = SinglePhaseInverter.from_register_cache(sp_ac_cache)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp_ac.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
+    assert len([x for x in w if issubclass(x.category, DeprecationWarning)]) == 1
 
     # Three-phase: IR44 leaks as e_pv_generation_today (unverified); the alias
     # returns e_pv_today (IR1412/3) so the migration path is unambiguous.
@@ -1856,39 +1874,17 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     assert "e_inverter_out_day" not in tp_dumped
 
 
-def test_e_pv_generation_total_rename_and_deprecated_alias():
-    """IR(45/46) is e_pv_generation_total (#174); e_inverter_out_total is a deprecated alias.
+def test_e_inverter_out_total_threephase_native_field():
+    """ThreePhaseInverter's own e_inverter_out_total (IR1362/3) is unaffected by #293.
 
-    Unlike the day field, three-phase is NOT symmetric here:
-    - SinglePhaseInverter: IR(45/46) renamed to e_pv_generation_total; e_inverter_out_total
-      becomes a deprecated @property → e_pv_generation_total (not in model_dump()).
-    - ThreePhaseInverter: keeps its OWN native e_inverter_out_total (IR1362/3), a genuine,
-      distinct register from its PV total — so it stays a real field with no deprecation.
-      The single-phase IR(45/46) also leaks in as e_pv_generation_total (unverified on 3ph),
-      consistent with the e_pv_generation_today leak; left for #48.
+    SinglePhaseInverter's e_inverter_out_total is no longer a deprecated alias for
+    e_pv_generation_total — it is now a real field, live on AC/AIO models and covered by
+    the #293 identity-matrix tests in tests/model/test_manifest.py. ThreePhaseInverter
+    never reaches that validator (it has its own, unrelated, LUT-declared field), so its
+    native register stays a real, non-deprecated field distinct from its PV total.
     """
     from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
     from givenergy_modbus.model.register import IR
-
-    # Single-phase: IR(45/46) is the authoritative PV-generation-total register (uint32, deci).
-    sp_cache = RegisterCache({IR(45): 0, IR(46): 930})
-    sp = SinglePhaseInverter.from_register_cache(sp_cache)
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        assert sp.e_pv_generation_total == 93.0  # type: ignore[attr-defined]
-    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        assert sp.e_inverter_out_total == 93.0  # type: ignore[attr-defined]  # returns e_pv_generation_total
-    sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
-    assert len(sp_deprecations) == 1
-    assert "e_pv_generation_total" in str(sp_deprecations[0].message)
-
-    sp_dumped = sp.model_dump()
-    assert "e_pv_generation_total" in sp_dumped
-    assert "e_inverter_out_total" not in sp_dumped
 
     # Three-phase: e_inverter_out_total is a genuine native register (IR1362/3) — it stays
     # a real, non-deprecated field. The single-phase IR(45/46) leaks in as

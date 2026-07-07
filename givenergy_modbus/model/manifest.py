@@ -44,3 +44,21 @@ def battery_energy_source(model: Model, metric: str, arm_fw: int | None = None) 
     exist in Slice A).
     """
     return VALUE_SOURCES.get(f"battery_energy_{metric}", {}).get(model)
+
+
+# IR(44)/IR(45-46) identity overrides (#293): on these models the registers carry the
+# inverter's battery-discharge AC OUTPUT, not PV generation — delta-evidenced against
+# HV-stack counters (AberDino's 2×AIO, 2026-07-02: IR44 = 0.90× stack discharge,
+# accumulates pre-dawn, flat through an 11.5 kWh PV midday) and the ems_2_inv_3_bat_a
+# fixture's Model.AC units (IR44 == battery discharge). Unlisted models keep the
+# status quo (e_pv_generation_* live — the #174 hybrid verdict); adding a row here is
+# the entire upgrade path when new evidence lands. AIO_COMMERCIAL/ALL_IN_ONE_HYBRID
+# are ThreePhase-decoded and never reach the SinglePhaseInverter validator.
+FIELD_IDENTITY: dict[str, frozenset[Model]] = {
+    "ir44_inverter_out": frozenset({Model.AC, Model.ALL_IN_ONE}),
+}
+
+
+def ir44_is_inverter_output(model: Model, arm_fw: int | None = None) -> bool:
+    """True when IR44/IR45-46 carry inverter output (not PV) on this model (#293)."""
+    return model in FIELD_IDENTITY["ir44_inverter_out"]
