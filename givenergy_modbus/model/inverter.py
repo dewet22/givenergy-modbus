@@ -1003,28 +1003,6 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
     }
 
 
-# Per-(specific-model, metric) authoritative battery-energy source, keyed on the
-# Model resolved by resolve_model() — NOT the coarse `self.model` family. Declared
-# only where a wire capture positively confirms it; an absent model or metric routes
-# to None (honest "no evidence yet" + a forcing function for which captures to chase).
-# "today"/"total" each map to an altN whose register name is built as
-# e_battery_{charge,discharge}_{metric}_{altN} (see _battery_energy / the LUT renames).
-#
-#   alt1 = IR(36/37) daily, IR(180/181) total   alt2 = IR(182/183) daily, HR total (dead)
-#   alt3 = HR(4113/4114) daily (dead, never polled — see #48)
-#
-# Evidence (tests/fixtures/captures/): GEN1 populates the alt2 daily registers as
-# authoritative (non-alt read 0 on some firmware) and IR alt1 totals (17526/14791).
-# AC/AIO populate alt1 daily; their IR totals read a real 0 and where the lifetime
-# total actually lives is unknown (the HR block is never polled by anyone) — so total
-# is deliberately left undeclared → None rather than reporting a misleading 0.
-_BATTERY_ENERGY_SOURCE: dict[Model, dict[str, str]] = {
-    Model.HYBRID_GEN1: {"today": "alt2", "total": "alt1"},
-    Model.AC: {"today": "alt1"},
-    Model.ALL_IN_ONE: {"today": "alt1"},
-}
-
-
 _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
     "SinglePhaseInverter",
     __config__=ConfigDict(frozen=True),
@@ -1069,7 +1047,7 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 
         Which register location a firmware populates is a *static* property of the
         model, not something to infer from live values (the #119 lesson — see #76 /
-        Codex review on #150). `_BATTERY_ENERGY_SOURCE` declares, per specific model,
+        Codex review on #150). `manifest.VALUE_SOURCES` declares, per specific model,
         which `altN` source is authoritative for each metric; the value is returned
         verbatim including a legitimate 0.0. Returns None when the model or metric is
         undeclared (honest "no evidence yet") — no value inspection, no cross-source
@@ -1082,7 +1060,9 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         if dtc is None or arm_fw is None:
             return None
         model = resolve_model(int(dtc, 16), int(arm_fw))
-        alt = _BATTERY_ENERGY_SOURCE.get(model, {}).get(metric)
+        from givenergy_modbus.model.manifest import battery_energy_source
+
+        alt = battery_energy_source(model, metric, arm_fw=int(arm_fw))
         if alt is None:
             return None
         return getattr(self, f"e_battery_{direction}_{metric}_{alt}")
