@@ -3,13 +3,17 @@
 One place answering "what does this register/field mean on this model". Grown in
 slices: A (this file's initial content) covers register SEMANTICS — value-source
 routing and per-model field identity. Slice B added the capability fact tables
-(`CAPABILITIES`, `has_extended_slots`); slices C-D will add the polling ranges and the write surface.
+(`CAPABILITIES`, `has_extended_slots`); Slice C1 added the polling-range tables
+(`LOAD_CONFIG_RANGES`, `REFRESH_IR_RANGES`, `gated_ranges`); C2/D will add
+detect-time polling and the write surface.
 
 Keys are the RESOLVED specific ``Model`` (from ``resolve_model``), never the coarse
 family. Every accessor takes ``arm_fw`` so a firmware column exists in the contract
 from day one; no Slice A row uses it (future users: slot_map's ``HYBRID_GEN3 and
 arm_fw > 302`` extended-slot wrinkle, the Gateway V1/V2 layout variant — Slice B+).
 """
+
+from dataclasses import dataclass
 
 from givenergy_modbus.model.inverter import Model
 
@@ -145,6 +149,10 @@ CAPABILITIES: dict[str, frozenset[Model]] = {
     # Models with a readable peak-shaving block at HR(20000-20051). Deliberately
     # empty — no model confirmed on real hardware yet.
     "has_peak_shaving_block": frozenset(),
+    # EMS models — energy management systems.
+    "is_ems": frozenset({Model.EMS, Model.EMS_COMMERCIAL}),
+    # Gateway models.
+    "is_gateway": frozenset({Model.GATEWAY}),
 }
 
 
@@ -183,3 +191,52 @@ def has_extended_slots(model: Model, arm_fw: int | None = None) -> bool:
         return True
     threshold = _EXTENDED_SLOT_FIRMWARE_GATE.get(model)
     return threshold is not None and arm_fw is not None and arm_fw > threshold
+
+
+@dataclass(frozen=True)
+class RegisterRange:
+    """A register range to poll: type, base address, and count (#293 Slice C1)."""
+
+    reg_type: str  # "HR" | "IR"
+    base_register: int
+    register_count: int
+
+
+# HR(1000-1124) — three-phase config block. Kept as a standalone constant (not a
+# LOAD_CONFIG_RANGES entry) because load_config()'s original code checks
+# is_three_phase BEFORE has_extended_slots BEFORE the five tail facts below, and
+# ALL_IN_ONE_HYBRID/HYBRID_HV_GEN3 can have both is_three_phase and
+# has_extended_slots true simultaneously — the relative order matters and must
+# stay exactly as it was (#293 Slice C1).
+LOAD_CONFIG_THREE_PHASE_RANGES: list[RegisterRange] = [
+    RegisterRange("HR", 1000, 60),
+    RegisterRange("HR", 1060, 60),
+    RegisterRange("HR", 1120, 5),
+]
+
+# The five load_config() facts with no interleaving among themselves or with
+# is_three_phase/has_extended_slots in the original code — safe to drive off one
+# generic table+loop in this exact insertion order (#293 Slice C1).
+LOAD_CONFIG_RANGES: dict[str, list[RegisterRange]] = {
+    "has_smart_load_block": [RegisterRange("HR", 540, 60)],
+    "has_hv_cabinet_block": [RegisterRange("HR", 499, 12)],
+    "has_peak_shaving_block": [RegisterRange("HR", 20000, 52)],
+    "has_ac_config_block": [RegisterRange("HR", 300, 60)],
+    "is_ems": [RegisterRange("HR", 2040, 36)],
+}
+
+# _refresh_banks()'s three capability-gated IR ranges — no interleaving among
+# themselves in the original code, safe to drive off one generic table+loop
+# (#293 Slice C1).
+REFRESH_IR_RANGES: dict[str, list[RegisterRange]] = {
+    "is_three_phase": [RegisterRange("IR", b, min(60, 1414 - b)) for b in range(1000, 1414, 60)],
+    "is_ems": [RegisterRange("IR", 2040, 55)],
+    "is_gateway": [RegisterRange("IR", b, min(60, 1860 - b)) for b in range(1600, 1860, 60)],
+}
+
+
+def gated_ranges(
+    table: dict[str, list[RegisterRange]], model: Model | None, arm_fw: int | None = None
+) -> list[RegisterRange]:
+    """Every RegisterRange in `table` whose capability gate is true for `model`."""
+    return [r for name, entries in table.items() if has_capability(name, model, arm_fw) for r in entries]

@@ -161,3 +161,108 @@ def test_has_extended_slots_non_extended_models():
     for m in (Model.HYBRID_GEN1, Model.HYBRID_GEN2, Model.AC, Model.EMS):
         assert has_extended_slots(m) is False
         assert has_extended_slots(m, arm_fw=999) is False
+
+
+def test_capabilities_gained_is_ems_and_is_gateway():
+    """Extends Slice B's CAPABILITIES table — is_ems/is_gateway were never migrated (#293 Slice C1)."""
+    assert has_capability("is_ems", Model.EMS) is True
+    assert has_capability("is_ems", Model.EMS_COMMERCIAL) is True
+    assert has_capability("is_ems", Model.HYBRID_GEN1) is False
+    assert has_capability("is_gateway", Model.GATEWAY) is True
+    assert has_capability("is_gateway", Model.HYBRID_GEN1) is False
+
+
+def test_load_config_three_phase_ranges_exact_values():
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_THREE_PHASE_RANGES,
+        RegisterRange,
+    )
+
+    assert LOAD_CONFIG_THREE_PHASE_RANGES == [
+        RegisterRange("HR", 1000, 60),
+        RegisterRange("HR", 1060, 60),
+        RegisterRange("HR", 1120, 5),
+    ]
+
+
+def test_load_config_ranges_exact_values():
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_RANGES,
+        RegisterRange,
+    )
+
+    assert LOAD_CONFIG_RANGES == {
+        "has_smart_load_block": [RegisterRange("HR", 540, 60)],
+        "has_hv_cabinet_block": [RegisterRange("HR", 499, 12)],
+        "has_peak_shaving_block": [RegisterRange("HR", 20000, 52)],
+        "has_ac_config_block": [RegisterRange("HR", 300, 60)],
+        "is_ems": [RegisterRange("HR", 2040, 36)],
+    }
+
+
+def test_refresh_ir_ranges_exact_values():
+    from givenergy_modbus.model.manifest import (
+        REFRESH_IR_RANGES,
+        RegisterRange,
+    )
+
+    assert REFRESH_IR_RANGES["is_ems"] == [RegisterRange("IR", 2040, 55)]
+    assert REFRESH_IR_RANGES["is_three_phase"] == [
+        RegisterRange("IR", 1000, 60),
+        RegisterRange("IR", 1060, 60),
+        RegisterRange("IR", 1120, 60),
+        RegisterRange("IR", 1180, 60),
+        RegisterRange("IR", 1240, 60),
+        RegisterRange("IR", 1300, 60),
+        RegisterRange("IR", 1360, 54),
+    ]
+    assert REFRESH_IR_RANGES["is_gateway"] == [
+        RegisterRange("IR", 1600, 60),
+        RegisterRange("IR", 1660, 60),
+        RegisterRange("IR", 1720, 60),
+        RegisterRange("IR", 1780, 60),
+        RegisterRange("IR", 1840, 20),
+    ]
+
+
+def test_gated_ranges_returns_only_true_facts():
+    """AC is has_ac_config_block + is_ems=False → exactly the HR(300,60) entry."""
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_RANGES,
+        RegisterRange,
+        gated_ranges,
+    )
+
+    ranges = gated_ranges(LOAD_CONFIG_RANGES, Model.AC)
+    assert ranges == [RegisterRange("HR", 300, 60)]
+
+
+def test_gated_ranges_ems_model():
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_RANGES,
+        RegisterRange,
+        gated_ranges,
+    )
+
+    ranges = gated_ranges(LOAD_CONFIG_RANGES, Model.EMS)
+    assert ranges == [RegisterRange("HR", 2040, 36)]
+
+
+def test_gated_ranges_no_facts_true():
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_RANGES,
+        gated_ranges,
+    )
+
+    ranges = gated_ranges(LOAD_CONFIG_RANGES, Model.HYBRID_GEN1)
+    assert ranges == []
+
+
+def test_gated_ranges_accepts_none_model():
+    """Model | None consistent with has_capability's own None-safety (#293 Slice B)."""
+    from givenergy_modbus.model.manifest import (
+        LOAD_CONFIG_RANGES,
+        gated_ranges,
+    )
+
+    assert gated_ranges(LOAD_CONFIG_RANGES, None) == []
