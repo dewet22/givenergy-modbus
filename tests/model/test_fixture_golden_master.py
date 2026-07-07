@@ -142,6 +142,31 @@ async def test_aio_classifies_as_hv_all_in_one():
     # Inverter answers at 0x11; nothing served at 0x32 (the old wrong poll address).
     assert HR(0) in plant.register_caches[0x11]
 
+    # IR(44)/IR(45-46) carry inverter-output on ALL_IN_ONE, not PV generation (#293).
+    inv = plant.inverter
+    assert inv.e_pv_generation_today is None  # mislabel retired on AIO (#293)
+    assert inv.e_inverter_out_today == 1.8  # raw IR(44) == 18; 18 / 10 == 1.8
+
+
+@pytest.mark.timeout(20)
+async def test_ac_coupled_inverter_gets_inverter_out_identity():
+    """AC-coupled single-phase inverter: 0x3001/fw282 → Model.AC; IR44 is inverter output, not PV (#293).
+
+    No existing golden test decoded a Model.AC unit directly (only via the EMS rollup
+    that shares this fixture directory), so this pins one against the standalone
+    inverter-dongle capture that accompanies the EMS controller fixtures.
+    """
+    plant = await _replay("ems_2_inv_3_bat_a/ac_arm282_1x_givbat512gen3_30min.log")
+    caps = _classify(plant)
+
+    assert caps.device_type is Model.AC
+    assert caps.inverter_address == 0x11
+
+    inv = plant.inverter
+    assert inv.e_pv_generation_today is None  # mislabel retired on AC (#293)
+    assert inv.e_inverter_out_today == 6.3  # raw IR(44) == 63; 63 / 10 == 6.3
+    assert inv.e_inverter_out_total == 2643.8  # raw IR(45,46) == (0, 26438); 26438 / 10 == 2643.8
+
 
 @pytest.mark.timeout(20)
 async def test_hybrid_gen1_passive_capture_classifies_at_0x11_banks_stay_at_0x31():
@@ -166,6 +191,11 @@ async def test_hybrid_gen1_passive_capture_classifies_at_0x11_banks_stay_at_0x31
     assert HR(60) not in plant.register_caches[0x11]
     assert 0x32 in plant.register_caches
     assert 0x33 in plant.register_caches
+
+    # IR(44)/IR(45-46) stay PV generation on HYBRID_GEN1 — the #293 override doesn't fire.
+    inv = plant.inverter
+    assert inv.e_pv_generation_today == 19.2  # raw IR(44) == 192; 192 / 10 == 19.2
+    assert inv.e_inverter_out_today is None
 
 
 @pytest.mark.timeout(20)
@@ -193,6 +223,11 @@ async def test_hybrid_gen1_0x11_poll_capture_serves_full_banks_at_0x11():
     # LV battery packs.
     assert 0x32 in plant.register_caches
     assert 0x33 in plant.register_caches
+
+    # IR(44)/IR(45-46) stay PV generation on HYBRID_GEN1 — the #293 override doesn't fire.
+    inv = plant.inverter
+    assert inv.e_pv_generation_today == 15.8  # raw IR(44) == 158; 158 / 10 == 15.8
+    assert inv.e_inverter_out_today is None
 
 
 def test_inverter_address_matches_classification_for_all_fixtures():
