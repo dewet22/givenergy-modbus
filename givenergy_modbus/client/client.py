@@ -340,9 +340,11 @@ def _request_for_range(r: manifest.RegisterRange, device_address: int) -> Transp
         return ReadHoldingRegistersRequest(
             base_register=r.base_register, register_count=r.register_count, device_address=device_address
         )
-    return ReadInputRegistersRequest(
-        base_register=r.base_register, register_count=r.register_count, device_address=device_address
-    )
+    if r.reg_type == "IR":
+        return ReadInputRegistersRequest(
+            base_register=r.base_register, register_count=r.register_count, device_address=device_address
+        )
+    raise ValueError(f"Unsupported RegisterRange.reg_type: {r.reg_type!r}")
 
 
 def _refresh_banks(caps: PlantCapabilities) -> list[tuple[int, int, int]]:
