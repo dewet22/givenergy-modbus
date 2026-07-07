@@ -171,6 +171,8 @@ def test_inverter():
             "p_grid_apparent": None,
             "e_pv_generation_today": None,
             "e_pv_generation_total": None,
+            "e_inverter_out_today": None,
+            "e_inverter_out_total": None,
             "work_time_total_hours": None,
             "system_mode": None,
             "v_battery": None,
@@ -723,6 +725,8 @@ def test_from_registers(register_cache):
         "p_grid_apparent": 680,
         "e_pv_generation_today": 8.1,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_pv_generation_total": 93.0,
+        "e_inverter_out_today": None,  # HYBRID_GEN1 keeps the status quo (#293)
+        "e_inverter_out_total": None,
         "work_time_total_hours": 213,
         "system_mode": 1,
         "v_battery": 49.91,
@@ -1211,6 +1215,8 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "p_grid_apparent": 554,
         "e_pv_generation_today": 3.8,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_pv_generation_total": 172.5,
+        "e_inverter_out_today": None,  # HYBRID_GEN1 keeps the status quo (#293)
+        "e_inverter_out_total": None,
         "work_time_total_hours": 385,
         "system_mode": 1,
         "v_battery": 51.73,
@@ -1804,7 +1810,11 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     """IR(44) is e_pv_generation_today (#174); e_inverter_out_day is a deprecated alias.
 
     The two classes behave slightly differently:
-    - SinglePhaseInverter: alias returns e_pv_generation_today (IR44, verified).
+    - SinglePhaseInverter: alias prefers e_inverter_out_today (#293), falling back to
+      e_pv_generation_today when that's None — this cache has no HR(0)/HR(21) so the
+      model is unresolvable, the identity override never fires, and the alias falls
+      back to the live e_pv_generation_today value (status quo preserved for hybrids).
+      On AC/AIO the override moves the value across and the alias follows it there.
     - ThreePhaseInverter: alias returns e_pv_today (IR1412/3, the verified 3ph register),
       so warning and return value agree. IR44 still leaks as e_pv_generation_today via
       single-phase LUT inheritance, but the alias migration path is unambiguous.
@@ -1823,14 +1833,35 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        assert sp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]  # returns e_pv_generation_today
+        # (#293) unresolvable model → no override → alias falls back to e_pv_generation_today
+        assert sp.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
     sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
     assert len(sp_deprecations) == 1
-    assert "e_pv_generation_today" in str(sp_deprecations[0].message)
+    assert "e_inverter_out_today" in str(sp_deprecations[0].message)
 
     sp_dumped = sp.model_dump()
     assert "e_pv_generation_today" in sp_dumped
     assert "e_inverter_out_day" not in sp_dumped
+
+    # Single-phase, AC model: (#293) the identity override moves IR44 across, and the
+    # deprecated alias follows the live field to its new home.
+    sp_ac_cache = RegisterCache({HR(0): 0x3001, HR(21): 282, IR(44): 81})
+    sp_ac = SinglePhaseInverter.from_register_cache(sp_ac_cache)
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp_ac.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
+    assert len([x for x in w if issubclass(x.category, DeprecationWarning)]) == 1
+
+    # Single-phase, resolved DC hybrid: (#293) not in the override set, so
+    # e_inverter_out_today stays None and the alias falls back to
+    # e_pv_generation_today — the exact backward-compatibility case flagged in review.
+    sp_hybrid_cache = RegisterCache({HR(0): 0x2001, HR(21): 449, IR(44): 81})
+    sp_hybrid = SinglePhaseInverter.from_register_cache(sp_hybrid_cache)
+    assert sp_hybrid.e_inverter_out_today is None  # type: ignore[attr-defined]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert sp_hybrid.e_inverter_out_day == 8.1  # type: ignore[attr-defined]
+    assert len([x for x in w if issubclass(x.category, DeprecationWarning)]) == 1
 
     # Three-phase: IR44 leaks as e_pv_generation_today (unverified); the alias
     # returns e_pv_today (IR1412/3) so the migration path is unambiguous.
@@ -1856,39 +1887,17 @@ def test_e_pv_generation_today_rename_and_deprecated_alias():
     assert "e_inverter_out_day" not in tp_dumped
 
 
-def test_e_pv_generation_total_rename_and_deprecated_alias():
-    """IR(45/46) is e_pv_generation_total (#174); e_inverter_out_total is a deprecated alias.
+def test_e_inverter_out_total_threephase_native_field():
+    """ThreePhaseInverter's own e_inverter_out_total (IR1362/3) is unaffected by #293.
 
-    Unlike the day field, three-phase is NOT symmetric here:
-    - SinglePhaseInverter: IR(45/46) renamed to e_pv_generation_total; e_inverter_out_total
-      becomes a deprecated @property → e_pv_generation_total (not in model_dump()).
-    - ThreePhaseInverter: keeps its OWN native e_inverter_out_total (IR1362/3), a genuine,
-      distinct register from its PV total — so it stays a real field with no deprecation.
-      The single-phase IR(45/46) also leaks in as e_pv_generation_total (unverified on 3ph),
-      consistent with the e_pv_generation_today leak; left for #48.
+    SinglePhaseInverter's e_inverter_out_total is no longer a deprecated alias for
+    e_pv_generation_total — it is now a real field, live on AC/AIO models and covered by
+    the #293 identity-matrix tests in tests/model/test_manifest.py. ThreePhaseInverter
+    never reaches that validator (it has its own, unrelated, LUT-declared field), so its
+    native register stays a real, non-deprecated field distinct from its PV total.
     """
     from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
     from givenergy_modbus.model.register import IR
-
-    # Single-phase: IR(45/46) is the authoritative PV-generation-total register (uint32, deci).
-    sp_cache = RegisterCache({IR(45): 0, IR(46): 930})
-    sp = SinglePhaseInverter.from_register_cache(sp_cache)
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        assert sp.e_pv_generation_total == 93.0  # type: ignore[attr-defined]
-    assert [x for x in w if issubclass(x.category, DeprecationWarning)] == []
-
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        assert sp.e_inverter_out_total == 93.0  # type: ignore[attr-defined]  # returns e_pv_generation_total
-    sp_deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
-    assert len(sp_deprecations) == 1
-    assert "e_pv_generation_total" in str(sp_deprecations[0].message)
-
-    sp_dumped = sp.model_dump()
-    assert "e_pv_generation_total" in sp_dumped
-    assert "e_inverter_out_total" not in sp_dumped
 
     # Three-phase: e_inverter_out_total is a genuine native register (IR1362/3) — it stays
     # a real, non-deprecated field. The single-phase IR(45/46) leaks in as
@@ -2047,20 +2056,25 @@ def test_e_pv_direct_today_formula(pv_today, grid_out_day, battery_charge, ac_ch
 def test_e_pv_direct_today_none_on_ineligible_models():
     """AC-coupled and All-in-One return None — their PV registers are mislabelled (#293).
 
-    Both have e_battery_charge_today resolving (AC/AIO route today→alt1), so a plain
-    None-guard would let them through; the explicit topology gate is what blocks them.
+    Both have e_battery_charge_today resolving (AC/AIO route today→alt1) — that term
+    alone would not block them. What blocks them: manifest.py's IR44 identity routing
+    (#293) already makes e_pv_generation_today None on AC/AIO (the register carries
+    inverter output there, not PV), so the pv term's own None-propagation is what
+    returns None — there is no separate AC/AIO guard in e_pv_direct_today anymore.
     """
     from givenergy_modbus.model.register import HR, IR
 
-    # AC-coupled (0x3001): every input present, but is_ac_coupled gates it out.
+    # AC-coupled (0x3001): every input present, but IR44 identity routing (#293)
+    # makes e_pv_generation_today None here, so the pv term's None-propagation blocks it.
     ac = SinglePhaseInverter.from_register_cache(
         RegisterCache({HR(0): 0x3001, HR(21): 282, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
     )
     assert ac.is_ac_coupled is True  # type: ignore[attr-defined]
-    assert ac.e_battery_charge_today == 7.0  # resolves (today→alt1) — so the gate, not None-prop, blocks
+    assert ac.e_battery_charge_today == 7.0  # resolves (today→alt1) — unrelated to the None-prop above
     assert ac.e_pv_direct_today is None  # type: ignore[attr-defined]
 
-    # All-in-One (0x8001): PV register is non-PV here (#293) → gated out.
+    # All-in-One (0x8001): PV register is non-PV here (#293) → identity routing makes
+    # e_pv_generation_today None, so None-propagation blocks it, same as AC above.
     aio = SinglePhaseInverter.from_register_cache(
         RegisterCache({HR(0): 0x8001, HR(21): 612, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
     )
@@ -2087,6 +2101,94 @@ def test_e_pv_direct_today_none_when_battery_charge_unavailable():
         RegisterCache({HR(0): 0x2001, HR(21): 449, IR(44): 100, IR(25): 10, IR(183): 70})
     )
     assert no_ac.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+
+# Dataset-derived constants — AberDino 2×AIO site, 2026-06-29/30 delta analysis (#293).
+# The raw CSV is deliberately NOT committed (it carries the reporter's serial); these
+# daily figures are the durable extract. The same-site Gateway rollup's e_load_today,
+# observed on OTHER days, ran 8.1-18.7 kWh/day — no same-day pair exists yet.
+AIO_DATASET_20260630 = {
+    "e_pv_day_kwh": 12.5,
+    "hv_stack_charge_kwh": 14.4,
+    "hv_stack_discharge_kwh": 9.0,
+    "grid_import_kwh": 39.9,
+    "grid_export_kwh": 13.3,
+}
+GATEWAY_SAME_SITE_DAILY_LOAD_RANGE_KWH = (8.1, 18.7)
+
+
+def test_aio_balance_evidence_gate():
+    """Pin the #293 AIO-repair evidence-gate adjudication: cannot validate, stays None.
+
+    The candidate formula (pv + import - export + discharge - charge) yields 33.7 kWh
+    on the 2026-06-30 data; the only load reference (same-site Gateway rollup,
+    different days) runs 8.1-18.7 kWh/day, so the balance cannot be confirmed within
+    tolerance. If a same-day AIO-counters + Gateway e_load_today pair lands and closes
+    within ~15%, flip the manifest row, enable the deriveds for ALL_IN_ONE, and
+    retire this pin.
+    """
+    d = AIO_DATASET_20260630
+    formula = (
+        d["e_pv_day_kwh"]
+        + d["grid_import_kwh"]
+        - d["grid_export_kwh"]
+        + d["hv_stack_discharge_kwh"]
+        - d["hv_stack_charge_kwh"]
+    )
+    assert formula == pytest.approx(33.7, abs=0.1)
+    lo, hi = GATEWAY_SAME_SITE_DAILY_LOAD_RANGE_KWH
+    assert not (lo * 0.85 <= formula <= hi * 1.15)  # far outside the only reference
+
+
+def _inverter_with_energy_bank(dtc_hex: str, arm_fw: int):
+    """SinglePhaseInverter with identity + the full energy bank primed.
+
+    Register map confirmed against the Defs in inverter.py (LUT around :920-973):
+    IR(25)=e_grid_out_day, IR(26)=e_grid_in_day, IR(35)=e_ac_charge_today,
+    IR(36)=e_battery_charge_today_alt1, IR(37)=e_battery_discharge_today_alt1,
+    IR(44)=e_pv_generation_today (hybrids) / routed to e_inverter_out_today (AC/AIO,
+    #293 identity). All deci-scaled (register value / 10 = kWh).
+    """
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache(
+        {
+            HR(0): int(dtc_hex, 16),
+            HR(21): arm_fw,
+            IR(25): 10,  # e_grid_out_today (0.1 kWh units) -> 1.0
+            IR(26): 30,  # e_grid_in_today -> 3.0
+            IR(35): 20,  # e_ac_charge_today -> 2.0
+            IR(36): 15,  # e_battery_charge_today_alt1 -> 1.5
+            IR(37): 12,  # e_battery_discharge_today_alt1 -> 1.2
+            IR(44): 77,  # e_pv_generation_today (hybrids) / inverter out (AC/AIO) -> 7.7
+        }
+    )
+    return SinglePhaseInverter.from_register_cache(cache)
+
+
+def test_deriveds_none_on_aio_and_ac():
+    """Consumption-family deriveds are None where the PV term has no live identity (#293).
+
+    The corrected-AIO-formula evidence gate FAILED (no same-day independent load
+    reference exists yet) — see manifest.py's module comment for the missing evidence.
+    """
+    for dtc, fw in (("3001", 282), ("8001", 612)):
+        inv = _inverter_with_energy_bank(dtc, fw)
+        assert inv.e_consumption_today is None  # type: ignore[attr-defined]
+        assert inv.e_self_consumption_today is None  # type: ignore[attr-defined]
+        assert inv.e_self_consumption_total is None  # type: ignore[attr-defined]
+        assert inv.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+
+def test_deriveds_unchanged_on_hybrid():
+    """On a hybrid, e_consumption_today still computes from live registers (#293).
+
+    Hand-derivation from the primed bank (all deci-scaled, /10):
+    pv=7.7 (IR44) + grid_in=3.0 (IR26) - grid_out=1.0 (IR25) - ac_charge=2.0 (IR35)
+    = 7.7.
+    """
+    inv = _inverter_with_energy_bank("2001", 449)  # HYBRID_GEN1
+    assert inv.e_consumption_today == pytest.approx(7.7)  # type: ignore[attr-defined]
 
 
 def test_three_phase_has_no_computed_consumption_and_native_ac_charge():
@@ -2116,7 +2218,7 @@ def test_battery_energy_facade_routes_by_model():
     """Battery-energy facade routes each metric to the model's declared altN (#76).
 
     Which register a firmware populates is a static property of the model, declared in
-    _BATTERY_ENERGY_SOURCE — not inferred from live values (the #119 / #150-Codex
+    manifest.VALUE_SOURCES — not inferred from live values (the #119 / #150-Codex
     lesson). The declared source is returned verbatim, including a legitimate 0.0; an
     undeclared model or metric returns None, with no value inspection and no
     cross-source fallback. The specific model is resolved via DTC+arm_fw like slot_map,

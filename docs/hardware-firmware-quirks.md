@@ -33,13 +33,13 @@ return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
 genuinely battery energy, not a misread.
 
 **Implication.** The library's `alt1` battery-total source (`IR(180)`/`IR(181)` in
-`_BATTERY_ENERGY_SOURCE`) is correct for GEN1 but **firmware-fragile**: on a build that
+`manifest.VALUE_SOURCES`) is correct for GEN1 but **firmware-fragile**: on a build that
 implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
 a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
 never inferred from live values, and should migrate to the dedicated registers below
 when a unit supports them.
 
-**References.** v4.1.6 §4.1.2; `model/inverter.py` `_BATTERY_ENERGY_SOURCE`.
+**References.** v4.1.6 §4.1.2; `model/manifest.py` `VALUE_SOURCES`.
 
 ## Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
 
@@ -54,7 +54,7 @@ the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4
 firmware-version-string scheme), so this build predates several doc additions.
 
 **Implication.** IR194-197 cannot be a *universal* battery-total source. The library's
-`_BATTERY_ENERGY_SOURCE` is keyed by static `Model`, which has no way to express
+`manifest.VALUE_SOURCES` is keyed by static `Model`, which has no way to express
 "firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
 conditional until a unit is observed that actually populates them. Confirmed lower
 anchor: **HYBRID_GEN1 @ ARM 449 → absent.** No upper anchor (a unit that *does* populate

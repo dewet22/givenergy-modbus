@@ -1304,6 +1304,8 @@ def test_from_actual():
         "p_grid_apparent": 654,
         "e_pv_generation_today": 38.0,  # IR(44) — was mislabelled e_inverter_out_day (#174)
         "e_pv_generation_total": 1698.7,  # IR(45/46) — was mislabelled e_inverter_out_total (#174)
+        "e_inverter_out_today": None,  # HYBRID_GEN1 keeps the status quo (#293)
+        "e_inverter_out_total": None,
         "work_time_total_hours": 2754,
         "system_mode": 1,
         "v_battery": 51.28,

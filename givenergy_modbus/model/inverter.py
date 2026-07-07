@@ -3,7 +3,7 @@ import warnings
 from enum import Enum, IntEnum, StrEnum
 from typing import ClassVar
 
-from pydantic import ConfigDict, computed_field, create_model
+from pydantic import ConfigDict, computed_field, create_model, model_validator
 
 from givenergy_modbus.client.commands import _InverterCommands
 from givenergy_modbus.model.battery import ExportPriority
@@ -862,7 +862,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # (our max poll base is HR(240); GivTCP's add_regs detect-probe candidates top
         # out at HR(300)). Defined for naming symmetry with the IR alt sources and as
         # scaffold for a future #48 "does this block respond on real hardware?" probe;
-        # no model's _BATTERY_ENERGY_SOURCE routes here. The C.deci scaling diverges
+        # no model's manifest.VALUE_SOURCES entry routes here. The C.deci scaling diverges
         # from GivTCP's raw (None) defs — moot while unpolled, reconcile under #48.
         "e_battery_discharge_total_alt2": Def(C.uint32, C.deci, HR(4109), HR(4110)),
         "e_battery_charge_total_alt2": Def(C.uint32, C.deci, HR(4111), HR(4112)),
@@ -959,10 +959,13 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Inverter AC grid-terminal apparent power (VA); pairs with IR(24), not IR(30)
         # (IR43/IR24 → plausible PF ~0.9; IR43/IR30 → impossible). Same node as IR(24).
         "p_grid_apparent": Def(C.uint16, None, IR(43), max=50000),
-        # IR(44) is PV-generation-today and IR(45/46) is PV-generation-total (both
-        # sentinel cross-correlation, #174), not the inverter AC output. Renamed from
-        # "e_inverter_out_day" / "e_inverter_out_total"; the old names are kept as
-        # deprecated @property aliases for a release.
+        # IR(44) is PV-generation-today and IR(45/46) is PV-generation-total on most
+        # models (sentinel cross-correlation, #174) — but on AC/ALL_IN_ONE they carry
+        # the inverter's battery-discharge AC output instead (#293): see
+        # _apply_field_identity below, which moves the decoded value across to
+        # e_inverter_out_today/_total on exactly those two models. Renamed from
+        # "e_inverter_out_day" / "e_inverter_out_total"; "day" is kept as a deprecated
+        # @property alias for a release ("total" is now a real field, live on AC/AIO).
         # NB: this rename is single-phase only. ThreePhaseInverter has its OWN native
         # e_inverter_out_total (IR1362/3) — a genuine, distinct register from its PV
         # total (e_pv_total, IR1374/5) — so the 3ph field is left untouched.
@@ -1001,28 +1004,6 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         #
         "p_combined_generation": Def(C.uint32, None, IR(247), IR(248), max=100000),
     }
-
-
-# Per-(specific-model, metric) authoritative battery-energy source, keyed on the
-# Model resolved by resolve_model() — NOT the coarse `self.model` family. Declared
-# only where a wire capture positively confirms it; an absent model or metric routes
-# to None (honest "no evidence yet" + a forcing function for which captures to chase).
-# "today"/"total" each map to an altN whose register name is built as
-# e_battery_{charge,discharge}_{metric}_{altN} (see _battery_energy / the LUT renames).
-#
-#   alt1 = IR(36/37) daily, IR(180/181) total   alt2 = IR(182/183) daily, HR total (dead)
-#   alt3 = HR(4113/4114) daily (dead, never polled — see #48)
-#
-# Evidence (tests/fixtures/captures/): GEN1 populates the alt2 daily registers as
-# authoritative (non-alt read 0 on some firmware) and IR alt1 totals (17526/14791).
-# AC/AIO populate alt1 daily; their IR totals read a real 0 and where the lifetime
-# total actually lives is unknown (the HR block is never polled by anyone) — so total
-# is deliberately left undeclared → None rather than reporting a misleading 0.
-_BATTERY_ENERGY_SOURCE: dict[Model, dict[str, str]] = {
-    Model.HYBRID_GEN1: {"today": "alt2", "total": "alt1"},
-    Model.AC: {"today": "alt1"},
-    Model.ALL_IN_ONE: {"today": "alt1"},
-}
 
 
 _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
@@ -1064,12 +1045,51 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             return None
         return self.e_pv1_day + self.e_pv2_day  # type: ignore[attr-defined]
 
+    # Accurate per-model identity for IR(44)/IR(45-46) on AC/AIO (#293): the inverter's
+    # battery-discharge AC output. Populated ONLY by _apply_field_identity below; on
+    # DC hybrids these stay None and e_pv_generation_* carries the (genuine) PV values.
+    e_inverter_out_today: float | None = None
+    e_inverter_out_total: float | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _apply_field_identity(cls, values: dict) -> dict:
+        """Route model-dependent register identities per the manifest (#293).
+
+        Runs on the raw values dict (the model is frozen, so after-mode mutation is
+        unavailable). Overrides-only: unresolvable models keep the status quo.
+        Input-driven, so re-validation is idempotent: a value moves only when the
+        source field actually carries one, and re-validating a dumped model (where
+        e_pv_generation_* is already None) passes the moved values through untouched.
+        """
+        from givenergy_modbus.model.manifest import ir44_is_inverter_output
+
+        if not isinstance(values, dict):
+            return values
+        dtc = values.get("device_type_code")
+        arm_fw = values.get("arm_firmware_version")
+        if dtc is None or arm_fw is None:
+            return values
+        try:
+            model = resolve_model(int(dtc, 16), int(arm_fw))
+        except (TypeError, ValueError):
+            return values
+        if ir44_is_inverter_output(model, arm_fw=int(arm_fw)):
+            for src, dst in (
+                ("e_pv_generation_today", "e_inverter_out_today"),
+                ("e_pv_generation_total", "e_inverter_out_total"),
+            ):
+                if values.get(src) is not None:
+                    values[dst] = values.pop(src)
+                    values[src] = None
+        return values
+
     def _battery_energy(self, direction: str, metric: str) -> float | None:
         """Route a battery-energy metric to this model's authoritative alt register.
 
         Which register location a firmware populates is a *static* property of the
         model, not something to infer from live values (the #119 lesson — see #76 /
-        Codex review on #150). `_BATTERY_ENERGY_SOURCE` declares, per specific model,
+        Codex review on #150). `manifest.VALUE_SOURCES` declares, per specific model,
         which `altN` source is authoritative for each metric; the value is returned
         verbatim including a legitimate 0.0. Returns None when the model or metric is
         undeclared (honest "no evidence yet") — no value inspection, no cross-source
@@ -1082,7 +1102,9 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         if dtc is None or arm_fw is None:
             return None
         model = resolve_model(int(dtc, 16), int(arm_fw))
-        alt = _BATTERY_ENERGY_SOURCE.get(model, {}).get(metric)
+        from givenergy_modbus.model.manifest import battery_energy_source
+
+        alt = battery_energy_source(model, metric, arm_fw=int(arm_fw))
         if alt is None:
             return None
         return getattr(self, f"e_battery_{direction}_{metric}_{alt}")
@@ -1206,6 +1228,14 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 
         Three-phase units have a native e_load_today register and so do NOT get this
         computed field (it lives on SinglePhaseInverter only, not in the register LUT).
+
+        On AC-coupled and All-in-One units this returns None: manifest.py's IR44
+        identity routing (#293) already makes e_pv_generation_today None there (the
+        register carries inverter output, not PV, on those models), so the pv term's
+        own None-propagation below does the rest — no separate AC/AIO guard needed. A
+        candidate corrected-AIO consumption formula was evaluated against wire
+        evidence and failed the evidence gate; see manifest.py's module comment.
+
         Returns None if any input is unavailable.
         """
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
@@ -1232,6 +1262,10 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
           use state_class TOTAL_INCREASING (e.g. HA energy dashboard) MUST apply their
           own monotonic clamp rather than consuming the raw value directly.
 
+        On AC-coupled and All-in-One units this returns None via the same
+        None-propagation as e_consumption_today: manifest.py's IR44 identity routing
+        (#293) already makes e_pv_generation_today None there.
+
         Returns None if any input is unavailable.
         """
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
@@ -1252,6 +1286,9 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         guaranteed to increase monotonically. Consumers using state_class
         TOTAL_INCREASING MUST apply a monotonic clamp (e.g. HA's monotonic=True
         sensor path) rather than consuming the raw value directly.
+
+        On AC-coupled and All-in-One units this returns None: manifest.py's IR44
+        identity routing (#293) already makes e_pv_generation_total None there.
 
         Returns None if any input is unavailable.
         """
@@ -1281,12 +1318,16 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         without it, direct PV could exceed total on-site PV self-consumption, which is
         nonsensical (a subset can't beat its superset) — Codex review on #313.
 
-        Restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One units the
-        PV-generation registers (IR44/45-46) are mislabelled — they read non-zero on
-        battery-only hardware (#293) — so the field returns None there rather than a
-        confident wrong value. In practice e_battery_charge_today only routes on
-        HYBRID_GEN1 today (see _BATTERY_ENERGY_SOURCE / #184), so the field is currently
-        GEN1-effective and returns None on other DC models until that map widens.
+        Effectively restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One
+        units the PV-generation registers (IR44/45-46) are mislabelled — they carry the
+        inverter's battery-discharge AC output, not PV (#293) — and manifest.py's IR44
+        identity routing already makes e_pv_generation_today None there, so the pv term's
+        None-propagation below returns None with no separate AC/AIO guard needed. A
+        candidate corrected-AIO formula was evaluated against wire evidence and failed
+        the evidence gate; see manifest.py's module comment. In practice
+        e_battery_charge_today only routes on HYBRID_GEN1 today (see
+        manifest.VALUE_SOURCES / #184), so the field is currently GEN1-effective and
+        returns None on other DC models until that map widens.
 
         Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which
         single-phase firmware does not expose (three-phase only, IR1378/9).
@@ -1294,10 +1335,8 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         NOT monotonically increasing intraday — a grid-export burst can dip it — so
         consumers using state_class TOTAL_INCREASING MUST apply their own monotonic clamp
         (e.g. HA's monotonic=True path). Returns None if any input is unavailable or the
-        model is ineligible.
+        pv term is unavailable for this model (AC/AIO).
         """
-        if self.is_ac_coupled or self.model is Model.ALL_IN_ONE:  # type: ignore[attr-defined]
-            return None
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
         grid_out = self.e_grid_out_day  # type: ignore[attr-defined]
         battery_charge = self.e_battery_charge_today
@@ -1360,34 +1399,18 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         )
         return self.enable_inverter_parallel_mode  # type: ignore[attr-defined,no-any-return]
 
-    # Plain @property so the deprecated alias doesn't appear in model_dump().
-    # IR(44) was decoded as e_inverter_out_day (GivTCP-era guess); sentinel
-    # cross-correlation (#174) confirmed it is PV-generation-today. Renamed to
-    # e_pv_generation_today; this alias preserves back-compat for a release.
     @property
     def e_inverter_out_day(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_today`."""
+        """Deprecated alias for `e_inverter_out_today` (AC/AIO) or `e_pv_generation_today` (hybrids, #293)."""
         warnings.warn(
-            "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_pv_generation_today",
+            "SinglePhaseInverter.e_inverter_out_day is deprecated; use e_inverter_out_today "
+            "(AC/AIO) or e_pv_generation_today (DC hybrids)",
             DeprecationWarning,
             stacklevel=2,
         )
-        return self.e_pv_generation_today  # type: ignore[attr-defined,no-any-return]
-
-    # IR(45/46) was decoded as e_inverter_out_total (GivTCP-era guess); the same
-    # sentinel cross-correlation (#174) confirmed it is PV-generation-total. Renamed
-    # to e_pv_generation_total; this alias preserves back-compat for a release.
-    # Single-phase only: ThreePhaseInverter keeps its native e_inverter_out_total
-    # (IR1362/3), which is a genuine register there, so no alias is defined on 3ph.
-    @property
-    def e_inverter_out_total(self) -> float | None:
-        """Deprecated alias for `e_pv_generation_total`."""
-        warnings.warn(
-            "SinglePhaseInverter.e_inverter_out_total is deprecated; use e_pv_generation_total",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.e_pv_generation_total  # type: ignore[attr-defined,no-any-return]
+        if self.e_inverter_out_today is not None:
+            return self.e_inverter_out_today
+        return self.e_pv_generation_today  # type: ignore[attr-defined]
 
     # HR(63-82) renamed: _1/_2/_3 → _trip/_reconnect/_grid (installer-confirmed band structure).
     # Aliases preserve back-compat for a release.

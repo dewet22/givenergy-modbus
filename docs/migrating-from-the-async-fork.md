@@ -155,8 +155,8 @@ Same registers, clearer names (register numbers shown as the join key):
 |---|---|---|
 | `battery_percent` | `battery_soc` | IR(59) |
 | `e_inverter_in_day` | `e_ac_charge_today` | IR(35) |
-| `e_inverter_out_day` | `e_pv_generation_today` (deprecated alias kept for one release) | IR(44) |
-| `e_inverter_out_total` | `e_pv_generation_total` | IR(45,46) |
+| `e_inverter_out_day` | `e_pv_generation_today`[^ir44] (deprecated alias kept for one release) | IR(44) |
+| `e_inverter_out_total` | `e_pv_generation_total`[^ir44] | IR(45,46) |
 | `e_battery_throughput_total` | `e_battery_throughput` | IR(6,7) |
 | `e_battery_charge_today` | `e_battery_charge_today_alt1` | IR(36) |
 | `e_battery_discharge_today` | `e_battery_discharge_today_alt1` | IR(37) |
@@ -181,6 +181,13 @@ Same registers, clearer names (register numbers shown as the join key):
 | `temp_battery` | `t_battery` | IR(56) |
 | `temp_inverter_heatsink` | `t_inverter_heatsink` | IR(41) |
 | `work_time_total` | `work_time_total_hours` | IR(47,48) |
+
+[^ir44]: As of 2.10, IR(44)/IR(45,46) carry different quantities depending on
+    model (#293): on DC-coupled hybrids they're genuine PV generation and
+    `e_pv_generation_today`/`_total` stay live; on AC-coupled and All-in-One
+    units the registers actually report inverter AC output, so those fields
+    return `None` and the value lives on `e_inverter_out_today`/`_total`
+    instead. See the per-model contract in `model/manifest.py`.
 
 Computed values like `battery_max_power` and `inverter_max_power` are
 properties on the inverter model rather than register definitions, but keep
