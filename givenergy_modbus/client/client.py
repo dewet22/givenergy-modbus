@@ -1200,6 +1200,13 @@ class Client:
             reqs += [_request_for_range(r, inverter) for r in manifest.LOAD_CONFIG_THREE_PHASE_RANGES]
         if caps.has_extended_slots:
             reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
+        # getattr(caps, name), not manifest.gated_ranges(...): the latter reads
+        # manifest.CAPABILITIES directly and is blind to PropertyMock-patched
+        # instance properties, which two tests rely on for facts with no confirmed
+        # model yet (has_hv_cabinet_block/has_peak_shaving_block, #293). Every
+        # LOAD_CONFIG_RANGES fact today is firmware-independent, so this is safe;
+        # a future firmware-gated fact here would need manifest.gated_ranges(...,
+        # caps.arm_firmware_version) instead, since getattr() can't pass arm_fw.
         for name, entries in manifest.LOAD_CONFIG_RANGES.items():
             if getattr(caps, name):
                 reqs += [_request_for_range(r, inverter) for r in entries]
