@@ -5,7 +5,6 @@ import pytest
 
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.inverter import (
-    AC_COUPLED_MODELS,
     BatteryCalibrationStage,
     BatteryPowerMode,
     BatteryType,
@@ -2301,11 +2300,6 @@ def test_battery_energy_facade_routes_by_model():
     assert bare.e_battery_charge_total is None
 
 
-def test_ac_coupled_models_constant():
-    """AC_COUPLED_MODELS is exactly the two AC coarse families (no DC-coupled models)."""
-    assert AC_COUPLED_MODELS == frozenset({Model.AC, Model.AC_3PH})
-
-
 def test_single_phase_inverter_is_ac_coupled():
     """is_ac_coupled is True only for AC-coupled models, via coarse-family resolution.
 
@@ -2578,3 +2572,39 @@ def test_grid_protection_rename_and_deprecated_alias_three_phase(old_name, new_n
     dumped = inv.model_dump()
     assert new_name in dumped
     assert old_name not in dumped
+
+
+def test_ac_coupled_models_deprecated_alias():
+    """AC_COUPLED_MODELS still works via module __getattr__ but warns (#293 Slice B)."""
+    import givenergy_modbus.model.inverter as inverter_module
+    from givenergy_modbus.model.manifest import CAPABILITIES
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        value = inverter_module.AC_COUPLED_MODELS
+    assert value == CAPABILITIES["is_ac_coupled"]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "AC_COUPLED_MODELS" in str(deprecations[0].message)
+
+
+def test_three_phase_models_deprecated_alias():
+    """THREE_PHASE_MODELS still works via module __getattr__ but warns (#293 Slice B)."""
+    import givenergy_modbus.model.inverter_threephase as tp_module
+    from givenergy_modbus.model.manifest import CAPABILITIES
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        value = tp_module.THREE_PHASE_MODELS
+    assert value == CAPABILITIES["is_three_phase"]
+    deprecations = [x for x in w if issubclass(x.category, DeprecationWarning)]
+    assert len(deprecations) == 1
+    assert "THREE_PHASE_MODELS" in str(deprecations[0].message)
+
+
+def test_inverter_module_unknown_attribute_still_raises():
+    """__getattr__'s fallback preserves the normal AttributeError for real typos."""
+    import givenergy_modbus.model.inverter as inverter_module
+
+    with pytest.raises(AttributeError):
+        _ = inverter_module.NOT_A_REAL_ATTRIBUTE

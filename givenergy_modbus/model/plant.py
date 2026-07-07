@@ -7,7 +7,7 @@ from typing import Any, ClassVar, cast
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 from givenergy_modbus.exceptions import CommunicationError
-from givenergy_modbus.model import GivEnergyBaseModel
+from givenergy_modbus.model import GivEnergyBaseModel, manifest
 from givenergy_modbus.model.aio_battery import AioBatteryModule
 from givenergy_modbus.model.battery import Battery, BatteryRegisterGetter
 from givenergy_modbus.model.battery_splice import (
@@ -30,7 +30,6 @@ from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, BmuRegisterGetter, HvStack
 from givenergy_modbus.model.inverter import (
-    AC_COUPLED_MODELS,
     Model,
     SinglePhaseInverter,
     SinglePhaseInverterRegisterGetter,
@@ -52,86 +51,6 @@ from givenergy_modbus.pdu import (
 )
 
 _logger = logging.getLogger(__name__)
-
-# Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
-# Coarse families "4" (HYBRID_3PH), "6" (AC_3PH) and "8" (ALL_IN_ONE and variants)
-# are all HV; specific sub-variants are included explicitly.
-_HV_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.HYBRID_3PH,
-        Model.AC_3PH,
-        Model.ALL_IN_ONE,
-        Model.HYBRID_HV_GEN3,
-        Model.ALL_IN_ONE_HYBRID,
-    }
-)
-
-# Models with registers in the 1000-range (HR 1000–1124, IR 1000–1413), i.e. genuinely
-# three-phase units that expose the per-phase bank. NB: the residential ALL_IN_ONE (DTC
-# family "8", e.g. 0x8001) is HV but SINGLE-phase — it has no 1000-range bank (it error-
-# responds to those reads) and its data lives in the single-phase IR(0)/IR(180) banks. It
-# is intentionally excluded here (and from the decode-layout set in inverter_threephase.py)
-# while remaining in _HV_MODELS / _EXTENDED_SLOT_MODELS. Confirmed against real AIO hardware
-# (HR(0)=0x8001, owner-confirmed 1-phase) and the GE spec sheet (3.6 kW/16 A). See #105.
-_THREE_PHASE_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.HYBRID_3PH,
-        Model.AC_3PH,
-        Model.AIO_COMMERCIAL,
-        Model.ALL_IN_ONE_HYBRID,
-        Model.HYBRID_HV_GEN3,
-    }
-)
-
-# Models that use the extended 10-slot map (HR 240–299 for slots 3–10).
-_EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.HYBRID_GEN3,
-        Model.HYBRID_GEN4,
-        Model.ALL_IN_ONE,
-        Model.ALL_IN_ONE_HYBRID,
-        Model.HYBRID_HV_GEN3,
-    }
-)
-
-# Models that expose the HR(300–359) AC-output config block: export_priority (HR311),
-# battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot (HR318–320).
-# Present on AC-coupled inverters AND the All-in-One (which has an AC output stage with
-# the same export/EPS/AC-limit controls). DC-coupled/hybrid inverters lack the block and
-# time out when polled for it (#162). Evidence: Model.AC fixtures answer HR(300,60); the
-# AIO fixture answers HR(300,21) and a live AIO populates export_priority/enable_eps/
-# battery_*_limit_ac (#105). NB this is deliberately a separate set from AC_COUPLED_MODELS
-# (the is_ac_coupled predicate, which hass uses to scope AC controls) — whether the AIO is
-# "AC-coupled" for that purpose is a separate consumer decision; here we only care which
-# models carry this register block.
-_AC_CONFIG_BLOCK_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.AC,
-        Model.AC_3PH,
-        Model.ALL_IN_ONE,
-    }
-)
-
-# Models with a *readable* Smart Load slot block at HR(540-599). Deliberately empty:
-# the block was added speculatively from the GivEnergy app's Direct Control catalogue
-# (which only proves the writable surface, not that a live read answers), and no model
-# has yet been confirmed to return data on real hardware. HYBRID_GEN1 is confirmed to
-# *time out* on the read (#179, two independent reports). device_type here is the
-# firmware-resolved variant (resolve_model), so members may be gen-specific once any
-# model is confirmed. Until then the bulk read is gated off everywhere; the
-# smart_load_slot_* decode Defs and set_smart_load_slot_* write helpers are unaffected.
-_SMART_LOAD_CAPABLE_MODELS: frozenset[Model] = frozenset()
-
-# Models with a readable HV cabinet topology block at HR(499-510). Deliberately empty:
-# no model has been confirmed to return data on real hardware. Gate off until a capture
-# confirms the block responds; the hv_* decode Defs are unaffected.
-_HV_CABINET_MODELS: frozenset[Model] = frozenset()
-
-# Models with a readable peak-shaving block at HR(20000-20051). Deliberately empty:
-# no model has been confirmed to return data on real hardware. Gate off until a capture
-# confirms the block responds; the peak_shaving_* decode Defs are unaffected.
-_PEAK_SHAVING_MODELS: frozenset[Model] = frozenset()
-
 
 _CAPABILITIES_LEGACY_ALIASES = {
     "inverter_slave": "inverter_address",
@@ -230,6 +149,10 @@ class PlantCapabilities(BaseModel):
     # LV BCU page address (observed only at 0x31 — see model/lv_bcu.py). None when the
     # block read all-zero at detect time (firmware-gated, #241).
     lv_bcu_address: int | None = None
+    # ARM firmware version, read from HR(21) at detect() time. None if not yet known
+    # (e.g. a pre-Slice-B persisted payload). Enables firmware-gated capability facts
+    # such as has_extended_slots (#293 Slice B).
+    arm_firmware_version: int | None = None
 
     def __init__(
         self,
@@ -241,6 +164,7 @@ class PlantCapabilities(BaseModel):
         aio_battery_module_addresses: list[int] | None = None,
         lv_bcu_address: int | None = None,
         hv_bmu_addresses: list[int] | None = None,
+        arm_firmware_version: int | None = None,
         **kwargs: Any,
     ) -> None:
         # Custom __init__ for two reasons:
@@ -267,6 +191,8 @@ class PlantCapabilities(BaseModel):
             kwargs["lv_bcu_address"] = lv_bcu_address
         if hv_bmu_addresses is not None:
             kwargs["hv_bmu_addresses"] = hv_bmu_addresses
+        if arm_firmware_version is not None:
+            kwargs["arm_firmware_version"] = arm_firmware_version
         _map_legacy_aliases(kwargs, stacklevel=3)
         super().__init__(**kwargs)
 
@@ -367,7 +293,7 @@ class PlantCapabilities(BaseModel):
     @property
     def is_hv(self) -> bool:
         """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
-        return self.device_type in _HV_MODELS
+        return manifest.has_capability("is_hv", self.device_type)
 
     SCHEMA_VERSION: ClassVar[int] = 1
 
@@ -388,6 +314,7 @@ class PlantCapabilities(BaseModel):
             "aio_battery_module_addresses": [f"0x{a:02x}" for a in self.aio_battery_module_addresses],
             "hv_bmu_addresses": [f"0x{a:02x}" for a in self.hv_bmu_addresses],
             "lv_bcu_address": f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else None,
+            "arm_firmware_version": self.arm_firmware_version,
         }
 
     @classmethod
@@ -452,6 +379,7 @@ class PlantCapabilities(BaseModel):
             lv_bcu_address=(
                 _addr(normalised["lv_bcu_address"]) if normalised.get("lv_bcu_address") is not None else None
             ),
+            arm_firmware_version=normalised.get("arm_firmware_version"),
         )
 
     def __repr__(self) -> str:
@@ -470,61 +398,62 @@ class PlantCapabilities(BaseModel):
             f"bcu_stacks=[{bcus}], "
             f"aio_battery_module_addresses=[{aio_mods}], "
             f"hv_bmu_addresses=[{hv_bmus}], "
-            f"lv_bcu_address={lv_bcu})"
+            f"lv_bcu_address={lv_bcu}, "
+            f"arm_firmware_version={self.arm_firmware_version})"
         )
 
     @property
     def is_three_phase(self) -> bool:
         """Return True if this system uses three-phase registers (HR/IR 1000-range)."""
-        return self.device_type in _THREE_PHASE_MODELS
+        return manifest.has_capability("is_three_phase", self.device_type)
 
     @property
     def is_ac_coupled(self) -> bool:
         """Return True if this system is AC-coupled (no integrated DC battery)."""
-        return self.device_type in AC_COUPLED_MODELS
+        return manifest.has_capability("is_ac_coupled", self.device_type)
 
     @property
     def has_extended_slots(self) -> bool:
         """Return True if this system supports the extended 10-slot map (HR 240–299)."""
-        return self.device_type in _EXTENDED_SLOT_MODELS
+        return manifest.has_extended_slots(self.device_type, self.arm_firmware_version)
 
     @property
     def has_ac_config_block(self) -> bool:
-        """Return True if this system exposes the HR(300–359) AC-output config block.
+        """Return True if this system exposes the HR(300-359) AC-output config block.
 
         Covers export priority, EPS enable, AC charge/discharge limits and pause mode —
         present on AC-coupled inverters and the All-in-One, absent (times out) on
-        DC-coupled/hybrid models. See `_AC_CONFIG_BLOCK_MODELS` (#162).
+        DC-coupled/hybrid models. See `manifest.CAPABILITIES["has_ac_config_block"]` (#162).
         """
-        return self.device_type in _AC_CONFIG_BLOCK_MODELS
+        return manifest.has_capability("has_ac_config_block", self.device_type)
 
     @property
     def has_smart_load_block(self) -> bool:
-        """Return True if this system exposes a readable HR(540–599) Smart Load block.
+        """Return True if this system exposes a readable HR(540-599) Smart Load block.
 
         Currently False for every model: no inverter has been confirmed to answer the
         read on real hardware, and HYBRID_GEN1 is confirmed to time out on it. See
-        `_SMART_LOAD_CAPABLE_MODELS` (#179).
+        `manifest.CAPABILITIES["has_smart_load_block"]` (#179).
         """
-        return self.device_type in _SMART_LOAD_CAPABLE_MODELS
+        return manifest.has_capability("has_smart_load_block", self.device_type)
 
     @property
     def has_hv_cabinet_block(self) -> bool:
-        """Return True if this system exposes a readable HR(499–510) HV cabinet topology block.
+        """Return True if this system exposes a readable HR(499-510) HV cabinet topology block.
 
         Currently False for every model: no inverter has been confirmed to answer the read on
-        real hardware. See `_HV_CABINET_MODELS` (#265).
+        real hardware. See `manifest.CAPABILITIES["has_hv_cabinet_block"]` (#265).
         """
-        return self.device_type in _HV_CABINET_MODELS
+        return manifest.has_capability("has_hv_cabinet_block", self.device_type)
 
     @property
     def has_peak_shaving_block(self) -> bool:
-        """Return True if this system exposes a readable HR(20000–20051) peak-shaving block.
+        """Return True if this system exposes a readable HR(20000-20051) peak-shaving block.
 
         Currently False for every model: no inverter has been confirmed to answer the read on
-        real hardware. See `_PEAK_SHAVING_MODELS`.
+        real hardware. See `manifest.CAPABILITIES["has_peak_shaving_block"]`.
         """
-        return self.device_type in _PEAK_SHAVING_MODELS
+        return manifest.has_capability("has_peak_shaving_block", self.device_type)
 
     @property
     def is_ems(self) -> bool:
@@ -664,7 +593,8 @@ def _derive_capabilities(
     raw_dtc = cache.get(HR(0))
     if raw_dtc is None:
         raise CommunicationError("from_caches: HR(0) not present at device 0x11 — cannot determine device type")
-    caps = PlantCapabilities(device_type=resolve_model(raw_dtc, cache.get(HR(21)) or 0))
+    arm_fw = cache.get(HR(21)) or 0
+    caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw), arm_firmware_version=arm_fw or None)
 
     # HV topology (BCU stacks + AIO/HV-BMU per-module addresses). The is_valid() gates below and in
     # _derive_hv_topology wrap in try/except only when on_reject is not None (live detect path, where

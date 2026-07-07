@@ -2,8 +2,8 @@
 
 One place answering "what does this register/field mean on this model". Grown in
 slices: A (this file's initial content) covers register SEMANTICS — value-source
-routing and per-model field identity. Slices B-D will add the capability fact
-tables, the polling ranges, and the write surface.
+routing and per-model field identity. Slice B added the capability fact tables
+(`CAPABILITIES`, `has_extended_slots`); slices C-D will add the polling ranges and the write surface.
 
 Keys are the RESOLVED specific ``Model`` (from ``resolve_model``), never the coarse
 family. Every accessor takes ``arm_fw`` so a firmware column exists in the contract
@@ -94,3 +94,92 @@ def ir44_is_inverter_output(model: Model, arm_fw: int | None = None) -> bool:
 # bank to cross-check against. Whether that distinction matters (and whether a
 # gateway-fronted plant even needs the repair, since GatewayV1 already exposes
 # e_load_today natively) is a maintainer call, not resolved here.
+
+# Per-model capability facts, one frozenset per named fact. Relocated from six
+# independently-defined module constants (#293 Slice B): plant.py's _HV_MODELS,
+# _THREE_PHASE_MODELS, _AC_CONFIG_BLOCK_MODELS, _SMART_LOAD_CAPABLE_MODELS,
+# _HV_CABINET_MODELS, _PEAK_SHAVING_MODELS, and inverter.py's AC_COUPLED_MODELS.
+# _THREE_PHASE_MODELS was independently duplicated in inverter_threephase.py under
+# the public name THREE_PHASE_MODELS — same membership, two copies, nothing stopped
+# them drifting apart. Both public names (AC_COUPLED_MODELS, THREE_PHASE_MODELS) are
+# kept as deprecated __getattr__ shims in their original modules.
+CAPABILITIES: dict[str, frozenset[Model]] = {
+    # Models whose battery architecture is HV (BCU/BMU stacks rather than LV packs).
+    "is_hv": frozenset(
+        {
+            Model.HYBRID_3PH,
+            Model.AC_3PH,
+            Model.ALL_IN_ONE,
+            Model.HYBRID_HV_GEN3,
+            Model.ALL_IN_ONE_HYBRID,
+        }
+    ),
+    # Models with registers in the 1000-range (HR 1000-1124, IR 1000-1413), i.e.
+    # genuinely three-phase units that expose the per-phase bank. The residential
+    # ALL_IN_ONE (DTC family "8") is HV but SINGLE-phase — it error-responds to
+    # 1000-range reads and decodes via the single-phase IR(0)/IR(180) banks instead.
+    # Verified against real AIO hardware and the GE spec sheet (3.6 kW/16 A). See #105.
+    "is_three_phase": frozenset(
+        {
+            Model.HYBRID_3PH,
+            Model.AC_3PH,
+            Model.AIO_COMMERCIAL,
+            Model.ALL_IN_ONE_HYBRID,
+            Model.HYBRID_HV_GEN3,
+        }
+    ),
+    # AC-coupled inverters — no integrated DC battery.
+    "is_ac_coupled": frozenset({Model.AC, Model.AC_3PH}),
+    # Models that expose the HR(300-359) AC-output config block: export_priority
+    # (HR311), battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot
+    # (HR318-320). Present on AC-coupled inverters AND the All-in-One. DC-coupled/
+    # hybrid inverters lack the block and time out when polled for it (#162).
+    "has_ac_config_block": frozenset({Model.AC, Model.AC_3PH, Model.ALL_IN_ONE}),
+    # Models with a *readable* Smart Load slot block at HR(540-599). Deliberately
+    # empty — no model has been confirmed to return data on real hardware; HYBRID_GEN1
+    # is confirmed to time out on the read (#179). Gate off until a capture confirms.
+    "has_smart_load_block": frozenset(),
+    # Models with a readable HV cabinet topology block at HR(499-510). Deliberately
+    # empty — no model confirmed on real hardware yet (#265).
+    "has_hv_cabinet_block": frozenset(),
+    # Models with a readable peak-shaving block at HR(20000-20051). Deliberately
+    # empty — no model confirmed on real hardware yet.
+    "has_peak_shaving_block": frozenset(),
+}
+
+
+def has_capability(name: str, model: Model | None, arm_fw: int | None = None) -> bool:
+    """Return True if `model` has the named capability fact.
+
+    `model` accepts `None` because callers pass `self.model`, which is `None` when
+    the device type code hasn't been read yet — `None in CAPABILITIES[name]` is a
+    safe, honest `False` rather than forcing every call site to guard first.
+    `name` must be a key in `CAPABILITIES` — an unknown name raises `KeyError` rather
+    than silently returning False, since every call site is our own static-string
+    code and a typo should fail loudly. `arm_fw` is accepted for signature consistency
+    with every other manifest accessor; none of these facts are firmware-conditional.
+    """
+    return model in CAPABILITIES[name]
+
+
+# Models using the extended 10-slot map (HR 240-299 for slots 3-10). Relocated from
+# plant.py's _EXTENDED_SLOT_MODELS (#293 Slice B) — that copy listed HYBRID_GEN3
+# unconditionally, which disagreed with the register-layout decision actually made by
+# SinglePhaseInverter.slot_map (inverter.py), which only treats HYBRID_GEN3 as
+# extended above firmware 302. slot_map.py's own EXTENDED_SLOTS comment already
+# stated the correct rule; this fixes plant.py's copy to match it. ALL_IN_ONE_HYBRID
+# is three-phase-decoded and always uses THREE_PHASE_SLOTS (never the literal
+# EXTENDED_SLOTS object) — but THREE_PHASE_SLOTS genuinely has 10 slot pairs too, so
+# it belongs in this CAPABILITY set regardless of which SlotMap object serves it.
+_EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
+    {Model.HYBRID_GEN4, Model.ALL_IN_ONE, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3}
+)
+_EXTENDED_SLOT_FIRMWARE_GATE: dict[Model, int] = {Model.HYBRID_GEN3: 302}
+
+
+def has_extended_slots(model: Model, arm_fw: int | None = None) -> bool:
+    """True if `model` (at this firmware) uses the extended 10-slot map (HR 240-299)."""
+    if model in _EXTENDED_SLOT_MODELS:
+        return True
+    threshold = _EXTENDED_SLOT_FIRMWARE_GATE.get(model)
+    return threshold is not None and arm_fw is not None and arm_fw > threshold

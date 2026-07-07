@@ -9,7 +9,6 @@ from givenergy_modbus.client.commands import _InverterCommands, _ThreePhaseComma
 from givenergy_modbus.model.battery import BatteryMaintenance
 from givenergy_modbus.model.inverter import (
     _DTC_RATED_POWER,
-    AC_COUPLED_MODELS,
     BatteryType,
     Model,
     PowerFactorFunctionModel,
@@ -612,7 +611,9 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         Mirrors the field on SinglePhaseInverter (not inherited — the two inverter
         classes are parallel, like battery_max_power / inverter_max_power above).
         """
-        return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
+        from givenergy_modbus.model.manifest import has_capability
+
+        return has_capability("is_ac_coupled", self.model)  # type: ignore[attr-defined]
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -950,24 +951,6 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
         return self.time_grid_high_freq_limit_reconnect  # type: ignore[attr-defined,no-any-return]
 
 
-# Models that decode via the three-phase / 1000-range register layout. The residential
-# ALL_IN_ONE (DTC family "8", e.g. 0x8001) is deliberately absent: it is HV but single-
-# phase, and decoding it as ThreePhaseInverter shadows ~30 live fields (battery_soc, v_ac1,
-# f_ac1, firmware, charge slots, status…) to IR/HR(1000+) addresses it doesn't expose,
-# zeroing them. It carries its data in the single-phase IR(0)/IR(180) banks and so decodes
-# correctly as SinglePhaseInverter. Verified against real AIO register dumps (#105). HV
-# battery voltage, extended slots and is_hv stay model-keyed at the capabilities layer.
-THREE_PHASE_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.HYBRID_3PH,
-        Model.AC_3PH,
-        Model.AIO_COMMERCIAL,
-        Model.HYBRID_HV_GEN3,
-        Model.ALL_IN_ONE_HYBRID,
-    }
-)
-
-
 def _removed_per_phase_power_property(old: str, new: str) -> property:
     """Build a hard-failing property for a per-phase active-power field renamed in #185."""
 
@@ -992,8 +975,30 @@ def select_inverter(model: Model, register_cache) -> "SinglePhaseInverter | Thre
 
     Genuinely three-phase and HV-hybrid units use the 1000-range register address layout;
     everything else — including the residential single-phase ALL_IN_ONE — uses the
-    single-phase layout (see THREE_PHASE_MODELS for why the AIO is excluded).
+    single-phase layout (see manifest.CAPABILITIES["is_three_phase"] for why the AIO is
+    excluded).
     """
-    if model in THREE_PHASE_MODELS:
+    from givenergy_modbus.model.manifest import has_capability
+
+    if has_capability("is_three_phase", model):
         return ThreePhaseInverter.from_register_cache(register_cache)
     return SinglePhaseInverter.from_register_cache(register_cache)
+
+
+def __getattr__(name: str) -> object:
+    """PEP 562 module attribute deprecation shim (#293 Slice B).
+
+    THREE_PHASE_MODELS moved to manifest.CAPABILITIES["is_three_phase"]; kept
+    accessible here for backward compatibility until the 3.0 deprecation horizon.
+    """
+    if name == "THREE_PHASE_MODELS":
+        warnings.warn(
+            "givenergy_modbus.model.inverter_threephase.THREE_PHASE_MODELS is deprecated; "
+            "use givenergy_modbus.model.manifest.has_capability('is_three_phase', model)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from givenergy_modbus.model.manifest import CAPABILITIES
+
+        return CAPABILITIES["is_three_phase"]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

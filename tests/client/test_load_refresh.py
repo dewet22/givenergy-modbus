@@ -164,8 +164,12 @@ async def test_load_config_three_phase():
 
 
 async def test_load_config_extended_slots():
-    """Extended-slot DC-coupled model adds HR 240–299 but not HR(300-359)."""
-    client = _client_with_caps(Model.HYBRID_GEN3)
+    """Extended-slot DC-coupled model adds HR 240–299 but not HR(300-359).
+
+    HYBRID_GEN3 is extended-slot only above firmware 302 (#293 Slice B) — pin the
+    firmware above the boundary so this test keeps exercising the extended-slot path.
+    """
+    client = _client_with_caps(Model.HYBRID_GEN3, arm_firmware_version=303)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [

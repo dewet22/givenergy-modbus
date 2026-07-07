@@ -88,13 +88,6 @@ _DTC_PREFIX_TO_MODEL: dict[str, Model] = {
     "83": Model.HYBRID_GEN4,
 }
 
-# AC-coupled inverters: no integrated DC battery, so they expose dedicated AC
-# charge/discharge limit registers (HR313/314) that DC-coupled models don't.
-# Both are coarse families with no specific sub-variants, so the set is complete
-# (an AC DTC like 0x3001 resolves to Model.AC via Model._missing_). Consumers gate
-# AC-only controls on this rather than re-deriving the model set themselves.
-AC_COUPLED_MODELS: frozenset[Model] = frozenset({Model.AC, Model.AC_3PH})
-
 # Rated AC output power in watts, keyed by 4-char hex device type code.
 # Original entries from britkat1980/giv_tcp:dev3. Entries marked "(app v4.0.7)" were added from
 # the GivEnergy app's authoritative HR(0) model-code table (#320): all 36 codes that overlapped the
@@ -1168,14 +1161,14 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
     @property
     def slot_map(self) -> SlotMap:
         """Register address pairs for the charge/discharge time slots on this model."""
+        from givenergy_modbus.model.manifest import has_extended_slots
+
         dtc = self.device_type_code  # type: ignore[attr-defined]
         arm_fw = self.arm_firmware_version  # type: ignore[attr-defined]
         if dtc is None or arm_fw is None:
             return SINGLE_PHASE_SLOTS
         model = resolve_model(int(dtc, 16), int(arm_fw))
-        if model in (Model.ALL_IN_ONE, Model.HYBRID_GEN4, Model.HYBRID_HV_GEN3):
-            return EXTENDED_SLOTS
-        if model is Model.HYBRID_GEN3 and int(arm_fw) > 302:
+        if has_extended_slots(model, int(arm_fw)):
             return EXTENDED_SLOTS
         return SINGLE_PHASE_SLOTS
 
@@ -1208,7 +1201,9 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         Model.AC_3PH and neither has specific sub-variants. False when the model is
         unknown (DTC unread).
         """
-        return self.model in AC_COUPLED_MODELS  # type: ignore[attr-defined]
+        from givenergy_modbus.model.manifest import has_capability
+
+        return has_capability("is_ac_coupled", self.model)  # type: ignore[attr-defined]
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -1617,6 +1612,15 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 
 
 def __getattr__(name: str):
+    """PEP 562 module attribute deprecation shim.
+
+    Serves two deprecated names — the pre-existing `Inverter` rename alias, and
+    AC_COUPLED_MODELS (moved to manifest.CAPABILITIES["is_ac_coupled"], #293 Slice B).
+    Both are kept accessible here for backward compatibility until the 3.0
+    deprecation horizon. Deliberately a single `__getattr__`: Python only honours the
+    last one defined at module scope, so a second definition would silently shadow
+    this one rather than raising or merging.
+    """
     if name == "Inverter":
         warnings.warn(
             "Inverter has been renamed to SinglePhaseInverter and the alias will be removed in a future release. "
@@ -1625,4 +1629,14 @@ def __getattr__(name: str):
             stacklevel=2,
         )
         return SinglePhaseInverter
+    if name == "AC_COUPLED_MODELS":
+        warnings.warn(
+            "givenergy_modbus.model.inverter.AC_COUPLED_MODELS is deprecated; "
+            "use givenergy_modbus.model.manifest.has_capability('is_ac_coupled', model)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        from givenergy_modbus.model.manifest import CAPABILITIES
+
+        return CAPABILITIES["is_ac_coupled"]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

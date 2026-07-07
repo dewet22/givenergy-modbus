@@ -1001,7 +1001,11 @@ class Client:
                 "detect: HR(0) not populated after reading device 0x11 — cannot determine device type"
             )
         arm_fw = cache.get(HR(21)) or 0
-        caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw))
+        # arm_firmware_version here is consistency-only: this intermediate `caps` only
+        # feeds the probing steps below (is_hv, device_type), none of which read
+        # firmware. The object detect() actually returns is built separately in
+        # _derive_capabilities() (#293 Slice B), which populates the field for real.
+        caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw), arm_firmware_version=arm_fw or None)
         _logger.info("detect: device_type=Model.%s", caps.device_type.name)
 
         if prior is not None and prior.device_type != caps.device_type:
@@ -1075,7 +1079,13 @@ class Client:
             ", ".join(f"0x{a:02x}" for a in final_caps.hv_bmu_addresses),
         )
 
-        if prior is not None and prior != final_caps:
+        # arm_firmware_version is informational, not part of the topology contract — a
+        # firmware upgrade on otherwise-unchanged hardware must not raise a mismatch
+        # here (#293 Slice B added the field; excluding it from this comparison keeps
+        # PlantTopologyMismatch scoped to genuine address/device-type/count changes).
+        if prior is not None and prior.model_dump(exclude={"arm_firmware_version"}) != final_caps.model_dump(
+            exclude={"arm_firmware_version"}
+        ):
             self.plant.capabilities = None
             raise PlantTopologyMismatch(
                 f"detect: plant topology does not match prior — prior={prior!r}, actual={final_caps!r}",
