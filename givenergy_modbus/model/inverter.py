@@ -1228,6 +1228,14 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
 
         Three-phase units have a native e_load_today register and so do NOT get this
         computed field (it lives on SinglePhaseInverter only, not in the register LUT).
+
+        On AC-coupled and All-in-One units this returns None: manifest.py's IR44
+        identity routing (#293) already makes e_pv_generation_today None there (the
+        register carries inverter output, not PV, on those models), so the pv term's
+        own None-propagation below does the rest — no separate AC/AIO guard needed. A
+        candidate corrected-AIO consumption formula was evaluated against wire
+        evidence and failed the evidence gate; see manifest.py's module comment.
+
         Returns None if any input is unavailable.
         """
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
@@ -1254,6 +1262,10 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
           use state_class TOTAL_INCREASING (e.g. HA energy dashboard) MUST apply their
           own monotonic clamp rather than consuming the raw value directly.
 
+        On AC-coupled and All-in-One units this returns None via the same
+        None-propagation as e_consumption_today: manifest.py's IR44 identity routing
+        (#293) already makes e_pv_generation_today None there.
+
         Returns None if any input is unavailable.
         """
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
@@ -1274,6 +1286,9 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         guaranteed to increase monotonically. Consumers using state_class
         TOTAL_INCREASING MUST apply a monotonic clamp (e.g. HA's monotonic=True
         sensor path) rather than consuming the raw value directly.
+
+        On AC-coupled and All-in-One units this returns None: manifest.py's IR44
+        identity routing (#293) already makes e_pv_generation_total None there.
 
         Returns None if any input is unavailable.
         """
@@ -1303,12 +1318,16 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         without it, direct PV could exceed total on-site PV self-consumption, which is
         nonsensical (a subset can't beat its superset) — Codex review on #313.
 
-        Restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One units the
-        PV-generation registers (IR44/45-46) are mislabelled — they read non-zero on
-        battery-only hardware (#293) — so the field returns None there rather than a
-        confident wrong value. In practice e_battery_charge_today only routes on
-        HYBRID_GEN1 today (see _BATTERY_ENERGY_SOURCE / #184), so the field is currently
-        GEN1-effective and returns None on other DC models until that map widens.
+        Effectively restricted to DC-coupled solar hybrids: on AC-coupled and All-in-One
+        units the PV-generation registers (IR44/45-46) are mislabelled — they carry the
+        inverter's battery-discharge AC output, not PV (#293) — and manifest.py's IR44
+        identity routing already makes e_pv_generation_today None there, so the pv term's
+        None-propagation below returns None with no separate AC/AIO guard needed. A
+        candidate corrected-AIO formula was evaluated against wire evidence and failed
+        the evidence gate; see manifest.py's module comment. In practice
+        e_battery_charge_today only routes on HYBRID_GEN1 today (see
+        _BATTERY_ENERGY_SOURCE / #184), so the field is currently GEN1-effective and
+        returns None on other DC models until that map widens.
 
         Only daily is offered: the lifetime equivalent needs e_ac_charge_total, which
         single-phase firmware does not expose (three-phase only, IR1378/9).
@@ -1316,10 +1335,8 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         NOT monotonically increasing intraday — a grid-export burst can dip it — so
         consumers using state_class TOTAL_INCREASING MUST apply their own monotonic clamp
         (e.g. HA's monotonic=True path). Returns None if any input is unavailable or the
-        model is ineligible.
+        pv term is unavailable for this model (AC/AIO).
         """
-        if self.is_ac_coupled or self.model is Model.ALL_IN_ONE:  # type: ignore[attr-defined]
-            return None
         pv = self.e_pv_generation_today  # type: ignore[attr-defined]
         grid_out = self.e_grid_out_day  # type: ignore[attr-defined]
         battery_charge = self.e_battery_charge_today

@@ -2043,20 +2043,25 @@ def test_e_pv_direct_today_formula(pv_today, grid_out_day, battery_charge, ac_ch
 def test_e_pv_direct_today_none_on_ineligible_models():
     """AC-coupled and All-in-One return None — their PV registers are mislabelled (#293).
 
-    Both have e_battery_charge_today resolving (AC/AIO route today→alt1), so a plain
-    None-guard would let them through; the explicit topology gate is what blocks them.
+    Both have e_battery_charge_today resolving (AC/AIO route today→alt1) — that term
+    alone would not block them. What blocks them: manifest.py's IR44 identity routing
+    (#293) already makes e_pv_generation_today None on AC/AIO (the register carries
+    inverter output there, not PV), so the pv term's own None-propagation is what
+    returns None — there is no separate AC/AIO guard in e_pv_direct_today anymore.
     """
     from givenergy_modbus.model.register import HR, IR
 
-    # AC-coupled (0x3001): every input present, but is_ac_coupled gates it out.
+    # AC-coupled (0x3001): every input present, but IR44 identity routing (#293)
+    # makes e_pv_generation_today None here, so the pv term's None-propagation blocks it.
     ac = SinglePhaseInverter.from_register_cache(
         RegisterCache({HR(0): 0x3001, HR(21): 282, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
     )
     assert ac.is_ac_coupled is True  # type: ignore[attr-defined]
-    assert ac.e_battery_charge_today == 7.0  # resolves (today→alt1) — so the gate, not None-prop, blocks
+    assert ac.e_battery_charge_today == 7.0  # resolves (today→alt1) — unrelated to the None-prop above
     assert ac.e_pv_direct_today is None  # type: ignore[attr-defined]
 
-    # All-in-One (0x8001): PV register is non-PV here (#293) → gated out.
+    # All-in-One (0x8001): PV register is non-PV here (#293) → identity routing makes
+    # e_pv_generation_today None, so None-propagation blocks it, same as AC above.
     aio = SinglePhaseInverter.from_register_cache(
         RegisterCache({HR(0): 0x8001, HR(21): 612, IR(44): 100, IR(25): 10, IR(36): 70, IR(35): 40})
     )
@@ -2083,6 +2088,94 @@ def test_e_pv_direct_today_none_when_battery_charge_unavailable():
         RegisterCache({HR(0): 0x2001, HR(21): 449, IR(44): 100, IR(25): 10, IR(183): 70})
     )
     assert no_ac.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+
+# Dataset-derived constants — AberDino 2×AIO site, 2026-06-29/30 delta analysis (#293).
+# The raw CSV is deliberately NOT committed (it carries the reporter's serial); these
+# daily figures are the durable extract. The same-site Gateway rollup's e_load_today,
+# observed on OTHER days, ran 8.1-18.7 kWh/day — no same-day pair exists yet.
+AIO_DATASET_20260630 = {
+    "e_pv_day_kwh": 12.5,
+    "hv_stack_charge_kwh": 14.4,
+    "hv_stack_discharge_kwh": 9.0,
+    "grid_import_kwh": 39.9,
+    "grid_export_kwh": 13.3,
+}
+GATEWAY_SAME_SITE_DAILY_LOAD_RANGE_KWH = (8.1, 18.7)
+
+
+def test_aio_balance_evidence_gate():
+    """Pin the #293 AIO-repair evidence-gate adjudication: cannot validate, stays None.
+
+    The candidate formula (pv + import - export + discharge - charge) yields 33.7 kWh
+    on the 2026-06-30 data; the only load reference (same-site Gateway rollup,
+    different days) runs 8.1-18.7 kWh/day, so the balance cannot be confirmed within
+    tolerance. If a same-day AIO-counters + Gateway e_load_today pair lands and closes
+    within ~15%, flip the manifest row, enable the deriveds for ALL_IN_ONE, and
+    retire this pin.
+    """
+    d = AIO_DATASET_20260630
+    formula = (
+        d["e_pv_day_kwh"]
+        + d["grid_import_kwh"]
+        - d["grid_export_kwh"]
+        + d["hv_stack_discharge_kwh"]
+        - d["hv_stack_charge_kwh"]
+    )
+    assert formula == pytest.approx(33.7, abs=0.1)
+    lo, hi = GATEWAY_SAME_SITE_DAILY_LOAD_RANGE_KWH
+    assert not (lo * 0.85 <= formula <= hi * 1.15)  # far outside the only reference
+
+
+def _inverter_with_energy_bank(dtc_hex: str, arm_fw: int):
+    """SinglePhaseInverter with identity + the full energy bank primed.
+
+    Register map confirmed against the Defs in inverter.py (LUT around :920-973):
+    IR(25)=e_grid_out_day, IR(26)=e_grid_in_day, IR(35)=e_ac_charge_today,
+    IR(36)=e_battery_charge_today_alt1, IR(37)=e_battery_discharge_today_alt1,
+    IR(44)=e_pv_generation_today (hybrids) / routed to e_inverter_out_today (AC/AIO,
+    #293 identity). All deci-scaled (register value / 10 = kWh).
+    """
+    from givenergy_modbus.model.register import IR
+
+    cache = RegisterCache(
+        {
+            HR(0): int(dtc_hex, 16),
+            HR(21): arm_fw,
+            IR(25): 10,  # e_grid_out_today (0.1 kWh units) -> 1.0
+            IR(26): 30,  # e_grid_in_today -> 3.0
+            IR(35): 20,  # e_ac_charge_today -> 2.0
+            IR(36): 15,  # e_battery_charge_today_alt1 -> 1.5
+            IR(37): 12,  # e_battery_discharge_today_alt1 -> 1.2
+            IR(44): 77,  # e_pv_generation_today (hybrids) / inverter out (AC/AIO) -> 7.7
+        }
+    )
+    return SinglePhaseInverter.from_register_cache(cache)
+
+
+def test_deriveds_none_on_aio_and_ac():
+    """Consumption-family deriveds are None where the PV term has no live identity (#293).
+
+    The corrected-AIO-formula evidence gate FAILED (no same-day independent load
+    reference exists yet) — see manifest.py's module comment for the missing evidence.
+    """
+    for dtc, fw in (("3001", 282), ("8001", 612)):
+        inv = _inverter_with_energy_bank(dtc, fw)
+        assert inv.e_consumption_today is None  # type: ignore[attr-defined]
+        assert inv.e_self_consumption_today is None  # type: ignore[attr-defined]
+        assert inv.e_self_consumption_total is None  # type: ignore[attr-defined]
+        assert inv.e_pv_direct_today is None  # type: ignore[attr-defined]
+
+
+def test_deriveds_unchanged_on_hybrid():
+    """On a hybrid, e_consumption_today still computes from live registers (#293).
+
+    Hand-derivation from the primed bank (all deci-scaled, /10):
+    pv=7.7 (IR44) + grid_in=3.0 (IR26) - grid_out=1.0 (IR25) - ac_charge=2.0 (IR35)
+    = 7.7.
+    """
+    inv = _inverter_with_energy_bank("2001", 449)  # HYBRID_GEN1
+    assert inv.e_consumption_today == pytest.approx(7.7)  # type: ignore[attr-defined]
 
 
 def test_three_phase_has_no_computed_consumption_and_native_ac_charge():
