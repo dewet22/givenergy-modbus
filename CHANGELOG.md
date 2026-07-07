@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.8] - 2026-07-07
+
+### 🐛 Fixed
+
+- coalesce identical splice-reject WARNINGs during sustained bursts (#355) (#364) ([426e233](https://github.com/dewet22/givenergy-modbus/commit/426e23324d8ed1bf31afb9816ffd55a6aeee6274))
+
 ## [2.9.7] - 2026-07-07
 
 ### 🐛 Fixed
