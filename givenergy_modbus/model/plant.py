@@ -16,6 +16,7 @@ from givenergy_modbus.model.battery_splice import (
     IMMUTABLE_SERIAL,
     SCALAR_IMMUT_HEAL_POLLS,
     SPLICE_REJECT_HEAL_POLLS,
+    SPLICE_REJECT_REWARN_SECONDS,
     STALE_BYPASS_SECONDS,
     THRESHOLD_BY_CLASS,
     classify_transition,
@@ -846,6 +847,13 @@ class Plant(GivEnergyBaseModel):
     # adopted as the new baseline. Ephemeral; not serialised.
     _splice_reject_streak: dict[int, tuple[list[int], datetime, int]] = PrivateAttr(default_factory=dict)
 
+    # Per-device coalescing state for sustained same-signature reject bursts (#355):
+    # device -> (trip signature = frozenset of (register, rule-name), burst start, rejection
+    # count, last WARNING-emitted at). Onset warns with full detail, identical repeats drop to
+    # DEBUG, an over-interval burst re-warns, and the first successful commit afterwards logs a
+    # single clearing WARNING with the tally. Ephemeral; not serialised.
+    _splice_reject_burst: dict[int, tuple[frozenset, datetime, int, datetime]] = PrivateAttr(default_factory=dict)
+
     # Direct-inverter register caches injected by add_direct_source() for multi-Client
     # reconciliation (#106 Phase 3). Stored separately from register_caches to avoid the
     # Modbus address collision (both EMS controller and direct inverter live at 0x11).
@@ -1152,10 +1160,19 @@ class Plant(GivEnergyBaseModel):
         # all the checks above wave through. Runs last so the existing serial gate owns serial
         # corruption (quietly) and the bounds pass runs first; it must see last-good, so it sits
         # before the update below. Gated to battery banks via the getter identity.
-        if getter_cls is BatteryRegisterGetter and not self._splice_guard(
-            device_address, incoming, register_count, now=received_at
-        ):
-            return False
+        if getter_cls is BatteryRegisterGetter:
+            if not self._splice_guard(device_address, incoming, register_count, now=received_at):
+                return False
+            # A committing FULL battery bank closes out any coalesced reject burst (#355).
+            # Short reads (register_count < 60) pass the guard unevaluated — mirroring the
+            # guard's own gate — so a count=1 fan-out commit between corrupt full banks
+            # must not pop the burst (it would log a misleading 'cleared' and re-spam
+            # fresh onsets).
+            if register_count >= 60:
+                commit_ts = received_at if received_at is not None else datetime.now(UTC)
+                if commit_ts.tzinfo is None:
+                    commit_ts = commit_ts.replace(tzinfo=UTC)
+                self._splice_burst_note_commit(device_address, commit_ts)
         self.register_caches[device_address].update(incoming)
         return True
 
@@ -1295,11 +1312,13 @@ class Plant(GivEnergyBaseModel):
             self._splice_immut_streak.pop(device_address, None)
             self._splice_reject_streak.pop(device_address, None)
             self._bump(self.splice_reject_count, device_address)
-            _logger.warning(
+            warn_now, suffix = self._splice_burst_note_reject(device_address, serial_immut + phys, now_ts)
+            (_logger.warning if warn_now else _logger.debug)(
                 "Rejected battery bank for device 0x%02x — sub-bus splice (serial-block change); "
-                "keeping last-good. Trips: %s. Please report if seen.",
+                "keeping last-good. Trips: %s%s. Please report if seen.",
                 device_address,
                 self._format_splice_trips(serial_immut + phys),
+                suffix,
             )
             return False
 
@@ -1316,11 +1335,21 @@ class Plant(GivEnergyBaseModel):
                 return self._handle_reject_streak(device_address, new, present, phys, now_ts)
             self._splice_reject_streak.pop(device_address, None)
             self._bump(self.splice_reject_count, device_address)
-            _logger.warning(
+            warn_now, suffix = self._splice_burst_note_reject(device_address, phys, now_ts)
+            # "Please report if seen" solicits UNcharacterised shapes only (#355): the corpus's
+            # sole corruption signature is the temperature family (cell-mass IR76-79/103-104 +
+            # mosfet IR81 — the temp-zero cohort and its partial variants), characterised to
+            # death, so reporting it adds nothing. Any trip OUTSIDE the temp family is a novel
+            # shape — exactly the evidence the corpus model and the #299 heal question still want.
+            _TEMP_FAMILY = ("cell_temp_deci", "mosfet_temp_deci")
+            plea = "" if all(name in _TEMP_FAMILY for _ir, name, _o, _n in phys) else " Please report if seen."
+            (_logger.warning if warn_now else _logger.debug)(
                 "Rejected battery bank for device 0x%02x — sub-bus splice (>=2 physics-impossible "
-                "deltas); keeping last-good. Trips: %s. Please report if seen.",
+                "deltas); keeping last-good. Trips: %s%s.%s",
                 device_address,
                 self._format_splice_trips(phys),
+                suffix,
+                plea,
             )
             return False
 
@@ -1583,6 +1612,44 @@ class Plant(GivEnergyBaseModel):
     def _fmt_scalar_sig(scalar_immut: list[tuple[int, str, int, int]]) -> str:
         """Render scalar-immutable trips compactly for the INFO logs, e.g. ``IR(98) 3005->3010``."""
         return ", ".join(f"IR({ir_no}) {old}->{new}" for ir_no, _name, old, new in scalar_immut)
+
+    def _splice_burst_note_reject(
+        self, device_address: int, trips: list[tuple[int, str, int, int]], now_ts: datetime
+    ) -> tuple[bool, str]:
+        """Track a hard reject in the per-device burst state; decide WARNING vs DEBUG (#355).
+
+        Returns ``(warn_now, suffix)``: ``warn_now`` is True for a burst onset, a changed trip
+        signature, or an over-interval escalation re-warn; the suffix carries the running tally on
+        escalations. The signature is the SET of tripped (register, rule) pairs — value-agnostic,
+        so jittering corrupt values don't defeat the coalescing.
+        """
+        sig = frozenset((ir, name) for ir, name, _old, _new in trips)
+        burst = self._splice_reject_burst.get(device_address)
+        if burst is None or burst[0] != sig:
+            self._splice_reject_burst[device_address] = (sig, now_ts, 1, now_ts)
+            return True, ""
+        _, start, count, last_warn = burst
+        count += 1
+        if (now_ts - last_warn).total_seconds() >= SPLICE_REJECT_REWARN_SECONDS:
+            self._splice_reject_burst[device_address] = (sig, start, count, now_ts)
+            return True, f" (ongoing burst: {count} rejections over {(now_ts - start).total_seconds():.0f}s)"
+        self._splice_reject_burst[device_address] = (sig, start, count, last_warn)
+        return False, ""
+
+    def _splice_burst_note_commit(self, device_address: int, now_ts: datetime) -> None:
+        """Close out a reject burst on a successful commit; log the tally once (#355).
+
+        Singleton rejections skip the clearing line — their onset WARNING already told the story.
+        """
+        burst = self._splice_reject_burst.pop(device_address, None)
+        if burst is not None and burst[2] > 1:
+            _logger.warning(
+                "Battery bank for device 0x%02x: splice burst cleared after %d rejections over %.0fs "
+                "— last-good was held throughout.",
+                device_address,
+                burst[2],
+                (now_ts - burst[1]).total_seconds(),
+            )
 
     @staticmethod
     def _format_splice_trips(trips: list[tuple[int, str, int, int]]) -> str:

@@ -129,6 +129,11 @@ SCALAR_IMMUT_HEAL_POLLS: int = 10
 #: so the two want independent tuning. Same degenerate-cadence-floor role as its sibling.
 SPLICE_REJECT_HEAL_POLLS: int = 10
 
+#: Re-warn interval for a sustained same-signature reject burst (#355): the onset logs at
+#: WARNING, identical repeats drop to DEBUG (splice_reject_count keeps the tally), and a burst
+#: still ongoing after this many seconds re-emits a WARNING so a stuck condition can't go quiet.
+SPLICE_REJECT_REWARN_SECONDS: float = 300.0
+
 #: Absolute raw-unit bounds (mirrored from the ``Battery`` model) for the voltage/capacity classes a
 #: #299 heal may adopt. The KEYS are also the *only* trip classes a heal is eligible for: every
 #: corruption signature in the corpus is a temp-zero cohort (cell-mass IR76-79, mosfet IR81,
