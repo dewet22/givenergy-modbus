@@ -2977,8 +2977,12 @@ def test_splice_serial_block_change_always_rejected(plant: Plant, caplog):
         for n in range(1, 25):  # 24 polls @ 15 s = 360 s; observation clock refreshes so bypass never fires
             _feed_bank(plant, swapped, device_address=_BATT, received_at=_T0 + timedelta(seconds=15 * n))
     assert plant.register_caches[_BATT][IR(110)] == 0x4247  # last-good serial held forever
+    # Every poll was rejected (the counter is the tally); the WARNINGs coalesce (#355):
+    # onset at t=15s + one escalation re-warn at t=315s (>=300s interval) = exactly 2.
+    assert plant.splice_reject_count == {_BATT: 24}
     serial_rejects = [r for r in caplog.records if "serial-block change" in r.message and "0x33" in r.message]
-    assert len(serial_rejects) == 24
+    assert len(serial_rejects) == 2
+    assert "ongoing burst" in serial_rejects[1].message
     assert not [r for r in caplog.records if "adopting as new baseline" in r.message]  # never healed
 
 
@@ -3679,9 +3683,12 @@ def test_splice_sustained_corruption_never_bypassed(plant: Plant, caplog):
     assert plant.register_caches[_BATT][IR(76)] == 250
     # The bypass must never have fired (it would have adopted a corrupt bank).
     assert not [r for r in caplog.records if "stale baseline" in r.message]
-    # Every corrupt poll was rejected.
+    # Every corrupt poll was rejected (counter tally); WARNINGs coalesce (#355):
+    # onset at t=30s + one escalation re-warn at t=330s (>=300s interval) = exactly 2.
+    assert plant.splice_reject_count == {_BATT: 20}
     rejects = [r for r in caplog.records if "Rejected battery bank" in r.message and "0x33" in r.message]
-    assert len(rejects) == 20
+    assert len(rejects) == 2
+    assert "ongoing burst" in rejects[1].message
 
 
 def test_splice_bypass_only_after_genuine_gap_not_rejection_streak(plant: Plant, caplog):
@@ -3750,3 +3757,110 @@ def test_splice_guard_defaults_now_when_received_at_missing(plant: Plant):
     # Second bank moments later: gap ~0 s (no bypass), single in-threshold change commits.
     _feed_bank(plant, _coherent_battery_bank({60: 3350}), device_address=_BATT)
     assert plant.register_caches[_BATT][IR(60)] == 3350
+
+
+# ---------------------------------------------------------------------------
+# Splice-reject WARNING coalescing during sustained bursts (#355)
+# ---------------------------------------------------------------------------
+
+
+def _corrupt_tempzero_bank() -> dict[int, int]:
+    """A ≥2-physics temp-zero-cohort bank (the 2026-07-01 field-burst shape)."""
+    return _coherent_battery_bank({76: 560, 78: 0, 81: 0})
+
+
+def test_splice_burst_first_reject_warns_repeats_debug(plant: Plant, caplog):
+    """Onset of a burst logs the full-detail WARNING; identical-signature repeats drop to DEBUG.
+
+    The counter keeps the per-rejection tally — nothing quantitative is lost (#284/#355).
+    """
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.model.plant"):
+        for i in range(1, 6):
+            _feed_bank(
+                plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * i)
+            )
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
+    debugs = [r for r in caplog.records if r.levelno == logging.DEBUG and "sub-bus splice" in r.message]
+    assert len(warns) == 1, "only the burst onset may WARN"
+    assert len(debugs) == 4, "repeats stay visible at DEBUG"
+    assert plant.splice_reject_count == {_BATT: 5}  # tally unaffected
+
+
+def test_splice_burst_clear_warns_once_with_stats(plant: Plant, caplog):
+    """A successful commit after a multi-rejection burst logs one clearing WARNING with stats."""
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    for i in range(1, 4):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10 * i))
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(
+            plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=40)
+        )  # healthy again → commits
+    clears = [r for r in caplog.records if "splice burst cleared" in r.message]
+    assert len(clears) == 1
+    assert "3 rejection" in clears[0].message
+    assert plant.register_caches[_BATT][IR(60)] == 3300  # recovery committed
+
+
+def test_splice_burst_singleton_reject_no_clear_line(plant: Plant, caplog):
+    """A single rejection followed by recovery logs no 'cleared' line — onset already told the story."""
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=20))
+    assert not [r for r in caplog.records if "splice burst cleared" in r.message]
+
+
+def test_splice_burst_signature_change_warns_again(plant: Plant, caplog):
+    """A different trip signature mid-burst is a new onset — full-detail WARNING again."""
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+        # different registers trip: cell-voltage + capacity class instead of temps
+        _feed_bank(
+            plant,
+            _coherent_battery_bank({60: 0, 61: 0, 77: 0, 79: 0}),
+            device_address=_BATT,
+            received_at=_T0 + timedelta(seconds=20),
+        )
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
+    assert len(warns) == 2, "changed signature must re-warn with full detail"
+
+
+def test_splice_burst_escalation_rewarns_after_interval(plant: Plant, caplog):
+    """A burst outliving the re-warn interval re-emits at WARNING so a stuck condition can't go silent."""
+    import logging
+
+    _establish_baseline(plant, device_address=_BATT, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10))
+        _feed_bank(
+            plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=40)
+        )  # inside interval → suppressed
+        _feed_bank(
+            plant, _corrupt_tempzero_bank(), device_address=_BATT, received_at=_T0 + timedelta(seconds=10 + 301)
+        )  # past the 300s re-warn interval
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
+    assert len(warns) == 2, "escalation re-warn expected after the interval"
+    assert "ongoing" in warns[1].message
+
+
+def test_splice_burst_isolated_per_device(plant: Plant, caplog):
+    """Bursts on different devices coalesce independently — each gets its own onset WARNING."""
+    import logging
+
+    _establish_baseline(plant, device_address=0x33, received_at=_T0)
+    _establish_baseline(plant, device_address=0x34, received_at=_T0)
+    with caplog.at_level(logging.WARNING, logger="givenergy_modbus.model.plant"):
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=0x33, received_at=_T0 + timedelta(seconds=10))
+        _feed_bank(plant, _corrupt_tempzero_bank(), device_address=0x34, received_at=_T0 + timedelta(seconds=11))
+    warns = [r for r in caplog.records if r.levelno == logging.WARNING and "sub-bus splice" in r.message]
+    assert len(warns) == 2
