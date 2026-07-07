@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.7] - 2026-07-07
+
+### 🐛 Fixed
+
+- default select_gateway to the V1 word order; commit first Gateway fixtures (#360) (#361) ([4d2fd62](https://github.com/dewet22/givenergy-modbus/commit/4d2fd62192d259aa74cb9f1f083e9795f9e30a46))
+
+### 🔧 Maintenance
+
+- add evidence-based supported-hardware matrix to the README (#363) ([91b53a0](https://github.com/dewet22/givenergy-modbus/commit/91b53a0d275227a7443fe2c05a4c805599675a39))
+
 ## [2.9.6] - 2026-07-02
 
 ### 🐛 Fixed
