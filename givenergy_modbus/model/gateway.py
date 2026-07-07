@@ -155,11 +155,17 @@ _GATEWAY_V2_ENERGY_TOTALS = {
     "e_battery_discharge_total": Def(C.uint32, C.deci, IR(1800), IR(1799)),
 }
 
-# AIO serial number addresses differ between v1 and v2 firmware
+# AIO serial number addresses differ between v1 and v2 firmware.
+# V1 layout LIVE-CONFIRMED (#360, gateway_2aio_a fixtures): contiguous 5-register
+# stride from IR(1841) — aio1 1841-1845, aio2 1846-1850, aio3 1851-1855. The old
+# pre-live table (1831/1838/1845) matched neither observed slot; being wrong here
+# also silently exempts the slots from FrameRedactor's serial redaction (the
+# redactor derives its groups from these LUTs), which is how an unredacted AIO
+# serial reached a capture.
 _GATEWAY_V1_SERIALS = {
-    "aio1_serial_number": Def(C.serial, None, IR(1831), IR(1832), IR(1833), IR(1834), IR(1835)),
-    "aio2_serial_number": Def(C.serial, None, IR(1838), IR(1839), IR(1840), IR(1841), IR(1842)),
-    "aio3_serial_number": Def(C.serial, None, IR(1845), IR(1846), IR(1847), IR(1848), IR(1849)),
+    "aio1_serial_number": Def(C.serial, None, IR(1841), IR(1842), IR(1843), IR(1844), IR(1845)),
+    "aio2_serial_number": Def(C.serial, None, IR(1846), IR(1847), IR(1848), IR(1849), IR(1850)),
+    "aio3_serial_number": Def(C.serial, None, IR(1851), IR(1852), IR(1853), IR(1854), IR(1855)),
 }
 
 _GATEWAY_V2_SERIALS = {
@@ -221,13 +227,18 @@ class GatewayV2(_GatewayV2Base):  # type: ignore[misc,valid-type]
 
 
 def select_gateway(register_cache) -> "GatewayV1 | GatewayV2":
-    """Return the appropriate Gateway variant based on firmware version.
+    """Return the Gateway model for a register cache — currently always the V1 layout (#360).
 
-    Reads IR(1603) — the last register of the version string — and compares its
-    raw value against 10. GA000009 and earlier have a raw value < 10; GA000010
-    and later have a value >= 10.
+    The old selector compared raw IR(1603) against 10 ("GA000010+ uses swapped uint32
+    word order"). The first live gateway falsified that claim on both levels: firmware
+    GAAA0014 carries IR(1603)=0x0104 (raw 260, so the raw test mis-fired), AND it is
+    "version 14" by any reading yet is V1-ordered on the wire — all ten uint32 energy
+    totals decode sanely in V1 order and 10^4-10^5 too large in V2 order (the swap also
+    shifts the per-AIO serial bases). Both layout tables predate live traffic; every
+    live observation to date is V1.
+
+    GatewayV2 is retained for explicit use. A genuine V2 unit would announce itself as
+    a gateway whose energy totals decode absurdly large *under V1* — if one appears,
+    reinstate selection here keyed on evidence from that capture.
     """
-    fw_raw = register_cache.get(IR(1603))
-    if fw_raw is not None and fw_raw >= 10:
-        return GatewayV2.from_register_cache(register_cache)
     return GatewayV1.from_register_cache(register_cache)

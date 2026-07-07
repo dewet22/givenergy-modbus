@@ -231,3 +231,60 @@ async def test_fixture_error_response_count(relpath: str, expected_errors: int):
             if isinstance(pdu, TransparentResponse) and pdu.error:
                 errors += 1
     assert errors == expected_errors
+
+
+@pytest.mark.timeout(20)
+async def test_gateway_classifies_and_decodes_v1_totals():
+    """Gen1 Gateway: 0x7001/GAAA0014 → Model.GATEWAY; select_gateway picks the V1 word order (#360).
+
+    The energy-total pins are the #360 regression trap: the old raw-IR(1603) selector chose the
+    swapped-word V2 layout on this firmware, inflating every uint32 total by 10^4-10^5. The
+    today-counter pin (per-AIO sum == battery total) guards the map's internal consistency.
+    """
+    from givenergy_modbus.model.gateway import GatewayV1, select_gateway
+
+    plant = await _replay("gateway_2aio_a/gateway_gaaa0014_10min_daylight.log")
+    caps = _classify(plant)
+
+    assert caps.device_type is Model.GATEWAY
+    assert caps.inverter_address == 0x11
+    assert not caps.is_hv and not caps.is_ems
+
+    gw = select_gateway(plant.register_caches[0x11])
+    assert isinstance(gw, GatewayV1)
+    assert gw.software_version == "GAAA0014"
+    assert gw.parallel_aio_num == 2
+    # V1 word order: sane lifetime totals (V2 order inflates these to ~4e8 / ~3e8 / ~1.5e8)
+    assert gw.e_grid_import_total == 12710.8
+    assert gw.e_pv_total == 5087.0
+    assert gw.e_battery_charge_total == 8855.9
+    # Map-consistency: per-AIO charge todays sum exactly to the battery total
+    assert gw.e_aio1_charge_today + gw.e_aio2_charge_today == pytest.approx(gw.e_battery_charge_today)
+    # Live AIO-serial layout (#361 review): contiguous 5-register stride from IR(1841).
+    # Pinning these keeps FrameRedactor's derived serial groups honest — a wrong layout
+    # here silently exempts the slots from redaction.
+    assert gw.aio1_serial_number == "CH2414G000"
+    assert gw.aio2_serial_number == "CH2542G000"
+    assert not gw.aio3_serial_number  # only two AIOs on this plant
+
+
+@pytest.mark.timeout(20)
+async def test_gateway_night_capture_classifies_and_selects_v1():
+    """The GivTCP-only deep-night capture: same classification and V1 selection, p_pv dark (#360).
+
+    Complements the daylight golden: single-client traffic, zero instantaneous solar —
+    guards decode paths where values are legitimately zero rather than absent.
+    """
+    from givenergy_modbus.model.gateway import GatewayV1, select_gateway
+
+    plant = await _replay("gateway_2aio_a/gateway_gaaa0014_10min_night.log")
+    caps = _classify(plant)
+
+    assert caps.device_type is Model.GATEWAY
+    gw = select_gateway(plant.register_caches[0x11])
+    assert isinstance(gw, GatewayV1)
+    assert gw.software_version == "GAAA0014"
+    assert gw.parallel_aio_num == 2
+    assert gw.p_pv == 0  # deep night
+    # V1 word order holds on this capture too (V2 order would inflate ~1.5e8)
+    assert 8000 < gw.e_battery_charge_total < 9000
