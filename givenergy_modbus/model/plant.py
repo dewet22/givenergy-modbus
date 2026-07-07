@@ -458,12 +458,12 @@ class PlantCapabilities(BaseModel):
     @property
     def is_ems(self) -> bool:
         """Return True if this system is an EMS plant controller (HR/IR 2040-range)."""
-        return self.device_type in (Model.EMS, Model.EMS_COMMERCIAL)
+        return manifest.has_capability("is_ems", self.device_type)
 
     @property
     def is_gateway(self) -> bool:
         """Return True if this system is a Gateway (IR 1600-range)."""
-        return self.device_type == Model.GATEWAY
+        return manifest.has_capability("is_gateway", self.device_type)
 
 
 def _validated_serial(device: Any) -> str | None:
