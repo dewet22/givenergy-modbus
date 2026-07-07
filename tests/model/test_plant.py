@@ -3892,7 +3892,7 @@ def test_splice_burst_short_read_does_not_clear(plant: Plant, caplog):
 
 
 def test_splice_reject_report_plea_gated_on_novel_signature(plant: Plant, caplog):
-    """ "Please report if seen" only solicits shapes we haven't characterised (#355).
+    """The report plea only solicits shapes we haven't characterised (#355).
 
     The temp-zero cohort is corpus-characterised to death — a report adds nothing, so its
     onset drops the plea. A novel ≥2-physics shape (voltage-class trips) keeps it: that is
