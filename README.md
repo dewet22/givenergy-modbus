@@ -26,6 +26,25 @@ A Python library for communicating with GivEnergy inverters via Modbus TCP on a 
 * Reading all registers and decoding them into their representative datatypes
 * Writing data to holding registers that are deemed to be safe to set configuration on the inverter
 
+## Supported hardware
+
+The library speaks to GivEnergy plants through the wifi/ethernet data adapter ("dongle") using their Modbus-TCP variant. Support is evidence-based: **validated** means the decode is pinned by golden-master tests against committed wire captures from real hardware in [`tests/fixtures/captures/`](https://github.com/dewet22/givenergy-modbus/tree/main/tests/fixtures/captures).
+
+| Plant type | Status | Notes |
+|---|---|---|
+| Single-phase hybrid (Gen 1/Gen 3) | ✅ Validated | The reference platform. Battery-less (AC/PV-only) configurations detect correctly too. |
+| AC-coupled single-phase (AC / AC Gen 3) | ✅ Validated | Including EMS-managed operation. |
+| All-in-One (AIO) | ✅ Validated | HV battery stack decoded per-module (BCU + BMS + per-BMU cell data at their own device addresses). |
+| Three-phase hybrid (HV) | ✅ Validated | Per-phase electrical data; HV stacks with per-cell BMU decode. |
+| EMS controller | ✅ Validated | Plant-level rollup, managed-inverter enumeration, EMS-specific register banks. |
+| Gateway (Gen 1) | ✅ Validated | Fronting parallel AIOs; battery data register-embedded per-AIO in the gateway rollup. |
+| Single-phase hybrid Gen 2 | ⚠️ Untested | Modelled, but no Gen 2 unit has ever been observed — a field report from an EA-prefix owner would settle the device type code. |
+| Polar, commercial variants (AIO/EMS Commercial), 3-phase AC | ⚠️ Untested | Model codes known; decode unverified against real hardware. |
+
+Batteries: LV packs (chained at their own device addresses), the LV BCU, HV stacks (BCU/BMS/per-module BMUs), and gateway-embedded per-AIO data are all modelled. Energy meters (EM115/EM418, up to eight) decode including per-phase power factor and apparent power.
+
+Firmware oddities are documented as we find them in [hardware & firmware quirks](https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/). If your hardware isn't listed — or misbehaves — an issue with a short wire capture is the fastest route to support: every ✅ above exists because someone contributed one.
+
 ## How to use
 
 The client is async. Use it inside an `asyncio` event loop; commands are plain functions that return request lists
