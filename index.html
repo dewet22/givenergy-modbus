@@ -337,6 +337,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#supported-hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported hardware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-to-use" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -847,6 +858,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#supported-hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported hardware
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#how-to-use" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -922,6 +944,61 @@ yourself in the foot, so as long as you use the client and its exposed methods, 
 <li>Reading all registers and decoding them into their representative datatypes</li>
 <li>Writing data to holding registers that are deemed to be safe to set configuration on the inverter</li>
 </ul>
+<h3 id="supported-hardware">Supported hardware<a class="headerlink" href="#supported-hardware" title="Permanent link">&para;</a></h3>
+<p>The library speaks to GivEnergy plants through the wifi/ethernet data adapter ("dongle") using their Modbus-TCP variant. Support is evidence-based: <strong>validated</strong> means the decode is pinned by golden-master tests against committed wire captures from real hardware in <a href="https://github.com/dewet22/givenergy-modbus/tree/main/tests/fixtures/captures"><code>tests/fixtures/captures/</code></a>.</p>
+<table>
+<thead>
+<tr>
+<th>Plant type</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Single-phase hybrid (Gen 1/Gen 3)</td>
+<td>✅ Validated</td>
+<td>The reference platform. Battery-less (AC/PV-only) configurations detect correctly too.</td>
+</tr>
+<tr>
+<td>AC-coupled single-phase (AC / AC Gen 3)</td>
+<td>✅ Validated</td>
+<td>Including EMS-managed operation.</td>
+</tr>
+<tr>
+<td>All-in-One (AIO)</td>
+<td>✅ Validated</td>
+<td>HV battery stack decoded per-module (BCU + BMS + per-BMU cell data at their own device addresses).</td>
+</tr>
+<tr>
+<td>Three-phase hybrid (HV)</td>
+<td>✅ Validated</td>
+<td>Per-phase electrical data; HV stacks with per-cell BMU decode.</td>
+</tr>
+<tr>
+<td>EMS controller</td>
+<td>✅ Validated</td>
+<td>Plant-level rollup, managed-inverter enumeration, EMS-specific register banks.</td>
+</tr>
+<tr>
+<td>Gateway (Gen 1)</td>
+<td>✅ Validated</td>
+<td>Fronting parallel AIOs; battery data register-embedded per-AIO in the gateway rollup.</td>
+</tr>
+<tr>
+<td>Single-phase hybrid Gen 2</td>
+<td>⚠️ Untested</td>
+<td>Modelled, but no Gen 2 unit has ever been observed — a field report from an EA-prefix owner would settle the device type code.</td>
+</tr>
+<tr>
+<td>Polar, commercial variants (AIO/EMS Commercial), 3-phase AC</td>
+<td>⚠️ Untested</td>
+<td>Model codes known; decode unverified against real hardware.</td>
+</tr>
+</tbody>
+</table>
+<p>Batteries: LV packs (chained at their own device addresses), the LV BCU, HV stacks (BCU/BMS/per-module BMUs), and gateway-embedded per-AIO data are all modelled. Energy meters (EM115/EM418, up to eight) decode including per-phase power factor and apparent power.</p>
+<p>Firmware oddities are documented as we find them in <a href="https://dewet22.github.io/givenergy-modbus/hardware-firmware-quirks/">hardware &amp; firmware quirks</a>. If your hardware isn't listed — or misbehaves — an issue with a short wire capture is the fastest route to support: every ✅ above exists because someone contributed one.</p>
 <h3 id="how-to-use">How to use<a class="headerlink" href="#how-to-use" title="Permanent link">&para;</a></h3>
 <p>The client is async. Use it inside an <code>asyncio</code> event loop; commands are plain functions that return request lists
 which you send via <code>one_shot_command</code> or <code>execute</code>:</p>
