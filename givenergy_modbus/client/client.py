@@ -1001,7 +1001,7 @@ class Client:
                 "detect: HR(0) not populated after reading device 0x11 — cannot determine device type"
             )
         arm_fw = cache.get(HR(21)) or 0
-        caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw))
+        caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw), arm_firmware_version=arm_fw or None)
         _logger.info("detect: device_type=Model.%s", caps.device_type.name)
 
         if prior is not None and prior.device_type != caps.device_type:

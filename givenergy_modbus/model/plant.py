@@ -52,17 +52,6 @@ from givenergy_modbus.pdu import (
 
 _logger = logging.getLogger(__name__)
 
-# Models that use the extended 10-slot map (HR 240–299 for slots 3–10).
-_EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
-    {
-        Model.HYBRID_GEN3,
-        Model.HYBRID_GEN4,
-        Model.ALL_IN_ONE,
-        Model.ALL_IN_ONE_HYBRID,
-        Model.HYBRID_HV_GEN3,
-    }
-)
-
 _CAPABILITIES_LEGACY_ALIASES = {
     "inverter_slave": "inverter_address",
     "meter_slaves": "meter_addresses",
@@ -160,6 +149,10 @@ class PlantCapabilities(BaseModel):
     # LV BCU page address (observed only at 0x31 — see model/lv_bcu.py). None when the
     # block read all-zero at detect time (firmware-gated, #241).
     lv_bcu_address: int | None = None
+    # ARM firmware version, read from HR(21) at detect() time. None if not yet known
+    # (e.g. a pre-Slice-B persisted payload). Enables firmware-gated capability facts
+    # such as has_extended_slots (#293 Slice B).
+    arm_firmware_version: int | None = None
 
     def __init__(
         self,
@@ -318,6 +311,7 @@ class PlantCapabilities(BaseModel):
             "aio_battery_module_addresses": [f"0x{a:02x}" for a in self.aio_battery_module_addresses],
             "hv_bmu_addresses": [f"0x{a:02x}" for a in self.hv_bmu_addresses],
             "lv_bcu_address": f"0x{self.lv_bcu_address:02x}" if self.lv_bcu_address is not None else None,
+            "arm_firmware_version": self.arm_firmware_version,
         }
 
     @classmethod
@@ -382,6 +376,7 @@ class PlantCapabilities(BaseModel):
             lv_bcu_address=(
                 _addr(normalised["lv_bcu_address"]) if normalised.get("lv_bcu_address") is not None else None
             ),
+            arm_firmware_version=normalised.get("arm_firmware_version"),
         )
 
     def __repr__(self) -> str:
@@ -416,7 +411,7 @@ class PlantCapabilities(BaseModel):
     @property
     def has_extended_slots(self) -> bool:
         """Return True if this system supports the extended 10-slot map (HR 240–299)."""
-        return self.device_type in _EXTENDED_SLOT_MODELS
+        return manifest.has_extended_slots(self.device_type, self.arm_firmware_version)
 
     @property
     def has_ac_config_block(self) -> bool:
@@ -594,7 +589,8 @@ def _derive_capabilities(
     raw_dtc = cache.get(HR(0))
     if raw_dtc is None:
         raise CommunicationError("from_caches: HR(0) not present at device 0x11 — cannot determine device type")
-    caps = PlantCapabilities(device_type=resolve_model(raw_dtc, cache.get(HR(21)) or 0))
+    arm_fw = cache.get(HR(21)) or 0
+    caps = PlantCapabilities(device_type=resolve_model(raw_dtc, arm_fw), arm_firmware_version=arm_fw or None)
 
     # HV topology (BCU stacks + AIO/HV-BMU per-module addresses). The is_valid() gates below and in
     # _derive_hv_topology wrap in try/except only when on_reject is not None (live detect path, where

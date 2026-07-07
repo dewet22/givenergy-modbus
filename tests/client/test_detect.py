@@ -304,6 +304,33 @@ async def test_detect_resolves_model_from_hr0_hr21():
     assert client.plant.capabilities is caps
 
 
+@pytest.mark.asyncio
+async def test_detect_populates_arm_firmware_version():
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 300})
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = object()
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert caps.arm_firmware_version == 300
+
+
+@pytest.mark.asyncio
+async def test_detect_arm_firmware_version_none_when_hr21_zero():
+    """arm_fw=0 is the 'HR(21) absent/unpopulated' sentinel — stored as None, not 0."""
+    client = _make_client()
+    _prime_cache(client, 0x11, {HR(0): 0x2001, HR(21): 0})
+
+    with patch.object(client, "send_request_and_await_response", new_callable=AsyncMock) as mock_req:
+        mock_req.return_value = object()
+        with patch.object(client, "_probe", new=AsyncMock(return_value=False)):
+            caps = await client.detect()
+
+    assert caps.arm_firmware_version is None
+
+
 def _prime_battery_serial(client: Client, device_address: int) -> None:
     """Prime a device cache with a valid battery serial number (IR 110–114)."""
     # "SA1234A567" encoded as five big-endian 16-bit register values.

@@ -2114,11 +2114,11 @@ class TestPlantCapabilitiesProperties:
 
     from givenergy_modbus.model.plant import PlantCapabilities
 
-    def _caps(self, model: Model) -> "PlantCapabilities":
-        """Build a minimal PlantCapabilities for the given model."""
+    def _caps(self, model: Model, arm_fw: int | None = None) -> "PlantCapabilities":
+        """Build a minimal PlantCapabilities for the given model (and optional firmware)."""
         from givenergy_modbus.model.plant import PlantCapabilities
 
-        return PlantCapabilities(device_type=model)
+        return PlantCapabilities(device_type=model, arm_firmware_version=arm_fw)
 
     def test_is_hv_true_for_hv_models(self):
         """HV models report is_hv True."""
@@ -2163,9 +2163,12 @@ class TestPlantCapabilitiesProperties:
         assert caps.is_three_phase is False
 
     def test_has_extended_slots_true(self):
-        """Models with 10-slot support report has_extended_slots True."""
+        """Models with unconditional 10-slot support report has_extended_slots True.
+
+        HYBRID_GEN3 is excluded here — it's firmware-gated, see
+        test_has_extended_slots_hybrid_gen3_firmware_boundary.
+        """
         extended = (
-            Model.HYBRID_GEN3,
             Model.HYBRID_GEN4,
             Model.ALL_IN_ONE,
             Model.ALL_IN_ONE_HYBRID,
@@ -2173,6 +2176,38 @@ class TestPlantCapabilitiesProperties:
         )
         for m in extended:
             assert self._caps(m).has_extended_slots, f"{m} should have extended slots"
+
+    def test_has_extended_slots_hybrid_gen3_firmware_boundary(self):
+        """The fix: HYBRID_GEN3 is extended only above firmware 302 (#293 Slice B).
+
+        Previously plant.py's _EXTENDED_SLOT_MODELS listed HYBRID_GEN3 unconditionally,
+        which disagreed with the actual slot_map register-layout decision.
+        """
+        assert self._caps(Model.HYBRID_GEN3).has_extended_slots is False  # arm_fw=None
+        assert self._caps(Model.HYBRID_GEN3, arm_fw=302).has_extended_slots is False
+        assert self._caps(Model.HYBRID_GEN3, arm_fw=303).has_extended_slots is True
+
+    def test_arm_firmware_version_defaults_to_none(self):
+        """arm_firmware_version defaults to None when not supplied."""
+        caps = self._caps(Model.HYBRID_GEN1)
+        assert caps.arm_firmware_version is None
+
+    def test_arm_firmware_version_roundtrips_through_to_dict(self):
+        """arm_firmware_version survives a to_dict()/from_dict() round-trip."""
+        from givenergy_modbus.model.plant import PlantCapabilities
+
+        caps = self._caps(Model.HYBRID_GEN1, arm_fw=449)
+        reloaded = PlantCapabilities.from_dict(caps.to_dict())
+        assert reloaded.arm_firmware_version == 449
+
+    def test_arm_firmware_version_missing_from_legacy_payload_loads_as_none(self):
+        """A pre-Slice-B persisted payload has no arm_firmware_version key at all."""
+        from givenergy_modbus.model.plant import PlantCapabilities
+
+        legacy_payload = self._caps(Model.HYBRID_GEN1).to_dict()
+        del legacy_payload["arm_firmware_version"]
+        reloaded = PlantCapabilities.from_dict(legacy_payload)
+        assert reloaded.arm_firmware_version is None
 
     def test_has_extended_slots_false(self):
         """Non-extended models report has_extended_slots False."""

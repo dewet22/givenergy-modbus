@@ -181,6 +181,7 @@ def test_capabilities_to_dict_format():
         "aio_battery_module_addresses": [],
         "hv_bmu_addresses": [],
         "lv_bcu_address": None,
+        "arm_firmware_version": None,
     }
 
 
