@@ -169,6 +169,35 @@ def test_frame_redactor_redacts_bmu_module_serial():
     assert len(out) == len(frame)
 
 
+def test_frame_redactor_redacts_bcu_unit_serial():
+    """HV BCU unit serial at IR(138-142) is redacted in the BCU's IR(120,60) frame (#375).
+
+    Found by the count-to-zero sweep on a real 3ph HV capture: the BCU (0x70) carries
+    its own serial in the (otherwise unmodelled) IR(120,60) block. Covered by the
+    serial_number Def on BcuRegisterGetter, which auto-registers in the canonical
+    serial groups.
+    """
+    from givenergy_modbus.pdu import ClientIncomingMessage
+
+    serial_str = "HB2336G174"
+    serial_regs = [int.from_bytes(serial_str[i * 2 : i * 2 + 2].encode("latin1"), "big") for i in range(5)]
+    # BCU second block: IR(120,60); serial lives at IR(138-142) → offset 18
+    values = [0] * 60
+    values[18:23] = serial_regs
+
+    frame = _make_input_response("ZZ0000H000", base=120, values=values)
+    assert b"HB2336G174" in frame
+
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    pdu = ClientIncomingMessage.decode_bytes(out)
+    raw = b"".join(pdu.register_values[18 + i].to_bytes(2, "big") for i in range(5))
+    redacted_serial = raw.decode("latin1").replace("\x00", "").upper()
+    assert redacted_serial == "HB2336G000"  # date kept, unit digits zeroed
+    assert b"HB2336G174" not in out
+
+
 def test_frame_redactor_invalid_frame_emitted_intact():
     """An undecodable frame (bad MBAP / unknown function) is emitted intact, not dropped."""
     # Build a syntactically valid GivEnergy MBAP wrapping an unknown function code

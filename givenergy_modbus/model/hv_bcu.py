@@ -99,6 +99,12 @@ class BcuRegisterGetter(RegisterGetter):
         "pack_warning_status": Def(C.uint32, None, IR(114), IR(115)),
         "pack_protection_status": Def(C.uint32, None, IR(116), IR(117)),
         "pack_fault_status": Def(C.uint32, None, IR(118), IR(119)),
+        # BCU unit serial, in the second block IR(120-179) (otherwise unmodelled).
+        # Wire-evidenced on a real 6-module 3ph HV stack (#375 count-to-zero sweep):
+        # a GE-serial string (HB…, same manufacture batch as the stack's HY… modules)
+        # at IR(138-142) on the BCU device. The C.serial tag also registers it in the
+        # canonical serial groups, so capture/export redaction covers it.
+        "serial_number": Def(C.serial, None, IR(138), IR(139), IR(140), IR(141), IR(142)),
     }
 
 
