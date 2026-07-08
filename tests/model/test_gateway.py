@@ -86,7 +86,8 @@ def test_gateway_power_readings():
             IR(1609): 100,  # i_grid = 10.0 A
             IR(1617): 3000,  # p_pv = 3000 W
             IR(1618): 2000,  # p_load = 2000 W
-            IR(1619): 65536 - 500,  # p_liberty = -500 (int16)
+            IR(1619): 65536 - 500,  # p_liberty raw = -500 (int16); house convention negates → +500
+            IR(1702): 154,  # p_aio_total raw = +154 (charging) → house convention -154
             IR(1604): 2,  # work_mode = ON_GRID
         }
     )
@@ -95,7 +96,10 @@ def test_gateway_power_readings():
     assert gw.i_grid == 10.0  # type: ignore[attr-defined]
     assert gw.p_pv == 3000  # type: ignore[attr-defined]
     assert gw.p_load == 2000  # type: ignore[attr-defined]
-    assert gw.p_liberty == -500  # type: ignore[attr-defined]
+    # AIO power fields are negated into the house convention (positive = discharge):
+    # raw -500 → +500 (discharge), raw +154 → -154 (charge). See gateway.py comment.
+    assert gw.p_liberty == 500  # type: ignore[attr-defined]
+    assert gw.p_aio_total == -154  # type: ignore[attr-defined]
     assert gw.work_mode == WorkMode.ON_GRID  # type: ignore[attr-defined]
 
 

@@ -633,6 +633,18 @@ def test_precision_post_conv_wins_over_pre_conv():
     assert RegisterDefinition(Converter.int16, Converter.centi, IR(0)).precision == 2
 
 
+def test_negate_flips_sign_and_passes_none():
+    assert Converter.negate(500) == -500
+    assert Converter.negate(-154) == 154
+    assert Converter.negate(0) == 0
+    assert Converter.negate(None) is None
+
+
+def test_negate_post_conv_keeps_integer_precision():
+    """int16 -> negate stays whole-number precision (composition proven in test_gateway)."""
+    assert RegisterDefinition(Converter.int16, Converter.negate, IR(0)).precision == 0
+
+
 def test_precision_non_numeric_is_none():
     """Enums, bools, strings and timeslots have no numeric precision."""
     assert RegisterDefinition(Converter.bool, None, IR(0)).precision is None
