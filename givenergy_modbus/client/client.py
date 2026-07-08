@@ -38,6 +38,8 @@ from givenergy_modbus.model.plant import (
     Plant,
     PlantCapabilities,
     _aio_module_candidates,
+    _bcu_module_count,
+    _bms_bcu_count,
     _derive_capabilities,
     _hv_bmu_candidates,
 )
@@ -725,7 +727,7 @@ class Client:
                     retries=probe_retries,
                 ):
                     bcu_cache = self.plant.register_caches.get(0x70 + offset, RegisterCache())
-                    actual_modules = bcu_cache.get(IR(64)) or 0
+                    actual_modules = _bcu_module_count(bcu_cache)
                     caps.bcu_stacks.append((offset, actual_modules))
                 else:
                     self.plant.mark_absent(0x70 + offset, "IR", 60, 5)
@@ -743,7 +745,7 @@ class Client:
             self.plant.register_caches.pop(0xA0, None)
             return
         bms_cache: RegisterCache = self.plant.register_caches.get(0xA0, RegisterCache())
-        num_bcus = bms_cache.get(IR(61)) or 0
+        num_bcus = _bms_bcu_count(bms_cache)
         for i in range(num_bcus):
             if await self._probe(
                 ReadInputRegistersRequest(base_register=60, register_count=60, device_address=0x70 + i),
@@ -751,7 +753,7 @@ class Client:
                 retries=probe_retries,
             ):
                 bcu_cache = self.plant.register_caches.get(0x70 + i, RegisterCache())
-                num_modules = bcu_cache.get(IR(64)) or 0
+                num_modules = _bcu_module_count(bcu_cache)
                 caps.bcu_stacks.append((i, num_modules))
             else:
                 self.plant.mark_absent(0x70 + i, "IR", 60, 60)

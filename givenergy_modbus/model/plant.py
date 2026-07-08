@@ -505,6 +505,25 @@ def _aio_module_candidates(num_modules: int) -> list[int]:
     return [0x50 + i for i in range(min(num_modules, _AIO_MAX_MODULES))]
 
 
+def _bms_bcu_count(cache: RegisterCache | None) -> int:
+    """Number of BCU stacks reported by the BMS's IR(61), or 0 if the cache is absent.
+
+    Shared between Client._detect_bcu_stacks (live, cold path) and _derive_hv_topology
+    (offline-safe validate) so the IR(61) decode has one implementation (#293).
+    """
+    return (cache.get(IR(61)) or 0) if cache is not None else 0
+
+
+def _bcu_module_count(cache: RegisterCache | None) -> int:
+    """Number of battery modules reported by a BCU's IR(64), or 0 if the cache is absent.
+
+    Shared between Client._detect_bcu_stacks (live, hinted + cold paths) and
+    _derive_hv_topology (offline-safe validate) so the IR(64) decode has one
+    implementation (#293).
+    """
+    return (cache.get(IR(64)) or 0) if cache is not None else 0
+
+
 def _derive_hv_topology(
     register_caches: dict[int, RegisterCache],
     prior: "PlantCapabilities | None",
@@ -522,9 +541,8 @@ def _derive_hv_topology(
     if prior is not None:
         indices: Any = [offset for offset, _ in prior.bcu_stacks]
     else:
-        bms = register_caches.get(0xA0)
-        indices = range((bms.get(IR(61)) or 0) if bms else 0)
-    caps.bcu_stacks.extend((i, c.get(IR(64)) or 0) for i in indices if (c := register_caches.get(0x70 + i)))
+        indices = range(_bms_bcu_count(register_caches.get(0xA0)))
+    caps.bcu_stacks.extend((i, _bcu_module_count(c)) for i in indices if (c := register_caches.get(0x70 + i)))
     if not caps.bcu_stacks:
         return
 
