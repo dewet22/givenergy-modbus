@@ -136,10 +136,13 @@ async def _full_cycle(client):
     RefreshPartiallySucceeded — carrying a Plant fully decoded from the banks that DID
     respond. Clean captures raise nothing; these fixtures never RefreshFailed.
     """
-    await client.detect(**_DETECT)
+    # Fast, in-process timeouts throughout: MockPlant answers present banks instantly,
+    # so these only bound waits on genuinely-absent device addresses (detect's meter/
+    # peripheral probe sweeps) and absent banks. No network to be slow — don't raise them.
+    await client.detect(timeout=0.3, retries=0, probe_timeout=0.05, probe_retries=0)
     for step in (client.load_config, client.refresh):
         try:
-            await step(timeout=1.0, retries=0)
+            await step(timeout=0.3, retries=0)
         except RefreshPartiallySucceeded:
             pass
     return client.plant
