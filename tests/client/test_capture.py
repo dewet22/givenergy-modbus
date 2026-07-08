@@ -139,6 +139,36 @@ def test_frame_redactor_redacts_hr8_serial_register():
     assert len(out) == len(frame)
 
 
+def test_frame_redactor_redacts_bmu_module_serial():
+    """HV BMU per-module serial at IR(114-118) is redacted in an HV-stack frame (#375).
+
+    The BMU serial has no LUT Def (Bmu decodes it manually), so it is only covered by
+    the explicit BMU serial groups in _get_serial_groups(). FrameRedactor previously
+    used a divergent serial-group builder that omitted them, leaking every HV module
+    serial (0x50-0x55 stacks) from shared captures.
+    """
+    from givenergy_modbus.pdu import ClientIncomingMessage
+
+    serial_str = "HY2336G680"
+    serial_regs = [int.from_bytes(serial_str[i * 2 : i * 2 + 2].encode("latin1"), "big") for i in range(5)]
+    # HV BMU module read: IR(60,60); serial lives at IR(114-118) → offset 54 in the block
+    values = [0] * 60
+    values[54:59] = serial_regs
+
+    frame = _make_input_response("ZZ0000H000", base=60, values=values)
+    assert b"HY2336G680" in frame  # present before redaction
+
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    pdu = ClientIncomingMessage.decode_bytes(out)
+    raw = b"".join(pdu.register_values[54 + i].to_bytes(2, "big") for i in range(5))
+    redacted_serial = raw.decode("latin1").replace("\x00", "").upper()
+    assert redacted_serial == "HY2336G000"  # date kept, unit digits zeroed
+    assert b"HY2336G680" not in out
+    assert len(out) == len(frame)
+
+
 def test_frame_redactor_invalid_frame_emitted_intact():
     """An undecodable frame (bad MBAP / unknown function) is emitted intact, not dropped."""
     # Build a syntactically valid GivEnergy MBAP wrapping an unknown function code

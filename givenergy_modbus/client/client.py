@@ -59,64 +59,12 @@ _GE_SERIAL_STR_PATTERN = re.compile(r"^[A-Z]{2}\d{4}[A-Z]\d{3}$")
 Direction = Literal["rx", "tx"]
 
 
-# ---------------------------------------------------------------------------
-# Serial-register lookup — which register addresses carry C.serial values
-# ---------------------------------------------------------------------------
-#
-# Built once at import time by walking every registered RegisterGetter LUT and
-# collecting all Defs whose pre_conv is Converter.serial.  The result maps
-# (register_type_name, address) → field_name. Register addresses are globally
-# unique per type across all models (HR_13 is always the inverter serial, etc.),
-# so no device-address filter is needed.
-#
-# Populated set (verified at B-3 implementation time):
-#   HR: 8-12 (battery serial), 13-17 (inverter serial)
-#   IR: 110-114 (battery), 1627-1631 (gateway first_inverter),
-#       1831-1835/1838-1842/1845-1849 (gateway v1 AIO 1-3),
-#       1841-1845/1848-1852/1855-1859 (gateway v2 AIO 1-3),
-#       2066-2085 (EMS rollup ×4)
-def _build_serial_register_groups() -> "list[tuple[str, int, int]]":
-    """Build a list of (reg_type, base_address, count) for every C.serial register group.
-
-    A serial field spans `count` consecutive registers starting at `base_address`.
-    Addresses are globally unique per type across all models (HR_13 is always the
-    inverter serial, etc.), so no device-address filter is needed.
-    """
-    from givenergy_modbus.model import battery, ems, gateway, inverter
-    from givenergy_modbus.model.register import Converter
-
-    seen: set[tuple[str, int, int]] = set()
-    groups: list[tuple[str, int, int]] = []
-    for module in (inverter, battery, ems, gateway):
-        for attr in dir(module):
-            cls = getattr(module, attr)
-            if not isinstance(cls, type):
-                continue
-            lut = getattr(cls, "REGISTER_LUT", None)
-            if not lut:
-                continue
-            for _field, defn in lut.items():
-                pre_conv = defn.pre_conv[0] if isinstance(defn.pre_conv, tuple) else defn.pre_conv
-                if pre_conv is Converter.serial and defn.registers:
-                    reg_type = type(defn.registers[0]).__name__  # "HR" or "IR"
-                    base = defn.registers[0]._idx
-                    count = len(defn.registers)
-                    key = (reg_type, base, count)
-                    if key not in seen:
-                        seen.add(key)
-                        groups.append(key)
-    # Legacy first_battery_serial_number registers (HR 8-12) — removed from the LUT
-    # (#191: GivTCP-heritage, unused, unverifiable), but still redacted: AIO firmware
-    # stores the unit serial here byte-swapped (CH… → HC…), recoverable to the real
-    # serial, so it must not leak in shared captures. Appended unconditionally — no LUT
-    # Def carries it any more, and a duplicate (if a future field reused HR 8) would
-    # only redact it twice, which is idempotent.
-    groups.append(("HR", 8, 5))
-    return groups
-
-
-# List of (reg_type, base_address, count) for all C.serial register groups.
-_SERIAL_GROUPS: "list[tuple[str, int, int]]" = _build_serial_register_groups()
+# Serial-register groups (which register addresses carry serial values) come from the
+# single canonical builder, register_cache._get_serial_groups() — the same set
+# RegisterCache.redact_serials() uses. FrameRedactor previously kept its own builder,
+# which diverged: it omitted the manually-decoded BMU serial groups (plus identifier=True
+# fields and dynamic module discovery), silently leaking HV per-module serials from
+# captured HV stacks (#375). One source of truth now — see _redact_frame.
 
 # MBAP start marker used by the framer to locate frames within a byte stream.
 _FRAME_MARKER = bytes.fromhex("59590001")
@@ -211,6 +159,7 @@ class FrameRedactor:
 
     def _redact_frame(self, frame: bytes) -> bytes:
         from givenergy_modbus.model.register import Converter
+        from givenergy_modbus.model.register_cache import _get_serial_groups
         from givenergy_modbus.pdu import ClientIncomingMessage, ClientOutgoingMessage
         from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
         from givenergy_modbus.pdu.read_registers import ReadRegistersResponse
@@ -243,7 +192,7 @@ class FrameRedactor:
             reg_type = "HR" if pdu.transparent_function_code == 3 else "IR"
             win_base = pdu.base_register
             win_end = win_base + len(pdu.register_values)  # safer than register_count
-            for g_type, g_base, g_count in _SERIAL_GROUPS:
+            for g_type, g_base, g_count in _get_serial_groups():
                 if g_type != reg_type:
                     continue
                 g_end = g_base + g_count
@@ -252,7 +201,13 @@ class FrameRedactor:
                 offset = g_base - win_base
                 raw_bytes = b"".join(v.to_bytes(2, "big") for v in pdu.register_values[offset : offset + g_count])
                 serial_str = raw_bytes.decode("latin1").replace("\x00", "").upper()
-                redacted = Converter.redact_serial(serial_str) or ""
+                redacted = Converter.redact_serial(serial_str)
+                if redacted is None or redacted == serial_str:
+                    # Not a recognised serial — leave unchanged. Mirrors
+                    # RegisterCache.redact_serials: rewriting a passthrough value would
+                    # zero-pad and corrupt an overlapping group (e.g. the battery serial
+                    # group IR(110-114) reading register 114 of a BMU serial at 114-118).
+                    continue
                 # Re-encode: right-pad to g_count*2 bytes, split back into registers
                 redacted_bytes = redacted.encode("latin1").ljust(g_count * 2, b"\x00")[: g_count * 2]
                 for i in range(g_count):
