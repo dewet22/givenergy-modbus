@@ -374,6 +374,12 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
     unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
     for signature consistency; no write capability is firmware-gated today.
+
+    Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
+    keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
+    client.load_config(), which routes through the instance properties so tests can
+    PropertyMock a not-yet-confirmed capability. There is no such test seam on the write
+    path, so keying off the model is the simpler, equivalent choice here.
     """
     if has_capability("is_ems", model):
         safe = WRITE_SAFE_EMS
