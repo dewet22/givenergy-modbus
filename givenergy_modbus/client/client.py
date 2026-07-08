@@ -28,6 +28,7 @@ from givenergy_modbus.exceptions import (
     RefreshPartiallySucceeded,
 )
 from givenergy_modbus.framer import ClientFramer, Framer
+from givenergy_modbus.model import manifest
 from givenergy_modbus.model.ems import EmsRegisterGetter
 from givenergy_modbus.model.inverter import Model, resolve_model
 from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS
@@ -333,20 +334,29 @@ def _strategise(
     return ranges
 
 
+def _request_for_range(r: manifest.RegisterRange, device_address: int) -> TransparentRequest:
+    """Build the read request for one RegisterRange at device_address."""
+    if r.reg_type == "HR":
+        return ReadHoldingRegistersRequest(
+            base_register=r.base_register, register_count=r.register_count, device_address=device_address
+        )
+    if r.reg_type == "IR":
+        return ReadInputRegistersRequest(
+            base_register=r.base_register, register_count=r.register_count, device_address=device_address
+        )
+    raise ValueError(f"Unsupported RegisterRange.reg_type: {r.reg_type!r}")
+
+
 def _refresh_banks(caps: PlantCapabilities) -> list[tuple[int, int, int]]:
     """Return (device_address, base_register, register_count) for every IR bank to poll."""
     inverter = caps.inverter_address
     banks: list[tuple[int, int, int]] = []
     if not caps.is_ems:
         banks += [(inverter, 0, 60), (inverter, 180, 60)]
-    if caps.is_three_phase:
-        for base in range(1000, 1414, 60):
-            banks.append((inverter, base, min(60, 1414 - base)))
-    if caps.is_ems:
-        banks.append((inverter, 2040, 55))
-    if caps.is_gateway:
-        for base in range(1600, 1860, 60):
-            banks.append((inverter, base, min(60, 1860 - base)))
+    banks += [
+        (inverter, r.base_register, r.register_count)
+        for r in manifest.gated_ranges(manifest.REFRESH_IR_RANGES, caps.device_type, caps.arm_firmware_version)
+    ]
     for addr in caps.lv_battery_addresses:
         banks.append((addr, 60, 60))
     if caps.lv_bcu_address is not None:
@@ -1189,44 +1199,19 @@ class Client:
                 ReadInputRegistersRequest(base_register=120, register_count=60, device_address=inverter),
             ]
         if caps.is_three_phase:
-            reqs += [
-                ReadHoldingRegistersRequest(base_register=1000, register_count=60, device_address=inverter),
-                ReadHoldingRegistersRequest(base_register=1060, register_count=60, device_address=inverter),
-                ReadHoldingRegistersRequest(base_register=1120, register_count=5, device_address=inverter),
-            ]
+            reqs += [_request_for_range(r, inverter) for r in manifest.LOAD_CONFIG_THREE_PHASE_RANGES]
         if caps.has_extended_slots:
             reqs.append(ReadHoldingRegistersRequest(base_register=240, register_count=60, device_address=inverter))
-        if caps.has_smart_load_block:
-            # HR(540-599) — Smart Load scheduling slots 1–10 (HR554-573). Gated because
-            # the block was added from the app's Direct Control catalogue (writable
-            # surface only — never confirmed to answer a live read) and HYBRID_GEN1 times
-            # out on it (#179). The gate set is currently empty, so this is off for every
-            # model pending hardware confirmation; the smart_load_slot_* decode Defs and
-            # set_smart_load_slot_* write helpers are unaffected. Unmodelled registers in
-            # 540-553 and 574-599 are silently ignored by Plant.update(). (#48, #179)
-            reqs.append(ReadHoldingRegistersRequest(base_register=540, register_count=60, device_address=inverter))
-        if caps.has_hv_cabinet_block:
-            # HR(499-510) — HV cabinet topology (12 registers: counts, ratings). Gated
-            # because the block is from the GivEnergy app v4.0.7 and no model
-            # has been confirmed to answer a live read. The gate set is empty until a
-            # capture confirms the block responds. (#265)
-            reqs.append(ReadHoldingRegistersRequest(base_register=499, register_count=12, device_address=inverter))
-        if caps.has_peak_shaving_block:
-            # HR(20000-20051) — peak-shaving / valley-filling (sparse: 20000-20003,
-            # 20020-20021, 20050-20051). Gated because the block is from the
-            # GivEnergy app v4.0.7 and no model has been confirmed to answer a live read.
-            # The 52-register window covers all defined offsets; undefined registers in
-            # the middle are silently ignored by Plant.update().
-            reqs.append(ReadHoldingRegistersRequest(base_register=20000, register_count=52, device_address=inverter))
-        if caps.has_ac_config_block:
-            # HR(300-359) — AC-output config: export_priority (HR311), battery_*_limit_ac
-            # (HR313/314), enable_eps (HR317), pause mode/slot (HR318-320). Present on
-            # AC-coupled inverters AND the All-in-One; DC-coupled/hybrid models time out on
-            # this block (#162). Confirmed present on Model.AC (hass#52 portal writes) and
-            # the AIO (live poll populated these fields, #105).
-            reqs.append(ReadHoldingRegistersRequest(base_register=300, register_count=60, device_address=inverter))
-        if caps.is_ems:
-            reqs.append(ReadHoldingRegistersRequest(base_register=2040, register_count=36, device_address=inverter))
+        # getattr(caps, name), not manifest.gated_ranges(...): the latter reads
+        # manifest.CAPABILITIES directly and is blind to PropertyMock-patched
+        # instance properties, which two tests rely on for facts with no confirmed
+        # model yet (has_hv_cabinet_block/has_peak_shaving_block, #293). Every
+        # LOAD_CONFIG_RANGES fact today is firmware-independent, so this is safe;
+        # a future firmware-gated fact here would need manifest.gated_ranges(...,
+        # caps.arm_firmware_version) instead, since getattr() can't pass arm_fw.
+        for name, entries in manifest.LOAD_CONFIG_RANGES.items():
+            if getattr(caps, name):
+                reqs += [_request_for_range(r, inverter) for r in entries]
         await self._execute_reads(reqs, timeout=timeout, retries=retries, retry_delay=retry_delay)
         return self.plant
 
