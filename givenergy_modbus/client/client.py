@@ -1373,6 +1373,21 @@ class Client:
                     retry_delay=retry_delay,
                 )
 
+    def _resolve_write_safe(self) -> frozenset[int]:
+        """Registers the detected model permits at the normal (non-installer) write tier.
+
+        The single source of the caps→manifest resolution shared by one_shot_command()
+        and installer_command() — write-gating logic that must stay identical across
+        both call sites. Composition (base selection, AC-config union with its
+        not-three-phase guard, undetected→single-phase fallback) lives in
+        manifest.write_safe_registers (#293 Slice D).
+        """
+        caps = self.plant.capabilities
+        return manifest.write_safe_registers(
+            caps.device_type if caps is not None else None,
+            caps.arm_firmware_version if caps is not None else None,
+        )
+
     async def one_shot_command(
         self,
         requests: list[TransparentRequest],
@@ -1392,13 +1407,7 @@ class Client:
         never passes for a request real execution would reject.
         """
         caps = self.plant.capabilities
-        # Model→register-set composition (base selection, AC-config union with its
-        # not-three-phase guard, undetected→single-phase fallback) lives in
-        # manifest.write_safe_registers (#293 Slice D) — shared with installer_command().
-        safe = manifest.write_safe_registers(
-            caps.device_type if caps is not None else None,
-            caps.arm_firmware_version if caps is not None else None,
-        )
+        safe = self._resolve_write_safe()
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:
             if isinstance(req, WriteHoldingRegisterRequest):
@@ -1435,10 +1444,7 @@ class Client:
         If dry_run is True, validates but does not transmit.
         """
         caps = self.plant.capabilities
-        model_safe = manifest.write_safe_registers(
-            caps.device_type if caps is not None else None,
-            caps.arm_firmware_version if caps is not None else None,
-        )
+        model_safe = self._resolve_write_safe()
         installer_safe = model_safe | INSTALLER_WRITE_REGISTERS
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:

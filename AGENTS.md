@@ -71,8 +71,10 @@ Prefer real evidence (wire captures, GivTCP cross-reference) before adding a wri
 register. A new writable register must be added in **two** places or it fails at
 send time:
 
-1. the command-mixin `WRITE_SAFE_REGISTERS` in `client/commands.py`, and
-2. the canonical `WRITE_SAFE_REGISTERS` in `pdu/write_registers.py` — enforced by
+1. the model-aware `WRITE_SAFE_*` set in `model/manifest.py` (Gate 1 — the client-boundary
+   check via `write_safe_registers()`; add to the set matching the models that physically
+   accept the register: `WRITE_SAFE_SINGLE_PHASE` / `_THREE_PHASE` / `_EMS` / `_AC_CONFIG`), and
+2. the canonical `WRITE_SAFE_REGISTERS` in `pdu/write_registers.py` (Gate 2) — enforced by
    `WriteHoldingRegisterRequest.ensure_valid_state()` at `encode()` time. A register
    missing here builds a request fine but raises `InvalidPduState` on the wire.
 
