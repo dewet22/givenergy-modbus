@@ -1016,12 +1016,12 @@ return daily battery energy. The v4.1.6 doc, however, defines IR180-183 as
 (0.1 V / 0.1 A). A phase voltage of 1560 V is impossible, so the GEN1 reading is
 genuinely battery energy, not a misread.</p>
 <p><strong>Implication.</strong> The library's <code>alt1</code> battery-total source (<code>IR(180)</code>/<code>IR(181)</code> in
-<code>_BATTERY_ENERGY_SOURCE</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
+<code>manifest.VALUE_SOURCES</code>) is correct for GEN1 but <strong>firmware-fragile</strong>: on a build that
 implements the EV-charger definitions, deci-scaling a phase-voltage reading would yield
 a bogus "~175 kWh" total. Battery-energy routing must stay keyed to the resolved model,
 never inferred from live values, and should migrate to the dedicated registers below
 when a unit supports them.</p>
-<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/inverter.py</code> <code>_BATTERY_ENERGY_SOURCE</code>.</p>
+<p><strong>References.</strong> v4.1.6 §4.1.2; <code>model/manifest.py</code> <code>VALUE_SOURCES</code>.</p>
 <h3 id="firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89">Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)<a class="headerlink" href="#firmware-gated-registers-specified-but-absent-on-old-builds-ir194-199-hr84-89" title="Permanent link">&para;</a></h3>
 <p><strong>Symptom.</strong> Registers present in the protocol doc read a hard zero (or are absent) on
 older firmware.</p>
@@ -1032,7 +1032,7 @@ range, while its IR180/181 totals are populated — so the device address is cor
 the zeros are a firmware result. The same unit returns zero for HR84-89 (the §4.13 ASCII
 firmware-version-string scheme), so this build predates several doc additions.</p>
 <p><strong>Implication.</strong> IR194-197 cannot be a <em>universal</em> battery-total source. The library's
-<code>_BATTERY_ENERGY_SOURCE</code> is keyed by static <code>Model</code>, which has no way to express
+<code>manifest.VALUE_SOURCES</code> is keyed by static <code>Model</code>, which has no way to express
 "firmware ≥ v4.1.5". Mapping these registers needs either firmware gating or must stay
 conditional until a unit is observed that actually populates them. Confirmed lower
 anchor: <strong>HYBRID_GEN1 @ ARM 449 → absent.</strong> No upper anchor (a unit that <em>does</em> populate

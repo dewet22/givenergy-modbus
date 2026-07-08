@@ -1337,12 +1337,12 @@ read yet returns <code>None</code>, so <code>== Enable.UNKNOWN</code> checks bec
 </tr>
 <tr>
 <td><code>e_inverter_out_day</code></td>
-<td><code>e_pv_generation_today</code> (deprecated alias kept for one release)</td>
+<td><code>e_pv_generation_today</code>[^ir44] (deprecated alias kept for one release)</td>
 <td>IR(44)</td>
 </tr>
 <tr>
 <td><code>e_inverter_out_total</code></td>
-<td><code>e_pv_generation_total</code></td>
+<td><code>e_pv_generation_total</code>[^ir44]</td>
 <td>IR(45,46)</td>
 </tr>
 <tr>
@@ -1467,6 +1467,12 @@ read yet returns <code>None</code>, so <code>== Enable.UNKNOWN</code> checks bec
 </tr>
 </tbody>
 </table>
+<p>[^ir44]: As of 2.10, IR(44)/IR(45,46) carry different quantities depending on
+    model (#293): on DC-coupled hybrids they're genuine PV generation and
+    <code>e_pv_generation_today</code>/<code>_total</code> stay live; on AC-coupled and All-in-One
+    units the registers actually report inverter AC output, so those fields
+    return <code>None</code> and the value lives on <code>e_inverter_out_today</code>/<code>_total</code>
+    instead. See the per-model contract in <code>model/manifest.py</code>.</p>
 <p>Computed values like <code>battery_max_power</code> and <code>inverter_max_power</code> are
 properties on the inverter model rather than register definitions, but keep
 their names. Battery, meter and gateway attribute surfaces are unchanged
