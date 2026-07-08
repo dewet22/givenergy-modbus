@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-07-08
+
+### 🔄 Changed
+
+- Manifest Slice A: register-semantics routing + per-model renames (#293) (#365) ([78f82ac](https://github.com/dewet22/givenergy-modbus/commit/78f82ac00484d325ef1e5e69d6acd4479e40e475))
+- Manifest Slice B: fact-table consolidation (#293) (#366) ([a30029e](https://github.com/dewet22/givenergy-modbus/commit/a30029e337e88d4e33e07e81ff3182fe90467147))
+- Manifest Slice C1: polling-range manifest (#293) (#367) ([1d5e167](https://github.com/dewet22/givenergy-modbus/commit/1d5e1677f8cb14c8bfd5f9804b2d2b2692756f33))
+- Manifest Slice D: write surface (#293) (#369) ([c5bd01e](https://github.com/dewet22/givenergy-modbus/commit/c5bd01efa90dffa29960fbafdd12df30d3855ecc))
+
+### 🔧 Maintenance
+
+- share the BCU-count/module-count register decode (#293) (#368) ([ca58f5a](https://github.com/dewet22/givenergy-modbus/commit/ca58f5a3a71ae1f778584eb9843400f6a4d84392))
+
 ## [2.9.8] - 2026-07-07
 
 ### 🐛 Fixed
