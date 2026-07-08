@@ -159,6 +159,11 @@ def _assert_ems_rollup(plant):
     assert len(managed) == 2
     assert all(i.data_source == "ems_rollup" for i in managed)
     assert all(i.serial_number for i in managed)
+    # load_config's HR(2040,36) EMS-config bank — the is_ems entry in the
+    # LOAD_CONFIG_RANGES manifest table, read ONLY by load_config (not detect/refresh).
+    # Pins that the table-driven load_config routing ran end-to-end (#293).
+    assert ems.export_power_limit == 9500
+    assert ems.plant_enabled is True
 
 
 def _assert_ems_meters(plant):
@@ -185,6 +190,11 @@ def _assert_aio(plant):
     # IR44 is inverter output on ALL_IN_ONE, not PV (#293).
     assert inv.e_pv_generation_today is None
     assert inv.e_inverter_out_today == 1.8
+    # load_config's HR(60,60) config bank — decoded ONLY when load_config polls it, not
+    # by detect (HR(0,60) identity only) or refresh (IR measurement banks). Pins that the
+    # load_config leg of the cycle actually ran and routed the HR banks (#293).
+    assert inv.charge_target_soc == 100
+    assert inv.enable_charge is False
 
 
 def _assert_hybrid_0x11(plant):
@@ -197,6 +207,11 @@ def _assert_hybrid_0x11(plant):
     # IR44 stays PV on HYBRID_GEN1 — the #293 override doesn't fire.
     assert inv.e_pv_generation_today == 15.8
     assert inv.e_inverter_out_today is None
+    # load_config's HR(60,60) config bank — decoded ONLY when load_config polls it, not
+    # by detect (HR(0,60) identity only) or refresh (IR measurement banks). Pins that the
+    # load_config leg of the cycle actually ran and routed the HR banks (#293).
+    assert inv.charge_target_soc == 29
+    assert inv.battery_charge_limit == 50
 
 
 def _assert_hybrid_passive(plant):
