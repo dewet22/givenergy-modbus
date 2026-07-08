@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from givenergy_modbus.client.client import Client
+from givenergy_modbus.exceptions import RefreshPartiallySucceeded
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.register import HR
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -111,6 +112,163 @@ async def test_aio_errors_on_absent_three_phase_bank():
         pdu = ClientIncomingMessage.decode_bytes(data)
         assert pdu.error is True
         writer.close()
+
+
+# ---------------------------------------------------------------------------
+# Live full-cycle: detect → load_config → refresh over the socket, then assert the
+# fully-decoded typed Plant. The offline golden-master
+# (tests/model/test_fixture_golden_master.py) pins the same topology but bypasses
+# the client/detect stack; these run the whole cycle live against MockPlant, so the
+# manifest-driven detect/load_config/refresh routing (#293) is exercised end-to-end.
+# Assertion values are lifted from the golden-master.
+#
+# three_phase_hv_a is intentionally absent: its capture is IR-only with no HR bank at
+# 0x11, so detect()'s identity read errors and the live cycle can't start — a
+# follow-up issue tracks recapturing a complete three-phase fixture.
+# ---------------------------------------------------------------------------
+
+
+async def _full_cycle(client):
+    """Run detect → load_config → refresh, tolerating partial captures.
+
+    Some committed captures don't carry every HR/IR bank the cycle polls; MockPlant
+    error-responds to an absent bank, which the client surfaces as
+    RefreshPartiallySucceeded — carrying a Plant fully decoded from the banks that DID
+    respond. Clean captures raise nothing; these fixtures never RefreshFailed.
+    """
+    # Fast, in-process timeouts throughout: MockPlant answers present banks instantly,
+    # so these only bound waits on genuinely-absent device addresses (detect's meter/
+    # peripheral probe sweeps) and absent banks. No network to be slow — don't raise them.
+    await client.detect(timeout=0.3, retries=0, probe_timeout=0.05, probe_retries=0)
+    for step in (client.load_config, client.refresh):
+        try:
+            await step(timeout=0.3, retries=0)
+        except RefreshPartiallySucceeded:
+            pass
+    return client.plant
+
+
+def _assert_ems_rollup(plant):
+    caps = plant.capabilities
+    assert caps.device_type is Model.EMS
+    assert caps.is_ems
+    ems = plant.ems
+    assert ems is not None
+    assert ems.inverter_count == 2
+    managed = plant.inverters
+    assert len(managed) == 2
+    assert all(i.data_source == "ems_rollup" for i in managed)
+    assert all(i.serial_number for i in managed)
+    # load_config's HR(2040,36) EMS-config bank — the is_ems entry in the
+    # LOAD_CONFIG_RANGES manifest table, read ONLY by load_config (not detect/refresh).
+    # Pins that the table-driven load_config routing ran end-to-end (#293).
+    assert ems.export_power_limit == 9500
+    assert ems.plant_enabled is True
+
+
+def _assert_ems_meters(plant):
+    caps = plant.capabilities
+    assert caps.device_type is Model.EMS
+    # detect() derives meter_addresses live (unlike the offline golden-master, which
+    # sets them by hand), so plant.meters is populated end-to-end (#246 pinned values).
+    m1, m3 = plant.meters[0x01], plant.meters[0x03]
+    assert m3.pf_total == 0.9998
+    assert m3.p_apparent_total == 575.2
+    assert m1.pf_total == -0.0866
+    assert m1.p_apparent_total == 713.2
+
+
+def _assert_aio(plant):
+    caps = plant.capabilities
+    assert caps.device_type is Model.ALL_IN_ONE
+    assert caps.is_hv and not caps.is_ems
+    assert caps.bcu_stacks  # integrated HV stack detected
+    # HV stack separately addressed: BCU 0x70, BMS 0xA0.
+    assert 0x70 in plant.register_caches
+    assert 0xA0 in plant.register_caches
+    inv = plant.inverter
+    # IR44 is inverter output on ALL_IN_ONE, not PV (#293).
+    assert inv.e_pv_generation_today is None
+    assert inv.e_inverter_out_today == 1.8
+    # load_config's HR(60,60) config bank — decoded ONLY when load_config polls it, not
+    # by detect (HR(0,60) identity only) or refresh (IR measurement banks). Pins that the
+    # load_config leg of the cycle actually ran and routed the HR banks (#293).
+    assert inv.charge_target_soc == 100
+    assert inv.enable_charge is False
+
+
+def _assert_hybrid_0x11(plant):
+    caps = plant.capabilities
+    assert caps.device_type is Model.HYBRID_GEN1
+    assert caps.inverter_address == 0x11
+    assert not caps.is_hv and not caps.is_ems
+    assert plant.number_batteries == 2  # LV packs at 0x32/0x33
+    inv = plant.inverter
+    # IR44 stays PV on HYBRID_GEN1 — the #293 override doesn't fire.
+    assert inv.e_pv_generation_today == 15.8
+    assert inv.e_inverter_out_today is None
+    # load_config's HR(60,60) config bank — decoded ONLY when load_config polls it, not
+    # by detect (HR(0,60) identity only) or refresh (IR measurement banks). Pins that the
+    # load_config leg of the cycle actually ran and routed the HR banks (#293).
+    assert inv.charge_target_soc == 29
+    assert inv.battery_charge_limit == 50
+
+
+def _assert_hybrid_passive(plant):
+    # Pre-#189 dongle capture: operational banks live at the 0x31 facade, so a
+    # 0x11-addressed load_config/refresh can't reach them (hence partial). What the live
+    # cycle CAN prove: detect() still classifies correctly and finds the LV battery
+    # packs at 0x32/0x33 from their own banks — the partial path yields a coherent plant.
+    caps = plant.capabilities
+    assert caps.device_type is Model.HYBRID_GEN1
+    assert caps.inverter_address == 0x11
+    assert not caps.is_hv and not caps.is_ems
+    assert plant.number_batteries == 2
+
+
+def _assert_gateway(plant):
+    from givenergy_modbus.model.gateway import GatewayV1
+
+    caps = plant.capabilities
+    assert caps.device_type is Model.GATEWAY
+    assert not caps.is_hv and not caps.is_ems
+    gw = plant.gateway
+    assert isinstance(gw, GatewayV1)
+    assert gw.software_version == "GAAA0014"
+    assert gw.parallel_aio_num == 2
+    # V1 word order: sane lifetime totals (#360 regression trap).
+    assert gw.e_grid_import_total == 12710.8
+    assert gw.e_pv_total == 5087.0
+    assert gw.e_battery_charge_total == 8855.9
+    assert gw.aio1_serial_number == "CH2414G000"
+    assert gw.aio2_serial_number == "CH2542G000"
+
+
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize(
+    ("relpath", "assert_topology"),
+    [
+        ("ems_2_inv_3_bat_a/ems_arm1036_60s.log", _assert_ems_rollup),
+        ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", _assert_ems_meters),
+        ("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log", _assert_hybrid_0x11),
+        ("gateway_2aio_a/gateway_gaaa0014_10min_daylight.log", _assert_gateway),
+        ("aio_a/aio_arm612_5min.log", _assert_aio),
+        ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", _assert_hybrid_passive),
+    ],
+    ids=["ems_rollup", "ems_meters", "hybrid_0x11", "gateway_v1", "aio_partial", "hybrid_passive_partial"],
+)
+async def test_full_cycle_instantiates_plant(relpath, assert_topology):
+    """Live detect → load_config → refresh yields a fully-decoded Plant (#293 regression fence).
+
+    The strongest guard for the manifest series' detect/load_config/refresh routing: a
+    real Client, over a real socket, against MockPlant seeded from a golden capture,
+    ending in the same decoded topology the offline golden-master pins — but reached
+    through the whole live stack. Assertion values are lifted from
+    tests/model/test_fixture_golden_master.py.
+    """
+    async for client in _client_for(relpath):
+        plant = await _full_cycle(client)
+        assert_topology(plant)
 
 
 # ---------------------------------------------------------------------------
