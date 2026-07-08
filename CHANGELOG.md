@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.1] - 2026-07-08
+
+### 🔄 Changed
+
+- Live full-cycle integration test: MockPlant → detect/load_config/refresh → full Plant decode (#371) ([ecce62a](https://github.com/dewet22/givenergy-modbus/commit/ecce62af85f10f6a0919b7a8ca195ec21393b00e))
+
+### 🐛 Fixed
+
+- report AIO power in house convention (positive = discharge) (#372) ([52abfee](https://github.com/dewet22/givenergy-modbus/commit/52abfee17493bfe439d0a5522db5d630878b539c))
+
 ## [2.10.0] - 2026-07-08
 
 ### 🔄 Changed
