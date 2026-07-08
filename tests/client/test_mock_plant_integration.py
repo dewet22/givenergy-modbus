@@ -236,7 +236,7 @@ def _assert_aio_redetect(plant):
     modules = plant.aio_battery_modules
     assert len(modules) == 4
     serials = [m.serial_number for m in modules]
-    assert all(re.fullmatch(r"2414G\d{3}", s) for s in serials), serials
+    assert all(isinstance(s, str) and re.fullmatch(r"2414G\d{3}", s.strip("\x00 ")) for s in serials), serials
     assert len(set(serials)) == 4
 
 
