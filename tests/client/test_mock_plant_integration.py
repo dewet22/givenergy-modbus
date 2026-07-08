@@ -7,6 +7,7 @@ correct-CRC responses from the same captures. That round-trip is what the passiv
 can't cover.
 """
 
+import re
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -128,13 +129,16 @@ async def test_aio_errors_on_absent_three_phase_bank():
 # ---------------------------------------------------------------------------
 
 
-async def _full_cycle(client):
-    """Run detect → load_config → refresh, tolerating partial captures.
+async def _full_cycle(client, *, strict=False):
+    """Run detect → load_config → refresh, tolerating partial captures unless strict.
 
     Some committed captures don't carry every HR/IR bank the cycle polls; MockPlant
     error-responds to an absent bank, which the client surfaces as
     RefreshPartiallySucceeded — carrying a Plant fully decoded from the banks that DID
     respond. Clean captures raise nothing; these fixtures never RefreshFailed.
+    ``strict=True`` (captures known to carry every polled bank) lets the exception
+    propagate, so a formerly-clean capture starting to miss banks fails loudly instead
+    of silently degrading to whatever the topology assertions happen to touch.
     """
     # Fast, in-process timeouts throughout: MockPlant answers present banks instantly,
     # so these only bound waits on genuinely-absent device addresses (detect's meter/
@@ -144,7 +148,8 @@ async def _full_cycle(client):
         try:
             await step(timeout=0.3, retries=0)
         except RefreshPartiallySucceeded:
-            pass
+            if strict:
+                raise
     return client.plant
 
 
@@ -197,6 +202,44 @@ def _assert_aio(plant):
     assert inv.enable_charge is False
 
 
+def _assert_aio_redetect(plant):
+    """The detect-inclusive direct-AIO capture (ARM 620): the first CLEAN AIO cycle.
+
+    Unlike the May aio_arm612 capture (partial — missing banks tolerated), this one
+    carries every bank the cycle polls, including HR(300,60) — the first live-cycle
+    coverage of the AC-config block routing (has_ac_config_block, #293/#295).
+    """
+    caps = plant.capabilities
+    assert caps.device_type is Model.ALL_IN_ONE
+    assert caps.is_hv and not caps.is_ems
+    assert caps.bcu_stacks == [(0, 4)]  # one integrated stack, 4 modules
+    assert caps.arm_firmware_version == 620
+    inv = plant.inverter
+    assert inv.serial_number == "CH2414G000"
+    # IR44 is inverter output on ALL_IN_ONE, not PV (#293 Slice A, live).
+    assert inv.e_pv_generation_today is None
+    assert inv.e_inverter_out_today == 8.4
+    # load_config's HR(60,60) config bank (load_config-exclusive, #293).
+    assert inv.charge_target_soc == 100
+    assert inv.enable_charge is False
+    assert inv.battery_charge_limit == 38
+    # load_config's HR(300,60) AC-config bank — gated has_ac_config_block in
+    # LOAD_CONFIG_RANGES and polled ONLY by load_config; first capture to carry it
+    # live. Pins the capability-gated table entry end-to-end (#293/#295).
+    assert inv.battery_charge_limit_ac == 50
+    # All 4 HV modules decode through the live cycle, with distinct serials. The
+    # fixture's serials are prefixless placeholders ("2414G000"): this BMU firmware
+    # (BAAA0013) stores serials SPLIT on the wire (prefix at IR110, tail at
+    # IR115-118) — the #378 layout, on every module — and MockPlant disambiguates
+    # identical serials per device address when serving (#288), so pin shape +
+    # distinctness rather than exact values.
+    modules = plant.aio_battery_modules
+    assert len(modules) == 4
+    serials = [m.serial_number for m in modules]
+    assert all(isinstance(s, str) and re.fullmatch(r"2414G\d{3}", s.strip("\x00 ")) for s in serials), serials
+    assert len(set(serials)) == 4
+
+
 def _assert_hybrid_0x11(plant):
     caps = plant.capabilities
     assert caps.device_type is Model.HYBRID_GEN1
@@ -246,18 +289,27 @@ def _assert_gateway(plant):
 
 @pytest.mark.timeout(30)
 @pytest.mark.parametrize(
-    ("relpath", "assert_topology"),
+    ("relpath", "assert_topology", "strict"),
     [
-        ("ems_2_inv_3_bat_a/ems_arm1036_60s.log", _assert_ems_rollup),
-        ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", _assert_ems_meters),
-        ("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log", _assert_hybrid_0x11),
-        ("gateway_2aio_a/gateway_gaaa0014_10min_daylight.log", _assert_gateway),
-        ("aio_a/aio_arm612_5min.log", _assert_aio),
-        ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", _assert_hybrid_passive),
+        ("ems_2_inv_3_bat_a/ems_arm1036_60s.log", _assert_ems_rollup, True),
+        ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", _assert_ems_meters, True),
+        ("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log", _assert_hybrid_0x11, True),
+        ("gateway_2aio_a/gateway_gaaa0014_10min_daylight.log", _assert_gateway, True),
+        ("aio_a/aio_arm620_redetect_7min.log", _assert_aio_redetect, True),
+        ("aio_a/aio_arm612_5min.log", _assert_aio, False),
+        ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", _assert_hybrid_passive, False),
     ],
-    ids=["ems_rollup", "ems_meters", "hybrid_0x11", "gateway_v1", "aio_partial", "hybrid_passive_partial"],
+    ids=[
+        "ems_rollup",
+        "ems_meters",
+        "hybrid_0x11",
+        "gateway_v1",
+        "aio_redetect_clean",
+        "aio_partial",
+        "hybrid_passive_partial",
+    ],
 )
-async def test_full_cycle_instantiates_plant(relpath, assert_topology):
+async def test_full_cycle_instantiates_plant(relpath, assert_topology, strict):
     """Live detect → load_config → refresh yields a fully-decoded Plant (#293 regression fence).
 
     The strongest guard for the manifest series' detect/load_config/refresh routing: a
@@ -267,7 +319,7 @@ async def test_full_cycle_instantiates_plant(relpath, assert_topology):
     tests/model/test_fixture_golden_master.py.
     """
     async for client in _client_for(relpath):
-        plant = await _full_cycle(client)
+        plant = await _full_cycle(client, strict=strict)
         assert_topology(plant)
 
 
