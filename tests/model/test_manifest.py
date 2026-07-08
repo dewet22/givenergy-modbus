@@ -285,6 +285,31 @@ def test_write_safe_ac_config_membership_and_disjointness():
     assert WRITE_SAFE_AC_CONFIG.isdisjoint(WRITE_SAFE_EMS)
 
 
+def test_write_safe_single_phase_literal_pin():
+    """Hardcoded regression fence for the write allowlist (#293 Slice D).
+
+    An edit to the collapsed range/comprehension expressions that shifts a register
+    must fail here, not silently change what's writable. Enumerated in full,
+    deliberately not derived.
+    """
+    assert WRITE_SAFE_SINGLE_PHASE == frozenset(
+        {20, 27, 29, 31, 32, 35, 36, 37, 38, 39, 40, 44, 45, 50, 56, 57, 59, 94, 95, 96,
+         110, 111, 112, 114, 116, 163, 166,
+         246, 247, 249, 250, 252, 253, 255, 256, 258, 259, 261, 262, 264, 265, 267, 268,
+         276, 277, 279, 280, 282, 283, 285, 286, 288, 289, 291, 292, 294, 295, 297, 298}
+    )  # fmt: skip
+
+
+def test_write_safe_three_phase_literal_pin():
+    """Hardcoded regression fence for the three-phase write allowlist (#293 Slice D)."""
+    assert WRITE_SAFE_THREE_PHASE == frozenset(
+        {20, 27, 29, 35, 36, 37, 38, 39, 40, 50, 59, 111, 112, 114, 163, 166,
+         246, 247, 249, 250, 252, 253, 255, 256, 258, 259, 261, 262, 264, 265, 267, 268,
+         276, 277, 279, 280, 282, 283, 285, 286, 288, 289, 291, 292, 294, 295, 297, 298,
+         1078, 1109, 1111, 1112, 1113, 1114, 1115, 1116, 1118, 1119, 1120, 1121, 1122, 1123}
+    )  # fmt: skip
+
+
 def test_write_safe_registers_model_matrix():
     """The base-set selection: EMS → EMS set, three-phase → 3ph set, else single-phase.
 
