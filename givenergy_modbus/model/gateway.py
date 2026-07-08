@@ -74,7 +74,13 @@ _GATEWAY_COMMON_LUT = {
     "p_ac1": Def(C.int16, None, IR(1616)),
     "p_pv": Def(C.uint16, None, IR(1617), max=50000),
     "p_load": Def(C.uint16, None, IR(1618), max=50000),
-    "p_liberty": Def(C.int16, None, IR(1619)),
+    # p_liberty / p_aio_total / p_aio{1,2,3}_inverter: firmware reports positive
+    # while charging; C.negate brings them into the library's house convention
+    # (positive = discharge), matching the single-phase inverter's p_battery.
+    # Fixture-confirmed on gateway_2aio_a (night: battery discharge → raw −797;
+    # daylight: charge → raw +154). p_liberty's exact semantics are still open,
+    # but it tracks p_aio_total's sign, so the same treatment applies (#194/hass).
+    "p_liberty": Def(C.int16, C.negate, IR(1619)),
     "fault_protection": Def(C.uint32, None, IR(1620), IR(1621)),
     "gateway_fault_codes": Def(C.uint32, _gateway_fault_code, IR(1622), IR(1623)),
     "v_grid_relay": Def(C.deci, None, IR(1624), min=0.0, max=500.0),
@@ -94,7 +100,7 @@ _GATEWAY_COMMON_LUT = {
     #
     "parallel_aio_num": Def(C.uint16, None, IR(1700)),
     "parallel_aio_online_num": Def(C.uint16, None, IR(1701)),
-    "p_aio_total": Def(C.int16, None, IR(1702)),
+    "p_aio_total": Def(C.int16, C.negate, IR(1702)),
     "aio_state": Def(C.uint16, State, IR(1703)),
     "battery_firmware_version": Def(C.uint16, None, IR(1704)),
     #
@@ -114,9 +120,9 @@ _GATEWAY_COMMON_LUT = {
     "aio1_soc": Def(C.uint16, None, IR(1801), min=0, max=100),
     "aio2_soc": Def(C.uint16, None, IR(1802), min=0, max=100),
     "aio3_soc": Def(C.uint16, None, IR(1803), min=0, max=100),
-    "p_aio1_inverter": Def(C.int16, None, IR(1816)),
-    "p_aio2_inverter": Def(C.int16, None, IR(1817)),
-    "p_aio3_inverter": Def(C.int16, None, IR(1818)),
+    "p_aio1_inverter": Def(C.int16, C.negate, IR(1816)),
+    "p_aio2_inverter": Def(C.int16, C.negate, IR(1817)),
+    "p_aio3_inverter": Def(C.int16, C.negate, IR(1818)),
 }
 
 # Energy totals — high/low register order used by GA000009 and earlier

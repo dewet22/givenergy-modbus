@@ -301,6 +301,12 @@ async def test_gateway_classifies_and_decodes_v1_totals():
     assert gw.aio1_serial_number == "CH2414G000"
     assert gw.aio2_serial_number == "CH2542G000"
     assert not gw.aio3_serial_number  # only two AIOs on this plant
+    # AIO power sign convention (house: positive = discharge). Daylight, near-full
+    # batteries absorbing PV surplus → charging → negative after C.negate.
+    assert gw.p_aio_total < 0
+    assert gw.p_liberty < 0
+    # Per-AIO components share the total's convention and sum to it (both negated).
+    assert gw.p_aio1_inverter < 0 and gw.p_aio2_inverter < 0
 
 
 @pytest.mark.timeout(20)
@@ -323,3 +329,10 @@ async def test_gateway_night_capture_classifies_and_selects_v1():
     assert gw.p_pv == 0  # deep night
     # V1 word order holds on this capture too (V2 order would inflate ~1.5e8)
     assert 8000 < gw.e_battery_charge_total < 9000
+    # AIO power sign convention (house: positive = discharge). Deep night, PV=0,
+    # grid ~0 → the house runs off the batteries → discharging → positive after
+    # C.negate. Unambiguous: p_aio_total ~ p_load. Per-AIO parts sum to the total.
+    assert gw.p_aio_total > 0
+    assert gw.p_liberty > 0
+    assert gw.p_aio1_inverter > 0 and gw.p_aio2_inverter > 0
+    assert gw.p_aio1_inverter + gw.p_aio2_inverter == pytest.approx(gw.p_aio_total)

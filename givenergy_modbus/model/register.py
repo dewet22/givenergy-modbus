@@ -166,6 +166,18 @@ class Converter:
             return val if val < 0x8000 else val - 0x10000
 
     @staticmethod
+    def negate(val: int | float | None) -> int | float | None:
+        """Flip the sign of a post-converted value.
+
+        A composable post-converter: pairs after a width/sign converter (e.g.
+        ``Def(C.int16, C.negate, ...)``) to bring a register into the library's
+        house convention where positive = discharge/export. Used for the Gateway
+        AIO power fields (IR1619/1702/1816-1818), whose firmware reports positive
+        while charging — inverted vs the single-phase inverter's ``p_battery``.
+        """
+        return None if val is None else -val
+
+    @staticmethod
     def deci(val: int) -> float:
         """Represent a register value as a float in 1/10 units."""
         if val is not None:
@@ -256,6 +268,7 @@ _PRECISION_BY_CONVERTER: dict[Any, int] = {
     Converter.int32: 0,
     Converter.duint8: 0,
     Converter.bitfield: 0,
+    Converter.negate: 0,
 }
 
 

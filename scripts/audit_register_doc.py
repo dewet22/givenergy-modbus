@@ -287,6 +287,7 @@ _CONV_SCALE = {
     "int16": 1.0,
     "uint32": 1.0,
     "int32": 1.0,
+    "negate": 1.0,
 }
 
 
