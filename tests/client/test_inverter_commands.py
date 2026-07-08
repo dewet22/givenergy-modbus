@@ -22,7 +22,7 @@ from givenergy_modbus.client.commands import (
     _InverterCommands,
     _ThreePhaseCommands,
 )
-from givenergy_modbus.model import TimeSlot
+from givenergy_modbus.model import TimeSlot, manifest
 from givenergy_modbus.model.battery import ExportPriority
 from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.inverter import SinglePhaseInverter
@@ -63,11 +63,11 @@ def test_mixin_write_safe_registers_is_universal_subset():
     # has_ac_config_block at the client boundary (#295/#296); 318-320 (pause mode) stay
     # firmware-gated.
     excluded = {313, 314, 318, 319, 320, 1112, 1122, 1123, 2040, 2062, 2063, 2065, 2066, 2068, 2069}
-    assert excluded.isdisjoint(_InverterCommands.WRITE_SAFE_REGISTERS)
+    assert excluded.isdisjoint(manifest.WRITE_SAFE_SINGLE_PHASE)
     # Sanity: still substantial, includes the bread-and-butter ones.
-    assert 20 in _InverterCommands.WRITE_SAFE_REGISTERS  # ENABLE_CHARGE_TARGET
-    assert 96 in _InverterCommands.WRITE_SAFE_REGISTERS  # ENABLE_CHARGE
-    assert 116 in _InverterCommands.WRITE_SAFE_REGISTERS  # CHARGE_TARGET_SOC
+    assert 20 in manifest.WRITE_SAFE_SINGLE_PHASE  # ENABLE_CHARGE_TARGET
+    assert 96 in manifest.WRITE_SAFE_SINGLE_PHASE  # ENABLE_CHARGE
+    assert 116 in manifest.WRITE_SAFE_SINGLE_PHASE  # CHARGE_TARGET_SOC
 
 
 def test_mixin_classvar_does_not_leak_into_model_dump():
@@ -316,8 +316,8 @@ def test_single_phase_set_charge_target_unchanged():
 
 
 def test_three_phase_write_safe_registers_contains_three_phase_entries():
-    """_ThreePhaseCommands.WRITE_SAFE_REGISTERS must include three-phase-specific registers."""
-    wsr = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    """manifest.WRITE_SAFE_THREE_PHASE must include three-phase-specific registers."""
+    wsr = manifest.WRITE_SAFE_THREE_PHASE
     assert RegisterMap.CHARGE_TARGET_SOC_3PH in wsr  # 1111
     assert RegisterMap.BATTERY_SOC_RESERVE_3PH in wsr  # 1109
     assert RegisterMap.BATTERY_RESERVE_SOC in wsr  # 1078
@@ -363,7 +363,7 @@ def test_three_phase_set_charge_target_100_disables_charge_target():
 
 def test_three_phase_write_safe_registers_excludes_single_phase_entries():
     """Single-phase-only registers must be absent from the three-phase allowlist."""
-    wsr = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    wsr = manifest.WRITE_SAFE_THREE_PHASE
     assert RegisterMap.CHARGE_TARGET_SOC not in wsr  # 116 — replaced by 1111
     assert RegisterMap.BATTERY_SOC_RESERVE not in wsr  # 110 — replaced by 1109
     assert RegisterMap.ENABLE_CHARGE not in wsr  # 96 — replaced by AC_CHARGE_ENABLE
@@ -526,17 +526,16 @@ def test_ems_target_soc_validation_holds_through_mixin(method_name):
 
 
 def test_mixin_write_safe_registers_is_subset_of_pdu_set():
-    """The mixin's documentation-level set must never contain a register the PDU layer rejects.
+    """The manifest's documentation-level set must never contain a register the PDU layer rejects.
 
-    The PDU-level WRITE_SAFE_REGISTERS is the enforced allowlist; the mixin set is the
+    The PDU-level WRITE_SAFE_REGISTERS is the enforced allowlist; the manifest set is the
     documented universally-applicable subset (per-model allowlists deferred to #106/#203).
     Lagging additions are by design; an entry the PDU layer would reject is drift (audit L2).
     """
-    from givenergy_modbus.client.commands import _InverterCommands
     from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS as PDU_SET
 
-    rogue = _InverterCommands.WRITE_SAFE_REGISTERS - PDU_SET
-    assert not rogue, f"mixin WRITE_SAFE_REGISTERS contains registers the PDU layer rejects: {sorted(rogue)}"
+    rogue = manifest.WRITE_SAFE_SINGLE_PHASE - PDU_SET
+    assert not rogue, f"manifest WRITE_SAFE_SINGLE_PHASE contains registers the PDU layer rejects: {sorted(rogue)}"
 
 
 # ---------------------------------------------------------------------------

@@ -171,9 +171,9 @@ class Ems(_EmsBase, _EmsCommands, RegisterMetadataMixin):  # type: ignore[misc,v
 
     Composes the `_EmsCommands` mixin so EMS-targeted writes (`set_ems_plant`,
     `set_ems_charge_slot`, `set_export_slot`, etc.) are exposed as instance
-    methods on the EMS object. The mixin's `WRITE_SAFE_REGISTERS` covers the
-    EMS HR block (2040, 2044–2071); the inverter-level allowlist intentionally
-    does not apply here — EMS is a peer device, not an inverter.
+    methods on the EMS object. `manifest.WRITE_SAFE_EMS` covers the EMS HR
+    block (2040, 2044–2071); the inverter-level allowlist intentionally does
+    not apply here — EMS is a peer device, not an inverter.
     """
 
     REGISTER_GETTER: ClassVar[type[RegisterGetter]] = EmsRegisterGetter

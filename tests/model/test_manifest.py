@@ -4,10 +4,15 @@ import pytest
 
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.manifest import (
+    WRITE_SAFE_AC_CONFIG,
+    WRITE_SAFE_EMS,
+    WRITE_SAFE_SINGLE_PHASE,
+    WRITE_SAFE_THREE_PHASE,
     battery_energy_source,
     has_capability,
     has_extended_slots,
     ir44_is_inverter_output,
+    write_safe_registers,
 )
 
 
@@ -266,3 +271,81 @@ def test_gated_ranges_accepts_none_model():
     )
 
     assert gated_ranges(LOAD_CONFIG_RANGES, None) == []
+
+
+def test_write_safe_ac_config_membership_and_disjointness():
+    """Permanent #297 pins at the manifest level.
+
+    The AC-config block is exactly HR311/313/314/317 and is in NEITHER base set
+    (it only arrives via the union).
+    """
+    assert WRITE_SAFE_AC_CONFIG == frozenset({311, 313, 314, 317})
+    assert WRITE_SAFE_AC_CONFIG.isdisjoint(WRITE_SAFE_SINGLE_PHASE)
+    assert WRITE_SAFE_AC_CONFIG.isdisjoint(WRITE_SAFE_THREE_PHASE)
+    assert WRITE_SAFE_AC_CONFIG.isdisjoint(WRITE_SAFE_EMS)
+
+
+def test_write_safe_single_phase_literal_pin():
+    """Hardcoded regression fence for the write allowlist (#293 Slice D).
+
+    An edit to the collapsed range/comprehension expressions that shifts a register
+    must fail here, not silently change what's writable. Enumerated in full,
+    deliberately not derived.
+    """
+    assert WRITE_SAFE_SINGLE_PHASE == frozenset(
+        {20, 27, 29, 31, 32, 35, 36, 37, 38, 39, 40, 44, 45, 50, 56, 57, 59, 94, 95, 96,
+         110, 111, 112, 114, 116, 163, 166,
+         246, 247, 249, 250, 252, 253, 255, 256, 258, 259, 261, 262, 264, 265, 267, 268,
+         276, 277, 279, 280, 282, 283, 285, 286, 288, 289, 291, 292, 294, 295, 297, 298}
+    )  # fmt: skip
+
+
+def test_write_safe_three_phase_literal_pin():
+    """Hardcoded regression fence for the three-phase write allowlist (#293 Slice D)."""
+    assert WRITE_SAFE_THREE_PHASE == frozenset(
+        {20, 27, 29, 35, 36, 37, 38, 39, 40, 50, 59, 111, 112, 114, 163, 166,
+         246, 247, 249, 250, 252, 253, 255, 256, 258, 259, 261, 262, 264, 265, 267, 268,
+         276, 277, 279, 280, 282, 283, 285, 286, 288, 289, 291, 292, 294, 295, 297, 298,
+         1078, 1109, 1111, 1112, 1113, 1114, 1115, 1116, 1118, 1119, 1120, 1121, 1122, 1123}
+    )  # fmt: skip
+
+
+def test_write_safe_registers_model_matrix():
+    """The base-set selection: EMS → EMS set, three-phase → 3ph set, else single-phase.
+
+    AC/AIO additionally get the AC-config union (#295).
+    """
+    assert write_safe_registers(Model.EMS) == WRITE_SAFE_EMS
+    assert write_safe_registers(Model.EMS_COMMERCIAL) == WRITE_SAFE_EMS
+    assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE
+    assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
+    assert write_safe_registers(Model.AC) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
+    assert write_safe_registers(Model.ALL_IN_ONE) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
+
+
+def test_write_safe_registers_ac_3ph_no_ac_config_union():
+    """The load-bearing guard: AC_3PH HAS has_ac_config_block but is three-phase.
+
+    It remaps those controls to the 1000-range, so it must NOT get the HR300-359
+    union (#295/#296; pinned behaviourally in test_client_write_safety.py too).
+    """
+    result = write_safe_registers(Model.AC_3PH)
+    assert result == WRITE_SAFE_THREE_PHASE
+    for reg in (311, 313, 314, 317):
+        assert reg not in result
+
+
+def test_write_safe_registers_undetected_falls_back_to_single_phase():
+    """model=None (undetected client) → conservative single-phase base, no AC-config union.
+
+    Falls out of has_capability's None→False contract, not a special case (#296).
+    """
+    assert write_safe_registers(None) == WRITE_SAFE_SINGLE_PHASE
+
+
+def test_write_safe_registers_accepts_fw_param():
+    """arm_fw column exists in the signature from day one.
+
+    Unused — no write capability is firmware-gated today.
+    """
+    assert write_safe_registers(Model.HYBRID_GEN1, arm_fw=449) == WRITE_SAFE_SINGLE_PHASE

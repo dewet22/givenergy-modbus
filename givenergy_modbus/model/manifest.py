@@ -4,8 +4,10 @@ One place answering "what does this register/field mean on this model". Grown in
 slices: A (this file's initial content) covers register SEMANTICS — value-source
 routing and per-model field identity. Slice B added the capability fact tables
 (`CAPABILITIES`, `has_extended_slots`); Slice C1 added the polling-range tables
-(`LOAD_CONFIG_RANGES`, `REFRESH_IR_RANGES`, `gated_ranges`); C2/D will add
-detect-time polling and the write surface.
+(`LOAD_CONFIG_RANGES`, `REFRESH_IR_RANGES`, `gated_ranges`); Slice D added the
+write surface (`WRITE_SAFE_*`, `write_safe_registers`); detect-time polling
+remains in client.py/plant.py's already-shared helpers (C2 was investigated and
+found already unified by #268).
 
 Keys are the RESOLVED specific ``Model`` (from ``resolve_model``), never the coarse
 family. Every accessor takes ``arm_fw`` so a firmware column exists in the contract
@@ -260,3 +262,131 @@ def gated_ranges(
 ) -> list[RegisterRange]:
     """Every RegisterRange in `table` whose capability gate is true for `model`."""
     return [r for name, entries in table.items() if has_capability(name, model, arm_fw) for r in entries]
+
+
+# ---------------------------------------------------------------------------
+# Write surface (#293 Slice D): which registers each model accepts at the normal
+# (non-installer) write tier. Relocated from client/commands.py's mixin ClassVars
+# (_InverterCommands/_ThreePhaseCommands/_EmsCommands.WRITE_SAFE_REGISTERS) and the
+# module-level _AC_CONFIG_WRITE_SAFE_REGISTERS. These are Gate 1 of the two-gate
+# write-safety model — the model/capability-aware gate; Gate 2 (the universal
+# pdu.write_registers supersets) and the confirm=True destructive gate are
+# deliberately NOT here (danger classifications true on every model are not
+# per-model capability facts). Register names in comments mirror
+# client.commands.RegisterMap (not imported — commands.py sits inside the
+# manifest→inverter→commands import cycle, so names live in comments).
+
+# Universally-applicable single-phase subset — registers every single-phase inverter
+# accepts. Excludes 311/313/314/317 (HR300-359 AC-config block, absent on DC hybrids —
+# gated via WRITE_SAFE_AC_CONFIG below, #295/#296/#297), 318-320 (pause mode,
+# firmware-gated), the 1000-range (three-phase) and 2040+ (EMS) registers.
+WRITE_SAFE_SINGLE_PHASE: frozenset[int] = frozenset(
+    {
+        20,  # ENABLE_CHARGE_TARGET
+        27,  # BATTERY_POWER_MODE
+        29,  # SOC_FORCE_ADJUST
+        *(31, 32),  # CHARGE_SLOT_2 (start, end)
+        *range(35, 41),  # SYSTEM_TIME_YEAR/MONTH/DAY/HOUR/MINUTE/SECOND (35-40)
+        *(44, 45),  # DISCHARGE_SLOT_2 (start, end)
+        50,  # ACTIVE_POWER_RATE
+        *(56, 57),  # DISCHARGE_SLOT_1 (start, end)
+        59,  # ENABLE_DISCHARGE
+        *(94, 95),  # CHARGE_SLOT_1 (start, end)
+        96,  # ENABLE_CHARGE
+        110,  # BATTERY_SOC_RESERVE
+        111,  # BATTERY_CHARGE_LIMIT
+        112,  # BATTERY_DISCHARGE_LIMIT
+        114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
+        116,  # CHARGE_TARGET_SOC
+        163,  # REBOOT
+        166,  # ENABLE_RTC
+        *(b + o for b in range(246, 269, 3) for o in (0, 1)),  # CHARGE_SLOT_3..10 (start/end pairs at 246+3k)
+        *(b + o for b in range(276, 299, 3) for o in (0, 1)),  # DISCHARGE_SLOT_3..10 (start/end pairs at 276+3k)
+    }
+)
+
+# Three-phase allowlist — DERIVED from the single-phase set (never re-typed): the
+# single-phase slot pairs and scalars are swapped for their 1000-range equivalents.
+WRITE_SAFE_THREE_PHASE: frozenset[int] = frozenset(
+    (
+        WRITE_SAFE_SINGLE_PHASE
+        - {94, 95}  # CHARGE_SLOT_1_START/_END → 1113/1114
+        - {31, 32}  # CHARGE_SLOT_2_START/_END → 1115/1116
+        - {56, 57}  # DISCHARGE_SLOT_1_START/_END → 1118/1119
+        - {44, 45}  # DISCHARGE_SLOT_2_START/_END → 1120/1121
+        - {96}  # ENABLE_CHARGE → AC_CHARGE_ENABLE (1112)
+        - {110}  # BATTERY_SOC_RESERVE → BATTERY_SOC_RESERVE_3PH (1109)
+        - {116}  # CHARGE_TARGET_SOC → CHARGE_TARGET_SOC_3PH (1111)
+    )
+    | frozenset(
+        {
+            1078,  # BATTERY_RESERVE_SOC (three-phase only; no single-phase equivalent)
+            1109,  # BATTERY_SOC_RESERVE_3PH (shadows HR 110)
+            1111,  # CHARGE_TARGET_SOC_3PH (shadows HR 116)
+            1112,  # AC_CHARGE_ENABLE (replaces ENABLE_CHARGE, HR 96)
+            *range(1113, 1117),  # charge slots 1-2 (three-phase; start/end pairs 1113/1114, 1115/1116)
+            *range(1118, 1122),  # discharge slots 1-2 (three-phase; start/end pairs 1118/1119, 1120/1121)
+            1122,  # FORCE_DISCHARGE_ENABLE
+            1123,  # FORCE_CHARGE_ENABLE
+        }
+    )
+)
+
+# EMS plant-controller allowlist — the EMS is a peer device, not an inverter subclass;
+# its set does not derive from the single-phase base. Slot start/end pairs mirror
+# model/slot_map.EMS_SLOTS; scalar names mirror RegisterMap.
+WRITE_SAFE_EMS: frozenset[int] = frozenset(
+    {
+        2040,  # EMS_PLANT_ENABLE
+        # EMS scheduling block (layout mirrors slot_map.EMS_SLOTS + RegisterMap scalars):
+        #   2044-2052 — discharge slots 1-3, each a (start, end, EMS_DISCHARGE_TARGET_SOC_n) triple
+        #   2053-2061 — charge slots 1-3, each a (start, end, EMS_CHARGE_TARGET_SOC_n) triple
+        #   2062-2070 — export slots 1-3, each a (EXPORT_SLOT_n_START, _END, EMS_EXPORT_TARGET_SOC_n) triple
+        #   2071 — EMS_EXPORT_POWER_LIMIT
+        *range(2044, 2072),
+    }
+)
+
+# HR(300-359) AC-output config-block writes, gated on has_ac_config_block rather than
+# the model class: only a model that exposes the block (Model.AC / All-in-One) accepts
+# them — never a DC-coupled hybrid, a three-phase unit (it remaps these controls to
+# HR1110/1108), or an undetected client (#295/#296 review). 311/317 were previously in
+# the universal set, accepted on DC hybrids and undetected (#297 moved them here).
+WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
+    {
+        311,  # EXPORT_PRIORITY
+        313,  # BATTERY_CHARGE_LIMIT_AC
+        314,  # BATTERY_DISCHARGE_LIMIT_AC
+        317,  # ENABLE_EPS
+    }
+)
+
+
+def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
+    """Registers this model/firmware permits at the normal (non-installer) write tier.
+
+    Encapsulates the model→set decision previously duplicated across client.py's two
+    write methods: EMS / three-phase / single-phase base selection, plus the AC-config
+    union gated on has_ac_config_block AND NOT is_three_phase (AC_3PH has the block but
+    remaps those controls — #295/#296/#297), plus the model=None → single-phase
+    conservative fallback (has_capability returns False for None, so an undetected
+    client falls through every branch — no special case needed). Does NOT include
+    INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
+    for signature consistency; no write capability is firmware-gated today.
+
+    Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
+    keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
+    client.load_config(), which routes through the instance properties so tests can
+    PropertyMock a not-yet-confirmed capability. There is no such test seam on the write
+    path, so keying off the model is the simpler, equivalent choice here.
+    """
+    if has_capability("is_ems", model):
+        safe = WRITE_SAFE_EMS
+    elif has_capability("is_three_phase", model):
+        safe = WRITE_SAFE_THREE_PHASE
+    else:
+        safe = WRITE_SAFE_SINGLE_PHASE
+    if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
+        safe = safe | WRITE_SAFE_AC_CONFIG
+    return safe

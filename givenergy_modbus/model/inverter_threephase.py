@@ -559,10 +559,10 @@ class ThreePhaseInverter(  # type: ignore[valid-type,misc]
 
     Composes the `_InverterCommands` base mixin alongside `_ThreePhaseCommands`
     (which adds `set_ac_charge`, `set_force_charge`, `set_force_discharge` and
-    their HR(1112/1122/1123) allowlist entries). MRO puts `_ThreePhaseCommands`
-    first so the three-phase `WRITE_SAFE_REGISTERS` (a superset) wins. Methods
-    on the two mixins are disjoint so the resolution order doesn't matter for
-    behaviour.
+    their HR(1112/1122/1123) allowlist entries; the write-safe allowlist for this
+    shape is `manifest.WRITE_SAFE_THREE_PHASE`, not a mixin attribute). MRO puts
+    `_ThreePhaseCommands` first, but methods on the two mixins are disjoint so
+    the resolution order doesn't matter for behaviour.
     """
 
     REGISTER_GETTER: ClassVar[type[RegisterGetter]] = ThreePhaseInverterRegisterGetter

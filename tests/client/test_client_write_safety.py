@@ -1,9 +1,10 @@
 """Tests for model-aware write safety at the Client boundary.
 
 one_shot_command() validates every WriteHoldingRegisterRequest against the
-model-specific WRITE_SAFE_REGISTERS set before transmitting. A caller who
-bypasses the command mixins and hand-builds a WriteHoldingRegisterRequest still
-gets rejected if the register is not valid for the detected inverter model.
+model-specific write-safe register set (from manifest.write_safe_registers()) before
+transmitting. A caller who bypasses the command mixins and hand-builds a
+WriteHoldingRegisterRequest still gets rejected if the register is not valid for the
+detected inverter model.
 
 Uses dry_run=True throughout so no network transport is needed.
 """
@@ -11,19 +12,19 @@ Uses dry_run=True throughout so no network transport is needed.
 import pytest
 
 from givenergy_modbus.client.client import Client
-from givenergy_modbus.client.commands import _EmsCommands, _InverterCommands, _ThreePhaseCommands
 from givenergy_modbus.exceptions import InvalidPduState
+from givenergy_modbus.model import manifest
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.plant import PlantCapabilities
 from givenergy_modbus.pdu.write_registers import INSTALLER_WRITE_REGISTERS as PDU_INSTALLER_WRITE_REGISTERS
 from givenergy_modbus.pdu.write_registers import WRITE_SAFE_REGISTERS as PDU_WRITE_SAFE_REGISTERS
 from givenergy_modbus.pdu.write_registers import WriteHoldingRegisterRequest
 
-# HR 96 = ENABLE_CHARGE — in _InverterCommands.WRITE_SAFE_REGISTERS (single-phase)
-# HR 1112 = AC_CHARGE_ENABLE — in _ThreePhaseCommands.WRITE_SAFE_REGISTERS only
+# HR 96 = ENABLE_CHARGE — in manifest.WRITE_SAFE_SINGLE_PHASE (single-phase)
+# HR 1112 = AC_CHARGE_ENABLE — in manifest.WRITE_SAFE_THREE_PHASE only
 _SINGLE_PHASE_REG = 96
 _THREE_PHASE_REG = 1112
-# HR 1078 = BATTERY_RESERVE_SOC — three-phase-only; not in base _InverterCommands set
+# HR 1078 = BATTERY_RESERVE_SOC — three-phase-only; not in base manifest.WRITE_SAFE_SINGLE_PHASE set
 _THREE_PHASE_ONLY_REG = 1078
 # HR 2040 = EMS_PLANT_ENABLE — EMS-only
 _EMS_REG = 2040
@@ -118,12 +119,10 @@ _EXPORT_EPS_REGS = (311, 317)
 
 def test_export_priority_eps_gated_not_universal():
     """311/317 are AC-config-gated, not in the universal or three-phase model allowlists (#297)."""
-    from givenergy_modbus.client.commands import _AC_CONFIG_WRITE_SAFE_REGISTERS
-
     for reg in _EXPORT_EPS_REGS:
-        assert reg in _AC_CONFIG_WRITE_SAFE_REGISTERS
-        assert reg not in _InverterCommands.WRITE_SAFE_REGISTERS
-        assert reg not in _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+        assert reg in manifest.WRITE_SAFE_AC_CONFIG
+        assert reg not in manifest.WRITE_SAFE_SINGLE_PHASE
+        assert reg not in manifest.WRITE_SAFE_THREE_PHASE
 
 
 @pytest.mark.asyncio
@@ -266,31 +265,31 @@ async def test_dry_run_false_calls_execute(monkeypatch):
 
 
 def test_single_phase_reg_in_base_set():
-    assert _SINGLE_PHASE_REG in _InverterCommands.WRITE_SAFE_REGISTERS
+    assert _SINGLE_PHASE_REG in manifest.WRITE_SAFE_SINGLE_PHASE
 
 
 def test_three_phase_reg_not_in_base_set():
-    assert _THREE_PHASE_REG not in _InverterCommands.WRITE_SAFE_REGISTERS
+    assert _THREE_PHASE_REG not in manifest.WRITE_SAFE_SINGLE_PHASE
 
 
 def test_three_phase_reg_in_three_phase_set():
-    assert _THREE_PHASE_REG in _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    assert _THREE_PHASE_REG in manifest.WRITE_SAFE_THREE_PHASE
 
 
 def test_single_phase_reg_not_in_three_phase_set():
-    assert _SINGLE_PHASE_REG not in _ThreePhaseCommands.WRITE_SAFE_REGISTERS
+    assert _SINGLE_PHASE_REG not in manifest.WRITE_SAFE_THREE_PHASE
 
 
 def test_ems_reg_in_ems_set():
-    assert _EMS_REG in _EmsCommands.WRITE_SAFE_REGISTERS
+    assert _EMS_REG in manifest.WRITE_SAFE_EMS
 
 
 def test_ems_reg_not_in_base_set():
-    assert _EMS_REG not in _InverterCommands.WRITE_SAFE_REGISTERS
+    assert _EMS_REG not in manifest.WRITE_SAFE_SINGLE_PHASE
 
 
 def test_ems_set_covers_full_range():
-    assert _EmsCommands.WRITE_SAFE_REGISTERS == frozenset({2040, *range(2044, 2072)})
+    assert manifest.WRITE_SAFE_EMS == frozenset({2040, *range(2044, 2072)})
 
 
 # ---------------------------------------------------------------------------
@@ -303,9 +302,9 @@ def test_ems_set_covers_full_range():
 @pytest.mark.parametrize(
     "command_set",
     [
-        _InverterCommands.WRITE_SAFE_REGISTERS,
-        _ThreePhaseCommands.WRITE_SAFE_REGISTERS,
-        _EmsCommands.WRITE_SAFE_REGISTERS,
+        manifest.WRITE_SAFE_SINGLE_PHASE,
+        manifest.WRITE_SAFE_THREE_PHASE,
+        manifest.WRITE_SAFE_EMS,
     ],
 )
 def test_model_command_set_subset_of_pdu_allowlist(command_set):

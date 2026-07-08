@@ -10,12 +10,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from givenergy_modbus.client.commands import (
-    _AC_CONFIG_WRITE_SAFE_REGISTERS,
-    _EmsCommands,
-    _InverterCommands,
-    _ThreePhaseCommands,
-)
 from givenergy_modbus.exceptions import (
     CommunicationError,
     ConnectionLost,
@@ -1379,6 +1373,21 @@ class Client:
                     retry_delay=retry_delay,
                 )
 
+    def _resolve_write_safe(self) -> frozenset[int]:
+        """Registers the detected model permits at the normal (non-installer) write tier.
+
+        The single source of the caps→manifest resolution shared by one_shot_command()
+        and installer_command() — write-gating logic that must stay identical across
+        both call sites. Composition (base selection, AC-config union with its
+        not-three-phase guard, undetected→single-phase fallback) lives in
+        manifest.write_safe_registers (#293 Slice D).
+        """
+        caps = self.plant.capabilities
+        return manifest.write_safe_registers(
+            caps.device_type if caps is not None else None,
+            caps.arm_firmware_version if caps is not None else None,
+        )
+
     async def one_shot_command(
         self,
         requests: list[TransparentRequest],
@@ -1398,18 +1407,7 @@ class Client:
         never passes for a request real execution would reject.
         """
         caps = self.plant.capabilities
-        if caps is not None and caps.is_ems:
-            safe = _EmsCommands.WRITE_SAFE_REGISTERS
-        elif caps is not None and caps.is_three_phase:
-            safe = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
-        else:
-            safe = _InverterCommands.WRITE_SAFE_REGISTERS
-        # HR(300-359) AC-output config-block writes (battery_*_limit_ac, #295) are gated on the
-        # capability, not the model class: only a model that exposes the block (Model.AC / AIO)
-        # accepts them — never a DC-coupled hybrid, a three-phase unit (it remaps to HR1110/1108),
-        # or an undetected client (#296 review).
-        if caps is not None and caps.has_ac_config_block and not caps.is_three_phase:
-            safe = safe | _AC_CONFIG_WRITE_SAFE_REGISTERS
+        safe = self._resolve_write_safe()
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:
             if isinstance(req, WriteHoldingRegisterRequest):
@@ -1446,14 +1444,7 @@ class Client:
         If dry_run is True, validates but does not transmit.
         """
         caps = self.plant.capabilities
-        if caps is not None and caps.is_ems:
-            model_safe = _EmsCommands.WRITE_SAFE_REGISTERS
-        elif caps is not None and caps.is_three_phase:
-            model_safe = _ThreePhaseCommands.WRITE_SAFE_REGISTERS
-        else:
-            model_safe = _InverterCommands.WRITE_SAFE_REGISTERS
-        if caps is not None and caps.has_ac_config_block and not caps.is_three_phase:
-            model_safe = model_safe | _AC_CONFIG_WRITE_SAFE_REGISTERS
+        model_safe = self._resolve_write_safe()
         installer_safe = model_safe | INSTALLER_WRITE_REGISTERS
         model_label = caps.device_type.name if caps is not None else "undetected"
         for req in requests:

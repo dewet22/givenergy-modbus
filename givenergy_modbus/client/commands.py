@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from datetime import time as dt_time
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from typing_extensions import deprecated
 
@@ -1374,34 +1374,16 @@ def restore_factory_defaults(*, confirm: bool = False) -> list[WriteHoldingRegis
     return [WriteHoldingRegisterRequest(RegisterMap.RESTORE_FACTORY_DEFAULTS, 1, installer=True)]
 
 
-# HR(300-359) AC-output config-block writes that are gated on capabilities.has_ac_config_block
-# rather than the model-class allowlist — one_shot_command unions these into the safe set only when
-# the detected model exposes the block (Model.AC / All-in-One), never for a DC-coupled hybrid, a
-# three-phase unit, or an undetected client (#295/#296 review). The AC charge/discharge limits plus
-# export priority (HR311) and EPS enable (HR317) — the whole HR(300-359) writable block is now gated
-# here (#297); 311/317 were previously in the universal set, accepted on DC hybrids and undetected.
-_AC_CONFIG_WRITE_SAFE_REGISTERS: frozenset[int] = frozenset(
-    {
-        RegisterMap.EXPORT_PRIORITY,  # 311
-        RegisterMap.BATTERY_CHARGE_LIMIT_AC,  # 313
-        RegisterMap.BATTERY_DISCHARGE_LIMIT_AC,  # 314
-        RegisterMap.ENABLE_EPS,  # 317
-    }
-)
-
-
 class _InverterCommands:
     """Commands every inverter supports, mixed into Inverter model classes.
 
     Methods delegate to the module-level primitive functions above so the
     primitives stay accessible to lower-level callers (tests, alternate code
-    paths). The mixin's value-add is twofold: it removes the boilerplate of
-    threading `slot_map` through every slot call (it's read from `self`), and
-    it carries a per-model `WRITE_SAFE_REGISTERS` set so model-specific
-    mixins can constrain the allowlist further than the global one.
+    paths). The mixin's value-add is removing the boilerplate of threading
+    `slot_map` through every slot call (it's read from `self`).
 
-    The base mixin's `WRITE_SAFE_REGISTERS` is the universally-applicable
-    subset — registers every inverter accepts writes to. Three-phase / EMS /
+    The write-safe register allowlist for this model shape lives in
+    `manifest.write_safe_registers()`, not on this class. Three-phase / EMS /
     pause-mode commands and their registers will land in additional mixins
     (composed onto the relevant inverter classes) in later 2.x minors once
     the model-vs-firmware ambiguities flagged on #75 are resolved against
@@ -1419,80 +1401,6 @@ class _InverterCommands:
 
         @property
         def slot_map(self) -> SlotMap: ...
-
-    # Universally-applicable subset of pdu.write_registers.WRITE_SAFE_REGISTERS.
-    # Single-phase shape: contains HR(96/110/116) and single-phase slot pairs (94/95,
-    # 31/32 charge; 56/57, 44/45 discharge). ThreePhaseInverter replaces these via
-    # _ThreePhaseCommands.WRITE_SAFE_REGISTERS (defined below, overrides this per MRO).
-    # Excludes 311/313/314/317: these belong to the HR(300-359) AC-output config block, absent
-    # (reads time out) on DC-coupled hybrids, so the whole writable block is gated on
-    # capabilities.has_ac_config_block at the client boundary instead — one_shot_command unions
-    # _AC_CONFIG_WRITE_SAFE_REGISTERS in for Model.AC/AIO only, never a DC hybrid, three-phase, or an
-    # undetected client (#295/#296/#297 review). Also excludes 318-320 (pause mode, firmware-gated),
-    # 1078/1109/1111-1123 (native three-phase), and 2040/2062-2069 (EMS).
-    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
-        {
-            20,  # ENABLE_CHARGE_TARGET
-            27,  # BATTERY_POWER_MODE
-            29,  # SOC_FORCE_ADJUST
-            31,
-            32,  # CHARGE_SLOT_2
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,  # SYSTEM_TIME_*
-            44,
-            45,  # DISCHARGE_SLOT_2
-            50,  # ACTIVE_POWER_RATE
-            56,
-            57,  # DISCHARGE_SLOT_1
-            59,  # ENABLE_DISCHARGE
-            94,
-            95,  # CHARGE_SLOT_1
-            96,  # ENABLE_CHARGE
-            110,  # BATTERY_SOC_RESERVE
-            111,  # BATTERY_CHARGE_LIMIT
-            112,  # BATTERY_DISCHARGE_LIMIT
-            114,  # BATTERY_DISCHARGE_MIN_POWER_RESERVE
-            116,  # CHARGE_TARGET_SOC
-            163,  # REBOOT
-            166,  # ENABLE_RTC
-            246,
-            247,
-            249,
-            250,
-            252,
-            253,
-            255,
-            256,
-            258,
-            259,
-            261,
-            262,
-            264,
-            265,
-            267,
-            268,  # CHARGE_SLOT_3..10
-            276,
-            277,
-            279,
-            280,
-            282,
-            283,
-            285,
-            286,
-            288,
-            289,
-            291,
-            292,
-            294,
-            295,
-            297,
-            298,  # DISCHARGE_SLOT_3..10
-        }
-    )
 
     # --- charge target -------------------------------------------------------
 
@@ -1644,39 +1552,11 @@ class _ThreePhaseCommands:
     MRO puts `_ThreePhaseCommands` before `_InverterCommands` on `ThreePhaseInverter`,
     so these overrides take precedence.
 
-    The `WRITE_SAFE_REGISTERS` frozenset reflects the correct three-phase register
-    addresses: single-phase slot pairs (94/95, 31/32, 56/57, 44/45) and the
-    single-phase-only scalars (96, 110, 116) are replaced by their three-phase
-    counterparts (1113-1116, 1118-1121, 1112, 1109, 1111).
+    The three-phase write-safe register allowlist lives in
+    `manifest.write_safe_registers()`, not on this class: single-phase slot pairs
+    (94/95, 31/32, 56/57, 44/45) and the single-phase-only scalars (96, 110, 116) are
+    replaced there by their three-phase counterparts (1113-1116, 1118-1121, 1112, 1109, 1111).
     """
-
-    # Three-phase allowlist: derived from _InverterCommands.WRITE_SAFE_REGISTERS with
-    # single-phase slot pairs and scalar registers swapped out for three-phase equivalents.
-    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset(
-        (
-            _InverterCommands.WRITE_SAFE_REGISTERS
-            # remove single-phase slot pairs and scalars
-            - {94, 95, 31, 32}  # charge slots 1-2
-            - {56, 57, 44, 45}  # discharge slots 1-2
-            - {96, 110, 116}  # ENABLE_CHARGE, BATTERY_SOC_RESERVE, CHARGE_TARGET_SOC
-        )
-        | {
-            1078,  # BATTERY_RESERVE_SOC (three-phase only)
-            1109,  # BATTERY_SOC_RESERVE_3PH (shadows HR 110)
-            1111,  # CHARGE_TARGET_SOC_3PH (shadows HR 116)
-            1112,  # AC_CHARGE_ENABLE (three-phase; replaces ENABLE_CHARGE HR 96)
-            1113,
-            1114,  # charge slot 1 (three-phase)
-            1115,
-            1116,  # charge slot 2 (three-phase)
-            1118,
-            1119,  # discharge slot 1 (three-phase)
-            1120,
-            1121,  # discharge slot 2 (three-phase)
-            1122,  # FORCE_DISCHARGE_ENABLE
-            1123,  # FORCE_CHARGE_ENABLE
-        }
-    )
 
     # --- three-phase-only enables --------------------------------------------
 
@@ -1740,11 +1620,10 @@ class _EmsCommands:
     dependency.
 
     The EMS register block (HR 2040, 2044–2071) is decoded in
-    `givenergy_modbus.model.ems`; write-safety for those registers is enforced
-    both here and at the PDU level (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
+    `givenergy_modbus.model.ems`; the write-safe allowlist for those registers lives
+    in `manifest.write_safe_registers()`, enforced there and at the PDU level
+    (`pdu.write_registers.WRITE_SAFE_REGISTERS`).
     """
-
-    WRITE_SAFE_REGISTERS: ClassVar[frozenset[int]] = frozenset({2040, *range(2044, 2072)})
 
     # --- plant master enable -------------------------------------------------
 
