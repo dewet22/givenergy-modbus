@@ -273,27 +273,6 @@ def test_gated_ranges_accepts_none_model():
     assert gated_ranges(LOAD_CONFIG_RANGES, None) == []
 
 
-def test_write_safe_sets_match_pre_migration_values():
-    """TEMPORARY transcription bridge (#293 Slice D) — REMOVED once Task 3 deletes the originals.
-
-    Pins each relocated manifest constant byte-equal to its still-live commands.py
-    predecessor, proving the relocation transcribed nothing wrong. Task 3 deletes the
-    predecessors and this test with them; the permanent membership pins below and the
-    untouched behavioural matrix in test_client_write_safety.py carry the contract on.
-    """
-    from givenergy_modbus.client.commands import (
-        _AC_CONFIG_WRITE_SAFE_REGISTERS,
-        _EmsCommands,
-        _InverterCommands,
-        _ThreePhaseCommands,
-    )
-
-    assert WRITE_SAFE_SINGLE_PHASE == _InverterCommands.WRITE_SAFE_REGISTERS
-    assert WRITE_SAFE_THREE_PHASE == _ThreePhaseCommands.WRITE_SAFE_REGISTERS
-    assert WRITE_SAFE_EMS == _EmsCommands.WRITE_SAFE_REGISTERS
-    assert WRITE_SAFE_AC_CONFIG == _AC_CONFIG_WRITE_SAFE_REGISTERS
-
-
 def test_write_safe_ac_config_membership_and_disjointness():
     """Permanent #297 pins at the manifest level.
 
