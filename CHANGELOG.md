@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-07-09
+
+### ✨ Added
+
+- add remaining battery energy fields (#386) ([ab29ea5](https://github.com/dewet22/givenergy-modbus/commit/ab29ea5e9042a224c9cc14171421cd685d1a69ab))
+- return all-None placeholders for known-but-unreachable battery/meter addresses (#213) (#389) ([0e7afc8](https://github.com/dewet22/givenergy-modbus/commit/0e7afc8ca47e316c12b60af8c45a165fa39a82bb))
+
+### 🐛 Fixed
+
+- rename mislabelled cluster count registers IR67/IR68 (#382) (#384) ([7f81e2a](https://github.com/dewet22/givenergy-modbus/commit/7f81e2a16491cf38a7d7c7a1e6f2cc14e75e46e4))
+- correct 12 installer-config register scales + add v4.1.6 reconciliation sweep (#387) ([6547434](https://github.com/dewet22/givenergy-modbus/commit/65474341457d483e4c178786ed909e18ff55e74f))
+- redact leaked BCU serial in old 3ph capture + add serial-scan script (#388) ([7f6c160](https://github.com/dewet22/givenergy-modbus/commit/7f6c1605fd0aa0536fdcabbeec83052a8d6d23f1))
+
 ## [2.10.3] - 2026-07-09
 
 ### 🐛 Fixed
