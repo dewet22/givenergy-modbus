@@ -101,15 +101,17 @@ def test_from_spec_unverified_allows_any_register_class():
     assert mock.devices[0x01][MR(0)] == 7
 
 
-@pytest.mark.parametrize("bad_value", [70000, -1, 0x10000])
+@pytest.mark.parametrize("bad_value", [70000, -1, 0x10000, 1.5, 2.0])
 @pytest.mark.parametrize("verify", [True, False])
-def test_from_spec_rejects_unencodable_register_words(bad_value: int, verify: bool):
+def test_from_spec_rejects_unencodable_register_words(bad_value, verify: bool):
     """Register words outside uint16 can never be encoded onto the wire (Codex, PR #391).
 
-    Plant.update() carries Python ints without range checks, so verification alone
-    passed 70000 — and the mock then crashed in struct.pack("H") on the first client
-    read of the bank. The range check is unconditional: an unencodable word is invalid
-    regardless of verify (verify=False only skips the commit-guard round-trip).
+    Plant.update() carries Python numerics without range or type checks, so
+    verification alone passed 70000 — and the mock then crashed in struct.pack("H")
+    on the first client read of the bank. Non-integers are the same class (struct
+    demands an actual int — even an integral 2.0 crashes), reachable from JSON/YAML
+    or other dynamic spec sources. The check is unconditional: an unencodable word
+    is invalid regardless of verify (verify=False only skips the guard round-trip).
     """
     with pytest.raises(ValueError, match=r"0x11.*HR\(1\)"):
         MockPlant.from_spec({0x11: {(HR, 0): [0x2001, bad_value]}}, verify=verify)

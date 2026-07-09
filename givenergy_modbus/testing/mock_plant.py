@@ -399,11 +399,14 @@ class MockPlant:
             cache = devices.setdefault(device_address, RegisterCache())
             for (reg_cls, base), values in banks.items():
                 for i, value in enumerate(values):
-                    if not 0 <= value <= 0xFFFF:
+                    # struct.pack("H") at serve time demands an actual int in 0..0xFFFF —
+                    # even an integral float (2.0) crashes, and dynamic spec sources
+                    # (JSON/YAML) can easily produce one.
+                    if not isinstance(value, int) or not 0 <= value <= 0xFFFF:
                         raise ValueError(
-                            f"0x{device_address:02x}:{reg_cls.__name__}({base + i}) = {value} does not "
-                            f"fit an unsigned 16-bit register word (0..65535) and can never be served; "
-                            f"encode signed/scaled quantities to their raw wire representation first."
+                            f"0x{device_address:02x}:{reg_cls.__name__}({base + i}) = {value!r} is not "
+                            f"an integer register word in 0..65535 and can never be served; encode "
+                            f"signed/scaled quantities to their raw wire representation first."
                         )
                     cache[reg_cls(base + i)] = value
         if verify:
