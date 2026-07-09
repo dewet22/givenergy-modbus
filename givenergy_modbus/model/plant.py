@@ -1884,12 +1884,18 @@ class Plant(GivEnergyBaseModel):
 
     @property
     def batteries(self) -> list[Battery]:
-        """Return Battery models for the Plant."""
+        """Return Battery models for the Plant.
+
+        A capabilities-listed address with no register cache yields an all-None placeholder
+        Battery at its index rather than being dropped (#213) — a transiently-absent pack
+        (e.g. a BMS slow to answer after a restart) stays present-but-unavailable and index-
+        aligned instead of shifting its siblings' entities. Subsequent refresh()es populate it
+        if it responds.
+        """
         if self.capabilities:
             return [
-                Battery.from_register_cache(self.register_caches[addr])
+                Battery.from_register_cache(self.register_caches.get(addr, RegisterCache()))
                 for addr in self.capabilities.lv_battery_addresses
-                if addr in self.register_caches
             ]
         return [Battery.from_register_cache(self.register_caches[i + 0x32]) for i in range(self.number_batteries)]
 
@@ -1976,13 +1982,17 @@ class Plant(GivEnergyBaseModel):
 
     @property
     def meters(self) -> dict[int, Meter]:
-        """Return Meter models keyed by device address."""
+        """Return Meter models keyed by device address.
+
+        A listed-but-uncached meter address yields an all-None placeholder Meter at its key
+        rather than being omitted (#213), so a transiently-absent meter reads as present-but-
+        unavailable and is repopulated on a later refresh() if it responds.
+        """
         if not self.capabilities or not self.capabilities.meter_addresses:
             return {}
         return {
-            addr: Meter.from_register_cache(self.register_caches[addr])
+            addr: Meter.from_register_cache(self.register_caches.get(addr, RegisterCache()))
             for addr in self.capabilities.meter_addresses
-            if addr in self.register_caches
         }
 
     @property
