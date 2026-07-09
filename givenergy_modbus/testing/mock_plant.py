@@ -227,7 +227,12 @@ def _make_device_serials_distinct(plant: Plant) -> None:
         )
 
 
-def _verify_spec_commits(spec: dict[int, dict[tuple[type[Register], int], Sequence[int]]]) -> None:
+def _verify_spec_commits(
+    spec: dict[int, dict[tuple[type[Register], int], Sequence[int]]],
+    *,
+    inverter_serial: str = _FALLBACK_SERIAL,
+    adapter_serial: str = _FALLBACK_SERIAL,
+) -> None:
     """Round-trip every HR/IR bank in *spec* through a scratch ``Plant.update()`` (#324).
 
     Feeds each bank twice — the second pass is the corroborating re-read that commits a
@@ -235,6 +240,10 @@ def _verify_spec_commits(spec: dict[int, dict[tuple[type[Register], int], Sequen
     landed in the plant's caches. Raises ValueError naming the failures, so a synthetic
     bank the commit guards would silently reject (e.g. an internally-impossible battery
     frame, #350) fails fast at construction instead of serving state no client can ingest.
+
+    The envelope serials mirror what the built mock will actually serve, so verification
+    replicates serve-time inputs exactly (they don't gate commits today — update() only
+    adopts them as state — but fidelity here is free).
     """
     from givenergy_modbus.pdu.read_registers import (
         ReadHoldingRegistersResponse,
@@ -264,17 +273,19 @@ def _verify_spec_commits(spec: dict[int, dict[tuple[type[Register], int], Sequen
                     register_count=len(values),
                     register_values=list(values),
                     # Envelope serials a wire decode would carry; update() reads them.
-                    inverter_serial_number=_FALLBACK_SERIAL,
-                    data_adapter_serial_number=_FALLBACK_SERIAL,
+                    inverter_serial_number=inverter_serial or _FALLBACK_SERIAL,
+                    data_adapter_serial_number=adapter_serial or _FALLBACK_SERIAL,
                 )
                 plant.update(pdu)
 
+    _empty = RegisterCache()
     failures = [
         f"0x{device_address:02x}:{reg_cls.__name__}({base + i})"
         for device_address, banks in spec.items()
+        for cache in (plant.register_caches.get(device_address, _empty),)
         for (reg_cls, base), values in banks.items()
         for i, value in enumerate(values)
-        if plant.register_caches.get(device_address, RegisterCache()).get(reg_cls(base + i)) != value
+        if cache.get(reg_cls(base + i)) != value
     ]
     if failures:
         raise ValueError(
@@ -396,7 +407,7 @@ class MockPlant:
                         )
                     cache[reg_cls(base + i)] = value
         if verify:
-            _verify_spec_commits(spec)
+            _verify_spec_commits(spec, inverter_serial=inverter_serial, adapter_serial=adapter_serial)
         return cls(devices, inverter_serial=inverter_serial, adapter_serial=adapter_serial)
 
     # -- serving ---------------------------------------------------------------
