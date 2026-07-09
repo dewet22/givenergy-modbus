@@ -38,6 +38,9 @@ def test_first_battery_serial_number_removed():
     [
         # 0.1V grid/EPS/HV voltages — raw (thousands of volts) is physically impossible (#385)
         ("cei021_v1s_q", 138, 2530, 253.0),
+        ("cei021_v2s_q", 139, 2530, 253.0),
+        ("cei021_v1l_q", 140, 2116, 211.6),
+        ("cei021_v2l_q", 141, 2070, 207.0),
         ("cei021_lock_in_grid_voltage", 144, 2530, 253.0),
         ("cei021_lock_out_grid_voltage", 145, 1840, 184.0),
         ("eps_nominal_voltage", 307, 2300, 230.0),
@@ -1313,9 +1316,9 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "power_factor_point_4_load_percent": 255,
         "power_factor_point_4_power_factor": 20000,
         "cei021_v1s_q": 248.4,
-        "cei021_v2s_q": 2530,
-        "cei021_v1l_q": 2116,
-        "cei021_v2l_q": 2070,
+        "cei021_v2s_q": 253.0,
+        "cei021_v1l_q": 211.6,
+        "cei021_v2l_q": 207.0,
         "cei021_lock_in_active_power": 20,
         "cei021_lock_out_active_power": 5,
         "cei021_lock_in_grid_voltage": 241.5,

@@ -35,7 +35,7 @@ _SECTION_GETTERS: dict[str, tuple[str, list]] = {
     "4.1.1": ("HR", [SinglePhaseInverterRegisterGetter, ThreePhaseInverterRegisterGetter]),
     "4.1.2": ("IR", [SinglePhaseInverterRegisterGetter, ThreePhaseInverterRegisterGetter]),
     "4.2.1": ("IR", [MeterRegisterGetter]),
-    "4.2.2": ("HR", [MeterProductRegisterGetter]),
+    "4.2.2": ("MR", [MeterProductRegisterGetter]),
     "4.4.1.1": ("IR", [LvBcuRegisterGetter]),
     "4.4.1.2": ("IR", [BatteryRegisterGetter]),
     "4.4.2.1": ("IR", [BcuRegisterGetter]),
@@ -80,7 +80,8 @@ def _norm(name: str) -> str:
 def reconcile() -> dict[str, list[dict]]:
     """Return scale-mismatch / name-divergence / unmatched lists (doc ↔ code)."""
     doc: list[dict] = []
-    _iter_doc_entries(json.load(_INVENTORY.open()), doc)
+    with _INVENTORY.open() as fh:
+        _iter_doc_entries(json.load(fh), doc)
     code = _code_index()
 
     scale_mismatch, name_divergence, unmatched = [], [], []
