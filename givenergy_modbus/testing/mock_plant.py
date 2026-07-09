@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
@@ -226,6 +227,65 @@ def _make_device_serials_distinct(plant: Plant) -> None:
         )
 
 
+def _verify_spec_commits(spec: dict[int, dict[tuple[type[Register], int], Sequence[int]]]) -> None:
+    """Round-trip every HR/IR bank in *spec* through a scratch ``Plant.update()`` (#324).
+
+    Feeds each bank twice — the second pass is the corroborating re-read that commits a
+    cold-start-held battery bank (#289) — then asserts every specced register actually
+    landed in the plant's caches. Raises ValueError naming the failures, so a synthetic
+    bank the commit guards would silently reject (e.g. an internally-impossible battery
+    frame, #350) fails fast at construction instead of serving state no client can ingest.
+    """
+    from givenergy_modbus.pdu.read_registers import (
+        ReadHoldingRegistersResponse,
+        ReadInputRegistersResponse,
+    )
+
+    pdu_for: dict[type[Register], type] = {HR: ReadHoldingRegistersResponse, IR: ReadInputRegistersResponse}
+    unsupported = sorted(
+        f"0x{dev:02x}:{reg_cls.__name__}({base})"
+        for dev, banks in spec.items()
+        for (reg_cls, base) in banks
+        if reg_cls not in pdu_for
+    )
+    if unsupported:
+        raise ValueError(
+            f"verify=True can only round-trip HR/IR banks (they are what exists on the read wire); "
+            f"got {', '.join(unsupported)}. Seed other register classes with verify=False."
+        )
+
+    plant = Plant()
+    for _pass in range(2):  # second feed = the corroborating cold-start re-read (#289)
+        for device_address, banks in spec.items():
+            for (reg_cls, base), values in banks.items():
+                pdu = pdu_for[reg_cls](
+                    device_address=device_address,
+                    base_register=base,
+                    register_count=len(values),
+                    register_values=list(values),
+                    # Envelope serials a wire decode would carry; update() reads them.
+                    inverter_serial_number=_FALLBACK_SERIAL,
+                    data_adapter_serial_number=_FALLBACK_SERIAL,
+                )
+                plant.update(pdu)
+
+    failures = [
+        f"0x{device_address:02x}:{reg_cls.__name__}({base + i})"
+        for device_address, banks in spec.items()
+        for (reg_cls, base), values in banks.items()
+        for i, value in enumerate(values)
+        if plant.register_caches.get(device_address, RegisterCache()).get(reg_cls(base + i)) != value
+    ]
+    if failures:
+        raise ValueError(
+            f"{len(failures)} specced register(s) were rejected by the commit guards and never "
+            f"landed in Plant state: {', '.join(failures[:12])}"
+            + (" …" if len(failures) > 12 else "")
+            + ". The served state would be invisible to a real client; fix the bank values "
+            "(or pass verify=False to serve it anyway)."
+        )
+
+
 class MockPlant:
     """A TCP server impersonating a GivEnergy plant, seeded from a capture."""
 
@@ -291,6 +351,43 @@ class MockPlant:
             inverter_serial=plant.inverter_serial_number,
             adapter_serial=plant.data_adapter_serial_number,
         )
+
+    @classmethod
+    def from_spec(
+        cls,
+        spec: dict[int, dict[tuple[type[Register], int], Sequence[int]]],
+        *,
+        verify: bool = True,
+        inverter_serial: str = _FALLBACK_SERIAL,
+        adapter_serial: str = _FALLBACK_SERIAL,
+    ) -> MockPlant:
+        """Build a mock from a pure register spec — no base capture required (#324).
+
+        *spec* maps ``device_address → {(HR|IR|MR, base_register): values}``; each bank
+        seeds ``register_class(base + i) → values[i]``. Together with :meth:`start` this
+        turns arbitrary synthetic state into something the real GE app (or this
+        library's client) can be driven against.
+
+        With ``verify`` (the default), every HR/IR bank is round-tripped through a
+        scratch ``Plant.update()`` first — proving the state would actually *commit*
+        past the client-side guards (cold-start hold #289, splice cohort checks,
+        impossible-frame refusal #350). A synthetic bank can serve fine over the wire
+        yet be silently rejected on ingest, which otherwise surfaces as "the client
+        sees nothing" mid-interrogation. Each bank is fed twice, mirroring detect()'s
+        corroborating re-read, so cold-start-held battery banks commit exactly as they
+        would live. Raises :class:`ValueError` naming every register that failed to
+        commit. Only HR/IR banks exist on the read wire; spec any other register class
+        with ``verify=False`` (direct cache seeding, no round-trip).
+        """
+        devices: dict[int, RegisterCache] = {}
+        for device_address, banks in spec.items():
+            cache = devices.setdefault(device_address, RegisterCache())
+            for (reg_cls, base), values in banks.items():
+                for i, value in enumerate(values):
+                    cache[reg_cls(base + i)] = value
+        if verify:
+            _verify_spec_commits(spec)
+        return cls(devices, inverter_serial=inverter_serial, adapter_serial=adapter_serial)
 
     # -- serving ---------------------------------------------------------------
 
