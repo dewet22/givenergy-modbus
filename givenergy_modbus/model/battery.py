@@ -1,7 +1,7 @@
 from enum import IntEnum
 from typing import ClassVar
 
-from pydantic import ConfigDict, create_model
+from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.model.register import (
     IR,
@@ -104,6 +104,10 @@ _BatteryBase = create_model(  # type: ignore[call-overload]
 )
 
 
+# LiFePO4 nominal cell voltage — 16 cells × 3.2 V = the GivEnergy "51.2 V" LV pack convention.
+_LIFEPO4_NOMINAL_CELL_V = 3.2
+
+
 class Battery(_BatteryBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
     """GivEnergy battery data model."""
 
@@ -117,6 +121,39 @@ class Battery(_BatteryBase, RegisterMetadataMixin):  # type: ignore[misc,valid-t
     def is_valid(self) -> bool:
         """Try to detect if a battery exists based on its attributes."""
         return is_valid_serial(self.serial_number)  # type: ignore[attr-defined]
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def remaining_energy_nominal_wh(self) -> int | None:
+        """Remaining stored energy (Wh), nominal-voltage basis: cap_remaining × num_cells × 3.2 V.
+
+        Nominal voltage is stable across load/SOC (the basis nameplate capacity is quoted on),
+        so this is the figure to sum for a slowly-varying "remaining energy" reading (#374). If
+        the pack doesn't report num_cells, fall back to the measured pack voltage so it still
+        contributes to a plant-level sum rather than silently dropping — the exact failure mode
+        #318 is about. None if cap_remaining is None or no voltage basis is available.
+        """
+        cap = self.cap_remaining  # type: ignore[attr-defined]
+        if cap is None:
+            return None
+        nominal_v = self.num_cells * _LIFEPO4_NOMINAL_CELL_V if self.num_cells else self.v_out  # type: ignore[attr-defined]
+        if nominal_v is None:
+            return None
+        return round(cap * nominal_v)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def remaining_energy_measured_wh(self) -> int | None:
+        """Remaining stored energy (Wh), measured-voltage basis: cap_remaining × v_out.
+
+        Instantaneous; fluctuates ~2-3% with SOC and sags under load. None if cap_remaining or
+        v_out is None.
+        """
+        cap = self.cap_remaining  # type: ignore[attr-defined]
+        v_out = self.v_out  # type: ignore[attr-defined]
+        if cap is None or v_out is None:
+            return None
+        return round(cap * v_out)
 
 
 class State(IntEnum):

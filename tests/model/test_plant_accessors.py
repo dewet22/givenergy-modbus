@@ -91,6 +91,58 @@ def test_batteries_empty_without_capabilities_and_no_valid_data():
 
 
 # ---------------------------------------------------------------------------
+# plant.remaining_battery_energy_wh — per-dongle nominal sum (#374)
+# ---------------------------------------------------------------------------
+
+_PACK_A = {IR(97): 16, IR(88): 0, IR(89): 4781, IR(82): 0, IR(83): 52203}  # 47.81 Ah, 16S → 2448 Wh
+_PACK_B = {IR(97): 16, IR(88): 0, IR(89): 5155, IR(82): 0, IR(83): 52700}  # 51.55 Ah, 16S → 2639 Wh
+
+
+def test_remaining_battery_energy_wh_sums_packs_on_the_dongle():
+    """Sums remaining_energy_nominal_wh across all packs — the primary/secondary chain IR2091 drops."""
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
+    _prime(plant, 0x32, _PACK_A)
+    _prime(plant, 0x33, _PACK_B)
+    assert plant.remaining_battery_energy_wh == 2448 + 2639  # 5087
+
+
+def test_remaining_battery_energy_wh_none_when_no_batteries():
+    """An EMS-dongle Plant (no LV battery sub-bus) returns None, not 0 — signals 'sum the inverters'."""
+    assert Plant().remaining_battery_energy_wh is None
+
+
+def test_remaining_battery_energy_wh_skips_undecodable_packs():
+    """A pack whose energy can't be computed is skipped, not counted as 0."""
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
+    _prime(plant, 0x32, _PACK_A)
+    _prime(plant, 0x33, {IR(60): 1})  # present but no cap_remaining → remaining_energy is None
+    assert plant.remaining_battery_energy_wh == 2448
+
+
+def test_remaining_battery_energy_wh_is_attribute_only_not_in_model_dump():
+    """Derived accessor: attribute-accessible but excluded from the raw-state model_dump,
+    consistent with the sibling device accessors (inverter/batteries/ems/hv_stacks). A
+    SOC-varying derivation does not belong in the plant's dumpable/persistable state."""
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32])
+    _prime(plant, 0x32, _PACK_A)
+    assert plant.remaining_battery_energy_wh == 2448  # attribute access works
+    assert "remaining_battery_energy_wh" not in plant.model_dump()
+
+
+@pytest.mark.timeout(15)
+def test_remaining_battery_energy_wh_fixture_backed():
+    """Real 2x Giv-Bat 5.2 capture: the two packs sum to ~5087 Wh nominal (#374)."""
+    from pathlib import Path
+
+    from givenergy_modbus.testing.mock_plant import plant_from_capture
+
+    cap = Path(__file__).parents[1] / "fixtures" / "captures" / "ems_2_inv_3_bat_a" / "ac_arm282_2x_givbat52_30min.log"
+    plant = plant_from_capture(cap)
+    plant.capabilities = PlantCapabilities(device_type=Model.AC, lv_battery_addresses=[0x32, 0x33])
+    assert plant.remaining_battery_energy_wh == 5087
+
+
+# ---------------------------------------------------------------------------
 # plant.hv_stacks
 # ---------------------------------------------------------------------------
 

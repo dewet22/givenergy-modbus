@@ -3,6 +3,53 @@ from givenergy_modbus.model.register import IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
+def _energy_cache(overrides: dict | None = None) -> RegisterCache:
+    """A minimal cache with the fields the remaining-energy computed fields read.
+
+    cap_remaining is uint32 centi at IR(88)/IR(89); v_out is uint32 milli at IR(82)/IR(83);
+    num_cells is uint16 at IR(97). Defaults give a 16S pack at 47.81 Ah / 52.203 V. An
+    override value of None drops that register from the cache (simulating an absent read).
+    """
+    values = {
+        IR(97): 16,  # num_cells
+        IR(88): 0,
+        IR(89): 4781,  # cap_remaining = 47.81 Ah (centi)
+        IR(82): 0,
+        IR(83): 52203,  # v_out = 52.203 V (milli)
+    }
+    values.update(overrides or {})
+    return RegisterCache({k: v for k, v in values.items() if v is not None})
+
+
+def test_remaining_energy_nominal_wh():
+    """cap_remaining (Ah) x nominal voltage (num_cells x 3.2 V), in Wh (#374)."""
+    b = Battery.from_register_cache(_energy_cache())
+    assert b.remaining_energy_nominal_wh == 2448  # 47.81 Ah x 51.2 V
+
+
+def test_remaining_energy_measured_wh():
+    """cap_remaining (Ah) x measured v_out (V), in Wh (#374)."""
+    b = Battery.from_register_cache(_energy_cache())
+    assert b.remaining_energy_measured_wh == 2496  # 47.81 Ah x 52.203 V
+
+
+def test_remaining_energy_none_when_cap_remaining_absent():
+    b = Battery.from_register_cache(_energy_cache({IR(88): None, IR(89): None}))
+    assert b.remaining_energy_nominal_wh is None
+    assert b.remaining_energy_measured_wh is None
+
+
+def test_remaining_energy_nominal_falls_back_to_measured_when_num_cells_absent():
+    """A pack that doesn't report num_cells still contributes (via v_out) rather than dropping."""
+    b = Battery.from_register_cache(_energy_cache({IR(97): None}))
+    assert b.remaining_energy_nominal_wh == 2496  # falls back to measured basis
+
+
+def test_remaining_energy_nominal_none_when_num_cells_and_v_out_absent():
+    b = Battery.from_register_cache(_energy_cache({IR(97): None, IR(82): None, IR(83): None}))
+    assert b.remaining_energy_nominal_wh is None
+
+
 def test_from_registers(register_cache):
     """Ensure we can return a dict view of battery data."""
     assert Battery.from_register_cache(register_cache).model_dump() == {
@@ -17,6 +64,8 @@ def test_from_registers(register_cache):
         "num_cells": 16,
         "num_cycles": 12,
         "cap_remaining": 18.04,
+        "remaining_energy_nominal_wh": 924,
+        "remaining_energy_measured_wh": 903,
         "serial_number": "BG1234G567",
         "soc": 9,
         "status_1": 0,
@@ -71,6 +120,8 @@ def test_from_registers_actual_data(register_cache_battery_daytime_discharging):
         "num_cells": 16,
         "num_cycles": 23,
         "cap_remaining": 131.42,
+        "remaining_energy_nominal_wh": 6729,
+        "remaining_energy_measured_wh": 6810,
         "serial_number": "BG1234G567",
         "soc": 67,
         "status_1": 0,
@@ -128,6 +179,8 @@ def test_from_registers_unsure_data(register_cache_battery_unsure):
         "i_battery": 0.0,
         "num_cells": 0,
         "num_cycles": 0,
+        "remaining_energy_nominal_wh": 0,
+        "remaining_energy_measured_wh": 0,
         "serial_number": "",
         "soc": 0,
         "status_1": 0,
@@ -247,6 +300,8 @@ def test_empty():
             "i_battery": None,
             "num_cells": None,
             "num_cycles": None,
+            "remaining_energy_nominal_wh": None,
+            "remaining_energy_measured_wh": None,
             "serial_number": None,
             "soc": None,
             "status_1": None,

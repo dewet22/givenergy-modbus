@@ -1894,6 +1894,24 @@ class Plant(GivEnergyBaseModel):
         return [Battery.from_register_cache(self.register_caches[i + 0x32]) for i in range(self.number_batteries)]
 
     @property
+    def remaining_battery_energy_wh(self) -> int | None:
+        """Total remaining battery energy (Wh) summed over this Plant's LV packs (#374).
+
+        Nominal-voltage basis (``Battery.remaining_energy_nominal_wh``). This sums every pack on
+        *this* dongle, so on an inverter with a primary/secondary chain it includes the secondary
+        pack the EMS controller's own figure (``Ems.remaining_battery_wh``, IR2091) drops.
+
+        Returns ``None`` (not ``0``) when no pack decodes — e.g. an EMS-controller dongle has no
+        LV battery sub-bus, so its Plant returns ``None`` rather than a misleading ``0 Wh``.
+
+        Scope: one Plant is one dongle, and battery sub-bus addresses collide across managed
+        inverters (each reuses 0x32-0x37), so this cannot span inverters. A consumer holding
+        several inverter connections sums their per-Plant values for the site total.
+        """
+        present = [e for e in (b.remaining_energy_nominal_wh for b in self.batteries) if e is not None]
+        return sum(present) if present else None
+
+    @property
     def hv_stacks(self) -> list[HvStack]:
         """Return HV battery stacks (BCU + per-module BMUs) for HV systems; [] for LV systems.
 
