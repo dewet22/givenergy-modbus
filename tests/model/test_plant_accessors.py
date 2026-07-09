@@ -73,11 +73,19 @@ def test_batteries_uses_capabilities_address_list():
     assert len(plant.batteries) == 2
 
 
-def test_batteries_skips_missing_caches():
+def test_batteries_placeholder_for_listed_but_uncached_address():
+    """A listed-but-uncached address yields an all-None placeholder Battery, index-aligned (#213).
+
+    A transiently-absent pack (BMS slow to answer after a restart) stays present-but-unavailable
+    rather than being dropped and index-shifting its siblings' entities.
+    """
     plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32, 0x33])
     _prime(plant, 0x32, {IR(60): 1})
-    # 0x33 cache absent — should not raise, just omit it.
-    assert len(plant.batteries) == 1
+    # 0x33 cache absent — placeholder, not dropped: length + index alignment preserved.
+    bats = plant.batteries
+    assert len(bats) == 2
+    assert bats[1].v_cell_01 is None  # type: ignore[attr-defined]
+    assert bats[1].is_valid() is False
 
 
 def test_number_batteries_uses_capabilities():
@@ -225,11 +233,14 @@ def test_meters_returns_dict_keyed_by_address():
     assert all(isinstance(m, Meter) for m in meters.values())
 
 
-def test_meters_skips_missing_caches():
+def test_meters_placeholder_for_listed_but_uncached_address():
+    """A listed-but-uncached meter address yields an all-None placeholder Meter (#213)."""
     plant = _plant_with_caps(device_type=Model.HYBRID, meter_addresses=[0x01, 0x02])
     _prime(plant, 0x01, {IR(60): 100})
-    # 0x02 absent — only one meter returned.
-    assert set(plant.meters.keys()) == {0x01}
+    # 0x02 absent — placeholder at its key, present-but-unavailable, not omitted.
+    meters = plant.meters
+    assert set(meters.keys()) == {0x01, 0x02}
+    assert meters[0x02].v_phase_1 is None  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
