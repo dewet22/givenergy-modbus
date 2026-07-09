@@ -153,10 +153,8 @@ def test_multi_module_bmu_per_cell_decode(multi_module_plant: Plant):
         # near-full LiFePO4 pack: all 24 cells in a tight band around 3.35 V
         assert all(3.3 < v < 3.4 for v in v_cells), f"BMU 0x{addr:02x} cell voltages {v_cells}"
     # Temperatures: modules 0x50-0x54 populate all 24 sensors; 0x55 populates only the
-    # first 12, and its split serial's "HY" prefix at IR(110) decodes as
-    # t_cell_21 = 1852.1 — the imperative decode applies no bounds (the LUT's declared
-    # min/max are inert), so the artefact passes through. Pinned as-is (characterisation);
-    # the decode-bounds gap is tracked as a follow-up.
+    # first 12. Its split serial's "HY" prefix at IR(110) decodes to a raw 0x4859, which
+    # the bounds check (#379) now suppresses to None rather than surfacing 1852.1 °C.
     for addr in range(0x50, 0x55):
         bmu = Bmu.from_register_cache(multi_module_plant.register_caches[addr])
         t_cells = [getattr(bmu, f"t_cell_{i:02d}") for i in range(1, 25)]
@@ -164,7 +162,7 @@ def test_multi_module_bmu_per_cell_decode(multi_module_plant: Plant):
     bmu_55 = Bmu.from_register_cache(multi_module_plant.register_caches[0x55])
     t_55 = [getattr(bmu_55, f"t_cell_{i:02d}") for i in range(1, 25)]
     assert all(25.0 < t < 40.0 for t in t_55[:12]), f"BMU 0x55 populated temps {t_55[:12]}"
-    assert t_55[20] == pytest.approx(1852.1)  # "HY" (0x4859) read as a temperature
+    assert t_55[20] is None  # "HY" (0x4859) out of range → suppressed (#379)
     # Serials are date-redacted placeholders. Module 0x55's firmware stores its serial
     # SPLIT on the wire ("HY" at IR(110), the tail at IR(115-118)) — preserved as
     # captured, so its decoded IR(114-118) serial carries no prefix (see README).

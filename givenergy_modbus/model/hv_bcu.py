@@ -143,6 +143,13 @@ _V_CELL_BASE = 60  # IR(60+base .. 83+base) — 24 cell voltages, milli (÷1000)
 _T_CELL_BASE = 90  # IR(90+base .. 113+base) — 24 cell temps, deci (÷10)
 _SERIAL_BASE = 114  # IR(114+base .. 118+base) — 5-register module serial
 _SERIAL_LEN = 5
+# Plausibility bounds, mirroring the LV pack (BatteryRegisterGetter, battery.py). Shared
+# by the LUT Defs and the imperative decode. A non-zero raw outside these is corruption —
+# e.g. a serial byte read as a cell when a module stores its serial split across the cell
+# window (#378/#379: "HY" at IR110 decodes as t_cell_21 = 1852.1 °C). An all-zero raw is
+# treated as unset (kept as decoded, not None), matching the RegisterGetter convention.
+_V_CELL_MIN, _V_CELL_MAX = 1.0, 5.0
+_T_CELL_MIN, _T_CELL_MAX = -60.0, 150.0
 
 
 def module_cell_temp_serial_fields() -> dict[str, tuple[Any, None]]:
@@ -170,8 +177,8 @@ def cell_temp_serial_register_lut(base: int = 0) -> dict[str, Def]:
     """
     lut: dict[str, Def] = {}
     for i in range(_BMU_CELLS):
-        lut[f"v_cell_{i + 1:02d}"] = Def(C.milli, None, IR(_V_CELL_BASE + base + i), min=1.0, max=5.0)
-        lut[f"t_cell_{i + 1:02d}"] = Def(C.deci, None, IR(_T_CELL_BASE + base + i))
+        lut[f"v_cell_{i + 1:02d}"] = Def(C.milli, None, IR(_V_CELL_BASE + base + i), min=_V_CELL_MIN, max=_V_CELL_MAX)
+        lut[f"t_cell_{i + 1:02d}"] = Def(C.deci, None, IR(_T_CELL_BASE + base + i), min=_T_CELL_MIN, max=_T_CELL_MAX)
     lut["serial_number"] = Def(C.serial, None, *(IR(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)))
     return lut
 
@@ -190,12 +197,23 @@ def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
     def _get(reg_idx: int) -> int | None:
         return register_cache.get(IR(reg_idx))
 
+    def _bounded(raw: int | None, scale: int, lo: float, hi: float) -> float | None:
+        """Decode raw/scale, but suppress non-zero values outside [lo, hi] to None.
+
+        Mirrors the RegisterGetter bounds handling: an all-zero raw is unset (kept as
+        the decoded 0.0), a non-zero out-of-range value is corruption and returns None.
+        """
+        if raw is None:
+            return None
+        val = raw / scale
+        if raw != 0 and not (lo <= val <= hi):
+            return None
+        return val
+
     for i in range(_BMU_CELLS):
-        v = _get(_V_CELL_BASE + base + i)
-        data[f"v_cell_{i + 1:02d}"] = v / 1000 if v is not None else None
+        data[f"v_cell_{i + 1:02d}"] = _bounded(_get(_V_CELL_BASE + base + i), 1000, _V_CELL_MIN, _V_CELL_MAX)
     for i in range(_BMU_CELLS):
-        t = _get(_T_CELL_BASE + base + i)
-        data[f"t_cell_{i + 1:02d}"] = t / 10 if t is not None else None
+        data[f"t_cell_{i + 1:02d}"] = _bounded(_get(_T_CELL_BASE + base + i), 10, _T_CELL_MIN, _T_CELL_MAX)
     sn_regs = [_get(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)]
     if None not in sn_regs:
         data["serial_number"] = (
