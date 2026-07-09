@@ -637,14 +637,14 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "power_factor_point_3_power_factor": Def(C.uint16, None, HR(135)),
         "power_factor_point_4_load_percent": Def(C.uint16, None, HR(136)),
         "power_factor_point_4_power_factor": Def(C.uint16, None, HR(137)),
-        "cei021_v1s_q": Def(C.uint16, None, HR(138)),
-        "cei021_v2s_q": Def(C.uint16, None, HR(139)),
-        "cei021_v1l_q": Def(C.uint16, None, HR(140)),
-        "cei021_v2l_q": Def(C.uint16, None, HR(141)),
+        "cei021_v1s_q": Def(C.deci, None, HR(138)),
+        "cei021_v2s_q": Def(C.deci, None, HR(139)),
+        "cei021_v1l_q": Def(C.deci, None, HR(140)),
+        "cei021_v2l_q": Def(C.deci, None, HR(141)),
         "cei021_lock_in_active_power": Def(C.uint16, None, HR(142)),
         "cei021_lock_out_active_power": Def(C.uint16, None, HR(143)),
-        "cei021_lock_in_grid_voltage": Def(C.uint16, None, HR(144)),
-        "cei021_lock_out_grid_voltage": Def(C.uint16, None, HR(145)),
+        "cei021_lock_in_grid_voltage": Def(C.deci, None, HR(144)),
+        "cei021_lock_out_grid_voltage": Def(C.deci, None, HR(145)),
         "lvfrt_reactive_rate": Def(C.uint16, None, HR(146)),
         "lvfrt_low_fault_value_1": Def(C.uint16, None, HR(147)),
         "lvfrt_low_fault_time_1": Def(C.uint16, None, HR(148)),
@@ -757,7 +757,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "overfrequency_load_drop_recovery_delay": Def(C.uint16, None, HR(303)),
         "mppt_operating_mode": Def(C.uint16, None, HR(305)),
         "connection_loading_slope": Def(C.uint16, None, HR(306)),
-        "eps_nominal_voltage": Def(C.uint16, None, HR(307)),
+        "eps_nominal_voltage": Def(C.deci, None, HR(307)),
         # HR(308-310): battery topology — rated power (W), rated current (A), max charge
         # percentage. From the GivEnergy app v4.0.7; scale unconfirmed on live hardware.
         "battery_nominal_power": Def(C.uint16, None, HR(308)),
@@ -771,8 +771,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "battery_charge_limit_ac": Def(C.uint16, None, HR(313)),
         "battery_discharge_limit_ac": Def(C.uint16, None, HR(314)),
         # HR(315-316): EN50549 zero-current static voltage limits (raw uint16).
-        "en50549_zero_current_lower_voltage_limit": Def(C.uint16, None, HR(315)),
-        "en50549_zero_current_upper_voltage_limit": Def(C.uint16, None, HR(316)),
+        "en50549_zero_current_lower_voltage_limit": Def(C.deci, None, HR(315)),
+        "en50549_zero_current_upper_voltage_limit": Def(C.deci, None, HR(316)),
         # HR(317): EPS enable — confirmed writable on Model.AC via portal observations
         # (hass#52): toggled 0/1 while the portal's "EPS" switch was flipped off/on.
         "enable_eps": Def(C.bool, None, HR(317)),
@@ -780,14 +780,14 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "battery_pause_slot_1": Def(C.timeslot, None, HR(319), HR(320)),
         # HR(321-332): frequency derating, tariff-pricing battery logic, BMS OCV calibration,
         # gateway power-off, force-off-grid, micro-grid.
-        "overfrequency_derating_start_point": Def(C.uint16, None, HR(321)),
+        "overfrequency_derating_start_point": Def(C.centi, None, HR(321)),
         "enable_tariff_pricing_battery_logic": Def(C.bool, None, HR(322)),
         "import_price_battery_discharge_threshold": Def(C.uint16, None, HR(323)),
         "import_price_battery_charge_threshold": Def(C.uint16, None, HR(324)),
         "export_price_battery_discharge_threshold": Def(C.uint16, None, HR(325)),
-        "underfrequency_derating_start_point": Def(C.uint16, None, HR(326)),
+        "underfrequency_derating_start_point": Def(C.centi, None, HR(326)),
         "underfrequency_loading_slope": Def(C.uint16, None, HR(327)),
-        "overfrequency_derating_stop_point": Def(C.uint16, None, HR(328)),
+        "overfrequency_derating_stop_point": Def(C.centi, None, HR(328)),
         "enable_bms_ocv_calibration": Def(C.bool, None, HR(329)),
         "gateway_power_off_setting": Def(C.uint16, None, HR(330)),
         "force_off_grid": Def(C.bool, None, HR(331)),
@@ -812,8 +812,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # HR(347-351): display, lead-acid calibration limits, inverter operating mode.
         "disable_leds": Def(C.bool, None, HR(347)),
         "lcd_screen_idle_timeout": Def(C.uint16, None, HR(348)),
-        "lead_acid_battery_calibration_upper_limit": Def(C.uint16, None, HR(349)),
-        "lead_acid_battery_calibration_lower_limit": Def(C.uint16, None, HR(350)),
+        "lead_acid_battery_calibration_upper_limit": Def(C.centi, None, HR(349)),
+        "lead_acid_battery_calibration_lower_limit": Def(C.centi, None, HR(350)),
         "inverter_operating_mode": Def(C.uint16, None, HR(351)),
         #
         # Holding Registers, block 499-510
@@ -829,7 +829,7 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "hv_temp_sensors_per_battery": Def(C.uint16, None, HR(504)),
         "hv_total_temp_sensors": Def(C.uint16, None, HR(505)),
         "hv_max_pcs_power": Def(C.uint16, None, HR(506)),
-        "hv_max_charge_voltage": Def(C.uint16, None, HR(507)),
+        "hv_max_charge_voltage": Def(C.deci, None, HR(507)),
         "hv_min_discharge_voltage": Def(C.uint16, None, HR(508)),
         "hv_max_charge_current": Def(C.uint16, None, HR(509)),
         "hv_parallel_count": Def(C.uint16, None, HR(510)),
