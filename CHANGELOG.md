@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.3] - 2026-07-09
+
+### 🐛 Fixed
+
+- decode all temperature registers as signed two's-complement (#381) ([330073e](https://github.com/dewet22/givenergy-modbus/commit/330073ea6d81746d8d4ee2287caa2387f4499cd1))
+
 ## [2.10.2] - 2026-07-09
 
 ### ✨ Added
