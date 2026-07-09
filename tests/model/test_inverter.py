@@ -33,6 +33,36 @@ def test_first_battery_serial_number_removed():
     assert "first_battery_serial_number" not in SinglePhaseInverter.from_register_cache(cache).model_dump()
 
 
+@pytest.mark.parametrize(
+    ("field", "reg", "raw", "expected"),
+    [
+        # 0.1V grid/EPS/HV voltages — raw (thousands of volts) is physically impossible (#385)
+        ("cei021_v1s_q", 138, 2530, 253.0),
+        ("cei021_lock_in_grid_voltage", 144, 2530, 253.0),
+        ("cei021_lock_out_grid_voltage", 145, 1840, 184.0),
+        ("eps_nominal_voltage", 307, 2300, 230.0),
+        ("en50549_zero_current_lower_voltage_limit", 315, 2530, 253.0),
+        ("en50549_zero_current_upper_voltage_limit", 316, 2760, 276.0),
+        ("hv_max_charge_voltage", 507, 4500, 450.0),
+        # 0.01Hz frequency derating points — raw (thousands of Hz) is impossible
+        ("overfrequency_derating_start_point", 321, 5100, 51.0),
+        ("underfrequency_derating_start_point", 326, 4950, 49.5),
+        ("overfrequency_derating_stop_point", 328, 5200, 52.0),
+        # 0.01V lead-acid calibration voltages
+        ("lead_acid_battery_calibration_upper_limit", 349, 5800, 58.0),
+        ("lead_acid_battery_calibration_lower_limit", 350, 4200, 42.0),
+    ],
+)
+def test_installer_config_register_scales(field, reg, raw, expected):
+    """Installer-config voltage/frequency registers decode at the doc's fractional scale (#385).
+
+    v4.1.6 marks these 0.1V / 0.01Hz / 0.01V; they had shipped as raw uint16 (read-back pending
+    scale confirmation), so raw decoded to a physically impossible thousands-of-volts/Hz value.
+    """
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(reg): raw}))
+    assert getattr(inv, field) == pytest.approx(expected)
+
+
 def test_inverter_temps_signed_deci():
     """Inverter heatsink / charger / battery temps decode as signed int16 deci (#379).
 
@@ -1282,14 +1312,14 @@ def test_from_registers_actual_data(register_cache_inverter_daytime_discharging_
         "power_factor_point_3_power_factor": 20000,
         "power_factor_point_4_load_percent": 255,
         "power_factor_point_4_power_factor": 20000,
-        "cei021_v1s_q": 2484,
+        "cei021_v1s_q": 248.4,
         "cei021_v2s_q": 2530,
         "cei021_v1l_q": 2116,
         "cei021_v2l_q": 2070,
         "cei021_lock_in_active_power": 20,
         "cei021_lock_out_active_power": 5,
-        "cei021_lock_in_grid_voltage": 2415,
-        "cei021_lock_out_grid_voltage": 2300,
+        "cei021_lock_in_grid_voltage": 241.5,
+        "cei021_lock_out_grid_voltage": 230.0,
         "lvfrt_reactive_rate": 0,
         "lvfrt_low_fault_value_1": 0,
         "lvfrt_low_fault_time_1": 0,
@@ -2458,7 +2488,7 @@ def test_installer_config_block_decodes_from_populated_cache():
     d = SinglePhaseInverter.from_register_cache(cache).model_dump()
     assert d["enable_plant_mode"] is True
     assert d["plant_role"] == 2
-    assert d["eps_nominal_voltage"] == 2300
+    assert d["eps_nominal_voltage"] == 230.0
     assert d["force_off_grid"] is True
     assert d["enable_ev_charger"] is True
     assert d["ev_charger_soc_limit"] == 80
