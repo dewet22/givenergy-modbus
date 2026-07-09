@@ -181,6 +181,31 @@ def test_i_battery_signed_centi():
     assert discharging.i_battery == 41.83
 
 
+def test_cell_temps_signed_deci():
+    """Cell / MOS / min-max temps decode as signed int16 deci (v4.1.6 4.4.1.2).
+
+    A genuine sub-zero reading decodes to its negative value; the empty-slot sentinel
+    (0xF556 = -273.0 °C) and a positive reading both round-trip, with the sentinel
+    suppressed to None by the -60.0 floor.
+    """
+    b = Battery.from_register_cache(
+        RegisterCache(
+            {
+                IR(76): 65536 - 55,  # t_cells_01_04 = -5.5 °C (signed)
+                IR(77): 231,  # t_cells_05_08 = 23.1 °C
+                IR(81): 65536 - 100,  # t_bms_mosfet = -10.0 °C
+                IR(103): 0xF556,  # t_max = -273.0 °C empty-slot sentinel → None
+                IR(104): 205,  # t_min = 20.5 °C
+            }
+        )
+    )
+    assert b.t_cells_01_04 == -5.5
+    assert b.t_cells_05_08 == 23.1
+    assert b.t_bms_mosfet == -10.0
+    assert b.t_max is None
+    assert b.t_min == 20.5
+
+
 def test_energy_totals_deci_kwh():
     """IR(105/106) decode as unsigned 0.1 kWh lifetime energy totals (#238/#241).
 

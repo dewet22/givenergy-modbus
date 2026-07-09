@@ -430,9 +430,10 @@ _THREE_PHASE_LUT = {
     # battery_type (IR) at IR(1121) — read-only decoded value alongside HR(1080)
     "battery_type_ir": Def(C.uint16, BatteryType, IR(1121)),
     "dc_status": Def(C.uint16, Status, IR(1124)),
-    "t_inverter": Def(C.deci, None, IR(1128), min=-60.0, max=150.0),
-    "t_boost": Def(C.deci, None, IR(1129), min=-60.0, max=150.0),
-    "t_buck_boost": Def(C.deci, None, IR(1130), min=-60.0, max=150.0),
+    # Signed two's-complement deci (v4.1.6 register map 4.1.2: NTC2/Boost/BuckBoost = int16).
+    "t_inverter": Def(C.int16, C.deci, IR(1128), min=-60.0, max=150.0),
+    "t_boost": Def(C.int16, C.deci, IR(1129), min=-60.0, max=150.0),
+    "t_buck_boost": Def(C.int16, C.deci, IR(1130), min=-60.0, max=150.0),
     "v_battery_bms": Def(C.deci, None, IR(1131), min=0.0, max=1000.0),
     # battery_soc shadows single-phase IR(59)
     "battery_soc": Def(C.uint16, None, IR(1132), min=0, max=100),

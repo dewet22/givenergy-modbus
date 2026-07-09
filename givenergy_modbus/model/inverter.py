@@ -941,7 +941,10 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # is unreconciled (see #330), so no message decode here.
         "inverter_fault_code": Def(C.uint16, (C.hex, 4), IR(39)),
         "inverter_warning_code": Def(C.uint16, (C.hex, 4), IR(40)),
-        "t_inverter_heatsink": Def(C.deci, None, IR(41), min=-40.0, max=100.0),
+        # Temperatures are signed two's-complement deci (v4.1.6 register map 4.1.2:
+        # Inverter Temperature / CHG_Temper / Bat_Temper = "signed" 0.1c) — the negative
+        # floor is a real bound, so a genuine sub-zero ambient reading decodes correctly.
+        "t_inverter_heatsink": Def(C.int16, C.deci, IR(41), min=-40.0, max=100.0),
         # House load / consumption at the busbar, independently sensed — empirically NOT
         # a derived IR(24)−IR(30) identity (residual non-zero in 68% of samples, though
         # small and centred on zero). That residual is NOT the EPS branch: across 259
@@ -976,8 +979,8 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "p_battery": Def(C.int16, None, IR(52)),
         "v_ac1_output": Def(C.deci, None, IR(53), min=0.0, max=500.0),  # might be v_eps_backup?
         "f_ac1_output": Def(C.centi, None, IR(54), min=40.0, max=70.0),  # might be f_eps_backup?
-        "t_charger": Def(C.deci, None, IR(55), min=-40.0, max=100.0),
-        "t_battery": Def(C.deci, None, IR(56), min=-40.0, max=100.0),
+        "t_charger": Def(C.int16, C.deci, IR(55), min=-40.0, max=100.0),
+        "t_battery": Def(C.int16, C.deci, IR(56), min=-40.0, max=100.0),
         "charger_warning_code": Def(C.uint16, None, IR(57)),
         "charger_warning_messages": Def(C.uint16, _charger_warning_code, IR(57)),
         # Inverter AC grid-terminal current; pairs with IR(24)/IR(43) (I×V ≈ IR43 VA),

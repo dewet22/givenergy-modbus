@@ -126,11 +126,13 @@ def test_bmu_index_0():
 
 
 def test_bmu_cell_decode_suppresses_out_of_bounds():
-    """Non-zero raw cell values outside the plausibility bounds decode to None (#379).
+    """Cell decode: unsigned voltages, SIGNED temps, out-of-range suppressed (#379).
 
-    A serial byte read as a cell (some BMU firmware stores the serial split across the
-    cell window, #378) produces a wildly-out-of-range value; a zero raw is kept as the
-    decoded 0.0 (unset, not corruption), matching the RegisterGetter bounds convention.
+    Temperatures are signed two's-complement per the firmware register map, so a genuine
+    sub-zero reading decodes correctly while the empty-slot sentinel (0xF556 = -273 °C)
+    and a serial byte misread as a cell (some firmware stores the serial split across the
+    cell window, #378) both fall outside the bounds and return None. A zero raw is kept as
+    the decoded 0.0 (unset, not corruption), matching the RegisterGetter convention.
     """
     cache = _cache(
         {
@@ -138,6 +140,8 @@ def test_bmu_cell_decode_suppresses_out_of_bounds():
             IR(61): 0,  # v_cell_02 raw 0 → unset, decoded 0.0 (not None)
             IR(62): 800,  # v_cell_03 = 0.8 V — below 1.0 floor → None
             IR(90): 250,  # t_cell_01 = 25.0 °C — in range, kept
+            IR(91): 0xFF9C,  # t_cell_02 = -10.0 °C (signed) — genuine sub-zero, kept
+            IR(92): 0xF556,  # t_cell_03 = -273.0 °C empty-slot sentinel → below floor → None
             IR(110): 0x4859,  # t_cell_21 = "HY" serial prefix → 1852.1 °C → None
             IR(111): 0,  # t_cell_22 raw 0 → 0.0 (not None)
         }
@@ -147,6 +151,8 @@ def test_bmu_cell_decode_suppresses_out_of_bounds():
     assert bmu.v_cell_02 == pytest.approx(0.0)  # type: ignore[attr-defined]
     assert bmu.v_cell_03 is None  # type: ignore[attr-defined]
     assert bmu.t_cell_01 == pytest.approx(25.0)  # type: ignore[attr-defined]
+    assert bmu.t_cell_02 == pytest.approx(-10.0)  # type: ignore[attr-defined]
+    assert bmu.t_cell_03 is None  # type: ignore[attr-defined]
     assert bmu.t_cell_21 is None  # type: ignore[attr-defined]
     assert bmu.t_cell_22 == pytest.approx(0.0)  # type: ignore[attr-defined]
 

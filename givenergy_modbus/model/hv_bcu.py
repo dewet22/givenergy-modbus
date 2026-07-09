@@ -61,6 +61,11 @@ class BcuRegisterGetter(RegisterGetter):
         "pack_software_version": Def(C.gateway_version, None, IR(60), IR(61), IR(62), IR(63)),
         "number_of_modules": Def(C.uint16, None, IR(64)),
         "cells_per_module": Def(C.uint16, None, IR(65)),
+        # NOTE: these two names are suspect. In both committed HV fixtures IR(67)/IR(68)
+        # read as counts, not measurements — IR(67) = modules × 24 (total cells), IR(68) =
+        # modules × 12 (total temp sensors), holding a 2:1 ratio across a 4- and a 6-module
+        # stack. So IR(68) is almost certainly a temp-SENSOR COUNT, not a temperature, and
+        # is deliberately left unsigned. Field-identity reconciliation tracked separately.
         "cluster_cell_voltage": Def(C.uint16, None, IR(67)),
         "cluster_cell_temperature": Def(C.uint16, None, IR(68)),
         "status": Def(C.uint16, None, IR(70)),
@@ -148,6 +153,8 @@ _SERIAL_LEN = 5
 # e.g. a serial byte read as a cell when a module stores its serial split across the cell
 # window (#378/#379: "HY" at IR110 decodes as t_cell_21 = 1852.1 °C). An all-zero raw is
 # treated as unset (kept as decoded, not None), matching the RegisterGetter convention.
+# Voltages are unsigned; temps are signed two's-complement (v4.1.6 register map 4.4.1.2),
+# so the negative floor is a real bound a genuine sub-zero cell can sit above.
 _V_CELL_MIN, _V_CELL_MAX = 1.0, 5.0
 _T_CELL_MIN, _T_CELL_MAX = -60.0, 150.0
 
@@ -178,7 +185,7 @@ def cell_temp_serial_register_lut(base: int = 0) -> dict[str, Def]:
     lut: dict[str, Def] = {}
     for i in range(_BMU_CELLS):
         lut[f"v_cell_{i + 1:02d}"] = Def(C.milli, None, IR(_V_CELL_BASE + base + i), min=_V_CELL_MIN, max=_V_CELL_MAX)
-        lut[f"t_cell_{i + 1:02d}"] = Def(C.deci, None, IR(_T_CELL_BASE + base + i), min=_T_CELL_MIN, max=_T_CELL_MAX)
+        lut[f"t_cell_{i + 1:02d}"] = Def(C.int16, C.deci, IR(_T_CELL_BASE + base + i), min=_T_CELL_MIN, max=_T_CELL_MAX)
     lut["serial_number"] = Def(C.serial, None, *(IR(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)))
     return lut
 
@@ -197,23 +204,27 @@ def decode_cells_temps_serial(register_cache, base: int = 0) -> dict[str, Any]:
     def _get(reg_idx: int) -> int | None:
         return register_cache.get(IR(reg_idx))
 
-    def _bounded(raw: int | None, scale: int, lo: float, hi: float) -> float | None:
+    def _bounded(raw: int | None, scale: int, lo: float, hi: float, *, signed: bool = False) -> float | None:
         """Decode raw/scale, but suppress non-zero values outside [lo, hi] to None.
 
         Mirrors the RegisterGetter bounds handling: an all-zero raw is unset (kept as
         the decoded 0.0), a non-zero out-of-range value is corruption and returns None.
+        ``signed`` interprets the raw word as two's-complement first — temperatures are
+        signed per the firmware register map (v4.1.6 4.4.1.2: Cell*_Temp = signed 0.1c),
+        so a genuine sub-zero reading decodes correctly instead of as a huge positive.
         """
         if raw is None:
             return None
-        val = raw / scale
+        val = (C.int16(raw) if signed else raw) / scale
         if raw != 0 and not (lo <= val <= hi):
             return None
         return val
 
     for i in range(_BMU_CELLS):
+        # Cell voltages are unsigned (always positive); temps are signed two's-complement.
         data[f"v_cell_{i + 1:02d}"] = _bounded(_get(_V_CELL_BASE + base + i), 1000, _V_CELL_MIN, _V_CELL_MAX)
     for i in range(_BMU_CELLS):
-        data[f"t_cell_{i + 1:02d}"] = _bounded(_get(_T_CELL_BASE + base + i), 10, _T_CELL_MIN, _T_CELL_MAX)
+        data[f"t_cell_{i + 1:02d}"] = _bounded(_get(_T_CELL_BASE + base + i), 10, _T_CELL_MIN, _T_CELL_MAX, signed=True)
     sn_regs = [_get(_SERIAL_BASE + base + j) for j in range(_SERIAL_LEN)]
     if None not in sn_regs:
         data["serial_number"] = (
