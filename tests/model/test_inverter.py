@@ -18,7 +18,7 @@ from givenergy_modbus.model.inverter import (
     inverter_address_for,
     resolve_model,
 )
-from givenergy_modbus.model.register import HR
+from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
@@ -31,6 +31,27 @@ def test_first_battery_serial_number_removed():
     assert "first_battery_serial_number" not in SinglePhaseInverter().model_dump()
     cache = RegisterCache({HR(8): 0x4843, HR(9): 0x3234, HR(10): 0x3134, HR(11): 0x4731, HR(12): 0x3637})
     assert "first_battery_serial_number" not in SinglePhaseInverter.from_register_cache(cache).model_dump()
+
+
+def test_inverter_temps_signed_deci():
+    """Inverter heatsink / charger / battery temps decode as signed int16 deci (#379).
+
+    v4.1.6 register map 4.1.2 marks IR41/55/56 as signed 0.1c. A positive reading is
+    unchanged; a genuine sub-zero ambient reading decodes to its negative value instead
+    of a huge positive that the max bound would suppress.
+    """
+    inv = SinglePhaseInverter.from_register_cache(
+        RegisterCache(
+            {
+                IR(41): 376,  # t_inverter_heatsink = 37.6 °C (positive, unchanged)
+                IR(55): 65536 - 55,  # t_charger = -5.5 °C (signed)
+                IR(56): 65536 - 123,  # t_battery = -12.3 °C (signed)
+            }
+        )
+    )
+    assert inv.t_inverter_heatsink == pytest.approx(37.6)
+    assert inv.t_charger == pytest.approx(-5.5)
+    assert inv.t_battery == pytest.approx(-12.3)
 
 
 def test_inverter():

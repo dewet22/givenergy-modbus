@@ -34,18 +34,20 @@ class BatteryRegisterGetter(RegisterGetter):
         "v_cell_14": Def(DT.milli, None, IR(73), min=1.0, max=5.0),
         "v_cell_15": Def(DT.milli, None, IR(74), min=1.0, max=5.0),
         "v_cell_16": Def(DT.milli, None, IR(75), min=1.0, max=5.0),
-        # Temperature `min=-60.0` also (incidentally) rejects the absent-battery-slot sentinel.
-        # The BMS firmware stores temperatures internally with a `+2730` bias and subtracts
-        # 2730 on TX, so an empty slot (internal `0`) emits `0xF556 = -2730 = -273.0 °C`.
+        # Temperatures are SIGNED two's-complement deci (v4.1.6 register map 4.4.1.2:
+        # Cell*_Temp / MOS_Temp / T_max / T_min = "signed" 0.1c) — so a genuine sub-zero
+        # cell decodes correctly instead of as a huge positive. The BMS stores temperatures
+        # with a `+2730` bias and subtracts 2730 on TX, so an empty slot (internal `0`)
+        # emits `0xF556 = -2730 = -273.0 °C`; the `min=-60.0` bound rejects that sentinel.
         # See open-giv/bms-analysis docs/03 ("Absent device pattern") for the firmware path.
-        # If you tighten these bounds, keep the lower bound below `-273.0` or add explicit
+        # If you tighten these bounds, keep the lower bound above `-273.0` or add explicit
         # sentinel rejection — otherwise empty-slot frames will start reaching consumers.
-        "t_cells_01_04": Def(DT.deci, None, IR(76), min=-60.0, max=150.0),
-        "t_cells_05_08": Def(DT.deci, None, IR(77), min=-60.0, max=150.0),
-        "t_cells_09_12": Def(DT.deci, None, IR(78), min=-60.0, max=150.0),
-        "t_cells_13_16": Def(DT.deci, None, IR(79), min=-60.0, max=150.0),
+        "t_cells_01_04": Def(DT.int16, DT.deci, IR(76), min=-60.0, max=150.0),
+        "t_cells_05_08": Def(DT.int16, DT.deci, IR(77), min=-60.0, max=150.0),
+        "t_cells_09_12": Def(DT.int16, DT.deci, IR(78), min=-60.0, max=150.0),
+        "t_cells_13_16": Def(DT.int16, DT.deci, IR(79), min=-60.0, max=150.0),
         "v_cells_sum": Def(DT.milli, None, IR(80), min=16.0, max=80.0),
-        "t_bms_mosfet": Def(DT.deci, None, IR(81), min=-60.0, max=150.0),
+        "t_bms_mosfet": Def(DT.int16, DT.deci, IR(81), min=-60.0, max=150.0),
         "v_out": Def(DT.uint32, DT.milli, IR(82), IR(83), min=16.0, max=80.0),
         "cap_calibrated": Def(DT.uint32, DT.centi, IR(84), IR(85)),
         "cap_design": Def(DT.uint32, DT.centi, IR(86), IR(87)),
@@ -69,8 +71,8 @@ class BatteryRegisterGetter(RegisterGetter):
         # IR(99) unused
         "soc": Def(DT.uint16, None, IR(100), min=0, max=100),
         "cap_design2": Def(DT.uint32, DT.centi, IR(101), IR(102)),
-        "t_max": Def(DT.deci, None, IR(103), min=-60.0, max=150.0),
-        "t_min": Def(DT.deci, None, IR(104), min=-60.0, max=150.0),
+        "t_max": Def(DT.int16, DT.deci, IR(103), min=-60.0, max=150.0),
+        "t_min": Def(DT.int16, DT.deci, IR(104), min=-60.0, max=150.0),
         # IR(105/106) "Battery discharge/charge energy total" (v4.1.6 doc): lifetime
         # totals, 0.1 kWh, unsigned. Field evidence (#238, two LV systems): both packs
         # within a plant report identical values — the counters look stack-level,
