@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.2] - 2026-07-09
+
+### ✨ Added
+
+- land multi-module 3ph HV capture + BCU unit serial (#265, #375) (#377) ([edfcbfe](https://github.com/dewet22/givenergy-modbus/commit/edfcbfe96bb7ec8af0c2d669bbd424cd1423b63c))
+- detect-inclusive AIO direct capture — first clean live full-cycle (#380) ([f8b9ddb](https://github.com/dewet22/givenergy-modbus/commit/f8b9ddbd95fa2c515a7b40aa732ee89eaea712a8))
+
+### 🐛 Fixed
+
+- redact HV BMU per-module serials in captures (#375) (#376) ([2a72a45](https://github.com/dewet22/givenergy-modbus/commit/2a72a45c8d2d3d778a1135dae66d5a5903030250))
+
 ## [2.10.1] - 2026-07-08
 
 ### 🔄 Changed
