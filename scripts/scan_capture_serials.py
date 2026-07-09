@@ -6,11 +6,14 @@ can't cover: a serial at an as-yet-undiscovered location, or one stored SPLIT ac
 non-contiguous registers (module 0x55 on the 3ph HV stack, #378 — 'HY' at IR110, the
 '…G705' tail at IR115-118, which the contiguous-group redactor misses).
 
-It's a DETECTOR, not a redactor — run it on a fresh capture before committing. It flags two
+It's a DETECTOR, not a redactor — run it on a fresh capture before committing. It flags three
 shapes carrying non-zero unit digits (redacted serials end in the …000 placeholder, so those
 are ignored):
-  - full GE serial:      [A-Z]{2}\\d{4}[A-Z]\\d{3}   (e.g. HY2336G705)
-  - prefixless tail:     \\d{4}[A-Z]\\d{3}            (the split-serial fragment)
+  - full GE serial:       [A-Z]{2}\\d{4}[A-Z]\\d{3}         (e.g. HY2336G705)
+  - prefixless tail:      \\d{4}[A-Z]\\d{3}                  (the split-serial fragment)
+  - NUL-interrupted:      [A-Z]{2}[\\d\\x00]{4}[A-Z]\\d{3}    (Gateway write-response envelopes
+    carry a serial variant with NUL bytes replacing part of the date — both patterns above
+    structurally miss it; first seen on the 2026-07-09 write-path capture)
 
 A hit means: redact it (hand-zero the unit digits through the library encoder, and where the
 location is contiguous, model the register as C.serial so it auto-redacts thereafter), then
@@ -30,6 +33,10 @@ _CAPTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "captur
 
 _FULL = re.compile(rb"[A-Z]{2}\d{4}[A-Z]\d{3}")
 _TAIL = re.compile(rb"\d{4}[A-Z]\d{3}")
+# NUL-interrupted serial variant: some Gateway write-response envelopes replace part of the
+# date digits with NUL bytes (e.g. prefix + \x00\x00 + partial date + unit digits), which
+# breaks both patterns above while the live unit digits ride through untouched.
+_NUL_INTERRUPTED = re.compile(rb"[A-Z]{2}[\d\x00]{4}[A-Z]\d{3}")
 
 
 def _frame_bytes(path: Path) -> bytes:
@@ -57,9 +64,17 @@ def scan(path: Path) -> list[str]:
         for m in _TAIL.finditer(data)
         if not m.group().endswith(b"000") and not any(m.group() in f for f in full)
     }
-    return [f"full serial {s.decode()}" for s in sorted(full)] + [
-        f"prefixless tail {s.decode()}" for s in sorted(tails)
-    ]
+    # NUL-interrupted variants, minus clean full-serial matches (the pattern is a superset).
+    nul_hits = {
+        m.group()
+        for m in _NUL_INTERRUPTED.finditer(data)
+        if not m.group().endswith(b"000") and b"\x00" in m.group()
+    }
+    return (
+        [f"full serial {s.decode()}" for s in sorted(full)]
+        + [f"prefixless tail {s.decode()}" for s in sorted(tails)]
+        + [f"NUL-interrupted serial {s.decode('latin1')!r}" for s in sorted(nul_hits)]
+    )
 
 
 def main() -> int:
