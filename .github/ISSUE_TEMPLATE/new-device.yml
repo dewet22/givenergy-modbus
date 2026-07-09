@@ -1,0 +1,60 @@
+name: New / unvalidated device
+description: Your GivEnergy model isn't confirmed working yet, and you'd like to help validate its register map.
+labels: ["to investigate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping get your hardware supported. The single most useful thing
+        you can provide is a **capture** — a recording of the Modbus traffic between
+        your inverter and whatever already talks to it (GivTCP, the GivEnergy mobile
+        app, another integration). That lets us see exactly which registers a working
+        setup reads, which is how we work out the decode for a new device.
+
+        Serials are redacted automatically, so a capture is safe to share as-is.
+  - type: input
+    id: device
+    attributes:
+      label: Model / device
+      description: Whatever the label on the unit or the app calls it — no need to be precise.
+      placeholder: e.g. Gen3 Hybrid, All-in-One, 3-phase AC, Gateway + 2× AIO…
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version(s), if you know them
+      description: ARM / DSP versions from the app or portal. Leave blank if unsure.
+    validations:
+      required: false
+  - type: textarea
+    id: whats-unconfirmed
+    attributes:
+      label: What's unconfirmed or looks wrong?
+      description: What isn't working, decoding oddly, or missing — as much or as little as you know.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ### Recording a capture
+
+        Install `givenergy-cli` (see https://github.com/dewet22/givenergy-cli), make sure
+        your existing integration (GivTCP / the app / etc.) is **running and polling the
+        inverter**, then record about 10 minutes of traffic:
+
+        ```
+        givenergy-cli --host <INVERTER_IP> capture -o plant.log -d 600
+        ```
+
+        `<INVERTER_IP>` is your inverter/dongle's address on the network. The command
+        reconnects across drops on its own, and redacts serials by default. When it
+        finishes, paste or drag `plant.log` into the box below.
+  - type: textarea
+    id: capture
+    attributes:
+      label: Capture (plant.log)
+      description: Paste the contents, or drag the file into this box to attach it.
+      render: text
+    validations:
+      required: false
