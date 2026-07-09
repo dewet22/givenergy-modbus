@@ -119,6 +119,16 @@ def test_remaining_battery_energy_wh_skips_undecodable_packs():
     assert plant.remaining_battery_energy_wh == 2448
 
 
+def test_remaining_battery_energy_wh_is_attribute_only_not_in_model_dump():
+    """Derived accessor: attribute-accessible but excluded from the raw-state model_dump,
+    consistent with the sibling device accessors (inverter/batteries/ems/hv_stacks). A
+    SOC-varying derivation does not belong in the plant's dumpable/persistable state."""
+    plant = _plant_with_caps(device_type=Model.HYBRID, lv_battery_addresses=[0x32])
+    _prime(plant, 0x32, _PACK_A)
+    assert plant.remaining_battery_energy_wh == 2448  # attribute access works
+    assert "remaining_battery_energy_wh" not in plant.model_dump()
+
+
 @pytest.mark.timeout(15)
 def test_remaining_battery_energy_wh_fixture_backed():
     """Real 2x Giv-Bat 5.2 capture: the two packs sum to ~5087 Wh nominal (#374)."""
