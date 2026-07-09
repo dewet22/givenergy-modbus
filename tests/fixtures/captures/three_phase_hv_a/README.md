@@ -33,9 +33,13 @@ BCU's own serial at IR(138–142)); **each BMU module answers at its own device 
 
 Posted publicly by reporter `lamztib` on
 [givenergy-hass#174](https://github.com/dewet22/givenergy-hass/issues/174) (June 2026),
-captured with HA 2026.6.3 / integration 1.3.2 / givenergy-modbus 2.3.2. Already redacted
-at capture time by the integration (all-zeros scheme — serials zeroed to `…G000`,
-manufacture dates not recoverable). The Modbus frames carry no IP/host.
+captured with HA 2026.6.3 / integration 1.3.2 / givenergy-modbus 2.3.2. Redacted at capture
+time by the integration (all-zeros scheme — serials zeroed to `…G000`, manufacture dates not
+recoverable). The Modbus frames carry no IP/host. **One serial the integration's redactor
+missed:** the BCU unit serial at 0x70/IR(138) — its location was only discovered later
+(#375), so it wasn't a redaction target in June. Re-redacted through the library's
+`FrameRedactor` (`…G000`, CRC re-encoded) once IR(138) was modelled; caught by
+`scripts/scan_capture_serials.py` (#378).
 
 `giv3hy11_da011_10min.log` was supplied privately by the same reporter (2026-07-08, via
 the hass-side soak) and redacted through the library's `FrameRedactor` before commit
