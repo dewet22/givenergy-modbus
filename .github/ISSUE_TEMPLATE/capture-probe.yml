@@ -1,0 +1,59 @@
+name: Submit a capture / probe
+description: Share a wire capture or a targeted register probe — often in response to a request on an existing issue.
+labels: ["to investigate"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to send in data: a **capture** (passive recording of the traffic from a
+        working integration) or a **probe** (a targeted read of specific register banks,
+        usually because we asked for one on another issue).
+
+        A **capture** automatically redacts the serials it recognises; a **probe** prints
+        raw register values and isn't redacted. Either way, if any personal information
+        remains we'll remove it as soon as we process the report — and if you'd rather not
+        share publicly at all, you can send it privately through the repo's
+        [security advisory reporting](https://github.com/dewet22/givenergy-modbus/security/advisories/new)
+        instead (Security → Report a vulnerability).
+  - type: textarea
+    id: context
+    attributes:
+      label: Context — what device, and what are we looking at?
+      description: >
+        The most important field. Which device/model, and what this capture or probe is
+        for — link the issue it relates to if there is one.
+      placeholder: e.g. "Gen3 HV stack, per-module probe requested in #xxx" or "AIO + Gateway, discharge behaviour looks wrong"
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        ### Producing the data
+
+        Install `givenergy-cli` (see https://github.com/dewet22/givenergy-cli), then:
+
+        **Capture** — record ~10 minutes of live traffic (needs an existing integration
+        polling the inverter alongside it):
+
+        ```
+        givenergy-cli --host <INVERTER_IP> capture -o plant.log -d 600
+        ```
+
+        **Probe** — read a specific register bank directly (e.g. input registers 0–59 on
+        the inverter at device address 0x11):
+
+        ```
+        givenergy-cli --host <INVERTER_IP> probe -t ir -b 0 -n 60 -d 0x11
+        ```
+
+        `<INVERTER_IP>` is your inverter/dongle's network address. If a probe was
+        requested on another issue, use the `--type`/`--base`/`--device` values from that
+        request.
+  - type: textarea
+    id: data
+    attributes:
+      label: Capture or probe output
+      description: Paste the output, or drag a capture file into this box to attach it.
+      render: text
+    validations:
+      required: true

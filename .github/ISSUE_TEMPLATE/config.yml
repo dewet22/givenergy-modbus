@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Something's wrong with the Home Assistant integration
+    url: https://github.com/dewet22/givenergy-hass/issues/new/choose
+    about: >
+      A reading looks off, or a connection/entity problem in Home Assistant. Start
+      there — it gets routed here if it turns out to be a register-decode issue.
