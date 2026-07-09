@@ -1487,6 +1487,8 @@ def test_from_actual():
         "num_cells": 16,
         "num_cycles": 116,
         "cap_remaining": 110.71,
+        "remaining_energy_nominal_wh": 5668,
+        "remaining_energy_measured_wh": 5707,
         "serial_number": "BG1234G567",
         "soc": 58,
         "status_1": 0,
