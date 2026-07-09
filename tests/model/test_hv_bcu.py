@@ -80,6 +80,27 @@ def test_bcu_is_valid_empty_version_string():
     assert bcu.is_valid() is False
 
 
+def test_bcu_total_counts_decode():
+    """IR(67)/IR(68) are cell / temp-sensor COUNTS, not voltage/temperature (#382)."""
+    bcu = Bcu.from_register_cache(_cache({IR(67): 144, IR(68): 72}))
+    assert bcu.total_cell_count == 144  # type: ignore[attr-defined]
+    assert bcu.total_temperature_sensor_count == 72  # type: ignore[attr-defined]
+
+
+def test_bcu_cluster_names_deprecated_alias():
+    """The old cluster_cell_voltage/temperature names warn and forward to the counts."""
+    bcu = Bcu.from_register_cache(_cache({IR(67): 96, IR(68): 48}))
+    with pytest.warns(DeprecationWarning, match="cluster_cell_voltage is deprecated"):
+        assert bcu.cluster_cell_voltage == 96  # type: ignore[attr-defined]
+    with pytest.warns(DeprecationWarning, match="cluster_cell_temperature is deprecated"):
+        assert bcu.cluster_cell_temperature == 48  # type: ignore[attr-defined]
+    # deprecated aliases stay out of the serialised model
+    dumped = bcu.model_dump()
+    assert "cluster_cell_voltage" not in dumped
+    assert "cluster_cell_temperature" not in dumped
+    assert dumped["total_cell_count"] == 96
+
+
 def test_bcu_status_label_decode():
     # Every named BCU_STATUS code maps to its label; unknown codes degrade to None.
     assert _bcu_status_from(0) is BcuStatus.BMS_INITIALISING

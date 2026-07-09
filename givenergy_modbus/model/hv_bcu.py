@@ -61,13 +61,14 @@ class BcuRegisterGetter(RegisterGetter):
         "pack_software_version": Def(C.gateway_version, None, IR(60), IR(61), IR(62), IR(63)),
         "number_of_modules": Def(C.uint16, None, IR(64)),
         "cells_per_module": Def(C.uint16, None, IR(65)),
-        # NOTE: these two names are suspect. In both committed HV fixtures IR(67)/IR(68)
-        # read as counts, not measurements — IR(67) = modules × 24 (total cells), IR(68) =
-        # modules × 12 (total temp sensors), holding a 2:1 ratio across a 4- and a 6-module
-        # stack. So IR(68) is almost certainly a temp-SENSOR COUNT, not a temperature, and
-        # is deliberately left unsigned. Field-identity reconciliation tracked separately.
-        "cluster_cell_voltage": Def(C.uint16, None, IR(67)),
-        "cluster_cell_temperature": Def(C.uint16, None, IR(68)),
+        # IR(67)/IR(68) are COUNTS, not measurements (#382). Across both committed HV
+        # fixtures IR(67) = modules × 24 (total cells) and IR(68) = modules × 12 (total
+        # temperature sensors) — a clean 2:1 ratio holding on a 4- and a 6-module stack,
+        # and the ÷12 is independently confirmed by a module populating exactly 12 temp
+        # sensors. They were mis-modelled as cluster_cell_voltage/cluster_cell_temperature
+        # (both kept as deprecated @property aliases on Bcu).
+        "total_cell_count": Def(C.uint16, None, IR(67)),
+        "total_temperature_sensor_count": Def(C.uint16, None, IR(68)),
         "status": Def(C.uint16, None, IR(70)),
         "status_label": Def(C.uint16, _bcu_status_from, IR(70)),
         "battery_voltage": Def(C.deci, None, IR(73), min=0.0, max=1000.0),
@@ -134,6 +135,30 @@ class Bcu(_BcuBase, RegisterMetadataMixin):  # type: ignore[misc,valid-type]
         """Try to detect if an HV BCU is present based on its attributes."""
         v = self.pack_software_version  # type: ignore[attr-defined]
         return v not in (None, "", "          ") and not all(c == "0" for c in (v or ""))
+
+    # IR(67)/IR(68) were mis-modelled as cluster_cell_voltage / cluster_cell_temperature;
+    # fixtures show they are cell / temperature-sensor COUNTS (#382). Plain @property (not
+    # @computed_field) so the deprecated aliases don't appear in model_dump() output.
+    @property
+    def cluster_cell_voltage(self) -> int | None:
+        """Deprecated: IR(67) is a total cell count, not a voltage. Use `total_cell_count`."""
+        warnings.warn(
+            "Bcu.cluster_cell_voltage is deprecated; IR(67) is a cell count — use total_cell_count",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.total_cell_count  # type: ignore[attr-defined,no-any-return]
+
+    @property
+    def cluster_cell_temperature(self) -> int | None:
+        """Deprecated: IR(68) is a temp-sensor count, not a temperature. Use `total_temperature_sensor_count`."""
+        warnings.warn(
+            "Bcu.cluster_cell_temperature is deprecated; IR(68) is a temperature-sensor count — "
+            "use total_temperature_sensor_count",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.total_temperature_sensor_count  # type: ignore[attr-defined,no-any-return]
 
 
 # ---------------------------------------------------------------------------
