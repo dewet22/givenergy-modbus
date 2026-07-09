@@ -9,8 +9,12 @@ body:
         working integration) or a **probe** (a targeted read of specific register banks,
         usually because we asked for one on another issue).
 
-        Serials are redacted automatically by both commands, so the output is safe to
-        share as-is.
+        A **capture** automatically redacts the serials it recognises; a **probe** prints
+        raw register values and isn't redacted. Either way, if any personal information
+        remains we'll remove it as soon as we process the report — and if you'd rather not
+        share publicly at all, you can send it privately through the repo's
+        [security advisory reporting](https://github.com/dewet22/givenergy-modbus/security/advisories/new)
+        instead (Security → Report a vulnerability).
   - type: textarea
     id: context
     attributes:

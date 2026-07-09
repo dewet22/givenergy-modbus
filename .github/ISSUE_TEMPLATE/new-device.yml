@@ -11,7 +11,12 @@ body:
         app, another integration). That lets us see exactly which registers a working
         setup reads, which is how we work out the decode for a new device.
 
-        Serials are redacted automatically, so a capture is safe to share as-is.
+        `capture` automatically redacts the serial numbers it recognises. On a
+        completely new device a few may not be recognised yet — if so, we'll review the
+        file and remove any remaining personal information as soon as we pick up the
+        report. If you'd rather not attach the capture on a public issue, you can send it
+        privately through the repo's [security advisory reporting](https://github.com/dewet22/givenergy-modbus/security/advisories/new)
+        instead (Security → Report a vulnerability) — a private, maintainer-only upload.
   - type: input
     id: device
     attributes:
@@ -48,8 +53,8 @@ body:
         ```
 
         `<INVERTER_IP>` is your inverter/dongle's address on the network. The command
-        reconnects across drops on its own, and redacts serials by default. When it
-        finishes, paste or drag `plant.log` into the box below.
+        reconnects across drops on its own. When it finishes, paste or drag `plant.log`
+        into the box below.
   - type: textarea
     id: capture
     attributes:
