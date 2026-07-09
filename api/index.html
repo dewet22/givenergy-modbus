@@ -2231,6 +2231,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.remaining_battery_energy_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_battery_energy_wh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.Plant.serial_index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3320,6 +3331,45 @@
   
     <nav class="md-nav" aria-label="Battery">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_measured_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_energy_measured_wh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_energy_nominal_wh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="remaining_energy_nominal_wh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh--318-is-about-none-if-cap_remaining-is-none-or-no-voltage-basis-is-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        318 is about. None if cap_remaining is None or no voltage basis is available.
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#givenergy_modbus.model.battery.Battery.from_register_cache" class="md-nav__link">
@@ -6925,6 +6975,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.plant.Plant.remaining_battery_energy_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_battery_energy_wh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#givenergy_modbus.model.plant.Plant.serial_index" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8014,6 +8075,45 @@
   
     <nav class="md-nav" aria-label="Battery">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_measured_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_energy_measured_wh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remaining_energy_nominal_wh
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="remaining_energy_nominal_wh">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh--318-is-about-none-if-cap_remaining-is-none-or-no-voltage-basis-is-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        318 is about. None if cap_remaining is None or no voltage basis is available.
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#givenergy_modbus.model.battery.Battery.from_register_cache" class="md-nav__link">
@@ -20775,7 +20875,35 @@ Pass confirm=True to proceed.</p>
 <span class="normal">2166</span>
 <span class="normal">2167</span>
 <span class="normal">2168</span>
-<span class="normal">2169</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
+<span class="normal">2169</span>
+<span class="normal">2170</span>
+<span class="normal">2171</span>
+<span class="normal">2172</span>
+<span class="normal">2173</span>
+<span class="normal">2174</span>
+<span class="normal">2175</span>
+<span class="normal">2176</span>
+<span class="normal">2177</span>
+<span class="normal">2178</span>
+<span class="normal">2179</span>
+<span class="normal">2180</span>
+<span class="normal">2181</span>
+<span class="normal">2182</span>
+<span class="normal">2183</span>
+<span class="normal">2184</span>
+<span class="normal">2185</span>
+<span class="normal">2186</span>
+<span class="normal">2187</span>
+<span class="normal">2188</span>
+<span class="normal">2189</span>
+<span class="normal">2190</span>
+<span class="normal">2191</span>
+<span class="normal">2192</span>
+<span class="normal">2193</span>
+<span class="normal">2194</span>
+<span class="normal">2195</span>
+<span class="normal">2196</span>
+<span class="normal">2197</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Plant</span><span class="p">(</span><span class="n">GivEnergyBaseModel</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Representation of a complete GivEnergy plant.&quot;&quot;&quot;</span>
 
     <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">use_enum_values</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">arbitrary_types_allowed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -21992,14 +22120,38 @@ Pass confirm=True to proceed.</p>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">batteries</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Battery</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return Battery models for the Plant.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return Battery models for the Plant.</span>
+
+<span class="sd">        A capabilities-listed address with no register cache yields an all-None placeholder</span>
+<span class="sd">        Battery at its index rather than being dropped (#213) — a transiently-absent pack</span>
+<span class="sd">        (e.g. a BMS slow to answer after a restart) stays present-but-unavailable and index-</span>
+<span class="sd">        aligned instead of shifting its siblings&#39; entities. Subsequent refresh()es populate it</span>
+<span class="sd">        if it responds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span>
-                <span class="n">Battery</span><span class="o">.</span><span class="n">from_register_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">[</span><span class="n">addr</span><span class="p">])</span>
+                <span class="n">Battery</span><span class="o">.</span><span class="n">from_register_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">()))</span>
                 <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">lv_battery_addresses</span>
-                <span class="k">if</span> <span class="n">addr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span>
             <span class="p">]</span>
         <span class="k">return</span> <span class="p">[</span><span class="n">Battery</span><span class="o">.</span><span class="n">from_register_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mh">0x32</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_batteries</span><span class="p">)]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remaining_battery_energy_wh</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Total remaining battery energy (Wh) summed over this Plant&#39;s LV packs (#374).</span>
+
+<span class="sd">        Nominal-voltage basis (``Battery.remaining_energy_nominal_wh``). This sums every pack on</span>
+<span class="sd">        *this* dongle, so on an inverter with a primary/secondary chain it includes the secondary</span>
+<span class="sd">        pack the EMS controller&#39;s own figure (``Ems.remaining_battery_wh``, IR2091) drops.</span>
+
+<span class="sd">        Returns ``None`` (not ``0``) when no pack decodes — e.g. an EMS-controller dongle has no</span>
+<span class="sd">        LV battery sub-bus, so its Plant returns ``None`` rather than a misleading ``0 Wh``.</span>
+
+<span class="sd">        Scope: one Plant is one dongle, and battery sub-bus addresses collide across managed</span>
+<span class="sd">        inverters (each reuses 0x32-0x37), so this cannot span inverters. A consumer holding</span>
+<span class="sd">        several inverter connections sums their per-Plant values for the site total.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">present</span> <span class="o">=</span> <span class="p">[</span><span class="n">e</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">remaining_energy_nominal_wh</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batteries</span><span class="p">)</span> <span class="k">if</span> <span class="n">e</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">present</span><span class="p">)</span> <span class="k">if</span> <span class="n">present</span> <span class="k">else</span> <span class="kc">None</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">hv_stacks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">HvStack</span><span class="p">]:</span>
@@ -22066,13 +22218,17 @@ Pass confirm=True to proceed.</p>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">meters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Meter</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return Meter models keyed by device address.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return Meter models keyed by device address.</span>
+
+<span class="sd">        A listed-but-uncached meter address yields an all-None placeholder Meter at its key</span>
+<span class="sd">        rather than being omitted (#213), so a transiently-absent meter reads as present-but-</span>
+<span class="sd">        unavailable and is repopulated on a later refresh() if it responds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">meter_addresses</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">{}</span>
         <span class="k">return</span> <span class="p">{</span>
-            <span class="n">addr</span><span class="p">:</span> <span class="n">Meter</span><span class="o">.</span><span class="n">from_register_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="p">[</span><span class="n">addr</span><span class="p">])</span>
+            <span class="n">addr</span><span class="p">:</span> <span class="n">Meter</span><span class="o">.</span><span class="n">from_register_cache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">()))</span>
             <span class="k">for</span> <span class="n">addr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">capabilities</span><span class="o">.</span><span class="n">meter_addresses</span>
-            <span class="k">if</span> <span class="n">addr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">register_caches</span>
         <span class="p">}</span>
 
     <span class="nd">@property</span>
@@ -22330,6 +22486,11 @@ non-AIO plants and until the module caches have been polled.</p>
     <div class="doc doc-contents ">
 
         <p>Return Battery models for the Plant.</p>
+<p>A capabilities-listed address with no register cache yields an all-None placeholder
+Battery at its index rather than being dropped (#213) — a transiently-absent pack
+(e.g. a BMS slow to answer after a restart) stays present-but-unavailable and index-
+aligned instead of shifting its siblings' entities. Subsequent refresh()es populate it
+if it responds.</p>
 
     </div>
 
@@ -22583,6 +22744,9 @@ see model/lv_bcu.py), or its cache hasn't been populated yet.</p>
     <div class="doc doc-contents ">
 
         <p>Return Meter models keyed by device address.</p>
+<p>A listed-but-uncached meter address yields an all-None placeholder Meter at its key
+rather than being omitted (#213), so a transiently-absent meter reads as present-but-
+unavailable and is repopulated on a later refresh() if it responds.</p>
 
     </div>
 
@@ -22605,6 +22769,36 @@ see model/lv_bcu.py), or its cache hasn't been populated yet.</p>
     <div class="doc doc-contents ">
 
         <p>Determine the number of batteries connected to the system based on whether the register data is valid.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.plant.Plant.remaining_battery_energy_wh" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">remaining_battery_energy_wh</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.plant.Plant.remaining_battery_energy_wh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Total remaining battery energy (Wh) summed over this Plant's LV packs (#374).</p>
+<p>Nominal-voltage basis (<code>Battery.remaining_energy_nominal_wh</code>). This sums every pack on
+<em>this</em> dongle, so on an inverter with a primary/secondary chain it includes the secondary
+pack the EMS controller's own figure (<code>Ems.remaining_battery_wh</code>, IR2091) drops.</p>
+<p>Returns <code>None</code> (not <code>0</code>) when no pack decodes — e.g. an EMS-controller dongle has no
+LV battery sub-bus, so its Plant returns <code>None</code> rather than a misleading <code>0 Wh</code>.</p>
+<p>Scope: one Plant is one dongle, and battery sub-bus addresses collide across managed
+inverters (each reuses 0x32-0x37), so this cannot span inverters. A consumer holding
+several inverter connections sums their per-Plant values for the site total.</p>
 
     </div>
 
@@ -22660,16 +22854,16 @@ Client pointing at one of the EMS-managed inverters; <code>inverters</code> and
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/plant.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1978</span>
-<span class="normal">1979</span>
-<span class="normal">1980</span>
-<span class="normal">1981</span>
-<span class="normal">1982</span>
-<span class="normal">1983</span>
-<span class="normal">1984</span>
-<span class="normal">1985</span>
-<span class="normal">1986</span>
-<span class="normal">1987</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">2006</span>
+<span class="normal">2007</span>
+<span class="normal">2008</span>
+<span class="normal">2009</span>
+<span class="normal">2010</span>
+<span class="normal">2011</span>
+<span class="normal">2012</span>
+<span class="normal">2013</span>
+<span class="normal">2014</span>
+<span class="normal">2015</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">add_direct_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">caches</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">RegisterCache</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Store direct-inverter register caches for serial reconciliation (#106 Phase 3).</span>
 
 <span class="sd">    Caches are stored separately from ``register_caches`` to avoid the Modbus</span>
@@ -28807,14 +29001,14 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;power_factor_point_3_power_factor&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">135</span><span class="p">)),</span>
         <span class="s2">&quot;power_factor_point_4_load_percent&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">136</span><span class="p">)),</span>
         <span class="s2">&quot;power_factor_point_4_power_factor&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">137</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_v1s_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">138</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_v2s_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">139</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_v1l_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">140</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_v2l_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">141</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_v1s_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">138</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_v2s_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">139</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_v1l_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">140</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_v2l_q&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">141</span><span class="p">)),</span>
         <span class="s2">&quot;cei021_lock_in_active_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">142</span><span class="p">)),</span>
         <span class="s2">&quot;cei021_lock_out_active_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">143</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_lock_in_grid_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">144</span><span class="p">)),</span>
-        <span class="s2">&quot;cei021_lock_out_grid_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">145</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_lock_in_grid_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">144</span><span class="p">)),</span>
+        <span class="s2">&quot;cei021_lock_out_grid_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">145</span><span class="p">)),</span>
         <span class="s2">&quot;lvfrt_reactive_rate&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">146</span><span class="p">)),</span>
         <span class="s2">&quot;lvfrt_low_fault_value_1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">147</span><span class="p">)),</span>
         <span class="s2">&quot;lvfrt_low_fault_time_1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">148</span><span class="p">)),</span>
@@ -28927,7 +29121,7 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;overfrequency_load_drop_recovery_delay&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">303</span><span class="p">)),</span>
         <span class="s2">&quot;mppt_operating_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">305</span><span class="p">)),</span>
         <span class="s2">&quot;connection_loading_slope&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">306</span><span class="p">)),</span>
-        <span class="s2">&quot;eps_nominal_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">307</span><span class="p">)),</span>
+        <span class="s2">&quot;eps_nominal_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">307</span><span class="p">)),</span>
         <span class="c1"># HR(308-310): battery topology — rated power (W), rated current (A), max charge</span>
         <span class="c1"># percentage. From the GivEnergy app v4.0.7; scale unconfirmed on live hardware.</span>
         <span class="s2">&quot;battery_nominal_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">308</span><span class="p">)),</span>
@@ -28941,8 +29135,8 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;battery_charge_limit_ac&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">313</span><span class="p">)),</span>
         <span class="s2">&quot;battery_discharge_limit_ac&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">314</span><span class="p">)),</span>
         <span class="c1"># HR(315-316): EN50549 zero-current static voltage limits (raw uint16).</span>
-        <span class="s2">&quot;en50549_zero_current_lower_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">315</span><span class="p">)),</span>
-        <span class="s2">&quot;en50549_zero_current_upper_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">316</span><span class="p">)),</span>
+        <span class="s2">&quot;en50549_zero_current_lower_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">315</span><span class="p">)),</span>
+        <span class="s2">&quot;en50549_zero_current_upper_voltage_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">316</span><span class="p">)),</span>
         <span class="c1"># HR(317): EPS enable — confirmed writable on Model.AC via portal observations</span>
         <span class="c1"># (hass#52): toggled 0/1 while the portal&#39;s &quot;EPS&quot; switch was flipped off/on.</span>
         <span class="s2">&quot;enable_eps&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">317</span><span class="p">)),</span>
@@ -28950,14 +29144,14 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;battery_pause_slot_1&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">timeslot</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">319</span><span class="p">),</span> <span class="n">HR</span><span class="p">(</span><span class="mi">320</span><span class="p">)),</span>
         <span class="c1"># HR(321-332): frequency derating, tariff-pricing battery logic, BMS OCV calibration,</span>
         <span class="c1"># gateway power-off, force-off-grid, micro-grid.</span>
-        <span class="s2">&quot;overfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">321</span><span class="p">)),</span>
+        <span class="s2">&quot;overfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">321</span><span class="p">)),</span>
         <span class="s2">&quot;enable_tariff_pricing_battery_logic&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">322</span><span class="p">)),</span>
         <span class="s2">&quot;import_price_battery_discharge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">323</span><span class="p">)),</span>
         <span class="s2">&quot;import_price_battery_charge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">324</span><span class="p">)),</span>
         <span class="s2">&quot;export_price_battery_discharge_threshold&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">325</span><span class="p">)),</span>
-        <span class="s2">&quot;underfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">326</span><span class="p">)),</span>
+        <span class="s2">&quot;underfrequency_derating_start_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">326</span><span class="p">)),</span>
         <span class="s2">&quot;underfrequency_loading_slope&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">327</span><span class="p">)),</span>
-        <span class="s2">&quot;overfrequency_derating_stop_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">328</span><span class="p">)),</span>
+        <span class="s2">&quot;overfrequency_derating_stop_point&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">328</span><span class="p">)),</span>
         <span class="s2">&quot;enable_bms_ocv_calibration&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">329</span><span class="p">)),</span>
         <span class="s2">&quot;gateway_power_off_setting&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">330</span><span class="p">)),</span>
         <span class="s2">&quot;force_off_grid&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">331</span><span class="p">)),</span>
@@ -28982,8 +29176,8 @@ unknown (DTC unread).</p>
         <span class="c1"># HR(347-351): display, lead-acid calibration limits, inverter operating mode.</span>
         <span class="s2">&quot;disable_leds&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">347</span><span class="p">)),</span>
         <span class="s2">&quot;lcd_screen_idle_timeout&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">348</span><span class="p">)),</span>
-        <span class="s2">&quot;lead_acid_battery_calibration_upper_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">349</span><span class="p">)),</span>
-        <span class="s2">&quot;lead_acid_battery_calibration_lower_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">350</span><span class="p">)),</span>
+        <span class="s2">&quot;lead_acid_battery_calibration_upper_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">349</span><span class="p">)),</span>
+        <span class="s2">&quot;lead_acid_battery_calibration_lower_limit&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">350</span><span class="p">)),</span>
         <span class="s2">&quot;inverter_operating_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">351</span><span class="p">)),</span>
         <span class="c1">#</span>
         <span class="c1"># Holding Registers, block 499-510</span>
@@ -28999,7 +29193,7 @@ unknown (DTC unread).</p>
         <span class="s2">&quot;hv_temp_sensors_per_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">504</span><span class="p">)),</span>
         <span class="s2">&quot;hv_total_temp_sensors&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">505</span><span class="p">)),</span>
         <span class="s2">&quot;hv_max_pcs_power&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">506</span><span class="p">)),</span>
-        <span class="s2">&quot;hv_max_charge_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">507</span><span class="p">)),</span>
+        <span class="s2">&quot;hv_max_charge_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">507</span><span class="p">)),</span>
         <span class="s2">&quot;hv_min_discharge_voltage&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">508</span><span class="p">)),</span>
         <span class="s2">&quot;hv_max_charge_current&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">509</span><span class="p">)),</span>
         <span class="s2">&quot;hv_parallel_count&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">HR</span><span class="p">(</span><span class="mi">510</span><span class="p">)),</span>
@@ -29666,11 +29860,7 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">111</span>
 <span class="normal">112</span>
 <span class="normal">113</span>
 <span class="normal">114</span>
@@ -29678,7 +29868,44 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 <span class="normal">116</span>
 <span class="normal">117</span>
 <span class="normal">118</span>
-<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Battery</span><span class="p">(</span><span class="n">_BatteryBase</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span><span class="p">):</span>  <span class="c1"># type: ignore[misc,valid-type]</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Battery</span><span class="p">(</span><span class="n">_BatteryBase</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span><span class="p">):</span>  <span class="c1"># type: ignore[misc,valid-type]</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy battery data model.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_GETTER</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">type</span><span class="p">[</span><span class="n">RegisterGetter</span><span class="p">]]</span> <span class="o">=</span> <span class="n">BatteryRegisterGetter</span>
@@ -29691,6 +29918,39 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
     <span class="k">def</span><span class="w"> </span><span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Try to detect if a battery exists based on its attributes.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">is_valid_serial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
+
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remaining_energy_nominal_wh</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remaining stored energy (Wh), nominal-voltage basis: cap_remaining × num_cells × 3.2 V.</span>
+
+<span class="sd">        Nominal voltage is stable across load/SOC (the basis nameplate capacity is quoted on),</span>
+<span class="sd">        so this is the figure to sum for a slowly-varying &quot;remaining energy&quot; reading (#374). If</span>
+<span class="sd">        the pack doesn&#39;t report num_cells, fall back to the measured pack voltage so it still</span>
+<span class="sd">        contributes to a plant-level sum rather than silently dropping — the exact failure mode</span>
+<span class="sd">        #318 is about. None if cap_remaining is None or no voltage basis is available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cap_remaining</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="n">cap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">nominal_v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span> <span class="o">*</span> <span class="n">_LIFEPO4_NOMINAL_CELL_V</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_cells</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_out</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="n">nominal_v</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="n">cap</span> <span class="o">*</span> <span class="n">nominal_v</span><span class="p">)</span>
+
+    <span class="nd">@computed_field</span>  <span class="c1"># type: ignore[prop-decorator]</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">remaining_energy_measured_wh</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remaining stored energy (Wh), measured-voltage basis: cap_remaining × v_out.</span>
+
+<span class="sd">        Instantaneous; fluctuates ~2-3% with SOC and sags under load. None if cap_remaining or</span>
+<span class="sd">        v_out is None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cap_remaining</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="n">v_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v_out</span>  <span class="c1"># type: ignore[attr-defined]</span>
+        <span class="k">if</span> <span class="n">cap</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">v_out</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="nb">round</span><span class="p">(</span><span class="n">cap</span> <span class="o">*</span> <span class="n">v_out</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -29703,6 +29963,57 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
 
 
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.battery.Battery.remaining_energy_measured_wh" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">remaining_energy_measured_wh</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.battery.Battery.remaining_energy_measured_wh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remaining stored energy (Wh), measured-voltage basis: cap_remaining × v_out.</p>
+<p>Instantaneous; fluctuates ~2-3% with SOC and sags under load. None if cap_remaining or
+v_out is None.</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">remaining_energy_nominal_wh</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Remaining stored energy (Wh), nominal-voltage basis: cap_remaining × num_cells × 3.2 V.</p>
+<p>Nominal voltage is stable across load/SOC (the basis nameplate capacity is quoted on),
+so this is the figure to sum for a slowly-varying "remaining energy" reading (#374). If
+the pack doesn't report num_cells, fall back to the measured pack voltage so it still
+contributes to a plant-level sum rather than silently dropping — the exact failure mode</p>
+<h5 id="givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh--318-is-about-none-if-cap_remaining-is-none-or-no-voltage-basis-is-available">318 is about. None if cap_remaining is None or no voltage basis is available.<a class="headerlink" href="#givenergy_modbus.model.battery.Battery.remaining_energy_nominal_wh--318-is-about-none-if-cap_remaining-is-none-or-no-voltage-basis-is-available" title="Permanent link">&para;</a></h5>
+
+    </div>
+
+</div>
 
 
 
@@ -29727,10 +30038,10 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;Battery&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a Battery from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">BatteryRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -29756,9 +30067,9 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_valid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Try to detect if a battery exists based on its attributes.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">is_valid_serial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_number</span><span class="p">)</span>  <span class="c1"># type: ignore[attr-defined]</span>
 </code></pre></div></td></tr></table></div>
@@ -29803,17 +30114,17 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryMaintenance</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery maintenance mode.&quot;&quot;&quot;</span>
 
     <span class="n">OFF</span> <span class="o">=</span> <span class="mi">0</span>
@@ -29876,17 +30187,17 @@ facade still answers there) and self-heals to <code>0x11</code> on the next
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BatteryPauseMode</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery pause mode.&quot;&quot;&quot;</span>
 
     <span class="n">DISABLED</span> <span class="o">=</span> <span class="mi">0</span>
@@ -30169,19 +30480,19 @@ full rotation.)</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExportPriority</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Dispatch priority for surplus power on AC-coupled inverters.</span>
 
 <span class="sd">    HR(311) was identified as Export Priority via hass#52 wire captures. The integer↔label mapping</span>
@@ -30246,16 +30557,16 @@ full rotation.)</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/battery.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">State</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">State</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Battery charge/discharge state.&quot;&quot;&quot;</span>
 
     <span class="n">STATIC</span> <span class="o">=</span> <span class="mi">0</span>
