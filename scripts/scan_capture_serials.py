@@ -37,16 +37,13 @@ def _frame_bytes(path: Path) -> bytes:
     chunks: list[bytes] = []
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         parts = line.replace(":", " ").split()
-        if len(parts) >= 2 and parts[-2] in ("rx", "tx"):
-            token = parts[-1]
-        elif len(parts) >= 2 and parts[0] in ("rx", "tx"):
-            token = parts[-1]
-        else:
-            continue
-        try:
-            chunks.append(bytes.fromhex(token))
-        except ValueError:
-            continue
+        # Direction token sits at parts[0] (HA `rx: <hex>`) or parts[-2] (cli `<ts> rx <hex>`);
+        # the hex payload is always the last token.
+        if len(parts) >= 2 and (parts[0] in ("rx", "tx") or parts[-2] in ("rx", "tx")):
+            try:
+                chunks.append(bytes.fromhex(parts[-1]))
+            except ValueError:
+                continue
     return b"".join(chunks)
 
 
@@ -72,6 +69,14 @@ def main() -> int:
         paths = [Path(a) for a in args]
     else:
         paths = sorted(_CAPTURES.rglob("*.log")) + sorted(_CAPTURES.rglob("*.txt"))
+
+    missing = [p for p in paths if not p.is_file()]
+    for p in missing:
+        print(f"WARN  {p}: not found")
+    paths = [p for p in paths if p.is_file()]
+    if not paths:
+        print("no capture files to scan — check the path(s).")
+        return 2
 
     total = 0
     for p in paths:
