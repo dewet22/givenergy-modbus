@@ -378,12 +378,22 @@ class MockPlant:
         would live. Raises :class:`ValueError` naming every register that failed to
         commit. Only HR/IR banks exist on the read wire; spec any other register class
         with ``verify=False`` (direct cache seeding, no round-trip).
+
+        Every value must fit an unsigned 16-bit register word (0..0xFFFF) regardless of
+        ``verify`` — an out-of-range word can never be encoded onto the wire, and would
+        otherwise crash ``struct.pack`` at serve time on the first client read.
         """
         devices: dict[int, RegisterCache] = {}
         for device_address, banks in spec.items():
             cache = devices.setdefault(device_address, RegisterCache())
             for (reg_cls, base), values in banks.items():
                 for i, value in enumerate(values):
+                    if not 0 <= value <= 0xFFFF:
+                        raise ValueError(
+                            f"0x{device_address:02x}:{reg_cls.__name__}({base + i}) = {value} does not "
+                            f"fit an unsigned 16-bit register word (0..65535) and can never be served; "
+                            f"encode signed/scaled quantities to their raw wire representation first."
+                        )
                     cache[reg_cls(base + i)] = value
         if verify:
             _verify_spec_commits(spec)
