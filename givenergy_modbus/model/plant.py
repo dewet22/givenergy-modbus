@@ -2143,7 +2143,7 @@ class Plant(GivEnergyBaseModel):
         """
         caps = self.capabilities
         rows: list[PlantDevice] = []
-        plant_serial = self.inverter_serial_number
+        plant_serial = self.inverter_serial
         root_identity = plant_serial
         ems_root: Ems | None = None
 
@@ -2228,16 +2228,22 @@ class Plant(GivEnergyBaseModel):
             )
 
         # --- AIO modules --------------------------------------------------------------
-        for module in self.aio_battery_modules:
+        # Zipped with the address list (not just self.aio_battery_modules) so a
+        # capability-listed-but-serial-less module still gets a synthetic identity
+        # instead of colliding with its siblings on "" (#106 I1). Correspondence relies
+        # on aio_battery_modules() decoding exactly one entry per address present in
+        # register_caches, in address order.
+        aio_addresses = caps.aio_battery_module_addresses if caps else []
+        for addr, module in zip(aio_addresses, self.aio_battery_modules, strict=False):
             module_serial = _validated_serial(module)
             child_rows.append(
                 PlantDevice(
-                    identity=module_serial or "",
+                    identity=module_serial or f"{plant_serial}_module_{addr}",
                     device_type=DeviceType.BATTERY_MODULE,
                     parent=root_identity,
                     device=module,
                     serial_number=module_serial,
-                    is_valid=bool(module_serial),
+                    is_valid=module.is_valid(),
                 )
             )
 
@@ -2257,15 +2263,16 @@ class Plant(GivEnergyBaseModel):
                     device=stack,
                     serial_number=_validated_serial(stack.bcu),
                     firmware_version=_walk_firmware(DeviceType.HV_STACK, stack, self),
+                    is_valid=stack.bcu.is_valid(),
                 )
             )
             if aio_covers_bmus:
                 continue
-            for bmu in stack.bmus:
+            for n, bmu in enumerate(stack.bmus, start=1):
                 bmu_serial = _validated_serial(bmu)
                 child_rows.append(
                     PlantDevice(
-                        identity=bmu_serial or "",
+                        identity=bmu_serial or f"{stack_identity}_bmu_{n}",
                         device_type=DeviceType.BATTERY_MODULE,
                         parent=stack_identity,
                         device=bmu,

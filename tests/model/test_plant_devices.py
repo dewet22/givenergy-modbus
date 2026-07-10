@@ -202,3 +202,116 @@ def test_walk_hv_stack_and_bmus():
     assert bmu_rows[0].parent == stack_identity
     assert bmu_rows[0].identity == "XX1234A567"  # own serial, no prefix
     assert bmu_rows[0].serial_number == "XX1234A567"
+
+
+def test_walk_root_identity_uses_inverter_serial_accessor():
+    """I2: root identity anchors on ``Plant.inverter_serial`` (register-first).
+
+    Not the envelope ``inverter_serial_number`` field. The documented
+    ``Plant.from_caches()`` recipe (no live client) doesn't pass an
+    envelope serial, so a bare ``Plant.from_caches()`` call must still resolve the real
+    serial from the register cache (HR13-17) rather than surfacing an empty identity.
+    """
+    values = {
+        HR(0): 0x2001,
+        HR(21): 449,  # HYBRID_GEN1
+        # HR(13-17) -> "XX1234A567"
+        HR(13): 0x5858,
+        HR(14): 0x3132,
+        HR(15): 0x3334,
+        HR(16): 0x4135,
+        HR(17): 0x3637,
+    }
+    plant = Plant.from_caches({0x11: RegisterCache(values)})
+    assert plant.devices[0].identity == "XX1234A567"
+
+
+def test_walk_aio_module_synthetic_identity_when_serial_less():
+    """I1: a capability-listed AIO module with no decodable serial gets a synthetic identity.
+
+    The address stays listed in capabilities but its register cache is present-and-empty
+    (no valid decode) rather than absent — analogous to the #213 battery/meter placeholder
+    path. Without the fallback this would collide with siblings on an empty identity.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "CH1234G567"
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        aio_battery_module_addresses=[0x50, 0x51],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    plant.register_caches[0x50] = RegisterCache({IR(114 + i): v for i, v in _encode_serial("XX1234A567").items()})
+    plant.register_caches[0x51] = RegisterCache()  # present, but serial-less — no valid decode
+
+    rows = plant.devices
+    module_rows = {r.identity: r for r in rows if r.device_type is DeviceType.BATTERY_MODULE}
+    assert set(module_rows) == {"XX1234A567", "CH1234G567_module_81"}  # 0x51 == 81
+    placeholder = module_rows["CH1234G567_module_81"]
+    assert placeholder.is_valid is False
+    assert placeholder.serial_number is None
+    assert module_rows["XX1234A567"].is_valid is True
+
+
+def test_walk_hv_bmu_synthetic_identity_when_serial_less():
+    """I1: an HV BMU with an absent module cache gets a synthetic identity.
+
+    Keyed off the stack identity and its 1-based index within the stack, instead of
+    colliding with its siblings on an empty identity.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "HV1234A567"
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 2)],  # BCU at 0x70, two BMUs at 0x50/0x51
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    # IR(60-63): BCU pack_software_version -> "HY0001".
+    plant.register_caches[0x70] = RegisterCache({IR(60): 0x4859, IR(61): 0, IR(62): 0, IR(63): 1})
+    plant.register_caches[0x50] = RegisterCache({IR(114 + i): v for i, v in _encode_serial("XX1234A567").items()})
+    # 0x51 (second BMU) has no cache at all; Plant.hv_stacks() decodes it from a default
+    # empty RegisterCache() rather than dropping it.
+
+    rows = plant.devices
+    stack_identity = f"{plant.inverter_serial_number}_hvstack_0x70"
+    bmu_rows = {r.identity: r for r in rows if r.device_type is DeviceType.BATTERY_MODULE}
+    assert set(bmu_rows) == {"XX1234A567", f"{stack_identity}_bmu_2"}
+    placeholder = bmu_rows[f"{stack_identity}_bmu_2"]
+    assert placeholder.is_valid is False
+    assert placeholder.serial_number is None
+
+
+def test_walk_hv_stack_row_is_valid_false_when_bcu_unreachable():
+    """M1: an HV_STACK row's is_valid reflects the BCU decode, not a bare default of True."""
+    plant = Plant()
+    plant.inverter_serial_number = "HV1234A567"
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        bcu_stacks=[(0, 0)],  # BCU at 0x70, no BMUs
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    # No cache for 0x70 at all — the BCU hasn't answered.
+
+    rows = plant.devices
+    stack_row = next(r for r in rows if r.device_type is DeviceType.HV_STACK)
+    assert stack_row.is_valid is False
+
+
+def test_walk_pins_inverter_and_battery_firmware_versions():
+    """M4: root inverter firmware_version (HR19/HR21) and LV-battery firmware_version (IR98).
+
+    Matches ``SinglePhaseInverter.firmware_version``'s ``D0.{dsp}-A0.{arm}`` format for the
+    root row, and the battery row's raw ``bms_firmware_version`` stringified.
+    """
+    plant = _hybrid_plant_two_packs()
+    plant.register_caches[0x11].update({HR(19): 5, HR(21): 449})
+    plant.register_caches[0x32].update({IR(98): 3005})
+
+    rows = plant.devices
+    root = rows[0]
+    assert root.firmware_version == "D0.5-A0.449"
+
+    battery_row = next(r for r in rows if r.device_type is DeviceType.BATTERY and r.identity == "XX1234A567")
+    assert battery_row.firmware_version == "3005"
