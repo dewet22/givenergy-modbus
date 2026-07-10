@@ -25992,11 +25992,7 @@ in later 2.x minors — see #75.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1012</span>
-<span class="normal">1013</span>
-<span class="normal">1014</span>
-<span class="normal">1015</span>
-<span class="normal">1016</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1016</span>
 <span class="normal">1017</span>
 <span class="normal">1018</span>
 <span class="normal">1019</span>
@@ -26594,7 +26590,11 @@ in later 2.x minors — see #75.</p>
 <span class="normal">1611</span>
 <span class="normal">1612</span>
 <span class="normal">1613</span>
-<span class="normal">1614</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">1614</span>
+<span class="normal">1615</span>
+<span class="normal">1616</span>
+<span class="normal">1617</span>
+<span class="normal">1618</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -28202,11 +28202,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1038</span>
-<span class="normal">1039</span>
-<span class="normal">1040</span>
-<span class="normal">1041</span>
-<span class="normal">1042</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1042</span>
+<span class="normal">1043</span>
+<span class="normal">1044</span>
+<span class="normal">1045</span>
+<span class="normal">1046</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">e_pv_day</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV energy for the day, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv1_day</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">e_pv2_day</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -28237,10 +28237,10 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1027</span>
-<span class="normal">1028</span>
-<span class="normal">1029</span>
-<span class="normal">1030</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1031</span>
+<span class="normal">1032</span>
+<span class="normal">1033</span>
+<span class="normal">1034</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@classmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">from_register_cache</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">register_cache</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;SinglePhaseInverter&quot;</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Construct a SinglePhaseInverter from a RegisterCache.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">register_cache</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">())</span>
@@ -28266,11 +28266,11 @@ unknown (DTC unread).</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1032</span>
-<span class="normal">1033</span>
-<span class="normal">1034</span>
-<span class="normal">1035</span>
-<span class="normal">1036</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1036</span>
+<span class="normal">1037</span>
+<span class="normal">1038</span>
+<span class="normal">1039</span>
+<span class="normal">1040</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">p_pv</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes the total PV power, or None if either input is unavailable.&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv1</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">p_pv2</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[attr-defined]</span>
         <span class="k">return</span> <span class="kc">None</span>
@@ -28848,7 +28848,11 @@ unknown (DTC unread).</p>
 <span class="normal"> 999</span>
 <span class="normal">1000</span>
 <span class="normal">1001</span>
-<span class="normal">1002</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
+<span class="normal">1002</span>
+<span class="normal">1003</span>
+<span class="normal">1004</span>
+<span class="normal">1005</span>
+<span class="normal">1006</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverterRegisterGetter</span><span class="p">(</span><span class="n">RegisterGetter</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Structured format for all inverter attributes.&quot;&quot;&quot;</span>
 
     <span class="n">REGISTER_LUT</span> <span class="o">=</span> <span class="p">{</span>
@@ -29354,7 +29358,11 @@ unknown (DTC unread).</p>
         <span class="c1"># as a deprecated alias on the inverter classes for a release.</span>
         <span class="s2">&quot;work_time_total_hours&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">47</span><span class="p">),</span> <span class="n">IR</span><span class="p">(</span><span class="mi">48</span><span class="p">),</span> <span class="nb">max</span><span class="o">=</span><span class="mi">876_000</span><span class="p">),</span>
         <span class="s2">&quot;system_mode&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">49</span><span class="p">)),</span>
-        <span class="s2">&quot;v_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span> <span class="nb">min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">100.0</span><span class="p">),</span>
+        <span class="c1"># max 600 V (not 100): IR(50) is inverter-level battery voltage, and on an AIO it</span>
+        <span class="c1"># carries the HV integrated stack (~300-500 V), not just an LV pack (~50 V). The old</span>
+        <span class="c1"># LV-calibrated 100 V ceiling clamped a real HV reading to None (permanently-Unknown</span>
+        <span class="c1"># entity). 600 V admits both while still suppressing raw garbage (65535 -&gt; 655.35).</span>
+        <span class="s2">&quot;v_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span> <span class="nb">min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">600.0</span><span class="p">),</span>
         <span class="s2">&quot;i_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span> <span class="n">C</span><span class="o">.</span><span class="n">centi</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">51</span><span class="p">),</span> <span class="nb">min</span><span class="o">=-</span><span class="mf">300.0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">300.0</span><span class="p">),</span>
         <span class="s2">&quot;p_battery&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">52</span><span class="p">)),</span>
         <span class="s2">&quot;v_ac1_output&quot;</span><span class="p">:</span> <span class="n">Def</span><span class="p">(</span><span class="n">C</span><span class="o">.</span><span class="n">deci</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">IR</span><span class="p">(</span><span class="mi">53</span><span class="p">),</span> <span class="nb">min</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">500.0</span><span class="p">),</span>  <span class="c1"># might be v_eps_backup?</span>
@@ -29632,11 +29640,7 @@ this one rather than raising or merging.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1617</span>
-<span class="normal">1618</span>
-<span class="normal">1619</span>
-<span class="normal">1620</span>
-<span class="normal">1621</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1621</span>
 <span class="normal">1622</span>
 <span class="normal">1623</span>
 <span class="normal">1624</span>
@@ -29660,7 +29664,11 @@ this one rather than raising or merging.</p>
 <span class="normal">1642</span>
 <span class="normal">1643</span>
 <span class="normal">1644</span>
-<span class="normal">1645</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">1645</span>
+<span class="normal">1646</span>
+<span class="normal">1647</span>
+<span class="normal">1648</span>
+<span class="normal">1649</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;PEP 562 module attribute deprecation shim.</span>
 
 <span class="sd">    Serves two deprecated names — the pre-existing `Inverter` rename alias, and</span>
