@@ -879,13 +879,23 @@ class Client:
         hardware). Reconnect cadence/backoff stays the caller's concern (#356): this owns only the
         single check.
         """
+        # Liveness must come from THIS probe's fresh response, not any cached HR(0): a
+        # stale HR(0) from an earlier healthy connection would otherwise make a fresh
+        # non-committing probe look alive (e.g. the dongle returns an all-zero bank that
+        # _commit_bank rejects while the read still returns — Codex review). The block's
+        # ingestion timestamp is stamped ONLY on a successful commit (which applies every
+        # guard: Modbus error, CRC, all-zero rejection), so "did this probe re-stamp the
+        # HR(0,60) block" is the honest, guard-delegating liveness signal.
+        block = (0x11, "HR", 0, 60)
+        stamped_before = self.plant.register_block_updated_at.get(block)
         try:
             await self.send_request_and_await_response(
                 ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11),
                 timeout=timeout,
                 retries=retries,
             )
-            alive = self.plant.register_caches.get(0x11, RegisterCache()).get(HR(0)) is not None
+            stamped_after = self.plant.register_block_updated_at.get(block)
+            alive = stamped_after is not None and stamped_after != stamped_before
         except (TimeoutError, CommunicationError):
             alive = False
         if not alive:
