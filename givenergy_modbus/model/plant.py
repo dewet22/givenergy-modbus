@@ -2194,29 +2194,34 @@ class Plant(GivEnergyBaseModel):
         # --- EMS-managed inverters: their own INVERTER rows, parented to the EMS root ---
         if ems_root is not None:
             for uinv in self.inverters:
-                serial = uinv.serial_number or ""
+                managed_serial = uinv.serial_number or ""
+                if uinv.is_blinded:
+                    identity = f"{managed_serial}_managed" if managed_serial else ""
+                else:
+                    identity = managed_serial
                 child_rows.append(
                     PlantDevice(
-                        identity=f"{serial}_managed" if uinv.is_blinded else serial,
+                        identity=identity,
                         device_type=DeviceType.INVERTER,
                         parent=root_identity,
                         device=uinv,
-                        serial_number=serial or None,
+                        serial_number=managed_serial or None,
                         firmware_version=None if uinv.is_blinded else _walk_firmware(DeviceType.INVERTER, uinv, self),
                         data_source=uinv.data_source,
+                        is_valid=bool(managed_serial),
                     )
                 )
 
         # --- LV batteries (incl. #213 placeholders) ----------------------------------
         for slot, battery in enumerate(self.batteries, start=1):
-            serial = _validated_serial(battery)
+            batt_serial = _validated_serial(battery)
             child_rows.append(
                 PlantDevice(
-                    identity=serial or f"{plant_serial}_battery_{slot}",
+                    identity=batt_serial or f"{plant_serial}_battery_{slot}",
                     device_type=DeviceType.BATTERY,
                     parent=root_identity,
                     device=battery,
-                    serial_number=serial,
+                    serial_number=batt_serial,
                     firmware_version=_walk_firmware(DeviceType.BATTERY, battery, self),
                     is_valid=battery.is_valid(),
                 )
@@ -2224,15 +2229,15 @@ class Plant(GivEnergyBaseModel):
 
         # --- AIO modules --------------------------------------------------------------
         for module in self.aio_battery_modules:
-            serial = _validated_serial(module)
+            module_serial = _validated_serial(module)
             child_rows.append(
                 PlantDevice(
-                    identity=serial or "",
+                    identity=module_serial or "",
                     device_type=DeviceType.BATTERY_MODULE,
                     parent=root_identity,
                     device=module,
-                    serial_number=serial,
-                    is_valid=bool(serial),
+                    serial_number=module_serial,
+                    is_valid=bool(module_serial),
                 )
             )
 
@@ -2257,28 +2262,28 @@ class Plant(GivEnergyBaseModel):
             if aio_covers_bmus:
                 continue
             for bmu in stack.bmus:
-                serial = _validated_serial(bmu)
+                bmu_serial = _validated_serial(bmu)
                 child_rows.append(
                     PlantDevice(
-                        identity=serial or "",
+                        identity=bmu_serial or "",
                         device_type=DeviceType.BATTERY_MODULE,
                         parent=stack_identity,
                         device=bmu,
-                        serial_number=serial,
-                        is_valid=bool(serial),
+                        serial_number=bmu_serial,
+                        is_valid=bool(bmu_serial),
                     )
                 )
 
         # --- meters (serial-first identity; #213 placeholders included) ----------------
         for addr, meter in self.meters.items():
-            serial = _validated_serial(meter)
+            meter_serial = _validated_serial(meter)
             child_rows.append(
                 PlantDevice(
-                    identity=serial or f"{plant_serial}_meter_{addr}",
+                    identity=meter_serial or f"{plant_serial}_meter_{addr}",
                     device_type=DeviceType.METER,
                     parent=root_identity,
                     device=meter,
-                    serial_number=serial,
+                    serial_number=meter_serial,
                     is_valid=meter.is_valid(),
                 )
             )

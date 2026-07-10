@@ -89,7 +89,7 @@ def test_walk_single_inverter_plant_root_and_batteries():
     assert root.identity == plant.inverter_serial_number
     assert root.is_control_authority is True
     packs = [r for r in rows if r.device_type is DeviceType.BATTERY]
-    assert [p.identity for p in packs] == [p.serial_number for p in packs]  # own serial, no prefix
+    assert {p.identity for p in packs} == {"XX1234A567", "YY1234A567"}  # own serial, no prefix
     assert all(p.parent == root.identity for p in packs)
     assert sum(r.is_control_authority for r in rows) == 1
 
