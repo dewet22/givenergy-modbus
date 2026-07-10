@@ -1778,3 +1778,105 @@ async def test_detect_skips_lv_preamble_when_prior_has_no_0x32():
 
     assert 0x32 not in sent_addresses
     assert caps.lv_battery_addresses == []
+
+
+# ---------------------------------------------------------------------------
+# probe_alive() — cheap reconnect liveness gate (mirrors detect teardown, returns bool)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_probe_alive_true_when_hr0_answers_leaves_socket_open():
+    """A successful HR(0) read returns True and leaves the connection OPEN.
+
+    The coordinator's follow-up detect(retries=3) reuses the same live socket — so
+    probe_alive must NOT tear down on success (mirrors detect leaving the socket up
+    for refresh()).
+    """
+    client = _make_client()
+    client.connected = True
+    _prime_cache(client, 0x11, {HR(0): 0x2001})  # what a real successful read would commit
+
+    async def _ok(request, *, timeout, retries):
+        return MagicMock()
+
+    with patch.object(client, "send_request_and_await_response", side_effect=_ok):
+        alive = await client.probe_alive()
+
+    assert alive is True
+    assert client.connected is True  # socket left open for the follow-up detect
+
+
+@pytest.mark.asyncio
+async def test_probe_alive_false_on_timeout_closes_socket_no_raise():
+    """A hung dongle (timeout) returns False (never raises) and CLOSES the socket.
+
+    Mirrors detect's #274 teardown-on-failure, so a failed liveness probe releases the
+    socket for the dongle's quiet window and the coordinator uniformly reconnects next
+    tick — no reprobe-same-socket branch.
+    """
+    client = _make_client()
+    client.connected = True
+
+    async def _timeout(request, *, timeout, retries):
+        raise TimeoutError
+
+    close_calls = []
+    orig_close = client.close
+
+    async def _spy_close():
+        close_calls.append(True)
+        await orig_close()
+
+    with (
+        patch.object(client, "send_request_and_await_response", side_effect=_timeout),
+        patch.object(client, "close", side_effect=_spy_close),
+    ):
+        alive = await client.probe_alive(timeout=0.1, retries=0)
+
+    assert alive is False  # returned, not raised
+    assert close_calls  # teardown happened
+    assert client.connected is False
+
+
+@pytest.mark.asyncio
+async def test_probe_alive_false_when_answered_but_hr0_absent_closes():
+    """A response with no usable HR(0) is not a viable liveness pass.
+
+    E.g. a CRC-dropped identity frame: return False and close, so the coordinator keeps
+    probing rather than detecting off a corrupt identity.
+    """
+    client = _make_client()
+    client.connected = True
+
+    async def _ok_no_commit(request, *, timeout, retries):
+        return MagicMock()  # "responded" but nothing lands in the 0x11 cache
+
+    with patch.object(client, "send_request_and_await_response", side_effect=_ok_no_commit):
+        alive = await client.probe_alive()
+
+    assert alive is False
+    assert client.connected is False
+
+
+@pytest.mark.asyncio
+async def test_probe_alive_reads_hr0_at_0x11_with_given_retries():
+    """The probe issues a single HR(0,60) read at 0x11 with the caller's retries.
+
+    The same proven read detect uses, so retries=0 fails fast on a hung dongle.
+    """
+    client = _make_client()
+    client.connected = True
+    _prime_cache(client, 0x11, {HR(0): 0x2001})
+    seen = {}
+
+    async def _capture(request, *, timeout, retries):
+        seen["device_address"] = request.device_address
+        seen["base_register"] = request.base_register
+        seen["retries"] = retries
+        return MagicMock()
+
+    with patch.object(client, "send_request_and_await_response", side_effect=_capture):
+        await client.probe_alive(retries=2)
+
+    assert seen == {"device_address": 0x11, "base_register": 0, "retries": 2}
