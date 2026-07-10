@@ -39,6 +39,32 @@ during EMS support investigation (May 2026).
 Battery serials (`BE`/`BJ` Giv-Bat 5.2, `AC` Giv-Bat 5.12 Gen3) and the
 `AB` response-source: prefixes known, manufacture dates not disclosed.
 
+## Register findings
+
+### EMS `total_battery_power` (IR2090): positive = discharge, negative = charge
+
+Confirmed from `ems_arm1036_60s.log` (2026-07-10, for hass EMS charge/discharge
+energy sensors). The 30-min capture can't pin the sign — the battery is idle
+throughout (`remaining_battery_wh` flat at 7442, IR2090 ±40 W noise) — but the
+60s capture catches a real ~2.5 kW flow and pins it two independent ways:
+
+- **Busbar balance at the active tick:** `total_battery_power = +2511`,
+  `grid_meter_power = −1834` (IR2089), `calc_load_power = 677` (IR2086), PV = 0.
+  Only "positive = discharge" closes the balance to the watt — battery
+  discharging 2511 W feeds 677 W load + exports 1834 W (`677 + 1834 = 2511`). The
+  other three sign combinations miss by 700–3700 W.
+- **Internal identity:** `total_battery_power (2511)` = `inverter_1_power (1042) +
+  inverter_2_power (1469)` exactly (IR2054/2055) — IR2090 is the sum of the
+  managed inverters' battery throughput, inheriting their house convention.
+
+So IR2090 follows the library house convention (positive = discharge/export),
+matching inverter-level `p_battery`. Caveat: a single active tick (exact
+balance), not a multi-sample SOC integral — no committed EMS capture catches the
+battery moving its SOC measurably. Re-confirm against an energy ramp if one turns
+up. Related: `grid_meter_power` (IR2089) reads **positive = import** here (the
+opposite of the inverter-level grid convention) — that fell out of the same
+balance but wasn't the target of this check, so treat it as a lead, not a lock.
+
 ## Known artifacts
 
 The `ac_arm282_1x_givbat512gen3_30min.log` capture contains ten 70-byte
