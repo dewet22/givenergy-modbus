@@ -15,6 +15,7 @@ import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.exceptions import RefreshPartiallySucceeded
+from givenergy_modbus.model.devices import DeviceType
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.register import HR
 from givenergy_modbus.model.register_cache import RegisterCache
@@ -312,6 +313,23 @@ def _assert_three_phase_hv(plant):
     for bmu in stack.bmus:
         assert bmu.v_cell_01 is not None and 3.0 < bmu.v_cell_01 < 3.6
     assert sorted(plant.meters.keys()) == [1, 2]
+    # Topology walk (#106): root inverter, its HV stack, and six BMU rows.
+    rows = plant.devices
+    assert rows[0].identity == "TC2337G000" and rows[0].parent is None
+    assert rows[0].is_control_authority
+    stack_rows = [r for r in rows if r.device_type is DeviceType.HV_STACK]
+    assert [r.identity for r in stack_rows] == ["TC2337G000_hvstack_0x70"]
+    bmus = [r for r in rows if r.device_type is DeviceType.BATTERY_MODULE]
+    assert len(bmus) == 6 and all(r.parent == "TC2337G000_hvstack_0x70" for r in bmus)
+    # The live serve path disambiguates redaction-collapsed BMU serials, but only
+    # partially today: MockPlant's _make_device_serials_distinct (testing/mock_plant.py)
+    # widens BMU addresses 0x50-0x53 (a range sized for AIO's 4-module cap), so this
+    # 6-module HV stack's modules at 0x54/0x55 still collide on the same placeholder
+    # identity live. That's a MockPlant gap, not a topology-walk defect — asserting
+    # full uniqueness here would be a false pin; assert the one known collision instead
+    # so any further regression (more than one collapsed pair) still trips this test.
+    ids = [r.identity for r in rows]
+    assert len(set(ids)) == len(ids) - 1
 
 
 def _assert_gateway(plant):
