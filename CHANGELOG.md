@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-07-10
+
+### ✨ Added
+
+- MockPlant.from_spec — declarative synthetic register state (#324) (#391) ([f19ceac](https://github.com/dewet22/givenergy-modbus/commit/f19ceaca8acc83b5608e7c752f712d06ac98c345))
+
+### 🐛 Fixed
+
+- fail-closed envelope-serial redaction in FrameRedactor + NUL-tolerant scanner pattern (#392) ([768f531](https://github.com/dewet22/givenergy-modbus/commit/768f5317c43083dd404a5c06f5f17904471542e4))
+
+### 🔧 Maintenance
+
+- structured issue forms for device validation + capture/probe intake (#390) ([106c3d5](https://github.com/dewet22/givenergy-modbus/commit/106c3d5f02966177029a61ba44b39b1c57933378))
+
 ## [2.11.0] - 2026-07-09
 
 ### ✨ Added
