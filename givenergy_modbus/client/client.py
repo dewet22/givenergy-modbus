@@ -179,11 +179,19 @@ class FrameRedactor:
         if isinstance(pdu, LanConfigBroadcast):
             return pdu.redact().encode()
 
-        # Redact envelope serials (present on all Transparent PDUs)
+        # Redact envelope serials (present on all Transparent PDUs). FAIL-CLOSED
+        # (redact_serial_strict): an envelope value that doesn't parse as a GE serial is
+        # blanked, not passed through. The Gateway's write-response envelopes carry a
+        # NUL-interrupted serial variant that fails the pattern, and the fail-open
+        # redact_serial leaked its real unit digits verbatim (first write-path capture,
+        # 2026-07-09). Unlike the register-payload path below — which must fail open
+        # because serial groups overlap ordinary data — the envelope is unambiguous,
+        # so it takes the same strict treatment Plant.redact() applies to these exact
+        # fields (#212/#214).
         if hasattr(pdu, "data_adapter_serial_number"):
-            pdu.data_adapter_serial_number = Converter.redact_serial(pdu.data_adapter_serial_number) or ""
+            pdu.data_adapter_serial_number = Converter.redact_serial_strict(pdu.data_adapter_serial_number)
         if hasattr(pdu, "inverter_serial_number"):
-            pdu.inverter_serial_number = Converter.redact_serial(pdu.inverter_serial_number) or ""
+            pdu.inverter_serial_number = Converter.redact_serial_strict(pdu.inverter_serial_number)
 
         # Redact payload serials in register responses.
         # A serial is stored across 5 consecutive registers; decode the group as a

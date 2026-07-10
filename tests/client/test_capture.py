@@ -90,6 +90,45 @@ def test_frame_redactor_redacts_envelope_serial():
     assert len(out) == len(frame)
 
 
+def test_frame_redactor_blanks_unrecognised_envelope_serial():
+    r"""An envelope serial that doesn't parse as a GE serial is BLANKED, not passed through.
+
+    Field regression (2026-07-09, first-ever write-path capture): the Gateway's
+    WriteHoldingRegisterResponse envelopes carry a NUL-interrupted serial variant
+    (prefix + NUL bytes + partial date + unit digits) that fails the serial pattern —
+    and the envelope path used fail-open redact_serial, so the REAL unit digits leaked
+    verbatim into the capture (~30 frames). The envelope has no overlapping-group concern (unlike the
+    register-payload path, which must fail open), so it takes the same fail-closed
+    redact_serial_strict treatment Plant.redact() already applies to these exact
+    fields (#212/#214).
+    """
+    from givenergy_modbus.pdu import ClientIncomingMessage, WriteHoldingRegisterResponse
+
+    pdu = WriteHoldingRegisterResponse(
+        data_adapter_serial_number="WF1234G567",
+        inverter_serial_number="GW\x00\x0034A567",
+        register=116,
+        value=81,
+        device_address=0x11,
+        padding=0x8A,
+        error=False,
+    )
+    frame = pdu.encode()
+    assert b"34A567" in frame  # the leak shape is on the wire pre-redaction
+
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    assert b"34A567" not in out  # the live unit digits must be gone
+    decoded = ClientIncomingMessage.decode_bytes(out)
+    # Unrecognised envelope serial → blanked fail-closed (strict returns ""; the encoder
+    # pads the fixed-width field, so no digit of the original may survive). The recognised
+    # adapter serial still gets the ordinary date-preserving redaction.
+    assert not any(c.isdigit() for c in decoded.inverter_serial_number)
+    assert decoded.data_adapter_serial_number == "WF1234G000"
+    assert len(out) == len(frame)
+
+
 def test_frame_redactor_redacts_payload_inverter_serial():
     """HR(13-17) register group (inverter serial) is redacted in the register payload."""
     from givenergy_modbus.pdu import ClientIncomingMessage
