@@ -9,6 +9,8 @@ master uses — see ``test_fixture_golden_master.py``), derives capabilities the
 reparented, or resorted — trips one of these pins.
 """
 
+import pytest
+
 from givenergy_modbus.model.plant import Plant
 
 from .test_fixture_golden_master import _replay
@@ -31,6 +33,49 @@ async def _walk(*relpaths: str) -> list[tuple[str, str, str | None, bool, bool]]
         data_adapter_serial_number=plant.data_adapter_serial_number,
     )
     return [(r.identity, r.device_type.value, r.parent, r.is_control_authority, r.is_valid) for r in walked.devices]
+
+
+_FIXTURES = [
+    "ems_2_inv_3_bat_a/ems_arm1036_30min.log",
+    "aio_a/aio_arm620_redetect_7min.log",
+    "hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log",
+    "gateway_2aio_a/gateway_gaaa0014_10min_daylight.log",
+    "three_phase_hv_a/giv3hy11_da011_detect_10min.log",
+]
+
+
+async def _walked_plant(*relpaths: str) -> Plant:
+    """Like ``_walk`` but returns the walked ``Plant`` itself, not flattened tuples."""
+    plant = await _replay(*relpaths)
+    return Plant.from_caches(
+        plant.register_caches,
+        inverter_serial_number=plant.inverter_serial_number,
+        data_adapter_serial_number=plant.data_adapter_serial_number,
+    )
+
+
+@pytest.mark.parametrize("relpath", _FIXTURES)
+async def test_walk_invariants(relpath):
+    """Structural invariants that hold regardless of redaction-collapsed identities.
+
+    Global identity uniqueness is deliberately NOT asserted here: these fixtures are
+    raw REDACTED wire captures where same-batch devices (EMS-managed inverters, AIO
+    modules, 3ph BMUs) legitimately decode byte-identical zeroed serials offline — see
+    the per-fixture pins above. Uniqueness is a property of the live MockPlant serve
+    path, which disambiguates those collisions, and is asserted there instead (see
+    ``tests/client/test_mock_plant_integration.py::_assert_three_phase_hv``).
+    """
+    walked = await _walked_plant(relpath)
+    rows = walked.devices
+    roots = [r for r in rows if r.parent is None]
+    assert len(roots) == 1 and rows[0] is roots[0]
+    assert sum(r.is_control_authority for r in rows) == 1
+    assert all(r.identity for r in rows)  # non-empty
+    known = {r.identity for r in rows}
+    assert all(r.parent in known for r in rows if r.parent is not None)
+    assert [(r.identity, r.parent, r.device_type.value) for r in walked.devices] == [
+        (r.identity, r.parent, r.device_type.value) for r in rows
+    ]  # deterministic across accesses
 
 
 async def test_ems_walk_pins_controller_plus_two_managed_inverters_and_meters():
