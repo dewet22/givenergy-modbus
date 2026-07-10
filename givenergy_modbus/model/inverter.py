@@ -974,7 +974,11 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # as a deprecated alias on the inverter classes for a release.
         "work_time_total_hours": Def(C.uint32, None, IR(47), IR(48), max=876_000),
         "system_mode": Def(C.uint16, None, IR(49)),
-        "v_battery": Def(C.centi, None, IR(50), min=0.0, max=100.0),
+        # max 600 V (not 100): IR(50) is inverter-level battery voltage, and on an AIO it
+        # carries the HV integrated stack (~300-500 V), not just an LV pack (~50 V). The old
+        # LV-calibrated 100 V ceiling clamped a real HV reading to None (permanently-Unknown
+        # entity). 600 V admits both while still suppressing raw garbage (65535 -> 655.35).
+        "v_battery": Def(C.centi, None, IR(50), min=0.0, max=600.0),
         "i_battery": Def(C.int16, C.centi, IR(51), min=-300.0, max=300.0),
         "p_battery": Def(C.int16, None, IR(52)),
         "v_ac1_output": Def(C.deci, None, IR(53), min=0.0, max=500.0),  # might be v_eps_backup?
