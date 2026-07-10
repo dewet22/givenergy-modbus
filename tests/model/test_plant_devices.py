@@ -253,6 +253,39 @@ def test_walk_aio_module_synthetic_identity_when_serial_less():
     assert module_rows["XX1234A567"].is_valid is True
 
 
+def test_walk_aio_module_identity_survives_sparse_earlier_address():
+    """I1 regression: a missing earlier address must not shift later modules' identities.
+
+    ``aio_battery_modules`` silently skips addresses absent from ``register_caches``
+    (0x50 here), so it only yields entries for 0x51 and 0x52. Zipping that shorter list
+    against the full address list ``[0x50, 0x51, 0x52]`` mislabels the 0x51 module as
+    0x50. Each module carries its own ``module_address`` (set in
+    ``AioBatteryModule.from_register_cache``), so the walk must key off that instead of
+    positional correspondence with the address list.
+    """
+    plant = Plant()
+    plant.inverter_serial_number = "CH1234G567"
+    plant.capabilities = PlantCapabilities(
+        device_type=Model.ALL_IN_ONE,
+        inverter_address=0x11,
+        aio_battery_module_addresses=[0x50, 0x51, 0x52],
+    )
+    plant.register_caches[0x11] = RegisterCache()
+    # 0x50 is absent entirely -> aio_battery_modules() skips it.
+    plant.register_caches[0x51] = RegisterCache()  # present, but serial-less
+    plant.register_caches[0x52] = RegisterCache({IR(114 + i): v for i, v in _encode_serial("XX1234A567").items()})
+
+    rows = plant.devices
+    module_rows = {r.identity: r for r in rows if r.device_type is DeviceType.BATTERY_MODULE}
+    # The serial-less module physically at 0x51 must be keyed on its own address (81),
+    # not shifted onto the absent 0x50 (80).
+    assert set(module_rows) == {"XX1234A567", "CH1234G567_module_81"}
+    placeholder = module_rows["CH1234G567_module_81"]
+    assert placeholder.is_valid is False
+    assert placeholder.serial_number is None
+    assert module_rows["XX1234A567"].is_valid is True
+
+
 def test_walk_hv_bmu_synthetic_identity_when_serial_less():
     """I1: an HV BMU with an absent module cache gets a synthetic identity.
 

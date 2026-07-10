@@ -2228,14 +2228,14 @@ class Plant(GivEnergyBaseModel):
             )
 
         # --- AIO modules --------------------------------------------------------------
-        # Zipped with the address list (not just self.aio_battery_modules) so a
-        # capability-listed-but-serial-less module still gets a synthetic identity
-        # instead of colliding with its siblings on "" (#106 I1). Correspondence relies
-        # on aio_battery_modules() decoding exactly one entry per address present in
-        # register_caches, in address order.
-        aio_addresses = caps.aio_battery_module_addresses if caps else []
-        for addr, module in zip(aio_addresses, self.aio_battery_modules, strict=False):
+        # Keyed off each module's own module_address (set in
+        # AioBatteryModule.from_register_cache) rather than zipped positionally against
+        # capabilities.aio_battery_module_addresses -- aio_battery_modules() silently
+        # skips any address absent from register_caches, so a missing earlier address
+        # would otherwise shift every later module onto the wrong address (#106 I1).
+        for module in self.aio_battery_modules:
             module_serial = _validated_serial(module)
+            addr = getattr(module, "module_address", None)
             child_rows.append(
                 PlantDevice(
                     identity=module_serial or f"{plant_serial}_module_{addr}",
