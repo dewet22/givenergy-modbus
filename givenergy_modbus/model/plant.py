@@ -480,6 +480,30 @@ def _validated_serial(device: Any) -> str | None:
     return getattr(device, "serial_number", None) or None
 
 
+def _walk_firmware(device_type: DeviceType, device: Any, plant: "Plant") -> str | None:
+    """Best-effort per-device firmware string for a #106 walk row."""
+    if device_type is DeviceType.INVERTER:
+        # The facade's own direct decode — NOT plant.inverter, which on an EMS plant
+        # decodes the CONTROLLER's cache and would mislabel a direct managed inverter.
+        direct = getattr(device, "direct", None)
+        return getattr(direct, "firmware_version", None) if direct is not None else None
+    if device_type is DeviceType.EMS:
+        # EMS root: the controller's own HR19/21 via the inverter-getter decode of its cache.
+        try:
+            inv = plant.inverter
+        except Exception:
+            return None
+        return getattr(inv, "firmware_version", None) if inv is not None else None
+    if device_type is DeviceType.BATTERY:
+        fw = getattr(device, "bms_firmware_version", None)
+        return str(fw) if fw is not None else None
+    if device_type is DeviceType.HV_STACK:
+        return getattr(device.bcu, "pack_software_version", None)
+    if device_type is DeviceType.GATEWAY:
+        return getattr(device, "software_version", None)
+    return None  # AIO module / HV BMU / managed rollup / meter
+
+
 #: Maximum battery modules on a single-BCU AIO (addresses 0x50–0x53). Mirrors Client._AIO_MAX_MODULES.
 _AIO_MAX_MODULES = 4
 #: HV BMU per-module address band is 0x50–0x6F; 0x70 is the first BCU.
@@ -2102,96 +2126,174 @@ class Plant(GivEnergyBaseModel):
 
     @property
     def devices(self) -> list[PlantDevice]:
-        """Enumerate every device on this plant as typed :class:`PlantDevice` rows.
+        """Canonical flat topology walk (#106): root first, children with parent refs.
 
-        Each row carries a generic :class:`DeviceType` discriminator, a serial
-        (where the device exposes a valid one), the plant's model where
-        meaningful, and the already-decoded typed model in
-        :attr:`PlantDevice.device`. Built by composing the existing accessors —
-        :attr:`inverters`, :attr:`ems`, :attr:`gateway`, :attr:`meters` — so the
-        EMS-rollup-vs-direct decision is honoured once and a controller (EMS or
-        gateway) can never appear as an ``INVERTER`` row.
+        Returns exactly one root row (``parent=None``) — a GATEWAY, EMS, or
+        INVERTER row depending on plant shape, in that priority order — and
+        every other device as a flat child row parented to that root's
+        ``identity``. Exactly one row is ``is_control_authority=True``: the
+        root. Children are sorted by ``(device_type.value, identity)`` for a
+        deterministic order.
 
-        Batteries and HV stacks are **owned by their inverter** (#106 Phase 2):
-        they ride on the ``INVERTER`` row's ``device.batteries`` /
-        ``device.hv_stacks`` rather than as top-level rows. Meters are not
-        inverter-owned, so they stay flat rows (the Phase 1 meter-identity
-        limitation).
+        On an EMS plant, managed inverters are their own INVERTER child rows
+        (identity ``{serial}_managed`` when blinded, else the inverter's own
+        serial) rather than nested under the EMS row — a controller (EMS or
+        gateway) never appears as an INVERTER row, and #106's flat contract
+        means every device gets its own row with an explicit ``parent``.
         """
         caps = self.capabilities
-        model = caps.device_type if caps else None
-        # On EMS/Gateway plants the plant model is the controller's model, not an
-        # inverter model — don't let directly-decoded inverters inherit it.
-        inverter_model = model if caps and not (caps.is_ems or caps.is_gateway) else None
         rows: list[PlantDevice] = []
+        plant_serial = self.inverter_serial
+        root_identity = plant_serial
+        ems_root: Ems | None = None
 
-        # On a gateway plant the singular ``inverter`` decodes the gateway's own
-        # cache as a spurious inverter — suppress that row; the GATEWAY row below
-        # represents the device instead.
-        inverter_emitted = False
-        if not (caps and caps.is_gateway):
-            for inverter in self.inverters:
-                rows.append(
+        # --- root row: gateway > ems > inverter -------------------------------------
+        if caps and caps.is_gateway and (gateway := self.gateway) is not None:
+            rows.append(
+                PlantDevice(
+                    identity=root_identity,
+                    device_type=DeviceType.GATEWAY,
+                    parent=None,
+                    device=gateway,
+                    serial_number=plant_serial or None,
+                    firmware_version=_walk_firmware(DeviceType.GATEWAY, gateway, self),
+                    is_control_authority=True,
+                )
+            )
+        elif (ems := self.ems) is not None:
+            ems_root = ems
+            rows.append(
+                PlantDevice(
+                    identity=root_identity,
+                    device_type=DeviceType.EMS,
+                    parent=None,
+                    device=ems,
+                    serial_number=plant_serial or None,
+                    firmware_version=_walk_firmware(DeviceType.EMS, ems, self),
+                    is_control_authority=True,
+                )
+            )
+        else:
+            uinvs = self.inverters
+            root_uinv = uinvs[0] if uinvs else None
+            rows.append(
+                PlantDevice(
+                    identity=root_identity,
+                    device_type=DeviceType.INVERTER,
+                    parent=None,
+                    device=root_uinv,
+                    serial_number=plant_serial or None,
+                    firmware_version=_walk_firmware(DeviceType.INVERTER, root_uinv, self),
+                    is_control_authority=True,
+                    data_source=root_uinv.data_source if root_uinv is not None else None,
+                )
+            )
+
+        child_rows: list[PlantDevice] = []
+
+        # --- EMS-managed inverters: their own INVERTER rows, parented to the EMS root ---
+        if ems_root is not None:
+            for uinv in self.inverters:
+                managed_serial = uinv.serial_number or ""
+                if uinv.is_blinded:
+                    identity = f"{managed_serial}_managed" if managed_serial else ""
+                else:
+                    identity = managed_serial
+                child_rows.append(
                     PlantDevice(
+                        identity=identity,
                         device_type=DeviceType.INVERTER,
-                        device=inverter,
-                        serial_number=inverter.serial_number or None,
-                        # A blinded (EMS-rollup) inverter's own model is unknown;
-                        # only a directly-decoded inverter inherits the plant model.
-                        model=None if inverter.is_blinded else inverter_model,
+                        parent=root_identity,
+                        device=uinv,
+                        serial_number=managed_serial or None,
+                        firmware_version=None if uinv.is_blinded else _walk_firmware(DeviceType.INVERTER, uinv, self),
+                        data_source=uinv.data_source,
+                        is_valid=bool(managed_serial),
                     )
                 )
-                inverter_emitted = True
 
-        # AIO per-module battery sub-devices (#192) — enumerable BATTERY_MODULE rows,
-        # owned by the inverter (also injected on its ``device.battery_modules``), keyed
-        # by the module's own HX-prefixed serial. GivTCP surfaces these as separate
-        # per-module devices; mirror that so consumers can name one HA device per module.
+        # --- LV batteries (incl. #213 placeholders) ----------------------------------
+        for slot, battery in enumerate(self.batteries, start=1):
+            batt_serial = _validated_serial(battery)
+            child_rows.append(
+                PlantDevice(
+                    identity=batt_serial or f"{plant_serial}_battery_{slot}",
+                    device_type=DeviceType.BATTERY,
+                    parent=root_identity,
+                    device=battery,
+                    serial_number=batt_serial,
+                    firmware_version=_walk_firmware(DeviceType.BATTERY, battery, self),
+                    is_valid=battery.is_valid(),
+                )
+            )
+
+        # --- AIO modules --------------------------------------------------------------
+        # Keyed off each module's own module_address (set in
+        # AioBatteryModule.from_register_cache) rather than zipped positionally against
+        # capabilities.aio_battery_module_addresses -- aio_battery_modules() silently
+        # skips any address absent from register_caches, so a missing earlier address
+        # would otherwise shift every later module onto the wrong address (#106 I1).
         for module in self.aio_battery_modules:
-            rows.append(
+            module_serial = _validated_serial(module)
+            addr = getattr(module, "module_address", None)
+            child_rows.append(
                 PlantDevice(
+                    identity=module_serial or f"{plant_serial}_module_{addr}",
                     device_type=DeviceType.BATTERY_MODULE,
+                    parent=root_identity,
                     device=module,
-                    serial_number=_validated_serial(module),
+                    serial_number=module_serial,
+                    is_valid=module.is_valid(),
                 )
             )
 
-        if (ems := self.ems) is not None:
-            rows.append(PlantDevice(device_type=DeviceType.EMS, device=ems, model=model))
-
-        if (gateway := self.gateway) is not None:
-            rows.append(PlantDevice(device_type=DeviceType.GATEWAY, device=gateway, model=model))
-
-        # Batteries / HV stacks nest under their inverter via the injected
-        # ``inverter.batteries`` / ``.hv_stacks`` (see :attr:`inverters`). The
-        # only case with no inverter row to carry them is a gateway plant, where
-        # the inverter is suppressed — emit those as flat rows rather than drop
-        # them (orphan guard; proper partner-AIO expansion is a later phase).
-        if not inverter_emitted:
-            for battery in self.batteries:
-                rows.append(
-                    PlantDevice(
-                        device_type=DeviceType.BATTERY,
-                        device=battery,
-                        serial_number=_validated_serial(battery),
-                    )
-                )
-            for stack in self.hv_stacks:
-                rows.append(
-                    PlantDevice(
-                        device_type=DeviceType.HV_STACK,
-                        device=stack,
-                        serial_number=_validated_serial(stack.bcu),
-                    )
-                )
-
-        for meter in self.meters.values():
-            rows.append(
+        # --- HV stacks + their BMUs ----------------------------------------------------
+        # AIO systems answer the same 0x50-band addresses as both Bmu (via bcu_stacks)
+        # and AioBatteryModule (via aio_battery_module_addresses) — when the latter is
+        # configured, the per-module rows above already cover these devices, so skip the
+        # BMU rows here to avoid emitting the same physical module twice.
+        aio_covers_bmus = bool(caps and caps.aio_battery_module_addresses)
+        for stack in self.hv_stacks:
+            stack_identity = f"{plant_serial}_hvstack_{stack.device_address:#04x}"
+            child_rows.append(
                 PlantDevice(
+                    identity=stack_identity,
+                    device_type=DeviceType.HV_STACK,
+                    parent=root_identity,
+                    device=stack,
+                    serial_number=_validated_serial(stack.bcu),
+                    firmware_version=_walk_firmware(DeviceType.HV_STACK, stack, self),
+                    is_valid=stack.bcu.is_valid(),
+                )
+            )
+            if aio_covers_bmus:
+                continue
+            for n, bmu in enumerate(stack.bmus, start=1):
+                bmu_serial = _validated_serial(bmu)
+                child_rows.append(
+                    PlantDevice(
+                        identity=bmu_serial or f"{stack_identity}_bmu_{n}",
+                        device_type=DeviceType.BATTERY_MODULE,
+                        parent=stack_identity,
+                        device=bmu,
+                        serial_number=bmu_serial,
+                        is_valid=bool(bmu_serial),
+                    )
+                )
+
+        # --- meters (serial-first identity; #213 placeholders included) ----------------
+        for addr, meter in self.meters.items():
+            meter_serial = _validated_serial(meter)
+            child_rows.append(
+                PlantDevice(
+                    identity=meter_serial or f"{plant_serial}_meter_{addr}",
                     device_type=DeviceType.METER,
+                    parent=root_identity,
                     device=meter,
-                    serial_number=_validated_serial(meter),
+                    serial_number=meter_serial,
+                    is_valid=meter.is_valid(),
                 )
             )
 
-        return rows
+        child_rows.sort(key=lambda r: (r.device_type.value, r.identity))
+        return rows + child_rows

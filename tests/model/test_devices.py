@@ -439,30 +439,34 @@ def test_device_type_members_are_generic_string_values():
 
 
 def test_plant_device_construction_and_read_through():
-    """PlantDevice tags an already-decoded model with a type, serial, and model."""
+    """PlantDevice tags an already-decoded model with a type, identity, and parent."""
     s = InverterSummary(serial_number="XX1234A567")
     inv = Inverter.from_summary(s)
     entry = PlantDevice(
+        identity="XX1234A567",
         device_type=DeviceType.INVERTER,
+        parent=None,
         device=inv,
         serial_number="XX1234A567",
-        model=None,
     )
     assert entry.device_type is DeviceType.INVERTER
     assert entry.device is inv  # read-through to the rich model
     assert entry.serial_number == "XX1234A567"
-    assert entry.model is None
+    assert entry.parent is None
 
 
-def test_plant_device_serial_and_model_default_to_none():
-    """serial_number and model are optional — a device with neither is valid."""
-    entry = PlantDevice(device_type=DeviceType.EMS, device=object())
+def test_plant_device_optional_fields_default_to_none():
+    """serial_number/firmware_version/data_source are optional — a device with none is valid."""
+    entry = PlantDevice(identity="XX1234A567", device_type=DeviceType.EMS, parent=None, device=object())
     assert entry.serial_number is None
-    assert entry.model is None
+    assert entry.firmware_version is None
+    assert entry.data_source is None
+    assert entry.is_valid is True
+    assert entry.is_control_authority is False
 
 
 def test_plant_device_is_frozen():
     """PlantDevice is immutable — entries are snapshots, not mutable handles."""
-    entry = PlantDevice(device_type=DeviceType.METER, device=object())
+    entry = PlantDevice(identity="XX1234A567", device_type=DeviceType.METER, parent=None, device=object())
     with pytest.raises(dataclasses.FrozenInstanceError):
         entry.serial_number = "tampered"  # type: ignore[misc]

@@ -346,24 +346,36 @@ class Inverter:
 
 @dataclass(frozen=True)
 class PlantDevice:
-    """One enumerated device on a Plant, tagged with its type and identity.
+    """One row in the #106 flat topology walk, tagged with its type and identity.
 
     A thin, immutable wrapper pairing an already-decoded typed model
     (:attr:`device`) with a generic :class:`DeviceType` discriminator and,
-    where available, a serial number and model. Consumers enumerate
-    :attr:`Plant.devices` to discover what is on a plant and read rich fields
-    through :attr:`device`.
+    where available, a serial number and firmware version. Consumers
+    enumerate :attr:`Plant.devices` to discover what is on a plant and read
+    rich fields through :attr:`device`.
 
     The wrapper exists because the concrete device models share no common
     base — the inverter facade is a plain class, batteries / meters / EMS /
     gateway are Pydantic models, an HV stack is a dataclass — so tagging them
     from the outside keeps the enumeration additive rather than mutating every
-    model. No Modbus wire address or :class:`RegisterCache` appears here:
-    identity is by serial, and the wire address (where relevant) stays
-    reachable on the underlying model (e.g. ``HvStack.device_address``).
+    model. No Modbus wire address appears as a field — identity strings may
+    embed one (e.g. an HV stack's ``{plant_serial}_hvstack_{addr:#04x}``) but
+    the wire address itself stays reachable on the underlying model where
+    relevant (e.g. ``HvStack.device_address``).
+
+    :attr:`identity` is the stable, library-computed device identity —
+    serial-anchored, and plant-independent for any device that carries its
+    own serial. :attr:`parent` links rows into the flat walk; it is ``None``
+    only for the single root row. :attr:`is_control_authority` marks the one
+    row that owns the plant's write surface.
     """
 
+    identity: str
     device_type: DeviceType
+    parent: str | None
     device: Any
     serial_number: str | None = None
-    model: Any | None = None
+    firmware_version: str | None = None
+    is_valid: bool = True
+    is_control_authority: bool = False
+    data_source: DataSource | None = None
