@@ -43,7 +43,7 @@ from givenergy_modbus.framer import ServerFramer
 from givenergy_modbus.model.aio_battery import AioBatteryModuleRegisterGetter
 from givenergy_modbus.model.battery import BatteryRegisterGetter
 from givenergy_modbus.model.ems import EmsRegisterGetter
-from givenergy_modbus.model.plant import Plant
+from givenergy_modbus.model.plant import _HV_BMU_BAND_END, Plant
 from givenergy_modbus.model.register import HR, IR, MR, Register
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import (
@@ -192,10 +192,12 @@ def _make_device_serials_distinct(plant: Plant) -> None:
     synthetic. A fully-distinct group is left untouched; only the in-memory mock caches change,
     never the fixture bytes.
 
-    Handles the IR/``C.serial`` 5-register devices: LV battery packs and AIO modules (re-tailed by
-    bus address), and EMS managed-inverter slots within the 0x11 cache (re-tailed by slot index,
-    since they share an address). Meters (MR/``C.string``) and HV BMUs (stride within a single 0x70
-    cache) use other layouts and are out of scope.
+    Handles the IR/``C.serial`` 5-register devices: LV battery packs (IR 110-114, re-tailed by bus
+    address), AIO modules and HV BMU modules (both IR 114-118, same separate-per-address layout, so a
+    single band walk over 0x50-0x6F re-tails either by bus address), and EMS managed-inverter slots
+    within the 0x11 cache (re-tailed by slot index, since they share an address). Only addresses
+    actually present in the caches are touched, so an AIO's ≤4 modules and a 6-module HV stack alike
+    disambiguate off the same walk. Meters (MR/``C.string``) use another layout and are out of scope.
     """
     caches = plant.register_caches
     # Unified addressing (inverter at 0x11/0x31) puts LV battery pack #1 at 0x32; legacy bare-plant
@@ -205,7 +207,11 @@ def _make_device_serials_distinct(plant: Plant) -> None:
     lv_start = 0x32 if (0x11 in caches or 0x31 in caches) else 0x33
     for addr_range, getter in (
         (range(lv_start, 0x38), BatteryRegisterGetter),  # LV battery packs
-        (range(0x50, 0x54), AioBatteryModuleRegisterGetter),  # AIO battery modules
+        # AIO modules (≤4, 0x50-0x53) and HV BMU modules (≤32, 0x50-0x6F) share the IR(114-118)
+        # serial layout, so one walk over the whole 0x50-band disambiguates either. Filtering on
+        # `a in caches` below means only real, populated module addresses are re-tailed — an AIO
+        # touches 4, a 6-module HV stack touches 6, without a per-topology constant here.
+        (range(0x50, _HV_BMU_BAND_END), AioBatteryModuleRegisterGetter),  # AIO + HV BMU modules
     ):
         # registers_of returns () for getters without a serial_number; _disambiguate_serials then
         # decodes every member to None and no-ops, so we can iterate unconditionally (#247 contract).
