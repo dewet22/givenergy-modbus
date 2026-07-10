@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.2] - 2026-07-10
+
+### ✨ Added
+
+- detect-capable 3ph HV capture + live full-cycle coverage (#370) (#393) ([a4e93bc](https://github.com/dewet22/givenergy-modbus/commit/a4e93bcbb69e799ed51514ba289db6d6b797a7a3))
+
+### 🐛 Fixed
+
+- widen v_battery bound to admit HV integrated-stack voltage (AIO) (#395) ([990fb46](https://github.com/dewet22/givenergy-modbus/commit/990fb46dd463d51ee702300032e1d0281dc68277))
+
 ## [2.11.1] - 2026-07-10
 
 ### ✨ Added
