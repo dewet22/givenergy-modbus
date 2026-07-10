@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-07-10
+
+### ✨ Added
+
+- Plant.devices canonical topology walk (#106) (#396) ([d4dd722](https://github.com/dewet22/givenergy-modbus/commit/d4dd7222e02884efae6a37025af2254b1cae8e5b))
+- probe_alive() — cheap reconnect liveness gate (#398) ([faa0552](https://github.com/dewet22/givenergy-modbus/commit/faa05529e52e50345d3f469d6bc16dcd3793af83))
+
+### 🐛 Fixed
+
+- disambiguate HV BMU serials across the full 0x50-0x6F band (#397) ([ce6da82](https://github.com/dewet22/givenergy-modbus/commit/ce6da827136cc051a8dc757a718dca676e0cc844))
+
+### 🔧 Maintenance
+
+- record EMS total_battery_power (IR2090) sign convention ([ba833aa](https://github.com/dewet22/givenergy-modbus/commit/ba833aade085397c8023d4f48419e5f964646c4e))
+
 ## [2.11.2] - 2026-07-10
 
 ### ✨ Added
