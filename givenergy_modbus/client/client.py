@@ -855,6 +855,59 @@ class Client:
                 _logger.exception("detect: error during connection teardown after failure")
             raise
 
+    async def probe_alive(self, timeout: float = 2.0, retries: int = 0) -> bool:
+        """Cheap reconnect liveness gate: read HR(0) once and report whether the inverter answered.
+
+        Distinct from :meth:`detect` by design. Its ONLY job is "is the inverter responding at
+        all?", so on a hung dongle it fails fast (default ``retries=0``, no peripheral sweep) and
+        its failure is free — the caller just probes again next tick. On the first success the
+        caller runs a full, robust ``detect(retries=3)`` to re-establish topology; that detect
+        stays robust because it no longer carries the probe's fail-fast constraint (which is the
+        whole reason this is a separate method rather than ``detect(retries=0)`` — one call cannot
+        be both the cheap gate and the robust recovery, since the identity read shares a single
+        ``retries``).
+
+        Mirrors :meth:`detect`'s connection discipline, returning a bool instead of raising:
+
+        - **Alive** (HR(0) came back): the socket is left **open**, so the caller's follow-up
+          ``detect`` reuses the same live connection.
+        - **Not alive** (timeout / :class:`CommunicationError`, or a response that left no usable
+          HR(0)): the socket is **closed** (mirroring detect's #274 teardown), releasing it for the
+          dongle's quiet window so the coordinator uniformly reconnects next tick. Never raises.
+
+        Reuses the exact HR(0,60)@0x11 read :meth:`detect` uses (the read proven against real
+        hardware). Reconnect cadence/backoff stays the caller's concern (#356): this owns only the
+        single check.
+        """
+        # Liveness must come from THIS probe's fresh response, not any cached HR(0): a
+        # stale HR(0) from an earlier healthy connection would otherwise make a fresh
+        # non-committing probe look alive (e.g. the dongle returns an all-zero bank that
+        # _commit_bank rejects while the read still returns — Codex review). The block's
+        # ingestion timestamp is stamped ONLY on a successful commit (which applies every
+        # guard: Modbus error, CRC, all-zero rejection), so "did this probe re-stamp the
+        # HR(0,60) block" is the honest, guard-delegating liveness signal.
+        block = (0x11, "HR", 0, 60)
+        stamped_before = self.plant.register_block_updated_at.get(block)
+        try:
+            await self.send_request_and_await_response(
+                ReadHoldingRegistersRequest(base_register=0, register_count=60, device_address=0x11),
+                timeout=timeout,
+                retries=retries,
+            )
+            stamped_after = self.plant.register_block_updated_at.get(block)
+            alive = stamped_after is not None and stamped_after != stamped_before
+        except (TimeoutError, CommunicationError):
+            alive = False
+        if not alive:
+            # Release the socket on any not-alive outcome, mirroring detect()'s teardown so a
+            # failed liveness check leaves no half-open connection. Guard close() so a teardown
+            # error can't turn a clean False into an exception.
+            try:
+                await self.close()
+            except Exception:
+                _logger.exception("probe_alive: error during connection teardown after failed liveness probe")
+        return alive
+
     async def _detect_lv_batteries(
         self,
         prior: PlantCapabilities | None,
