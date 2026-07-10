@@ -9,6 +9,7 @@ in [`../README.md`](../README.md).
 |---|---|
 | `giv3hy11_hass174_180s.txt` | HA-integration wire capture, 180 s (156 frames) |
 | `giv3hy11_da011_10min.log` | givenergy-cli passive capture, ~10 min (128 frames, zero error responses) — same plant, 2026-07-08; adds per-module BMU reads at 0x50–0x55 and BAMS blocks at 0x90/0xA0 |
+| `giv3hy11_da011_detect_10min.log` | givenergy-cli passive capture, ~10 min — same plant, 2026-07-09, with a **Re-detect pressed during the window**, so it carries the HR identity/config banks (HR(0,60), HR(60/120), HR(1000/1060/1120)) the other two lack. **The first three-phase capture that can drive a live `detect()` → `load_config()` → `refresh()` cycle** (#370); seeds the full-cycle integration fence. |
 
 ### Format note
 
@@ -40,6 +41,12 @@ missed:** the BCU unit serial at 0x70/IR(138) — its location was only discover
 (#375), so it wasn't a redaction target in June. Re-redacted through the library's
 `FrameRedactor` (`…G000`, CRC re-encoded) once IR(138) was modelled; caught by
 `scripts/scan_capture_serials.py` (#378).
+
+`giv3hy11_da011_detect_10min.log` was supplied by the same reporter (2026-07-09, via the
+hass side), captured with the released `givenergy-cli` (`uvx`) with a Re-detect pressed
+mid-window per instructions — redacted at capture time by the cli's bundled redactor
+(all serials date-redacted to `…G000`; verified by `scripts/scan_capture_serials.py` +
+a full decode pass).
 
 `giv3hy11_da011_10min.log` was supplied privately by the same reporter (2026-07-08, via
 the hass-side soak) and redacted through the library's `FrameRedactor` before commit
@@ -74,7 +81,8 @@ library encoder. The split layout itself is preserved as captured.
   capture decodes as garbage (the historical #265 problem — since resolved; the .log
   capture supersedes it for per-cell assertions). Its regression test deliberately
   asserts only inverter-level and BCU-cluster fields.
-- Neither capture carries `HR(0,60)` at `0x11` (both poll sets read IR for identity), so
-  this fixture **cannot drive a live `detect()` cycle** — three-phase live-full-cycle
-  coverage remains open as
+- The two earlier captures carry no `HR(0,60)` at `0x11` (both poll sets read IR for
+  identity), so they cannot drive a live `detect()` cycle. **Resolved by
+  `giv3hy11_da011_detect_10min.log`** (2026-07-09, redetect-inclusive), which closes
+  the three-phase half of
   [#370](https://github.com/dewet22/givenergy-modbus/issues/370).

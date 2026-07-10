@@ -274,6 +274,42 @@ def _assert_hybrid_passive(plant):
     assert plant.number_batteries == 2
 
 
+def _assert_three_phase_hv(plant):
+    """The redetect-inclusive 3ph HV capture: the first live three-phase full cycle (#370).
+
+    Both earlier three_phase_hv_a captures are IR-only at 0x11, so detect()'s HR(0,60)
+    identity read error-responds and the cycle can't start. This capture carries a
+    Re-detect pressed mid-window, so identity + config HR banks are all present —
+    closing the three-phase half of the live-full-cycle gap.
+    """
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+
+    caps = plant.capabilities
+    assert caps.device_type is Model.HYBRID_3PH
+    assert caps.is_three_phase and caps.is_hv and not caps.is_ems
+    assert caps.bcu_stacks == [(0, 6)]  # one BCU, six HV modules
+    assert list(caps.hv_bmu_addresses) == [0x50, 0x51, 0x52, 0x53, 0x54, 0x55]
+    inv = plant.inverter
+    assert isinstance(inv, ThreePhaseInverter)
+    assert inv.serial_number == "TC2337G000"
+    # load_config's HR(120,60) grid-protection bank — polled ONLY by load_config, and
+    # 438.2 V is a deci-scaled CEI021-family value (#387's scale fixes, live).
+    assert inv.v_grid_high_limit_cee == 438.2
+    # The HV stack decodes end-to-end through the live cycle: BCU cluster facts
+    # (incl. the #382/#384 count registers — 6 modules x 24 cells / x 12 sensors)
+    # and per-module per-cell voltages at sane LiFePO4 levels.
+    stack = plant.hv_stacks[0]
+    assert stack.bcu.number_of_modules == 6
+    assert stack.bcu.battery_voltage == 471.8
+    assert stack.bcu.battery_soh == 95
+    assert stack.bcu.total_cell_count == 144
+    assert stack.bcu.total_temperature_sensor_count == 72
+    assert len(stack.bmus) == 6
+    for bmu in stack.bmus:
+        assert bmu.v_cell_01 is not None and 3.0 < bmu.v_cell_01 < 3.6
+    assert sorted(plant.meters.keys()) == [1, 2]
+
+
 def _assert_gateway(plant):
     from givenergy_modbus.model.gateway import GatewayV1
 
@@ -300,6 +336,7 @@ def _assert_gateway(plant):
         ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", _assert_ems_meters, True),
         ("hybrid_2_bat_a/hybrid_gen1_arm449_0x11_poll_10min.log", _assert_hybrid_0x11, True),
         ("gateway_2aio_a/gateway_gaaa0014_10min_daylight.log", _assert_gateway, True),
+        ("three_phase_hv_a/giv3hy11_da011_detect_10min.log", _assert_three_phase_hv, True),
         ("aio_a/aio_arm620_redetect_7min.log", _assert_aio_redetect, True),
         ("aio_a/aio_arm612_5min.log", _assert_aio, False),
         ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", _assert_hybrid_passive, False),
@@ -309,6 +346,7 @@ def _assert_gateway(plant):
         "ems_meters",
         "hybrid_0x11",
         "gateway_v1",
+        "three_phase_hv_clean",
         "aio_redetect_clean",
         "aio_partial",
         "hybrid_passive_partial",
