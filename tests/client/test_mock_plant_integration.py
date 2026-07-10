@@ -321,15 +321,12 @@ def _assert_three_phase_hv(plant):
     assert [r.identity for r in stack_rows] == ["TC2337G000_hvstack_0x70"]
     bmus = [r for r in rows if r.device_type is DeviceType.BATTERY_MODULE]
     assert len(bmus) == 6 and all(r.parent == "TC2337G000_hvstack_0x70" for r in bmus)
-    # The live serve path disambiguates redaction-collapsed BMU serials, but only
-    # partially today: MockPlant's _make_device_serials_distinct (testing/mock_plant.py)
-    # widens BMU addresses 0x50-0x53 (a range sized for AIO's 4-module cap), so this
-    # 6-module HV stack's modules at 0x54/0x55 still collide on the same placeholder
-    # identity live. That's a MockPlant gap, not a topology-walk defect — asserting
-    # full uniqueness here would be a false pin; assert the one known collision instead
-    # so any further regression (more than one collapsed pair) still trips this test.
+    # The live serve path disambiguates redaction-collapsed BMU serials across the full
+    # 0x50-0x6F band, so all six modules of this HV stack carry distinct identities — no
+    # collision survives to the topology walk. Pin full uniqueness so any regression that
+    # re-collapses a module serial (e.g. narrowing the disambiguation range again) trips here.
     ids = [r.identity for r in rows]
-    assert len(set(ids)) == len(ids) - 1
+    assert len(set(ids)) == len(ids)
 
 
 def _assert_gateway(plant):
