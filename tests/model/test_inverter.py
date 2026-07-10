@@ -66,6 +66,33 @@ def test_installer_config_register_scales(field, reg, raw, expected):
     assert getattr(inv, field) == pytest.approx(expected)
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (5387, 53.87),  # LV pack (~54 V) — still decodes, unchanged
+        (31348, 313.48),  # HV integrated stack on an AIO (4 modules) — was clamped to None
+        (47180, 471.80),  # HV stack near a 6-module ceiling — headroom
+        (65535, None),  # raw garbage (655.35 V) still clamps
+    ],
+)
+def test_v_battery_bounds_admit_hv_stack_voltage(raw, expected):
+    """v_battery (IR50) decodes HV integrated-stack voltages, not just LV packs (AIO report).
+
+    The max bound was 100 V (LV-pack calibrated), so an AIO's HV stack — which runs to
+    ~300-500 V and is the same inverter-level v_battery register — decoded to None and
+    surfaced a permanently-Unknown entity. Widened to 600 V: LV packs unchanged, HV
+    stacks admitted, and raw garbage (65535 -> 655.35) still suppressed. Corroborated
+    against a live AIO where IR50=31348 (313.48 V) matched the BCU cluster voltage to
+    within 1 V. Bounds are a sanity net, not model knowledge; the splice guards remain
+    the real corruption defence on battery data.
+    """
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({IR(50): raw}))
+    if expected is None:
+        assert inv.v_battery is None
+    else:
+        assert inv.v_battery == pytest.approx(expected)
+
+
 def test_inverter_temps_signed_deci():
     """Inverter heatsink / charger / battery temps decode as signed int16 deci (#379).
 

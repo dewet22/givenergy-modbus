@@ -227,6 +227,10 @@ def _assert_aio_redetect(plant):
     # LOAD_CONFIG_RANGES and polled ONLY by load_config; first capture to carry it
     # live. Pins the capability-gated table entry end-to-end (#293/#295).
     assert inv.battery_charge_limit_ac == 50
+    # Inverter-level v_battery (IR50) now admits the AIO's HV integrated-stack voltage
+    # (~300 V) instead of clamping it to None under the old LV-calibrated 100 V bound —
+    # so an AIO gets a real Battery Voltage rather than a permanently-Unknown entity.
+    assert inv.v_battery == pytest.approx(312.78)
     # Each module's split serial's "HY" prefix lands on t_cell_21's register; the
     # bounds check (#379) suppresses that non-zero out-of-range raw to None rather than
     # surfacing a ~1852 °C phantom.
