@@ -7,7 +7,7 @@ import warnings
 from asyncio import Future, Queue, StreamReader, StreamWriter, Task
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from givenergy_modbus.exceptions import (
@@ -79,6 +79,13 @@ _FRAME_SENT_MIN_TIMEOUT = 5.0
 # means the peer stopped ACKing — a half-open connection — so it's treated as
 # connection loss rather than left to wedge the producer until close() (hass#233).
 _DRAIN_TIMEOUT = 10.0
+
+# Re-warn cadence for the coalesced reader-EOF reconnect churn. A marginal dongle that
+# idle-reaps the TCP connection every ~10s (hass#95) would otherwise emit thousands of
+# 'connection lost (reader at EOF)' WARNING lines/day on a setup that is working fine —
+# each drop transparently recovers. The first drop warns; subsequent drops within this
+# window are demoted to DEBUG; one re-warn per window carries the running tally.
+_EOF_REWARN_SECONDS = 300.0
 
 
 class FrameRedactor:
@@ -497,6 +504,11 @@ class Client:
         self.expected_responses = {}
         self._shutting_down = False
         self._connection_lost = False
+        # Reader-EOF reconnect-churn coalescing state (#355-style, see _note_eof_drop). Persists
+        # across reconnects — a marginal dongle drops repeatedly, so the burst must be tracked on
+        # the long-lived Client, not per-connection.
+        self._eof_drop_count = 0
+        self._eof_last_warn_at: datetime | None = None
         self.network_producer_task: Task | None = None
         self.network_consumer_task: Task | None = None
         # self.debug_frames = {
@@ -1528,6 +1540,24 @@ class Client:
             self._capture_redactor_rx = None
             self._capture_redactor_tx = None
 
+    def _note_eof_drop(self, now: datetime) -> tuple[bool, int]:
+        """Coalesce a burst of reader-EOF reconnect churn; decide WARNING vs DEBUG (#355-style).
+
+        Returns ``(warn_now, count_since_last_warn)``. The first drop, and the first drop past
+        each ``_EOF_REWARN_SECONDS`` window, warn and carry the running tally of drops since the
+        previous warning; drops in between return ``(False, 0)`` for DEBUG. A drop after a long
+        quiet spell re-warns because ``now - last_warn`` has aged past the window — so a genuinely
+        fresh problem is never silently swallowed, only sustained churn is throttled.
+        """
+        self._eof_drop_count += 1
+        last = self._eof_last_warn_at
+        if last is None or (now - last).total_seconds() >= _EOF_REWARN_SECONDS:
+            count = self._eof_drop_count
+            self._eof_last_warn_at = now
+            self._eof_drop_count = 0
+            return True, count
+        return False, 0
+
     async def _task_network_consumer(self):
         """Task for orchestrating incoming data."""
         while hasattr(self, "reader") and self.reader and not self.reader.at_eof():
@@ -1570,7 +1600,18 @@ class Client:
             _logger.debug("network_consumer exiting on intentional shutdown")
         else:
             self.connected = False
-            _logger.warning("network_consumer: connection lost (reader at EOF)")
+            warn_now, count = self._note_eof_drop(datetime.now(UTC))
+            if warn_now and count > 1:
+                _logger.warning(
+                    "network_consumer: connection lost (reader at EOF) — %d drops in the last ~%ds, "
+                    "recovering transparently each time",
+                    count,
+                    int(_EOF_REWARN_SECONDS),
+                )
+            elif warn_now:
+                _logger.warning("network_consumer: connection lost (reader at EOF)")
+            else:
+                _logger.debug("network_consumer: connection lost (reader at EOF) — coalesced, recovering transparently")
             self._abort_connection(ConnectionLost("reader at EOF — connection lost"))
 
     async def _task_network_producer(self):
