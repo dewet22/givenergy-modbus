@@ -366,9 +366,9 @@ async def test_set_charge_and_discharge_limits():
     assert commands.set_battery_discharge_limit(100) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, 100),
     ]
-    with pytest.raises(ValueError, match=r"Specified Charge Limit \(101%\) is not in \[0-100\]\%"):
+    with pytest.raises(ValueError, match=r"Specified Charge Limit \(101\) is not in \[0-100\] \(C/100\)"):
         commands.set_battery_charge_limit(101)
-    with pytest.raises(ValueError, match=r"Specified Discharge Limit \(101%\) is not in \[0-100\]\%"):
+    with pytest.raises(ValueError, match=r"Specified Discharge Limit \(101\) is not in \[0-100\] \(C/100\)"):
         commands.set_battery_discharge_limit(101)
 
 

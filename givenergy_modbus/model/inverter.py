@@ -601,6 +601,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         "battery_low_force_charge_time": Def(C.uint16, None, HR(108)),
         "enable_bms_read": Def(C.bool, None, HR(109)),
         "battery_soc_reserve": Def(C.uint16, None, HR(110)),
+        # HR(111/112): battery charge/discharge rate cap as a C-rate (unit C/100, 0-50 = 0-0.5C) —
+        # a battery-side current limit, NOT an inverter-power %. Effective output = min(this C-rate,
+        # HR(313/314) inverter %, BMS rating). See commands.set_battery_charge_limit for provenance.
         "battery_charge_limit": Def(C.uint16, None, HR(111)),
         "battery_discharge_limit": Def(C.uint16, None, HR(112)),
         "enable_buzzer": Def(C.bool, None, HR(113)),

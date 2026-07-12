@@ -15,8 +15,8 @@ WRITE_SAFE_REGISTERS = {
     59,  # enable discharge
     116,  # AC charge upper % limit (app: "AC Charge Upper % Limit")
     110,  # battery SOC reserve / discharge floor
-    111,  # battery charge power limit
-    112,  # battery discharge power limit
+    111,  # battery charge rate cap (C/100, not inverter-power %; see set_battery_charge_limit)
+    112,  # battery discharge rate cap (C/100, not inverter-power %; see set_battery_discharge_limit)
     114,  # battery discharge min power reserve
     # --- Charge slots 1–10 ---
     94,  # charge slot 1 start

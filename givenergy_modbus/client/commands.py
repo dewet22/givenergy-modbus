@@ -398,31 +398,45 @@ def set_charge_target_soc_3ph(target_soc: int) -> list[TransparentRequest]:
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery charge power limit as a percentage of rated charge power (0-100).
+    """Set the battery charge rate as a C-rate cap (unit C/100; meaningful range 0-50 = 0-0.5C).
 
-    This is a %-of-rated ceiling, not a current command. On DC-coupled hybrids the battery subsystem
-    is often ~50% of inverter rating (Gen1: 2600 W of 5000 W), which is why GivTCP and older versions
-    capped at 50. But the GE app itself writes >50 — field-tested writing 62% to HR(111) / 59% to
-    HR(112) on a Gen1, both accepted — so the register tolerates it and the ~50% is model-specific.
-    We accept 0-100 rather than hard-cap and wrongly reject valid values on hybrids with a larger
-    battery subsystem. What the firmware does with a ceiling above the battery's capability (clamp to
-    the real rating is the expectation) is not yet field-verified.
+    HR(111) is a *battery-side* current limit against the pack's capacity C — NOT a percentage of
+    inverter rated power (an earlier docstring said the latter; that was wrong on the unit). Three
+    sources agree it is a C-rate: the GE app labels it "the maximum charge rate as a percentage of
+    the C rate (unit C/100, range 0-50)"; the installer app names the register BATTERY_MAX_C_RATING;
+    the v4.1.6 doc's unit column reads "0.5C". So value 50 = 0.5C, and the *effective* output is
+    ``min(this battery C-rate, the HR(313/314) inverter-power %, the BMS rating)`` — the limits sit
+    in series (cells -> inverter -> grid).
+
+    Which pair is the live control depends on the battery-to-inverter ratio: on a DC hybrid the small
+    pack (0.5C ~= 2.6 kW on a Gen1) is the tighter constraint, so HR(111/112) is the operative knob
+    (and HR(313/314) is absent on DC hybrids anyway); on an All-in-One the ~6 kW inverter is tighter,
+    so HR(313/314) is the live knob and HR(111/112) only bites when throttled well below inverter
+    capacity. Field-confirmed: sweeping HR(112) 50->100% during a discharge held output flat at
+    ~2.66 kW (= 0.5C for that pack, i.e. its 2600 W rating), and the GE app writing 62 to HR(111)
+    was accepted-but-inert.
+
+    We accept 0-100 rather than hard-cap at 50: the register field tolerates >50 (the GE app writes
+    it) and the effective ceiling is model-specific, so a hard [0-50] would wrongly reject valid
+    writes. Values above the effective 0.5C ceiling are accepted but carry no additional authority.
     """
     val = _as_int(val, "val")
     if not 0 <= val <= 100:
-        raise ValueError(f"Specified Charge Limit ({val}%) is not in [0-100]%")
+        raise ValueError(f"Specified Charge Limit ({val}) is not in [0-100] (C/100)")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT, val)]
 
 
 def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery discharge power limit as a percentage of rated discharge power (0-100).
+    """Set the battery discharge rate as a C-rate cap (unit C/100; meaningful range 0-50 = 0-0.5C).
 
-    See :func:`set_battery_charge_limit` for why this accepts 0-100 (firmware clamps per-model)
-    rather than the historical [0-50].
+    HR(112) is a battery-side C-rate cap, not an inverter-power percentage — see
+    :func:`set_battery_charge_limit` for the full unit provenance (GE app "C/100", installer
+    BATTERY_MAX_C_RATING, v4.1.6 "0.5C"), the series ``min(C-rate, inverter %)`` model, and why this
+    accepts 0-100 rather than the historical [0-50].
     """
     val = _as_int(val, "val")
     if not 0 <= val <= 100:
-        raise ValueError(f"Specified Discharge Limit ({val}%) is not in [0-100]%")
+        raise ValueError(f"Specified Discharge Limit ({val}) is not in [0-100] (C/100)")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT, val)]
 
 
