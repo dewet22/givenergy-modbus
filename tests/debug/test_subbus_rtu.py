@@ -87,6 +87,33 @@ def test_redact_leaves_no_real_serial_and_keeps_crc_valid():
     assert all(f.serial == "XX0000A000" for f in frames if isinstance(f, sb.Response))
 
 
+def test_write_stats_show_a_fixed_keepalive_token():
+    frames = sb.parse(_stream())
+    stats = sb.write_stats(frames)
+    # Every write is reg 6 = 0x0505 — a single (reg, value) key => fixed token, not drifting data.
+    assert stats == {(6, 0x0505): 5}
+    assert len({v for (_r, v) in stats}) == 1  # no value drift
+
+
+def test_diagnose_garbage_flags_a_collision():
+    # Synthesise a half-duplex collision: a master read-request's bytes land in the middle of an
+    # in-flight response's payload. The overlaid region breaks the response CRC (=> Garbage), but
+    # the request's fixed tail (03 00 00 00 3c) survives embedded mid-run.
+    response_head = bytes([1, 0x03, 0x00, 0x78]) + b"XX0000A000" + bytes(40)
+    embedded_request = bytes.fromhex("02030000003ce845")  # a real read-60 request
+    collision = response_head + embedded_request + bytes(30)
+    d = sb.diagnose_garbage(sb.Garbage(collision))
+    assert d.looks_like_response  # starts with a response header shape
+    assert d.embedded_master_at is not None  # the request tail is embedded inside
+    assert collision[d.embedded_master_at : d.embedded_master_at + 5] == bytes.fromhex("030000003c")
+
+
+def test_diagnose_garbage_plain_fragment_is_not_a_collision():
+    d = sb.diagnose_garbage(sb.Garbage(bytes.fromhex("03030000")))  # the fixture's trailing partial
+    assert not d.looks_like_response
+    assert d.embedded_master_at is None
+
+
 def test_cycles_group_polls_replies_writes():
     rounds = sb.cycles(sb.parse(_stream()))
     # Each full cycle polls addr 1 (and gets a reply), sweeps 2-5, and issues one write.

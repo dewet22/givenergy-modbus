@@ -200,8 +200,67 @@ def cycles(frames: list[Frame]) -> list[Cycle]:
     return rounds
 
 
+# Fixed tails that uniquely identify a master frame regardless of its (possibly mangled) address:
+# a read-60 request ends ``03 00 00 00 3c``; the keepalive write ends ``06 00 06 05 05``.
+_MASTER_TAILS = (bytes.fromhex("030000003c"), bytes.fromhex("0600060505"))
+
+
+def write_stats(frames: list[Frame]) -> dict[tuple[int, int], int]:
+    """Tally writes by ``(reg, value)``.
+
+    A single key ``(6, 0x0505)`` = a fixed keepalive token; any drift in the value means the
+    write carries command/state, not just a heartbeat.
+    """
+    counts: dict[tuple[int, int], int] = {}
+    for f in frames:
+        if isinstance(f, Write):
+            counts[(f.reg, f.value)] = counts.get((f.reg, f.value), 0) + 1
+    return counts
+
+
+@dataclass(frozen=True)
+class GarbageDiag:
+    """Diagnosis of a CRC-fail (``Garbage``) run.
+
+    Is it a mangled response, and does it carry a master-frame pattern embedded mid-run — the
+    half-duplex collision signature (a request/write transmitted on top of an in-flight response)?
+    """
+
+    length: int
+    looks_like_response: bool  # starts [addr][0x03][0x00][len>=8] — a response header shape
+    embedded_master_at: int | None  # byte offset of a master-frame tail found *inside* the run
+
+
+def diagnose_garbage(g: Garbage) -> GarbageDiag:
+    raw = g.raw
+    looks_resp = len(raw) >= 4 and raw[1] == 0x03 and raw[2] == 0x00 and raw[3] >= 8
+    embedded: int | None = None
+    for tail in _MASTER_TAILS:
+        idx = raw.find(tail)
+        if idx > 0:  # >0, not at offset 0: a master frame sitting *inside* the run, not leading it
+            embedded = idx
+            break
+    return GarbageDiag(len(raw), looks_resp, embedded)
+
+
 def _summary(frames: list[Frame]) -> str:
     lines: list[str] = []
+
+    ws = write_stats(frames)
+    if ws:
+        pretty = ", ".join(f"r{r}=0x{v:04x} x{n}" for (r, v), n in sorted(ws.items()))
+        drift = " *** VALUE DRIFT ***" if len({v for (_r, v) in ws}) > 1 else " (fixed token)"
+        lines.append(f"writes: {pretty}{drift}")
+
+    garbage = [f for f in frames if isinstance(f, Garbage)]
+    if garbage:
+        lines.append(f"CRC-fail runs: {len(garbage)}")
+        for g in garbage:
+            d = diagnose_garbage(g)
+            tag = "  <-- COLLISION (master frame embedded in a response)" if d.embedded_master_at is not None else ""
+            shape = "mangled-response" if d.looks_like_response else "fragment"
+            lines.append(f"  {d.length}B {shape}{tag}")
+
     for i, c in enumerate(cycles(frames)):
         parts = [f"cycle {i:>4}", f"polled={sorted(set(c.polled))}"]
         for addr, r in sorted(c.replied.items()):
@@ -211,7 +270,7 @@ def _summary(frames: list[Frame]) -> str:
         if c.writes:
             parts.append("writes=" + ",".join(f"{w.addr}:r{w.reg}=0x{w.value:04x}" for w in c.writes))
         if c.garbage:
-            parts.append(f"*** GARBAGE/CRC-FAIL x{c.garbage} ***")  # candidate splice/corruption
+            parts.append(f"*** CRC-FAIL x{c.garbage} ***")  # candidate splice/corruption
         lines.append("  ".join(parts))
     return "\n".join(lines)
 
