@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 _SERIAL_LEN = 20  # response payload bytes 0..19 = ASCII pack serial (reg 0-9), space-padded
+_PACK_LEN = 120  # a full pack response payload is 120 bytes (60 registers)
 
 
 def crc16(data: bytes) -> int:
@@ -38,6 +39,19 @@ def _crc_ok(body: bytes, trailer: bytes, *, big_endian: bool) -> bool:
     c = crc16(body)
     hi, lo = c >> 8, c & 0xFF
     return (trailer[0], trailer[1]) == ((hi, lo) if big_endian else (lo, hi))
+
+
+def _u16(p: bytes, o: int) -> int:
+    return (p[o] << 8) | p[o + 1]
+
+
+def _u32(p: bytes, o: int) -> int:
+    return (p[o] << 24) | (p[o + 1] << 16) | (p[o + 2] << 8) | p[o + 3]
+
+
+def _deci_kelvin_c(v: int) -> float:
+    """Sub-bus temps are deci-Kelvin (the inverter converts to deci-degC before the TCP layer)."""
+    return round(v / 10 - 273.15, 1)
 
 
 @dataclass(frozen=True)
@@ -66,31 +80,68 @@ class Response:
 
     @property
     def cell_mv(self) -> list[int]:
-        """The per-cell millivolt values: the longest run of adjacent, *tightly-clustered* uint16-BE.
+        """The 16 per-cell millivolt values, at the confirmed offset 79 (16 x uint16-BE)."""
+        p = self.payload
+        return [_u16(p, 79 + 2 * i) for i in range(16)] if len(p) >= _PACK_LEN else []
 
-        Two wrinkles the naive band-filter trips on: (1) the cell block sits at an ODD byte offset
-        in the payload (a 1-byte field precedes it — the alignment quirk), while temps are
-        even-aligned, so we scan both parities; (2) config regs (3600) and temps (~2970) fall in
-        the LiFePO4 band too, so we cut the run on a voltage step — balanced cells sit within a few
-        mV of each other, a jump of >150 mV ends the block. Returns [] if no run of >= 8 is found.
-        """
-        best: list[int] = []
-        for parity in (0, 1):
-            run: list[int] = []
-            off = _SERIAL_LEN + parity
-            while off <= len(self.payload) - 2:
-                v = (self.payload[off] << 8) | self.payload[off + 1]
-                in_band = 2500 <= v <= 3650
-                if in_band and (not run or abs(v - run[-1]) <= 150):
-                    run.append(v)
-                else:
-                    if len(run) > len(best):
-                        best = run
-                    run = [v] if in_band else []
-                off += 2
-            if len(run) > len(best):
-                best = run
-        return best if len(best) >= 8 else []
+
+@dataclass(frozen=True)
+class PackState:
+    """Fully-decoded pack telemetry from a response payload — the confirmed sub-bus register map.
+
+    Layout ground-truthed against a live capture (20/20 fields) AND cross-checked against GivTCP's
+    independent read of the same pack (stable values — cycles, capacities, firmware — matched to the
+    digit). All fields are big-endian at their payload byte offset; the cell block sits at odd offset
+    79 because the 1-byte cell_count at offset 42 shifts everything after it. Temps are deci-Kelvin.
+    """
+
+    serial: str
+    cell_count: int
+    cycles: int
+    soc_pct: int
+    pack_mv: int  # pack terminal voltage, mV
+    cell_sum_mv: int  # sum of cell voltages, mV
+    calibrated_cah: int  # calibrated capacity, centi-Ah (0.01 Ah)
+    design_cah: int  # design capacity, centi-Ah
+    remaining_cah: int  # remaining capacity, centi-Ah
+    firmware: int
+    mosfet_temp_c: float
+    group_temps_c: tuple[float, ...]  # 4 cell-group temperatures
+    max_group_temp_c: float
+    min_group_temp_c: float
+    cells_mv: tuple[int, ...]  # 16 per-cell voltages, mV
+    max_cell_mv: int
+    min_cell_mv: int
+    status_flags: int  # offset 32, role TBC (was mislabelled "USB device")
+    status: int  # offset 119, trailing status byte
+
+
+def decode_pack(resp: Response) -> PackState | None:
+    """Decode a response payload into full pack telemetry, or None if it's too short (truncated)."""
+    p = resp.payload
+    if len(p) < _PACK_LEN:
+        return None
+    return PackState(
+        serial=resp.serial,
+        group_temps_c=tuple(_deci_kelvin_c(_u16(p, o)) for o in (22, 24, 26, 28)),
+        mosfet_temp_c=_deci_kelvin_c(_u16(p, 30)),
+        status_flags=_u16(p, 32),
+        cell_count=p[42],
+        cycles=_u16(p, 43),
+        pack_mv=_u16(p, 47),
+        cell_sum_mv=_u16(p, 49),
+        calibrated_cah=_u32(p, 55),
+        design_cah=_u32(p, 59),
+        remaining_cah=_u32(p, 63),
+        soc_pct=p[67],
+        firmware=_u16(p, 77),
+        cells_mv=tuple(_u16(p, 79 + 2 * i) for i in range(16)),
+        max_group_temp_c=_deci_kelvin_c(_u16(p, 111)),
+        min_group_temp_c=_deci_kelvin_c(_u16(p, 113)),
+        max_cell_mv=_u16(p, 115),
+        min_cell_mv=_u16(p, 117),
+        status=p[119],
+    )
 
 
 @dataclass(frozen=True)
@@ -264,9 +315,15 @@ def _summary(frames: list[Frame]) -> str:
     for i, c in enumerate(cycles(frames)):
         parts = [f"cycle {i:>4}", f"polled={sorted(set(c.polled))}"]
         for addr, r in sorted(c.replied.items()):
-            cv = r.cell_mv
-            span = f"{min(cv)}-{max(cv)}mV Δ{max(cv) - min(cv)}" if cv else "no-cells"
-            parts.append(f"reply[{addr}]={r.serial}:{len(cv)}c {span}")
+            ps = decode_pack(r)
+            if ps is None:
+                parts.append(f"reply[{addr}]=TRUNCATED")
+            else:
+                parts.append(
+                    f"reply[{addr}]={ps.serial} soc={ps.soc_pct}% "
+                    f"{ps.min_cell_mv}-{ps.max_cell_mv}mV Δ{ps.max_cell_mv - ps.min_cell_mv} "
+                    f"mosfet={ps.mosfet_temp_c}C cyc={ps.cycles}"
+                )
         if c.writes:
             parts.append("writes=" + ",".join(f"{w.addr}:r{w.reg}=0x{w.value:04x}" for w in c.writes))
         if c.garbage:

@@ -87,6 +87,35 @@ def test_redact_leaves_no_real_serial_and_keeps_crc_valid():
     assert all(f.serial == "XX0000A000" for f in frames if isinstance(f, sb.Response))
 
 
+def test_decode_pack_matches_ground_truth():
+    # The confirmed sub-bus register map: 20/20 byte-level + cross-checked against GivTCP's
+    # independent read of DZ2228G532 (stable values matched to the digit). Serial is redacted in
+    # the fixture; every numeric field survives redaction untouched.
+    frames = sb.parse(_stream())
+    ps = sb.decode_pack(next(f for f in frames if isinstance(f, sb.Response)))
+    assert ps is not None
+    assert ps.serial == "XX0000A000"  # redacted
+    assert ps.cell_count == 16
+    assert ps.cycles == 844  # == GivTCP battery_cycles
+    assert ps.soc_pct == 85
+    assert ps.pack_mv == 52829
+    assert ps.cell_sum_mv == 52978
+    assert ps.calibrated_cah == 15088  # 150.88 Ah == GivTCP battery_capacity
+    assert ps.design_cah == 18600  # 186.00 Ah == GivTCP design_capacity
+    assert ps.remaining_cah == 12849  # 128.49 Ah
+    assert ps.firmware == 3009  # == GivTCP firmware_version
+    assert ps.mosfet_temp_c == 26.5
+    assert ps.group_temps_c == (24.1, 24.2, 24.2, 23.7)
+    assert len(ps.cells_mv) == 16
+    assert (ps.min_cell_mv, ps.max_cell_mv) == (3306, 3314)
+    assert min(ps.cells_mv) == 3306 and max(ps.cells_mv) == 3314
+
+
+def test_decode_pack_none_on_truncated_payload():
+    short = sb.Response(addr=1, payload=b"\x00" * 40)
+    assert sb.decode_pack(short) is None
+
+
 def test_write_stats_show_a_fixed_keepalive_token():
     frames = sb.parse(_stream())
     stats = sb.write_stats(frames)
