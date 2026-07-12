@@ -509,6 +509,7 @@ class Client:
         # the long-lived Client, not per-connection.
         self._eof_drop_count = 0
         self._eof_last_warn_at: datetime | None = None
+        self._eof_last_drop_at: datetime | None = None
         self.network_producer_task: Task | None = None
         self.network_consumer_task: Task | None = None
         # self.debug_frames = {
@@ -1546,15 +1547,27 @@ class Client:
     def _note_eof_drop(self, now: datetime) -> tuple[bool, int]:
         """Coalesce a burst of reader-EOF reconnect churn; decide WARNING vs DEBUG (#355-style).
 
-        Returns ``(warn_now, count_since_last_warn)``. The first drop, and the first drop past
-        each ``_EOF_REWARN_SECONDS`` window, warn and carry the running tally of drops since the
-        previous warning; drops in between return ``(False, 0)`` for DEBUG. A drop after a long
-        quiet spell re-warns because ``now - last_warn`` has aged past the window — so a genuinely
-        fresh problem is never silently swallowed, only sustained churn is throttled.
+        Returns ``(warn_now, count_since_last_warn)``. The first drop of a burst, and the first
+        drop past each ``_EOF_REWARN_SECONDS`` window within a *sustained* burst, warn and carry
+        the running tally of drops since the previous warning; drops in between return
+        ``(False, 0)`` for DEBUG.
+
+        A burst is a run of drops each within ``_EOF_REWARN_SECONDS`` of the previous one. When
+        the gap since the *last drop* exceeds the window the churn has clearly stopped, so the
+        burst is closed and the next drop starts fresh (count 1) rather than escalating with a
+        stale tally accumulated an hour ago — keeping the reported count honest (Codex note on
+        #401). A genuinely fresh problem is therefore never swallowed; only sustained churn is
+        throttled.
         """
+        last_drop = self._eof_last_drop_at
+        if last_drop is not None and (now - last_drop).total_seconds() >= _EOF_REWARN_SECONDS:
+            # Preceding burst is over — reset so this drop is treated as a fresh onset.
+            self._eof_drop_count = 0
+            self._eof_last_warn_at = None
+        self._eof_last_drop_at = now
         self._eof_drop_count += 1
-        last = self._eof_last_warn_at
-        if last is None or (now - last).total_seconds() >= _EOF_REWARN_SECONDS:
+        last_warn = self._eof_last_warn_at
+        if last_warn is None or (now - last_warn).total_seconds() >= _EOF_REWARN_SECONDS:
             count = self._eof_drop_count
             self._eof_last_warn_at = now
             self._eof_drop_count = 0
@@ -1606,10 +1619,9 @@ class Client:
             warn_now, count = self._note_eof_drop(datetime.now(UTC))
             if warn_now and count > 1:
                 _logger.warning(
-                    "network_consumer: connection lost (reader at EOF) — %d drops in the last ~%ds, "
-                    "recovering transparently each time",
+                    "network_consumer: connection lost (reader at EOF) — %d drops since the previous "
+                    "warning, recovering transparently each time",
                     count,
-                    int(_EOF_REWARN_SECONDS),
                 )
             elif warn_now:
                 _logger.warning("network_consumer: connection lost (reader at EOF)")
