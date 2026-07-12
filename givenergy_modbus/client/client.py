@@ -1271,6 +1271,9 @@ class Client:
         is not re-solicited this cycle. Defaults to ``None`` — always solicit, the
         historic behaviour. Note the fan-out only exists while something else is polling
         the unit; on a cloud-disconnected dongle the blocks age out and we solicit them.
+        The fan-out is opportunistic, not a promise that concurrent access is free —
+        some dongles idle-reap the connection under multiple clients (hass#95) and
+        reconnect transparently; the skip degrades safely (blocks age out, we solicit).
 
         ``ir0_max_age`` is deprecated — use ``max_age`` instead. It applied the same
         logic to IR(0,60) only; ``max_age`` extends it to every bank. Will be removed

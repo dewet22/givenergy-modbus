@@ -172,6 +172,8 @@ The polling path mirrors `detect()`'s split — pure policy decides *what* to re
 
 Unlike `detect()`, there is no validate stage. `refresh()` decides only what to *ask* for; whether to *believe* a response is the cache layer's call — the keep-last-good guards (CRC #255, sub-bus splice #256, bank holds) validate each frame as it commits. The skip-if-fresh gate also makes `refresh()` cooperative with the dongle fan-out: GivEnergy dongles echo responses to every connected client, so a bank another poller just refreshed can be left alone (#196).
 
+A caveat on that fan-out, though: echoing to every connected client is not the same as *tolerating* several of them. How well a dongle copes with concurrent connections and polling load appears to vary by hardware generation, and we can't characterise it from inside the library. One newer-chipset All-In-One dongle (hass#95) idle-reaps the TCP connection roughly every ~10s even with only two clients polling at a fairly mild ~30s cadence — the client reconnects transparently each time and the fan-out resumes, so it stays functional, but "multiple clients at frequent poll rates just work" is not a guarantee the hardware makes uniformly. Treat the fan-out as an opportunistic optimisation, not a contract that concurrent access is free.
+
 ## Plant data model
 
 `Plant` is passive — it stores data, drives no I/O. Its two responsibilities are:
