@@ -1647,6 +1647,21 @@ class Plant(GivEnergyBaseModel):
             ts = ts.replace(tzinfo=UTC)
         self.register_block_updated_at[(device_address, reg_type, base_register, register_count)] = ts
 
+    @property
+    def last_updated_at(self) -> datetime | None:
+        """Newest register-block ingestion time across the whole plant, or None if never seen.
+
+        The honest "is the cache being kept fresh" signal for a passive consumer (#65): it
+        advances whenever ANY bank commits — solicited or fanned-out from a peer client —
+        regardless of content, so a stale bus is visible as a signal that stops moving.
+        Because it keys off commit rather than value, it is meaningful even on a Gateway
+        (where the synthetic all-zeros inverter makes ``system_time`` spurious) and is
+        topology-agnostic. ``None`` before the first commit (cold). Consumers derive age as
+        ``now - last_updated_at``.
+        """
+        stamps = self.register_block_updated_at
+        return max(stamps.values()) if stamps else None
+
     def block_age(
         self,
         device_address: int,
