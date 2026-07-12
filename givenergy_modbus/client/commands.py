@@ -398,27 +398,30 @@ def set_charge_target_soc_3ph(target_soc: int) -> list[TransparentRequest]:
 
 
 def set_battery_charge_limit(val: int) -> list[TransparentRequest]:
-    """Set the battery charge rate as a C-rate cap (unit C/100; meaningful range 0-50 = 0-0.5C).
+    """Set the battery charge rate as a C-rate cap (unit C/100; documented range 0-50 = 0-0.5C).
 
     HR(111) is a *battery-side* current limit against the pack's capacity C — NOT a percentage of
-    inverter rated power (an earlier docstring said the latter; that was wrong on the unit). Three
-    sources agree it is a C-rate: the GE app labels it "the maximum charge rate as a percentage of
-    the C rate (unit C/100, range 0-50)"; the installer app names the register BATTERY_MAX_C_RATING;
-    the v4.1.6 doc's unit column reads "0.5C". So value 50 = 0.5C, and the *effective* output is
-    ``min(this battery C-rate, the HR(313/314) inverter-power %, the BMS rating)`` — the limits sit
-    in series (cells -> inverter -> grid).
+    inverter rated power (an earlier docstring said the latter; that was wrong on the unit). The
+    current GE app states it outright: "the maximum charge rate as a percentage of the C rating
+    (unit C/100, range 0-50)", and the installer app names the register BATTERY_MAX_C_RATING. (The
+    older app build we decompiled carried stale metadata — range 1-250, "power percentage" — since
+    corrected by GE; that was the source of our long-standing ambiguity.) So value 50 = 0.5C, and the
+    *effective* output is ``min(this battery C-rate, the HR(313/314) inverter-power %, the BMS
+    rating)`` — the limits sit in series (cells -> inverter -> grid).
 
     Which pair is the live control depends on the battery-to-inverter ratio: on a DC hybrid the small
     pack (0.5C ~= 2.6 kW on a Gen1) is the tighter constraint, so HR(111/112) is the operative knob
     (and HR(313/314) is absent on DC hybrids anyway); on an All-in-One the ~6 kW inverter is tighter,
     so HR(313/314) is the live knob and HR(111/112) only bites when throttled well below inverter
-    capacity. Field-confirmed: sweeping HR(112) 50->100% during a discharge held output flat at
-    ~2.66 kW (= 0.5C for that pack, i.e. its 2600 W rating), and the GE app writing 62 to HR(111)
-    was accepted-but-inert.
+    capacity. Field-confirmed in #302: sweeping HR(112) 50->100% during a discharge held output flat
+    at ~2.66 kW (= 0.5C for that Gen1 pack, i.e. its 2600 W rating).
 
-    We accept 0-100 rather than hard-cap at 50: the register field tolerates >50 (the GE app writes
-    it) and the effective ceiling is model-specific, so a hard [0-50] would wrongly reject valid
-    writes. Values above the effective 0.5C ceiling are accepted but carry no additional authority.
+    We accept 0-100 rather than hard-cap at 50 (bound set in #301/#302): though the app slider caps
+    at 50, the register field tolerates >50 (a live AIO was observed holding HR(112) = 100, set by
+    GivTCP / a max-rate write, not the GE app), so a hard [0-50] would reject a value real devices
+    hold. Values above the pack's real C-rate are accepted but clamped by the battery/inverter — the
+    inverse principle to the AC pair HR(313/314), which keeps a floor of 1 because writing 0 *errors*
+    on the hardware (#306): cap only what the firmware rejects, document what it merely clamps.
     """
     val = _as_int(val, "val")
     if not 0 <= val <= 100:
@@ -430,8 +433,8 @@ def set_battery_discharge_limit(val: int) -> list[TransparentRequest]:
     """Set the battery discharge rate as a C-rate cap (unit C/100; meaningful range 0-50 = 0-0.5C).
 
     HR(112) is a battery-side C-rate cap, not an inverter-power percentage — see
-    :func:`set_battery_charge_limit` for the full unit provenance (GE app "C/100", installer
-    BATTERY_MAX_C_RATING, v4.1.6 "0.5C"), the series ``min(C-rate, inverter %)`` model, and why this
+    :func:`set_battery_charge_limit` for the full unit provenance (current GE app "C/100, range
+    0-50", installer BATTERY_MAX_C_RATING), the series ``min(C-rate, inverter %)`` model, and why this
     accepts 0-100 rather than the historical [0-50].
     """
     val = _as_int(val, "val")
