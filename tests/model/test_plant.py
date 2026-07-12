@@ -1928,6 +1928,38 @@ def test_block_age_normalises_naive_now(plant: Plant):
     assert age == 7.0
 
 
+def test_last_updated_at_none_before_first_commit(plant: Plant):
+    """No committed bank yet → the whole-cache freshness signal is None (cold), never raises."""
+    assert plant.last_updated_at is None
+
+
+def test_last_updated_at_returns_newest_across_banks(plant: Plant):
+    """last_updated_at is the newest ingestion time across every committed bank, regardless of type."""
+    t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t0)
+    plant.update(_make_hr_pdu({20: 1}, device_address=0x11, base_register=0), received_at=t0 + timedelta(seconds=5))
+    # An older bank ingested afterwards must not pull the signal backwards.
+    plant.update(_make_ir_pdu({180: 1}, device_address=0x11, base_register=180), received_at=t0 + timedelta(seconds=2))
+    assert plant.last_updated_at == t0 + timedelta(seconds=5)
+
+
+def test_last_updated_at_advances_with_new_commit(plant: Plant):
+    """A fresh fan-out/solicited commit advances the signal — that is 'the bus is still alive'."""
+    t0 = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    plant.update(_make_ir_pdu({5: 2367}, device_address=0x11, base_register=0), received_at=t0)
+    assert plant.last_updated_at == t0
+    plant.update(_make_ir_pdu({5: 2400}, device_address=0x11, base_register=0), received_at=t0 + timedelta(seconds=30))
+    assert plant.last_updated_at == t0 + timedelta(seconds=30)
+
+
+def test_last_updated_at_ignores_discarded_bank(plant: Plant):
+    """A discarded (never-landed) bank must not register as freshness."""
+    t = datetime(2026, 6, 6, 12, 0, 0, tzinfo=UTC)
+    pdu = _make_ir_pdu({110: 0, 111: 0, 112: 0, 113: 0, 114: 0, 60: 3221}, device_address=0x33, base_register=60)
+    plant.update(pdu, received_at=t)
+    assert plant.last_updated_at is None
+
+
 def test_hr_bank_rejected_by_commit_is_not_stamped(plant: Plant):
     """An incoherent HR bank must not record an ingestion timestamp."""
     # Seed non-zero HR data, then push all-zero (Pattern B) to trigger rejection.

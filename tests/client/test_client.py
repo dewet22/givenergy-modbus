@@ -185,6 +185,107 @@ async def test_consumer_logs_warning_on_unexpected_eof(caplog):
     assert not any(r.levelno >= logging.ERROR for r in caplog.records)  # a routine drop must not alarm
 
 
+def test_note_eof_drop_first_drop_warns():
+    """The first reader-EOF drop always warns, carrying a tally of 1."""
+    from givenergy_modbus.client.client import _EOF_REWARN_SECONDS  # noqa: F401 — presence check
+
+    client = Client(host="foo", port=4321)
+    t0 = datetime.datetime(2026, 7, 12, 12, 0, 0, tzinfo=datetime.UTC)
+    assert client._note_eof_drop(t0) == (True, 1)
+
+
+def test_note_eof_drop_coalesces_within_interval():
+    """Rapid repeat drops within the re-warn interval are demoted (warn_now False)."""
+    from givenergy_modbus.client.client import _EOF_REWARN_SECONDS
+
+    client = Client(host="foo", port=4321)
+    t0 = datetime.datetime(2026, 7, 12, 12, 0, 0, tzinfo=datetime.UTC)
+    client._note_eof_drop(t0)  # first — warns
+    # Drops every 10s for just under the re-warn interval are all coalesced.
+    for s in range(10, int(_EOF_REWARN_SECONDS), 10):
+        assert client._note_eof_drop(t0 + datetime.timedelta(seconds=s)) == (False, 0)
+
+
+def test_note_eof_drop_rewarns_after_interval_with_tally():
+    """After the re-warn interval elapses, the next drop warns and reports the coalesced count."""
+    from givenergy_modbus.client.client import _EOF_REWARN_SECONDS
+
+    client = Client(host="foo", port=4321)
+    t0 = datetime.datetime(2026, 7, 12, 12, 0, 0, tzinfo=datetime.UTC)
+    client._note_eof_drop(t0)  # first — warns, resets tally
+    # Two coalesced drops, then one past the interval.
+    client._note_eof_drop(t0 + datetime.timedelta(seconds=10))
+    client._note_eof_drop(t0 + datetime.timedelta(seconds=20))
+    warn_now, count = client._note_eof_drop(t0 + datetime.timedelta(seconds=_EOF_REWARN_SECONDS))
+    assert warn_now is True
+    assert count == 3  # the two coalesced + this escalation drop, since the last warning
+
+
+def test_note_eof_drop_rewarns_after_long_quiet_spell():
+    """A single drop after a long stable period warns afresh (last-warn has aged out)."""
+    from givenergy_modbus.client.client import _EOF_REWARN_SECONDS
+
+    client = Client(host="foo", port=4321)
+    t0 = datetime.datetime(2026, 7, 12, 12, 0, 0, tzinfo=datetime.UTC)
+    client._note_eof_drop(t0)  # first — warns
+    later = t0 + datetime.timedelta(seconds=_EOF_REWARN_SECONDS + 3600)
+    assert client._note_eof_drop(later) == (True, 1)
+
+
+async def test_consumer_coalesces_repeat_eof_to_debug(caplog):
+    """A second EOF drop within the interval lands at DEBUG, not WARNING (hass#95 log spam)."""
+    client = Client(host="foo", port=4321)
+    # Simulate a prior recent drop so this one is within the coalescing window.
+    client._note_eof_drop(datetime.datetime.now(datetime.UTC))
+    client.reader = StreamReader()
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    eof_records = [r for r in caplog.records if "reader at EOF" in r.message]
+    assert eof_records, "expected an EOF log line"
+    assert all(r.levelno == logging.DEBUG for r in eof_records), (
+        f"coalesced repeat drop should be DEBUG: {[(r.levelname, r.message) for r in eof_records]}"
+    )
+
+
+async def test_consumer_escalation_warning_carries_tally(caplog):
+    """A sustained burst crossing the re-warn window escalates at WARNING with the running tally."""
+    from givenergy_modbus.client.client import _EOF_REWARN_SECONDS
+
+    client = Client(host="foo", port=4321)
+    now = datetime.datetime.now(datetime.UTC)
+    # A live burst: last warned just over the window ago, last drop very recent (churn ongoing),
+    # four drops coalesced since the warning. The next drop must escalate (count > 1).
+    client._eof_drop_count = 4
+    client._eof_last_warn_at = now - datetime.timedelta(seconds=_EOF_REWARN_SECONDS + 1)
+    client._eof_last_drop_at = now - datetime.timedelta(seconds=10)
+    client.reader = StreamReader()
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    warn = [r for r in caplog.records if "reader at EOF" in r.getMessage() and r.levelno == logging.WARNING]
+    assert warn, f"expected an escalation WARNING: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    assert "5 drops" in warn[0].getMessage()  # 4 coalesced + this escalation drop
+    assert "~" not in warn[0].getMessage()  # no misleading fixed-window claim
+
+
+def test_note_eof_drop_reset_keeps_tally_honest_after_quiet_gap():
+    """A lone drop after a long quiet gap warns fresh (count 1), not with a stale coalesced tally."""
+    client = Client(host="foo", port=4321)
+    t0 = datetime.datetime(2026, 7, 12, 12, 0, 0, tzinfo=datetime.UTC)
+    client._note_eof_drop(t0)  # burst onset — warns
+    client._note_eof_drop(t0 + datetime.timedelta(seconds=10))  # coalesced (DEBUG)
+    client._note_eof_drop(t0 + datetime.timedelta(seconds=20))  # coalesced (DEBUG)
+    # An hour of silence, then a single drop: the prior burst is closed, so this is a fresh onset —
+    # it must NOT report the 2 stale drops from an hour ago (Codex #401 honesty note).
+    warn_now, count = client._note_eof_drop(t0 + datetime.timedelta(hours=1))
+    assert (warn_now, count) == (True, 1)
+
+
 async def test_producer_logs_debug_not_critical_on_intentional_shutdown(caplog):
     """Regression for #50: when close() set _shutting_down, the producer must exit at DEBUG, not CRITICAL."""
     client = Client(host="foo", port=4321)
