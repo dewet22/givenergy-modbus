@@ -250,6 +250,24 @@ async def test_consumer_coalesces_repeat_eof_to_debug(caplog):
     )
 
 
+async def test_consumer_escalation_warning_carries_tally(caplog):
+    """After the re-warn window elapses, a repeat drop warns at WARNING with the coalesced tally."""
+    client = Client(host="foo", port=4321)
+    # Simulate an in-progress burst whose last warning is well outside the 300s window: the next
+    # drop must escalate (warn_now True, count > 1) and emit the running tally.
+    client._eof_drop_count = 4
+    client._eof_last_warn_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.UTC)
+    client.reader = StreamReader()
+    client.reader.feed_eof()  # _shutting_down stays False
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client._task_network_consumer()
+
+    warn = [r for r in caplog.records if "reader at EOF" in r.getMessage() and r.levelno == logging.WARNING]
+    assert warn, f"expected an escalation WARNING: {[(r.levelname, r.getMessage()) for r in caplog.records]}"
+    assert "5 drops" in warn[0].getMessage()  # 4 coalesced + this escalation drop
+
+
 async def test_producer_logs_debug_not_critical_on_intentional_shutdown(caplog):
     """Regression for #50: when close() set _shutting_down, the producer must exit at DEBUG, not CRITICAL."""
     client = Client(host="foo", port=4321)
