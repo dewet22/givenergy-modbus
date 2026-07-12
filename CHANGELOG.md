@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1] - 2026-07-12
+
+### ✨ Added
+
+- Plant.last_updated_at freshness signal + coalesce reader-EOF churn (#401) ([f0be0cf](https://github.com/dewet22/givenergy-modbus/commit/f0be0cf64dd0b4aa877559861216bda6781a004c))
+
+### 🔧 Maintenance
+
+- has_ac_config_block is a register-surface fact, not control routing ([1a4a0cb](https://github.com/dewet22/givenergy-modbus/commit/1a4a0cb5f6b5e7fcf25988046d7cca44b0e58bc0))
+
 ## [2.12.0] - 2026-07-10
 
 ### ✨ Added
