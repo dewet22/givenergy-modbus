@@ -140,6 +140,11 @@ CAPABILITIES: dict[str, frozenset[Model]] = {
     # (HR311), battery_*_limit_ac (HR313/314), enable_eps (HR317), pause mode/slot
     # (HR318-320). Present on AC-coupled inverters AND the All-in-One. DC-coupled/
     # hybrid inverters lack the block and time out when polled for it (#162).
+    # NB: strictly a register-surface fact — block presence does NOT imply the AC pair
+    # (HR313/314) replaces the DC battery-rate controls (HR111/112). On the AIO the DC
+    # pair remains the operative battery-rate control (field-verified on a Gen-1 AIO:
+    # both GivTCP and the official app write HR111, hass#281). Scope control routing on
+    # is_ac_coupled instead; see also the consumer note on #302.
     "has_ac_config_block": frozenset({Model.AC, Model.AC_3PH, Model.ALL_IN_ONE}),
     # Models with a *readable* Smart Load slot block at HR(540-599). Deliberately
     # empty — no model has been confirmed to return data on real hardware; HYBRID_GEN1

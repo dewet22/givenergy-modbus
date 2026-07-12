@@ -424,6 +424,11 @@ class PlantCapabilities(BaseModel):
         Covers export priority, EPS enable, AC charge/discharge limits and pause mode —
         present on AC-coupled inverters and the All-in-One, absent (times out) on
         DC-coupled/hybrid models. See `manifest.CAPABILITIES["has_ac_config_block"]` (#162).
+
+        Strictly a register-surface fact: block presence does not mean HR(313/314)
+        replaces the DC battery-rate pair HR(111/112) — on the All-in-One the DC pair
+        remains the operative battery-rate control (hass#281). Route control decisions
+        on `is_ac_coupled` instead (#302).
         """
         return manifest.has_capability("has_ac_config_block", self.device_type)
 
