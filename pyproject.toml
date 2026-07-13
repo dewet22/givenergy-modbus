@@ -42,6 +42,7 @@ dev = [
 ]
 test = [
     "bandit>=1.7.5,<2",
+    "hypothesis>=6.100,<7",
     "mypy>=2.0.0,<3",
     "pytest>=9.0.0,<10",
     "pytest-asyncio>=1.0.0,<2",
