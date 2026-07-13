@@ -168,6 +168,20 @@ setenv =
 commands =
     pytest --cov=givenergy_modbus --cov-branch --cov-report=xml --cov-report=term-missing tests
 
+[testenv:fuzz]
+# Deep property-based fuzz sweep of the framer + codec (tests/test_framer_properties.py).
+# The per-PR/weekly suite runs these at a shallow example count for speed; this env
+# cranks GE_FUZZ_EXAMPLES so a nightly run explores far more inputs. Override the count
+# with `GE_FUZZ_EXAMPLES=N tox -e fuzz`. No coverage — this is depth, not line-hitting.
+runner = uv-venv-lock-runner
+dependency_groups =
+    test
+setenv =
+    {[testenv]setenv}
+    GE_FUZZ_EXAMPLES = {env:GE_FUZZ_EXAMPLES:5000}
+commands =
+    pytest tests/test_framer_properties.py -p no:cacheprovider
+
 [testenv:format]
 runner = uv-venv-lock-runner
 dependency_groups =
