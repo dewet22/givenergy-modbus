@@ -143,6 +143,22 @@ def test_diagnose_garbage_plain_fragment_is_not_a_collision():
     assert d.embedded_master_at is None
 
 
+def test_stream_frames_matches_batch_parse_across_chunk_boundaries():
+    # Feed the stream in awkward 7-byte chunks; the incremental parser must reassemble the same
+    # real frames as a batch parse (garbage tail-segmentation may differ, so compare non-garbage).
+    data = _stream()
+    chunks = iter(data[i : i + 7] for i in range(0, len(data), 7))
+    streamed = list(sb.stream_frames(lambda: next(chunks, b"")))
+
+    def real(fs):
+        return [f for f in fs if not isinstance(f, sb.Garbage)]
+
+    assert real(streamed) == real(sb.parse(data))
+    # and the responses still decode fully after reassembly
+    resp = [f for f in streamed if isinstance(f, sb.Response)]
+    assert sb.decode_pack(resp[0]).cycles == 844
+
+
 def test_cycles_group_polls_replies_writes():
     rounds = sb.cycles(sb.parse(_stream()))
     # Each full cycle polls addr 1 (and gets a reply), sweeps 2-5, and issues one write.

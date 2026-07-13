@@ -332,8 +332,125 @@ def _summary(frames: list[Frame]) -> str:
     return "\n".join(lines)
 
 
+def _bytes_needed(buf: bytes) -> int:
+    """How many bytes a candidate frame at offset 0 needs before we can accept-or-reject it."""
+    if len(buf) < 4:
+        return 4
+    if buf[1] == 0x03:
+        ln = (buf[2] << 8) | buf[3]
+        if 0 < ln <= 512:
+            return 4 + ln + 2  # a response: header + declared data + CRC
+    return 8  # request/write, or a non-response fn-3 — an 8-byte frame
+
+
+def stream_frames(read_chunk):
+    """Incrementally parse a live byte stream; ``read_chunk()`` returns bytes (``b''`` on EOF).
+
+    Yields Request/Write/Response/Garbage as soon as each is unambiguous. A response is held until
+    its full declared length has arrived, so a frame split across a read boundary is never mistaken
+    for corruption — only genuinely unparseable bytes surface as Garbage.
+    """
+    buf = bytearray()
+    while True:
+        chunk = read_chunk()
+        if not chunk:
+            break
+        buf += chunk
+        while buf:
+            frame, consumed = _try_frame(bytes(buf), 0)
+            if frame is not None:
+                yield frame
+                del buf[:consumed]
+                continue
+            if len(buf) >= _bytes_needed(bytes(buf)):
+                yield Garbage(bytes(buf[:1]))
+                del buf[:1]
+                continue
+            break  # incomplete frame still arriving — wait for more
+    if buf:
+        yield Garbage(bytes(buf))
+
+
+def _live_line(frame: Frame, seen_writes: set) -> str | None:
+    import time
+
+    ts = time.strftime("%H:%M:%S")
+    if isinstance(frame, Response):
+        ps = decode_pack(frame)
+        if ps is None:
+            return f"{ts}  pack{frame.addr}  TRUNCATED response"
+        return (
+            f"{ts}  pack{frame.addr} {ps.serial}  SoC {ps.soc_pct}%  "
+            f"cells {ps.min_cell_mv}-{ps.max_cell_mv} (Δ{ps.max_cell_mv - ps.min_cell_mv})  "
+            f"mosfet {ps.mosfet_temp_c}C  cyc {ps.cycles}"
+        )
+    if isinstance(frame, Write):
+        key = (frame.reg, frame.value)
+        if key not in seen_writes:
+            seen_writes.add(key)
+            return f"{ts}  write addr{frame.addr} reg{frame.reg}=0x{frame.value:04x}  <-- NEW VALUE"
+        return None  # suppress the repeat keepalive
+    if isinstance(frame, Garbage):
+        d = diagnose_garbage(frame)
+        if d.length <= 3 and not d.looks_like_response:
+            return None  # inter-frame noise
+        tag = "  <-- COLLISION (master frame in a response)" if d.embedded_master_at is not None else ""
+        shape = "mangled-response" if d.looks_like_response else "fragment"
+        return f"{ts}  !!! CRC-FAIL {d.length}B {shape}{tag}"
+    return None  # requests: silent
+
+
+def monitor(host: str, port: int, raw_path: str | None = None) -> None:
+    """Live-monitor the sub-bus socket, decoding frames as they arrive and reconnecting on drop.
+
+    Prints each pack read, a NEW-VALUE line when a write value drifts, and a loud CRC-FAIL/COLLISION
+    line on corruption. With ``raw_path`` set, every received byte is also appended there for offline
+    analysis (raw contains real serials — keep it private).
+    """
+    import socket
+    import time
+
+    raw = open(raw_path, "ab") if raw_path else None  # noqa: SIM115 — long-lived append handle
+    seen_writes: set = set()
+    while True:
+        sock = None
+        try:
+            sock = socket.create_connection((host, port), timeout=30)
+            print(f"{time.strftime('%H:%M:%S')}  connected {host}:{port}", flush=True)
+
+            def read_chunk() -> bytes:
+                b = sock.recv(4096)
+                if b and raw:
+                    raw.write(b)
+                    raw.flush()
+                return b
+
+            for frame in stream_frames(read_chunk):
+                line = _live_line(frame, seen_writes)
+                if line:
+                    print(line, flush=True)
+            print(f"{time.strftime('%H:%M:%S')}  stream ended; reconnecting", flush=True)
+        except OSError as e:
+            print(f"{time.strftime('%H:%M:%S')}  disconnected: {e}; retry in 2s", flush=True)
+        finally:
+            if sock is not None:
+                sock.close()
+        time.sleep(2)
+
+
 if __name__ == "__main__":
+    import argparse
     import sys
 
-    raw = open(sys.argv[1], "rb").read() if len(sys.argv) > 1 else sys.stdin.buffer.read()
-    print(_summary(parse(raw)))
+    ap = argparse.ArgumentParser(description="GivEnergy battery sub-bus RTU decoder")
+    ap.add_argument("file", nargs="?", help="capture file to summarise (omit to read stdin)")
+    ap.add_argument("--monitor", metavar="HOST:PORT", help="live-monitor a socket, e.g. 192.168.46.177:8899")
+    ap.add_argument("--raw", metavar="FILE", help="with --monitor, also append raw bytes here for offline analysis")
+    args = ap.parse_args()
+
+    if args.monitor:
+        host, _, port = args.monitor.partition(":")
+        monitor(host, int(port or 8899), args.raw)
+    else:
+        data = open(args.file, "rb").read() if args.file else sys.stdin.buffer.read()
+        print(_summary(parse(data)))
