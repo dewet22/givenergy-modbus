@@ -22,6 +22,23 @@ from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 
 
+def test_hybrid_gen2_daily_battery_energy_routes_to_alt1():
+    """HYBRID_GEN2 reports daily battery energy at alt1 (IR36/37), like AC/AIO — not GEN1's alt2.
+
+    Regression for hass#293: on a Gen2 3.6 hybrid (dtc 0x2003, arm 920) the canonical daily
+    charge/discharge energy sensors read blank because GEN2 was undeclared in VALUE_SOURCES, so
+    they routed to None while the real data sat in alt1. Field capture: IR(36)=47 -> 4.7 kWh,
+    corroborated by e_ac_charge_today ~= 4.8 on that unit. Total stays deferred (None) — the Gen2
+    total register isn't confirmed (alt1 total read an implausible 0 on the capture).
+    """
+    inv = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x2003, HR(21): 920, IR(36): 47, IR(37): 55}))
+    assert resolve_model(0x2003, 920) is Model.HYBRID_GEN2
+    assert inv.e_battery_charge_today == 4.7
+    assert inv.e_battery_discharge_today == 5.5
+    assert inv.e_battery_charge_total is None  # deferred: Gen2 total register unconfirmed
+    assert inv.e_battery_discharge_total is None
+
+
 def test_first_battery_serial_number_removed():
     """first_battery_serial_number is gone from the model (#191).
 

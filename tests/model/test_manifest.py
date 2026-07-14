@@ -24,6 +24,16 @@ def test_battery_energy_source_migrated_rows():
     assert battery_energy_source(Model.ALL_IN_ONE, "today") == "alt1"
 
 
+def test_battery_energy_source_hybrid_gen2_daily_is_alt1():
+    """HYBRID_GEN2 daily energy is at alt1 (IR36/37) like AC/AIO, not GEN1's alt2 (hass#293).
+
+    Total stays undeclared — the Gen2 total register isn't confirmed (alt1 total read 0 on the
+    capture; the likely HR4111/4112 wasn't polled), so it routes to an honest None.
+    """
+    assert battery_energy_source(Model.HYBRID_GEN2, "today") == "alt1"
+    assert battery_energy_source(Model.HYBRID_GEN2, "total") is None
+
+
 def test_battery_energy_source_absent_is_none():
     """Absent model or metric routes to None — the honest no-evidence posture."""
     assert battery_energy_source(Model.AC, "total") is None
