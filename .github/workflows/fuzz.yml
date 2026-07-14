@@ -1,0 +1,39 @@
+name: Nightly Fuzz
+
+on:
+  schedule:
+    # Nightly deep property-based fuzz sweep of the framer + codec (04:30 UTC,
+    # offset from dev.yml's weekly 06:30 Monday run). Per-PR/weekly CI runs these
+    # property tests at a shallow example count for speed; this runs them deep
+    # against the latest main so a regression in the wire trust boundary surfaces
+    # within a day of landing rather than a week.
+    - cron: '30 4 * * *'
+
+  # Allows a manual run (optionally with a custom example count) from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      examples:
+        description: 'Hypothesis examples per property'
+        required: false
+        default: '5000'
+
+# Least privilege: read-only, like dev.yml. No coverage upload here.
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+        with:
+          enable-cache: true
+          python-version: '3.14'
+      - name: Deep fuzz sweep
+        env:
+          GE_FUZZ_EXAMPLES: ${{ github.event.inputs.examples || '5000' }}
+        run: uv run --group test tox -e fuzz
