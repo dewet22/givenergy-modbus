@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.2] - 2026-07-14
+
+### 🐛 Fixed
+
+- route HYBRID_GEN2 daily battery energy to alt1 (hass#293) (#406) ([5993264](https://github.com/dewet22/givenergy-modbus/commit/59932640a744225c3c3fe102d36315a23af1cd7d))
+
+### 🔧 Maintenance
+
+- HR111/112 is a battery C-rate (C/100), not inverter-power % ([00488ea](https://github.com/dewet22/givenergy-modbus/commit/00488ea7da255e8cfc57eeb246e7eec95ee8196e))
+- correct HR111/112 C-rate provenance (current app + #302 history) ([fda01f2](https://github.com/dewet22/givenergy-modbus/commit/fda01f2d53c191d09225c330f7f9cd778335ae08))
+- bump astral-sh/setup-uv from 8.2.0 to 8.3.2 (#402) ([fd9d015](https://github.com/dewet22/givenergy-modbus/commit/fd9d0155c7a76c782199d0047b553af2453f4aa5))
+- bump softprops/action-gh-release from 3.0.1 to 3.0.2 (#403) ([37e1071](https://github.com/dewet22/givenergy-modbus/commit/37e10719efcc6821c64529fd3fb5c6fd2c4b5c11))
+- add property-based fuzzing for framer and codec (#404) ([c460cb0](https://github.com/dewet22/givenergy-modbus/commit/c460cb0b4cfdf5466bf7efc65d908ae5eca648f0))
+- add nightly deep fuzz sweep for framer/codec properties (#405) ([aa1318f](https://github.com/dewet22/givenergy-modbus/commit/aa1318f39783178f0ed34982d7ccebc5e8b940bc))
+
 ## [2.12.1] - 2026-07-12
 
 ### ✨ Added
