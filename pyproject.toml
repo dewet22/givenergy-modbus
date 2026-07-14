@@ -219,7 +219,9 @@ commands =
 """
 
 [tool.codespell]
-ignore-words-list = "astroid"
 # The register inventory carries verbatim doc register names, typos and all
-# ("Freqency", "ModelL") — they're facts about the doc, not our prose.
+# ("Freqency", "ModelL") — they're facts about the doc, not our prose. They recur
+# in this file's own explanatory comment too, so ignore them by word (not only via
+# the register-JSON skip below, which can't cover pyproject.toml itself).
+ignore-words-list = "astroid,freqency,modell"
 skip = "./.*,./uv.lock,*/reference/registers/*.json,./docs/reference/registers/*.json"
