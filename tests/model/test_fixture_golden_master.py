@@ -230,6 +230,54 @@ async def test_hybrid_gen1_0x11_poll_capture_serves_full_banks_at_0x11():
     assert inv.e_inverter_out_today is None
 
 
+@pytest.mark.timeout(20)
+async def test_hybrid_gen2_classifies_and_routes_daily_energy_to_alt1():
+    """First HYBRID_GEN2 fixture (hass#293): 0x2003/fw920 → Model.HYBRID_GEN2 @ 0x11.
+
+    Gen2 3.6 hybrids were undeclared in ``manifest.VALUE_SOURCES``, so the canonical
+    daily battery-energy fields returned ``None`` (the missing HA sensors reported on
+    hass#293). This pins the 2.12.2 fix: daily charge/discharge route to alt1
+    (``IR36``/``IR37``) like AC/AIO, while the lifetime total stays an honest ``None``
+    (alt1's total register reads an implausible 0; the alt2/alt3 ``HR(4100+)`` total
+    candidates are never polled on any model). Also confirms ``IR44 == PV generation``
+    holds on GEN2 (DC-coupled), de-risking the manifest hybrid field-identity beyond GEN1.
+    """
+    plant = await _replay("hybrid_gen2_1_bat_a/hybrid_gen2_arm920_60s.log")
+    caps = _classify(plant)
+
+    assert caps.device_type is Model.HYBRID_GEN2
+    assert caps.inverter_address == 0x11
+    assert not caps.is_hv
+    assert not caps.is_ems
+
+    inv = plant.inverter
+    # Identity fingerprint — the Gen2 discriminator is arm_fw // 100 == 9.
+    assert inv.device_type_code == "2003"
+    assert inv.arm_firmware_version == 920
+    assert inv.inverter_max_power == 3600
+
+    # The hass#293 fix: daily battery energy routes to alt1 (IR36/37), not GEN1's alt2.
+    assert inv.e_battery_charge_today == 4.7
+    assert inv.e_battery_discharge_today == 5.5
+    assert inv.e_battery_charge_today_alt1 == 4.7
+    assert inv.e_battery_charge_today_alt2 == 0.0  # GEN1's daily source reads 0 here
+    # Lifetime total deferred — honest None (see the fixture README).
+    assert inv.e_battery_charge_total is None
+    assert inv.e_battery_discharge_total is None
+
+    # IR44 == PV generation on GEN2 (DC-coupled), same as GEN1 — the #293 override is
+    # daily-energy only and doesn't disturb the PV identity.
+    assert inv.is_ac_coupled is False
+    assert inv.e_pv_generation_today == 28.6
+    assert inv.e_inverter_out_today is None
+
+    # Characterisation (not asserted-correct): a two-string PV Gen2 reports num_mppt == 0
+    # and num_phases == 0. Pinned to flag if a later decode fix changes it — a second Gen2
+    # is needed to tell "GE reports 0 here" from a Gen2-specific decode gap.
+    assert inv.num_mppt == 0
+    assert inv.num_phases == 0
+
+
 def test_inverter_address_matches_classification_for_all_fixtures():
     """Belt-and-braces: the model→address map agrees with where the library polls.
 
@@ -239,6 +287,7 @@ def test_inverter_address_matches_classification_for_all_fixtures():
     assert inverter_address_for(Model.EMS) == 0x11
     assert inverter_address_for(Model.ALL_IN_ONE) == 0x11
     assert inverter_address_for(Model.HYBRID_GEN1) == 0x11
+    assert inverter_address_for(Model.HYBRID_GEN2) == 0x11
 
 
 @pytest.mark.parametrize(
@@ -248,6 +297,7 @@ def test_inverter_address_matches_classification_for_all_fixtures():
         ("hybrid_2_bat_a/hybrid_gen1_arm449_givbat82_givbat95gen3_60min.log", 4),
         ("ems_2_inv_3_bat_a/ems_arm1036_30min.log", 0),
         ("ems_2_inv_3_bat_a/ac_arm282_1x_givbat512gen3_30min.log", 0),
+        ("hybrid_gen2_1_bat_a/hybrid_gen2_arm920_60s.log", 0),
     ],
 )
 async def test_fixture_error_response_count(relpath: str, expected_errors: int):
