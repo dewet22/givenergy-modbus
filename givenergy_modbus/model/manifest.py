@@ -31,9 +31,14 @@ from givenergy_modbus.model.inverter import Model
 #
 # Evidence (tests/fixtures/captures/): GEN1 populates the alt2 daily registers as
 # authoritative and IR alt1 totals; AC/AIO populate alt1 daily, totals unknown → None.
+# GEN2 populates the alt1 daily registers (IR36/37) like AC/AIO — NOT GEN1's alt2 (hass#293
+# capture: alt1 daily 4.7/5.5 kWh, corroborated by e_ac_charge_today ~= 4.8; alt2 daily read 0).
+# GEN2 total is deferred: alt1 total (IR180/181) read an implausible 0 on that capture and the
+# likely register (HR4111/4112) wasn't polled — undeclared → honest None until a fuller capture.
 VALUE_SOURCES: dict[str, dict[Model, str]] = {
     "battery_energy_today": {
         Model.HYBRID_GEN1: "alt2",
+        Model.HYBRID_GEN2: "alt1",
         Model.AC: "alt1",
         Model.ALL_IN_ONE: "alt1",
     },
