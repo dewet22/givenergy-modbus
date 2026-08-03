@@ -44,7 +44,8 @@ no-op: the device either declines it or ignores it, and nothing changes either w
 
     uv run python tests/debug/probe_bms_register_map.py <inverter-host> [addr ...] [--sweep]
 
-With no addresses given it tries the LV battery range plus the HV BCU/BMU bases.
+With no addresses given it tries a sample of the LV battery range (0x32-0x34, 0x31)
+plus the HV BCU/BMU bases; pass addresses explicitly to cover 0x35-0x37 as well.
 Addresses are hex, e.g. ``0x32``.
 
 Note that on systems where the inverter presents a facade for the battery controllers,
@@ -55,6 +56,7 @@ worth knowing, and shows up as a narrow served window.
 from __future__ import annotations
 
 import asyncio
+import logging
 import sys
 
 from givenergy_modbus.client.client import Client
@@ -74,6 +76,32 @@ ANCHOR_UNMAPPED = 0x8000  # far above anything plausible
 OK, ERR, DEAD = "data", "exception", "no-reply"
 
 
+class _ErrorResponseWatcher(logging.Handler):
+    """Detect a Modbus exception response, which the client will not hand back.
+
+    ``Client.send_request_and_await_response`` never returns a response with
+    ``error`` set: on receiving one it logs, consumes a retry, and ultimately raises
+    ``TimeoutError``. So at that API an exception response and dead silence are
+    indistinguishable - inspecting the returned PDU can never see an exception,
+    because an erroring request never returns a PDU at all.
+
+    The distinction does survive in the ERROR log the client emits before retrying,
+    so watch for that instead. Getting this wrong silently reclassifies every
+    exception as a no-reply, which inverts the whole point of the script.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(logging.ERROR)
+        self.saw_error_response = False
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if "error response" in record.getMessage().lower():
+            self.saw_error_response = True
+
+
+_WATCHER = _ErrorResponseWatcher()
+
+
 async def probe(
     client: Client, addr: int, base: int, count: int, attempts: int = ATTEMPTS, timeout: float = TIMEOUT
 ) -> str:
@@ -81,20 +109,26 @@ async def probe(
 
     Retries only the no-reply case: contention from GivTCP or the phone app shows up
     as a timeout and would otherwise masquerade as a meaningful negative. An exception
-    response is a definitive answer and is returned immediately.
+    is definitive and returns at once.
+
+    ``retries=0`` matters: with retries left, the client would retry an error response
+    before giving up, muddying which attempt produced what.
     """
     for _ in range(attempts):
+        _WATCHER.saw_error_response = False
         try:
-            resp = await client.send_request_and_await_response(
+            await client.send_request_and_await_response(
                 ReadHoldingRegistersRequest(base_register=base, register_count=count, device_address=addr),
                 timeout=timeout,
-                retries=1,
+                retries=0,
                 warn_timeout=False,
             )
         except TimeoutError:
+            if _WATCHER.saw_error_response:
+                return ERR
             await asyncio.sleep(0.4)
             continue
-        return ERR if getattr(resp, "error", False) else OK
+        return OK
     return DEAD
 
 
@@ -147,6 +181,9 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
     for i in edges:
         for b in (bases[i - 1], bases[i]):
             results[b] = await probe(client, addr, b, 1, attempts=3, timeout=3.0)
+    # Recompute: a confirmation can dissolve an edge (or expose a new one), and
+    # bisecting a boundary that no longer exists would print a meaningless result.
+    edges = [i for i in range(1, len(bases)) if results[bases[i]] != results[bases[i - 1]]]
 
     runs: list[tuple[int, int, str]] = []
     for base in bases:
@@ -185,8 +222,16 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
 
 
 async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
+    # Route the client's logging into the watcher only. Without propagate=False the
+    # "Received error response" lines - which are expected here, not faults - would
+    # print over the results table.
+    client_log = logging.getLogger("givenergy_modbus")
+    client_log.addHandler(_WATCHER)
+    client_log.propagate = False
+
     client = Client(host, 8899)
     await client.connect()
+    sweepable: list[int] = []
     try:
         print(f"probing {host}:8899 - READ ONLY, {ATTEMPTS} attempts per probe, {TIMEOUT}s timeout\n")
         print(f"{'addr':>5}  {'HR(0,60)':>9}  {'HR(0,1)':>9}  {'HR(0x486,1)':>12}  {'HR(0x8000,1)':>13}  verdict")
@@ -198,6 +243,10 @@ async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
             single = await probe(client, addr, 0, 1)
             mapped = await probe(client, addr, ANCHOR_MAPPED, 1)
             unmapped = await probe(client, addr, ANCHOR_UNMAPPED, 1)
+            # Only worth sweeping where single-register reads actually work; a sweep
+            # built on HR(n,1) is meaningless if the device rejects that count.
+            if single == OK:
+                sweepable.append(addr)
             print(
                 f"  0x{addr:02x}  {baseline:>9}  {single:>9}  {mapped:>12}  {unmapped:>13}  "
                 f"{verdict(baseline, single, mapped, unmapped)}"
@@ -211,12 +260,13 @@ async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
             "  INAPPLICABLE -> anchors silent; re-run with --sweep <addr> to map the served range."
         )
         if do_sweep:
-            for addr in addrs:
-                if await probe(client, addr, 0, 60) != DEAD:
-                    await sweep(client, addr)
-                    break
+            if sweepable:
+                await sweep(client, sweepable[0])
+            else:
+                print("\nnothing to sweep: no address accepted a single-register read.")
     finally:
         await client.close()
+        client_log.removeHandler(_WATCHER)
 
 
 if __name__ == "__main__":
