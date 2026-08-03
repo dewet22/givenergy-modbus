@@ -64,8 +64,9 @@ trailing unit digits zeroed):
 
 ## Origin
 
-A single 60-second poll cycle from the hass#293 reporter's system
-(`crg-n`), 2026-07-13, captured with `givenergy-cli capture` and already
+A single 60-second poll cycle posted publicly by reporter `josephd168` on
+[dewet22/givenergy-hass#293](https://github.com/dewet22/givenergy-hass/issues/293)
+(2026-07-13), captured with `givenergy-cli capture` and already
 redacted at source (unit digits zeroed; our `FrameRedactor` re-run is a
 no-op, verified zero unredacted serials).
 
