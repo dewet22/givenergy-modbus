@@ -12,6 +12,7 @@ from givenergy_modbus.model.manifest import (
     has_capability,
     has_extended_slots,
     ir44_is_inverter_output,
+    pv_string_vi_is_ac_derived,
     write_safe_registers,
 )
 
@@ -52,6 +53,96 @@ def test_ir44_identity_overrides():
     assert ir44_is_inverter_output(Model.HYBRID_GEN1) is False
     assert ir44_is_inverter_output(Model.HYBRID_GEN3) is False
     assert ir44_is_inverter_output(Model.GATEWAY) is False  # unlisted → status quo
+
+
+def test_pv_string_vi_is_ac_derived_overrides():
+    """v_pv*/i_pv* are not string measurements where PV is metered AC-side (hass#281).
+
+    Evidence is strongest on the AIO: across all 49 states of the `aio_a` fw612 capture
+    `v_pv1` is bit-identical to `v_ac1` (tracking together over nine distinct voltages)
+    while `i_pv1` takes just two values against 24 distinct `p_pv1` values — neither is
+    a coherent string reading. On DC hybrids the V*I product reconciles with `p_pv1`
+    and `v_pv1` sits 43-142 V clear of mains, so they keep the fields.
+
+    Model.AC is included on the structural argument rather than corpus evidence: an
+    AC-coupled unit has no DC string for those registers to describe. No fixture has a
+    generating AC sample (every AC capture reads p_pv1 == 0).
+
+    AC_3PH is deliberately ABSENT despite being is_ac_coupled: ThreePhaseInverter
+    carries no model validators, so the routing below never fires there and listing it
+    would be a silent no-op rather than a fix.
+    """
+    assert pv_string_vi_is_ac_derived(Model.ALL_IN_ONE) is True
+    assert pv_string_vi_is_ac_derived(Model.AC) is True
+    assert pv_string_vi_is_ac_derived(Model.HYBRID_GEN1) is False
+    assert pv_string_vi_is_ac_derived(Model.HYBRID_GEN2) is False
+    assert pv_string_vi_is_ac_derived(Model.HYBRID_HV_GEN3) is False
+    assert pv_string_vi_is_ac_derived(Model.AC_3PH) is False  # see docstring
+    assert pv_string_vi_is_ac_derived(Model.GATEWAY) is False  # unlisted → status quo
+
+
+def _pv_inverter(dtc_hex: str, arm_fw: int):
+    """Build a SinglePhaseInverter with the PV string registers primed."""
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR, IR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    cache = RegisterCache(
+        {
+            HR(0): int(dtc_hex, 16),
+            HR(21): arm_fw,
+            IR(1): 2457,  # v_pv1 245.7
+            IR(2): 3808,  # v_pv2 380.8
+            IR(8): 30,  # i_pv1 3.0
+            IR(9): 52,  # i_pv2 5.2
+            IR(18): 862,  # p_pv1
+            IR(20): 674,  # p_pv2
+        }
+    )
+    return SinglePhaseInverter.from_register_cache(cache)
+
+
+def test_pv_string_vi_suppressed_on_aio_power_retained():
+    """On the AIO the V/I pair goes None while the power figures stay.
+
+    The power members carry the only real generation reading such an install has.
+    """
+    inv = _pv_inverter("8001", 612)  # ALL_IN_ONE
+    assert inv.v_pv1 is None
+    assert inv.v_pv2 is None
+    assert inv.i_pv1 is None
+    assert inv.i_pv2 is None
+    assert inv.p_pv1 == 862
+    assert inv.p_pv2 == 674
+
+
+def test_pv_string_vi_suppressed_on_ac_coupled():
+    """Model.AC has no DC string, so the same suppression applies."""
+    inv = _pv_inverter("3001", 282)  # Model.AC
+    assert inv.v_pv1 is None
+    assert inv.i_pv1 is None
+    assert inv.p_pv1 == 862
+
+
+def test_pv_string_vi_retained_on_dc_hybrids():
+    """DC hybrids keep the full triplet — the fields are genuine there."""
+    for dtc, fw in (("2001", 449), ("2003", 920), ("8102", 500)):
+        inv = _pv_inverter(dtc, fw)
+        assert inv.v_pv1 == pytest.approx(245.7), dtc
+        assert inv.v_pv2 == pytest.approx(380.8), dtc
+        assert inv.i_pv1 == pytest.approx(3.0), dtc
+        assert inv.i_pv2 == pytest.approx(5.2), dtc
+
+
+def test_pv_string_vi_suppression_is_idempotent_on_roundtrip():
+    """model_validate(model_dump()) must not resurrect the suppressed fields."""
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+
+    inv = _pv_inverter("8001", 612)
+    again = SinglePhaseInverter.model_validate(inv.model_dump())
+    assert again.v_pv1 is None
+    assert again.i_pv1 is None
+    assert again.p_pv1 == 862
 
 
 def _inverter(dtc_hex: str, arm_fw: int, ir44: int = 77, ir45: int = 1, ir46: int = 17083):

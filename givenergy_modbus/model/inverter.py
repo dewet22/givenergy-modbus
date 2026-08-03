@@ -1065,7 +1065,7 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         source field actually carries one, and re-validating a dumped model (where
         e_pv_generation_* is already None) passes the moved values through untouched.
         """
-        from givenergy_modbus.model.manifest import ir44_is_inverter_output
+        from givenergy_modbus.model.manifest import ir44_is_inverter_output, pv_string_vi_is_ac_derived
 
         if not isinstance(values, dict):
             return values
@@ -1085,6 +1085,13 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
                 if values.get(src) is not None:
                     values[dst] = values.pop(src)
                     values[src] = None
+        if pv_string_vi_is_ac_derived(model, arm_fw=int(arm_fw)):
+            # Suppressed rather than relocated: v_ac1 already carries the voltage these
+            # registers echo, so there is no destination field worth adding. The power
+            # and energy members of the PV family are left alone — they are the only
+            # generation figure an AC-metered install has (hass#281).
+            for field in ("v_pv1", "v_pv2", "i_pv1", "i_pv2"):
+                values[field] = None
         return values
 
     def _battery_energy(self, direction: str, metric: str) -> float | None:

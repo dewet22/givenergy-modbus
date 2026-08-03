@@ -67,12 +67,39 @@ def battery_energy_source(model: Model, metric: str, arm_fw: int | None = None) 
 # are ThreePhase-decoded and never reach the SinglePhaseInverter validator.
 FIELD_IDENTITY: dict[str, frozenset[Model]] = {
     "ir44_inverter_out": frozenset({Model.AC, Model.ALL_IN_ONE}),
+    # Models where PV is metered on the AC side, so IR(1)/IR(2) and IR(8)/IR(9) do not
+    # describe a DC string even though the power/energy members of the family do carry
+    # real generation figures (hass#281).
+    #
+    # Evidence, strongest first. On the AIO (`aio_a` fw612 capture) `v_pv1` is
+    # bit-identical to `v_ac1` in all 49 states, tracking it across nine distinct
+    # voltages, while `i_pv1` takes only two values against 24 distinct `p_pv1` values —
+    # so neither reading is a coherent string measurement, and `p_pv1 != v_pv1 * i_pv1`.
+    # On DC hybrids the same product reconciles with `p_pv1` (GEN1, GEN2, HYBRID_HV_GEN3)
+    # and `v_pv1` sits 43-142 V clear of mains, so those keep the fields.
+    #
+    # Model.AC is listed on the structural argument rather than corpus evidence: an
+    # AC-coupled unit has no DC string for these registers to describe. Every AC capture
+    # we hold reads `p_pv1 == 0`, so none of them can corroborate it directly; the one
+    # live sample (a GIV-AC3.0 on hass#281) has v_pv1 within ~1.6 V of mains rather than
+    # exactly equal, which is weaker than the AIO signature.
+    #
+    # AC_3PH is deliberately absent despite being is_ac_coupled. This row is applied by
+    # SinglePhaseInverter._apply_field_identity, and ThreePhaseInverter carries no model
+    # validators at all, so listing AC_3PH would read as handled while doing nothing.
+    # Extending the routing to three-phase is its own piece of work.
+    "pv_string_vi_ac_derived": frozenset({Model.AC, Model.ALL_IN_ONE}),
 }
 
 
 def ir44_is_inverter_output(model: Model, arm_fw: int | None = None) -> bool:
     """True when IR44/IR45-46 carry inverter output (not PV) on this model (#293)."""
     return model in FIELD_IDENTITY["ir44_inverter_out"]
+
+
+def pv_string_vi_is_ac_derived(model: Model, arm_fw: int | None = None) -> bool:
+    """True when v_pv*/i_pv* are AC-side artefacts rather than string readings (hass#281)."""
+    return model in FIELD_IDENTITY["pv_string_vi_ac_derived"]
 
 
 # Consumption-family evidence gate (#293): a candidate corrected-AIO consumption
