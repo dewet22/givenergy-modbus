@@ -62,9 +62,16 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from datetime import datetime
+from typing import Any
 
 from givenergy_modbus.client.client import Client
-from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
+from givenergy_modbus.model.plant import Plant
+from givenergy_modbus.pdu import (
+    ClientIncomingMessage,
+    ReadHoldingRegistersRequest,
+    ReadInputRegistersRequest,
+)
 
 # LV packs 0x32-0x37, LV BCU 0x31, HV BMU 0x50+, HV BCU 0x70+ (see model/plant.py,
 # model/hv_bcu.py). Kept short so an unattended run stays quick.
@@ -105,29 +112,30 @@ class _ErrorResponseWatcher:
     answer to our own probe.
     """
 
-    def __init__(self, plant: object) -> None:
+    def __init__(self, plant: Plant) -> None:
         self.errors: set[tuple[int, int, bool]] = set()
         # Patch the class, not the instance: Plant is a pydantic model, and assigning
         # an attribute on the instance raises "object has no field".
-        self._cls = type(plant)
+        self._cls: type[Plant] = type(plant)
         self._original = self._cls.update
 
     def install(self) -> None:
         original, errors = self._original, self.errors
 
-        def wrapped(plant_self: object, pdu: object, **kwargs: object) -> object:
+        # Signature must mirror Plant.update exactly, or mypy rejects the assignment.
+        def wrapped(plant_self: Plant, pdu: ClientIncomingMessage, *, received_at: datetime | None = None) -> Any:
             if getattr(pdu, "error", False):
                 addr = getattr(pdu, "device_address", None)
                 base = getattr(pdu, "base_register", None)
                 if addr is not None and base is not None:
                     is_input = "Input" in type(pdu).__name__
                     errors.add((addr, base, is_input))
-            return original(plant_self, pdu, **kwargs)
+            return original(plant_self, pdu, received_at=received_at)
 
-        self._cls.update = wrapped
+        self._cls.update = wrapped  # type: ignore[assignment]
 
     def remove(self) -> None:
-        self._cls.update = self._original
+        self._cls.update = self._original  # type: ignore[assignment]
 
 
 async def probe(
