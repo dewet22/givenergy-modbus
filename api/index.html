@@ -27276,7 +27276,14 @@ in later 2.x minors — see #75.</p>
 <span class="normal">1618</span>
 <span class="normal">1619</span>
 <span class="normal">1620</span>
-<span class="normal">1621</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
+<span class="normal">1621</span>
+<span class="normal">1622</span>
+<span class="normal">1623</span>
+<span class="normal">1624</span>
+<span class="normal">1625</span>
+<span class="normal">1626</span>
+<span class="normal">1627</span>
+<span class="normal">1628</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SinglePhaseInverter</span><span class="p">(</span>  <span class="c1"># type: ignore[valid-type,misc]</span>
     <span class="n">_SinglePhaseInverterBase</span><span class="p">,</span> <span class="n">_InverterCommands</span><span class="p">,</span> <span class="n">RegisterMetadataMixin</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;GivEnergy single-phase inverter data model.</span>
@@ -27325,7 +27332,7 @@ in later 2.x minors — see #75.</p>
 <span class="sd">        source field actually carries one, and re-validating a dumped model (where</span>
 <span class="sd">        e_pv_generation_* is already None) passes the moved values through untouched.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">ir44_is_inverter_output</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">givenergy_modbus.model.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">ir44_is_inverter_output</span><span class="p">,</span> <span class="n">pv_string_vi_is_ac_derived</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">values</span>
@@ -27345,6 +27352,13 @@ in later 2.x minors — see #75.</p>
                 <span class="k">if</span> <span class="n">values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">src</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">values</span><span class="p">[</span><span class="n">dst</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
                     <span class="n">values</span><span class="p">[</span><span class="n">src</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">pv_string_vi_is_ac_derived</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">arm_fw</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">arm_fw</span><span class="p">)):</span>
+            <span class="c1"># Suppressed rather than relocated: v_ac1 already carries the voltage these</span>
+            <span class="c1"># registers echo, so there is no destination field worth adding. The power</span>
+            <span class="c1"># and energy members of the PV family are left alone — they are the only</span>
+            <span class="c1"># generation figure an AC-metered install has (hass#281).</span>
+            <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;v_pv1&quot;</span><span class="p">,</span> <span class="s2">&quot;v_pv2&quot;</span><span class="p">,</span> <span class="s2">&quot;i_pv1&quot;</span><span class="p">,</span> <span class="s2">&quot;i_pv2&quot;</span><span class="p">):</span>
+                <span class="n">values</span><span class="p">[</span><span class="n">field</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">return</span> <span class="n">values</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_battery_energy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
@@ -30328,14 +30342,7 @@ this one rather than raising or merging.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>givenergy_modbus/model/inverter.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1624</span>
-<span class="normal">1625</span>
-<span class="normal">1626</span>
-<span class="normal">1627</span>
-<span class="normal">1628</span>
-<span class="normal">1629</span>
-<span class="normal">1630</span>
-<span class="normal">1631</span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">1631</span>
 <span class="normal">1632</span>
 <span class="normal">1633</span>
 <span class="normal">1634</span>
@@ -30356,7 +30363,14 @@ this one rather than raising or merging.</p>
 <span class="normal">1649</span>
 <span class="normal">1650</span>
 <span class="normal">1651</span>
-<span class="normal">1652</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="normal">1652</span>
+<span class="normal">1653</span>
+<span class="normal">1654</span>
+<span class="normal">1655</span>
+<span class="normal">1656</span>
+<span class="normal">1657</span>
+<span class="normal">1658</span>
+<span class="normal">1659</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__getattr__</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;PEP 562 module attribute deprecation shim.</span>
 
 <span class="sd">    Serves two deprecated names — the pre-existing `Inverter` rename alias, and</span>
