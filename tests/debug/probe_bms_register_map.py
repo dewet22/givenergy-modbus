@@ -76,46 +76,74 @@ ANCHOR_UNMAPPED = 0x8000  # far above anything plausible
 OK, ERR, DEAD = "data", "exception", "no-reply"
 
 
-class _ErrorResponseWatcher(logging.Handler):
-    """Detect a Modbus exception response, which the client will not hand back.
+class _ErrorResponseWatcher:
+    """Observe exception responses, which never reach the caller of the client API.
 
-    ``Client.send_request_and_await_response`` never returns a response with
-    ``error`` set: on receiving one it logs, consumes a retry, and ultimately raises
-    ``TimeoutError``. So at that API an exception response and dead silence are
-    indistinguishable - inspecting the returned PDU can never see an exception,
-    because an erroring request never returns a PDU at all.
+    Two layers hide them, and both have to be bypassed:
 
-    The distinction does survive in the ERROR log the client emits before retrying,
-    so watch for that instead. Getting this wrong silently reclassifies every
-    exception as a no-reply, which inverts the whole point of the script.
+    1. ``send_request_and_await_response`` never returns a response with ``error``
+       set - it logs, consumes a retry, and raises ``TimeoutError``. So inspecting
+       the returned PDU can never see an exception.
+
+    2. More importantly, an error response usually does not *match* the request it
+       answers. A response is routed to its waiting future by shape hash, which is
+       ``(device_address, base_register, register_count)`` - and observed error
+       responses carry ``register_count=0`` rather than echoing the count asked for
+       (see the ``hybrid_2_bat_a`` and ``aio_a`` captures). The hashes differ, the
+       future is never resolved, and even the client's own error log never fires.
+
+    ``Plant.update()`` is called for *every* decoded message before any shape
+    matching, so wrapping it sees exception responses whichever way they arrive.
+
+    Responses are recorded by ``(device_address, base_register)`` rather than as a
+    bare flag: the dongle fans every response out to all connected clients, so an
+    exception provoked by GivTCP or the phone app would otherwise be misread as an
+    answer to our own probe.
     """
 
-    def __init__(self) -> None:
-        super().__init__(logging.ERROR)
-        self.saw_error_response = False
+    def __init__(self, plant: object) -> None:
+        self.errors: set[tuple[int, int]] = set()
+        # Patch the class, not the instance: Plant is a pydantic model, and assigning
+        # an attribute on the instance raises "object has no field".
+        self._cls = type(plant)
+        self._original = self._cls.update
 
-    def emit(self, record: logging.LogRecord) -> None:
-        if "error response" in record.getMessage().lower():
-            self.saw_error_response = True
+    def install(self) -> None:
+        original, errors = self._original, self.errors
 
+        def wrapped(plant_self: object, pdu: object, **kwargs: object) -> object:
+            if getattr(pdu, "error", False):
+                addr = getattr(pdu, "device_address", None)
+                base = getattr(pdu, "base_register", None)
+                if addr is not None and base is not None:
+                    errors.add((addr, base))
+            return original(plant_self, pdu, **kwargs)
 
-_WATCHER = _ErrorResponseWatcher()
+        self._cls.update = wrapped
+
+    def remove(self) -> None:
+        self._cls.update = self._original
 
 
 async def probe(
-    client: Client, addr: int, base: int, count: int, attempts: int = ATTEMPTS, timeout: float = TIMEOUT
+    client: Client,
+    watcher: _ErrorResponseWatcher,
+    addr: int,
+    base: int,
+    count: int,
+    attempts: int = ATTEMPTS,
+    timeout: float = TIMEOUT,
 ) -> str:
     """Classify one read as OK (data), ERR (Modbus exception) or DEAD (no reply).
 
     Retries only the no-reply case: contention from GivTCP or the phone app shows up
-    as a timeout and would otherwise masquerade as a meaningful negative. An exception
-    is definitive and returns at once.
+    as a timeout and would otherwise masquerade as a meaningful negative.
 
-    ``retries=0`` matters: with retries left, the client would retry an error response
-    before giving up, muddying which attempt produced what.
+    ``retries=0`` matters: with retries left the client would re-send after an error
+    response, muddying which attempt produced what.
     """
     for _ in range(attempts):
-        _WATCHER.saw_error_response = False
+        watcher.errors.discard((addr, base))
         try:
             await client.send_request_and_await_response(
                 ReadHoldingRegistersRequest(base_register=base, register_count=count, device_address=addr),
@@ -124,7 +152,7 @@ async def probe(
                 warn_timeout=False,
             )
         except TimeoutError:
-            if _WATCHER.saw_error_response:
+            if (addr, base) in watcher.errors:
                 return ERR
             await asyncio.sleep(0.4)
             continue
@@ -153,7 +181,9 @@ def verdict(baseline: str, single: str, mapped: str, unmapped: str) -> str:
     return "INCONCLUSIVE- mixed result, see columns"
 
 
-async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20) -> None:
+async def sweep(
+    client: Client, watcher: _ErrorResponseWatcher, addr: int, limit: int = 0x900, step: int = 0x20
+) -> None:
     """Map which single registers answer at ``addr``, to locate the served extent.
 
     Run when the anchors both come back silent. A clean cutoff at a round boundary
@@ -172,7 +202,7 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
     )
     results: dict[int, str] = {}
     for base in bases:
-        results[base] = await probe(client, addr, base, 1, attempts=1, timeout=1.5)
+        results[base] = await probe(client, watcher, addr, base, 1, attempts=1, timeout=1.5)
         await asyncio.sleep(0.1)
 
     edges = [i for i in range(1, len(bases)) if results[bases[i]] != results[bases[i - 1]]]
@@ -180,7 +210,7 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
         print(f"  confirming {len(edges) * 2} addresses either side of {len(edges)} transition(s)...")
     for i in edges:
         for b in (bases[i - 1], bases[i]):
-            results[b] = await probe(client, addr, b, 1, attempts=3, timeout=3.0)
+            results[b] = await probe(client, watcher, addr, b, 1, attempts=3, timeout=3.0)
     # Recompute: a confirmation can dissolve an edge (or expose a new one), and
     # bisecting a boundary that no longer exists would print a meaningless result.
     edges = [i for i in range(1, len(bases)) if results[bases[i]] != results[bases[i - 1]]]
@@ -204,7 +234,7 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
         lo_state, hi_state = results[lo], results[hi]
         while hi - lo > 1:
             mid = (lo + hi) // 2
-            if await probe(client, addr, mid, 1, attempts=2, timeout=3.0) == lo_state:
+            if await probe(client, watcher, addr, mid, 1, attempts=2, timeout=3.0) == lo_state:
                 lo = mid
             else:
                 hi = mid
@@ -222,27 +252,25 @@ async def sweep(client: Client, addr: int, limit: int = 0x900, step: int = 0x20)
 
 
 async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
-    # Route the client's logging into the watcher only. Without propagate=False the
-    # "Received error response" lines - which are expected here, not faults - would
-    # print over the results table.
-    client_log = logging.getLogger("givenergy_modbus")
-    client_log.addHandler(_WATCHER)
-    client_log.propagate = False
+    # Expected error responses would otherwise print over the results table.
+    logging.getLogger("givenergy_modbus").propagate = False
 
     client = Client(host, 8899)
     await client.connect()
+    watcher = _ErrorResponseWatcher(client.plant)
+    watcher.install()
     sweepable: list[int] = []
     try:
         print(f"probing {host}:8899 - READ ONLY, {ATTEMPTS} attempts per probe, {TIMEOUT}s timeout\n")
         print(f"{'addr':>5}  {'HR(0,60)':>9}  {'HR(0,1)':>9}  {'HR(0x486,1)':>12}  {'HR(0x8000,1)':>13}  verdict")
         for addr in addrs:
-            baseline = await probe(client, addr, 0, 60)
+            baseline = await probe(client, watcher, addr, 0, 60)
             if baseline == DEAD:
                 print(f"  0x{addr:02x}  {baseline:>9}  {'-':>9}  {'-':>12}  {'-':>13}  {verdict(baseline, '', '', '')}")
                 continue
-            single = await probe(client, addr, 0, 1)
-            mapped = await probe(client, addr, ANCHOR_MAPPED, 1)
-            unmapped = await probe(client, addr, ANCHOR_UNMAPPED, 1)
+            single = await probe(client, watcher, addr, 0, 1)
+            mapped = await probe(client, watcher, addr, ANCHOR_MAPPED, 1)
+            unmapped = await probe(client, watcher, addr, ANCHOR_UNMAPPED, 1)
             # Only worth sweeping where single-register reads actually work; a sweep
             # built on HR(n,1) is meaningless if the device rejects that count.
             if single == OK:
@@ -261,12 +289,12 @@ async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
         )
         if do_sweep:
             if sweepable:
-                await sweep(client, sweepable[0])
+                await sweep(client, watcher, sweepable[0])
             else:
                 print("\nnothing to sweep: no address accepted a single-register read.")
     finally:
+        watcher.remove()
         await client.close()
-        client_log.removeHandler(_WATCHER)
 
 
 if __name__ == "__main__":
