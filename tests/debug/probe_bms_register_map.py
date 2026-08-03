@@ -42,7 +42,11 @@ Verdict:
 NO WRITES WHATSOEVER - every request is a read, and reading an unserved address is a
 no-op: the device either declines it or ignores it, and nothing changes either way.
 
-    uv run python tests/debug/probe_bms_register_map.py <inverter-host> [addr ...] [--sweep]
+    uv run python tests/debug/probe_bms_register_map.py <inverter-host> [addr ...] [--sweep] [--selftest]
+
+``--selftest`` first establishes whether an exception response can reach this
+script at all, using a read this project's captures record as error-responding.
+Run it before trusting any no-reply result.
 
 With no addresses given it tries a sample of the LV battery range (0x32-0x34, 0x31)
 plus the HV BCU/BMU bases; pass addresses explicitly to cover 0x35-0x37 as well.
@@ -60,7 +64,7 @@ import logging
 import sys
 
 from givenergy_modbus.client.client import Client
-from givenergy_modbus.pdu import ReadHoldingRegistersRequest
+from givenergy_modbus.pdu import ReadHoldingRegistersRequest, ReadInputRegistersRequest
 
 # LV packs 0x32-0x37, LV BCU 0x31, HV BMU 0x50+, HV BCU 0x70+ (see model/plant.py,
 # model/hv_bcu.py). Kept short so an unattended run stays quick.
@@ -102,7 +106,7 @@ class _ErrorResponseWatcher:
     """
 
     def __init__(self, plant: object) -> None:
-        self.errors: set[tuple[int, int]] = set()
+        self.errors: set[tuple[int, int, bool]] = set()
         # Patch the class, not the instance: Plant is a pydantic model, and assigning
         # an attribute on the instance raises "object has no field".
         self._cls = type(plant)
@@ -116,7 +120,8 @@ class _ErrorResponseWatcher:
                 addr = getattr(pdu, "device_address", None)
                 base = getattr(pdu, "base_register", None)
                 if addr is not None and base is not None:
-                    errors.add((addr, base))
+                    is_input = "Input" in type(pdu).__name__
+                    errors.add((addr, base, is_input))
             return original(plant_self, pdu, **kwargs)
 
         self._cls.update = wrapped
@@ -133,6 +138,7 @@ async def probe(
     count: int,
     attempts: int = ATTEMPTS,
     timeout: float = TIMEOUT,
+    input_regs: bool = False,
 ) -> str:
     """Classify one read as OK (data), ERR (Modbus exception) or DEAD (no reply).
 
@@ -142,17 +148,18 @@ async def probe(
     ``retries=0`` matters: with retries left the client would re-send after an error
     response, muddying which attempt produced what.
     """
+    request_cls = ReadInputRegistersRequest if input_regs else ReadHoldingRegistersRequest
     for _ in range(attempts):
-        watcher.errors.discard((addr, base))
+        watcher.errors.discard((addr, base, input_regs))
         try:
             await client.send_request_and_await_response(
-                ReadHoldingRegistersRequest(base_register=base, register_count=count, device_address=addr),
+                request_cls(base_register=base, register_count=count, device_address=addr),
                 timeout=timeout,
                 retries=0,
                 warn_timeout=False,
             )
         except TimeoutError:
-            if (addr, base) in watcher.errors:
+            if (addr, base, input_regs) in watcher.errors:
                 return ERR
             await asyncio.sleep(0.4)
             continue
@@ -251,7 +258,57 @@ async def sweep(
         )
 
 
-async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
+async def selftest(client: Client, watcher: _ErrorResponseWatcher, addr: int) -> None:
+    """Prove whether an exception response can reach this script at all.
+
+    Every negative result so far has been a no-reply, which is ambiguous: it could
+    mean the device stays silent, or that the exception is real but something between
+    here and the device swallows it. Two fixes aimed at that ambiguity changed
+    nothing, so before trusting any further negative, establish the positive case.
+
+    The control comes from this project's own capture corpus rather than a guess. In
+    ``hybrid_2_bat_a`` a Gen1 system with two packs answered ``IR(236, 60)`` at 0x32
+    with an error response, while ``IR(60, 60)`` at the same address answered
+    normally 346 times. If the control errors here, the instrumentation works and a
+    no-reply elsewhere is a real silence. If it does not, the negatives mean nothing.
+    """
+    print(f"\nself-test on 0x{addr:02x}: can an exception response reach this script?")
+    checks = [
+        ("IR(60,60)   normally answers", 60, 60, True, OK),
+        ("IR(236,60)  recorded as error-responding", 236, 60, True, ERR),
+        ("IR(0x8000,1) far out of range", 0x8000, 1, True, None),
+        ("HR(0x486,1) the anchor under test", ANCHOR_MAPPED, 1, False, None),
+    ]
+    got: dict[str, str] = {}
+    for label, base, count, ir, expect in checks:
+        r = await probe(client, watcher, addr, base, count, input_regs=ir)
+        got[label] = r
+        flag = "" if expect is None else ("  as expected" if r == expect else f"  EXPECTED {expect}")
+        print(f"  {label:<42} {r}{flag}")
+
+    control = got["IR(236,60)  recorded as error-responding"]
+    print()
+    if control == ERR:
+        print(
+            "  Instrumentation CONFIRMED: an exception response is visible here.\n"
+            "  Every no-reply elsewhere is therefore a genuine silence, not a masked\n"
+            "  exception, and reply-vs-silence is the only oracle this stack offers."
+        )
+    elif control == OK:
+        print(
+            "  Control answered with DATA rather than erroring. The recorded error was\n"
+            "  probably transient, so this control cannot settle the question - it needs\n"
+            "  an address that reliably errors on this hardware."
+        )
+    else:
+        print(
+            "  Control was ALSO silent. Either exceptions never reach this script, or\n"
+            "  that recorded error was a one-off. Until a control does error here, no\n"
+            "  no-reply result should be read as evidence of anything."
+        )
+
+
+async def main(host: str, addrs: list[int], do_sweep: bool = False, do_selftest: bool = False) -> None:
     # Expected error responses would otherwise print over the results table.
     logging.getLogger("givenergy_modbus").propagate = False
 
@@ -287,6 +344,8 @@ async def main(host: str, addrs: list[int], do_sweep: bool = False) -> None:
             "  ABSENT       -> try other device addresses, or the battery is not on this bus.\n"
             "  INAPPLICABLE -> anchors silent; re-run with --sweep <addr> to map the served range."
         )
+        if do_selftest:
+            await selftest(client, watcher, sweepable[0] if sweepable else addrs[0])
         if do_sweep:
             if sweepable:
                 await sweep(client, watcher, sweepable[0])
@@ -301,6 +360,14 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__.rstrip().rsplit("\n\n", 1)[-1], file=sys.stderr)
         raise SystemExit(2)
-    args = [a for a in sys.argv[2:] if a != "--sweep"]
+    flags = {"--sweep", "--selftest"}
+    args = [a for a in sys.argv[2:] if a not in flags]
     given = [int(a, 16) for a in args] or DEFAULT_ADDRS
-    asyncio.run(main(sys.argv[1], given, do_sweep="--sweep" in sys.argv))
+    asyncio.run(
+        main(
+            sys.argv[1],
+            given,
+            do_sweep="--sweep" in sys.argv,
+            do_selftest="--selftest" in sys.argv,
+        )
+    )
