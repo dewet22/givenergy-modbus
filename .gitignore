@@ -65,3 +65,6 @@ ENV/
 
 # Internal design-doc scaffolding — not user docs, excluded from the mkdocs build
 docs/superpowers/
+
+# Local-only working area; never distributed
+/firmware/
