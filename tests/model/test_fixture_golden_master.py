@@ -27,7 +27,7 @@ import pytest
 from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.model.inverter import Model, inverter_address_for, resolve_model
 from givenergy_modbus.model.plant import Plant, PlantCapabilities
-from givenergy_modbus.model.register import HR
+from givenergy_modbus.model.register import HR, IR
 from givenergy_modbus.model.register_cache import RegisterCache
 from givenergy_modbus.pdu import TransparentResponse
 
@@ -146,6 +146,22 @@ async def test_aio_classifies_as_hv_all_in_one():
     inv = plant.inverter
     assert inv.e_pv_generation_today is None  # mislabel retired on AIO (#293)
     assert inv.e_inverter_out_today == 1.8  # raw IR(44) == 18; 18 / 10 == 1.8
+
+    # v_pv*/i_pv* are AC-side artefacts on the AIO, so they decode to None (hass#281).
+    # The power members stay — they carry the install's only real generation figure.
+    assert inv.v_pv1 is None
+    assert inv.v_pv2 is None
+    assert inv.i_pv1 is None
+    assert inv.i_pv2 is None
+    assert inv.p_pv1 == 862
+
+    # The evidence for that suppression, pinned raw so a later capture can contradict
+    # it: IR(1) (v_pv1's source) is bit-identical to IR(5) (v_ac1's), and IR(8) (i_pv1)
+    # is a flat 3.0 A that cannot reconcile 862 W against a 245.7 V "string".
+    cache = plant.register_caches[0x11]
+    assert cache.get(IR(1)) == cache.get(IR(5)) == 2457
+    assert cache.get(IR(8)) == 30
+    assert inv.v_ac1 == pytest.approx(245.7)
 
 
 @pytest.mark.timeout(20)
