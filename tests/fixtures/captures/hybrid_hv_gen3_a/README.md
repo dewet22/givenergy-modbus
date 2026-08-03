@@ -63,6 +63,22 @@ not from these bytes. A `0x32` cache is created but stays empty.
 - **`ALL_IN_ONE_HYBRID` (DTC family 82)** is also family-8-adjacent and
   also in `is_three_phase`. Nothing here speaks to it either way; it is
   left in the set pending its own capture.
+- **The HR(0-179) write addresses are inherited, not wire-confirmed.**
+  Reclassifying moves this model onto `WRITE_SAFE_SINGLE_PHASE`, so slot
+  and charge controls now write to HR94/95, 31/32, 56/57, 44/45, 96, 110
+  and 116 rather than their 1000-range twins. That is a 1:1 re-addressing
+  of the same eleven controls (see `WRITE_SAFE_THREE_PHASE`'s derivation)
+  and it is *required* for coherence — post-reclassification `slot_map` is
+  `EXTENDED_SLOTS`, so holding the three-phase allowlist would leave every
+  slot 1/2 address unwritable. But this capture carries no HR(0-179) at
+  all, so the addresses come from the single-phase classification rather
+  than from these bytes. There is no positive evidence for the 1000-range
+  alternative either, and the whole 1000-range reads zeros here, so the
+  inherited position is the better-supported of the two — it is not
+  evidence-free, just not directly confirmed. A directed
+  `HR(0,60)`/`HR(60,60)`/`HR(120,60)` read on an 81xx unit would settle it.
+  Pinned meanwhile by `test_write_safe_registers_hybrid_hv_gen3_*` and
+  `test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe`.
 - **Battery-side power ceiling.** The reporter observes the portal showing
   5990 W max discharge against our 8000 W (the inverter's rated AC output
   from `_DTC_RATED_POWER["8102"]`), with 3 of a possible 6 HV modules. His
