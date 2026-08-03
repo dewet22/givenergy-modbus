@@ -154,6 +154,13 @@ CAPABILITIES: dict[str, frozenset[Model]] = {
     # Models with a *readable* Smart Load slot block at HR(540-599). Deliberately
     # empty — no model has been confirmed to return data on real hardware; HYBRID_GEN1
     # is confirmed to time out on the read (#179). Gate off until a capture confirms.
+    #
+    # The gate's eventual SHAPE is now better constrained, even though the set stays
+    # empty. The working theory was a monotonic ARM-firmware floor, anchored by that
+    # GEN1 at fw 449. A second non-supporting sample — a HYBRID_GEN2 at fw 920, well
+    # above 449 (hass#293) — does not fit a firmware-only gate, so this looks
+    # model-scoped, or model-and-firmware. Still no SUPPORTING sample from anyone, so
+    # the upper bracket remains unknown; don't re-derive the firmware-floor theory.
     "has_smart_load_block": frozenset(),
     # Models with a readable HV cabinet topology block at HR(499-510). Deliberately
     # empty — no model confirmed on real hardware yet (#265).
