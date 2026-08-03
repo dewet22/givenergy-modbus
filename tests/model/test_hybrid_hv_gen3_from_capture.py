@@ -18,11 +18,13 @@ from pathlib import Path
 
 import pytest
 
+from givenergy_modbus.framer import ClientFramer
 from givenergy_modbus.model.inverter import Model, SinglePhaseInverter, resolve_model
 from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
 from givenergy_modbus.model.manifest import has_capability
 from givenergy_modbus.model.plant import Plant
 from givenergy_modbus.model.register import IR
+from givenergy_modbus.pdu import TransparentResponse
 from givenergy_modbus.testing.mock_plant import plant_from_capture
 
 _CAPTURE = Path(__file__).parents[1] / "fixtures" / "captures" / "hybrid_hv_gen3_a" / "givhy80g3hv_hass295_120s.log"
@@ -107,12 +109,38 @@ def test_three_phase_bank_answers_but_is_all_zero(replayed_plant: Plant):
 
 
 @pytest.mark.timeout(15)
-def test_every_response_frame_decodes(replayed_plant: Plant):
-    """All 17 rx frames decode cleanly — `plant_from_capture` skips undecodable ones silently.
+async def test_every_response_frame_decodes(replayed_plant: Plant):
+    """All 17 response frames decode — `plant_from_capture` skips undecodable ones silently.
 
-    Without this, a corrupted fixture (a botched CRC regen, a hand-edit) would degrade to a
-    thinner plant rather than an error, and the assertions above would quietly test less.
+    Counts the decoded frames rather than inferring from the resulting topology. A frame
+    dropped for an already-populated device leaves the device set and the populated count
+    untouched, so a topology-only check stays green while the fixture quietly tests less —
+    the same shape of hole as the #371 load_config fence.
+
+    CRC is asserted separately because a bad CRC does NOT reduce the decoded count: the
+    PDU still decodes and is flagged `crc_failed`, with the guard refusing the commit
+    downstream. Counting alone would therefore miss a botched CRC regen, which is exactly
+    the failure the README's "clean" claim rules out.
     """
+    raw_frames = [
+        bytes.fromhex(line.split(":", 1)[1].strip())
+        for line in _CAPTURE.read_text(encoding="utf-8").splitlines()
+        if line.startswith("rx:")
+    ]
+    assert len(raw_frames) == 17, "the capture's 34 frames are 17 requests + 17 responses"
+
+    framer = ClientFramer()
+    decoded = errors = crc_failures = 0
+    for raw in raw_frames:
+        async for pdu in framer.decode(raw):
+            if isinstance(pdu, TransparentResponse):
+                errors += bool(pdu.error)
+                decoded += not pdu.error
+                crc_failures += bool(getattr(pdu, "crc_failed", False))
+    assert (decoded, errors) == (17, 0), "every response decodes and none is an error response"
+    assert crc_failures == 0, "fixture is CRC-clean — a bad regen would surface here, not in the count"
+
+    # Topology is still worth pinning: it is what the assertions above actually read from.
     devices = set(replayed_plant.register_caches)
     assert devices == {0x01, 0x11, 0x32, 0x50, 0x51, 0x52, 0x70}
     populated = sum(1 for a in devices if len(replayed_plant.register_caches[a]))

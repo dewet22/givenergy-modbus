@@ -7,7 +7,7 @@ in [`../README.md`](../README.md).
 
 | File | Vantage |
 |---|---|
-| `givhy80g3hv_hass295_120s.log` | HYBRID_HV_GEN3 passive HA capture, 120 s (34 frames) |
+| `givhy80g3hv_hass295_120s.log` | HYBRID_HV_GEN3 passive HA capture, 120 s (34 frames: 17 requests + 17 responses) |
 
 ## Topology
 
@@ -116,4 +116,7 @@ A 120-second passive capture from `KevC1978` on
 
 ## Clean
 
-34 frames, no error responses and no decoder gaps.
+34 frames (17 requests + 17 responses), no error responses, no CRC failures
+and no decoder gaps. Pinned by `test_every_response_frame_decodes`, which
+asserts the decoded-response count and CRC cleanliness rather than inferring
+them from the resulting topology.
