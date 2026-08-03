@@ -130,13 +130,19 @@ CAPABILITIES: dict[str, frozenset[Model]] = {
     # ALL_IN_ONE (DTC family "8") is HV but SINGLE-phase — it error-responds to
     # 1000-range reads and decodes via the single-phase IR(0)/IR(180) banks instead.
     # Verified against real AIO hardware and the GE spec sheet (3.6 kW/16 A). See #105.
+    #
+    # HYBRID_HV_GEN3 (DTC family "81") is the same shape — a residential HV hybrid on a
+    # single phase — and was swept in with the HV family until the first 81xx capture
+    # (hass#295, a GIV-HY-8.0-G3-HV) contradicted it. Note it does NOT error-respond to
+    # the 1000-range: it answers every read with zeros, so the misclassification
+    # presented as a live-but-idle plant (SOC 0 %, both PV strings 0 W) rather than an
+    # obvious decode failure. Readability is therefore not a usable discriminator here.
     "is_three_phase": frozenset(
         {
             Model.HYBRID_3PH,
             Model.AC_3PH,
             Model.AIO_COMMERCIAL,
             Model.ALL_IN_ONE_HYBRID,
-            Model.HYBRID_HV_GEN3,
         }
     ),
     # AC-coupled inverters — no integrated DC battery.
@@ -217,9 +223,10 @@ class RegisterRange:
 # HR(1000-1124) — three-phase config block. Kept as a standalone constant (not a
 # LOAD_CONFIG_RANGES entry) because load_config()'s original code checks
 # is_three_phase BEFORE has_extended_slots BEFORE the five tail facts below, and
-# ALL_IN_ONE_HYBRID/HYBRID_HV_GEN3 can have both is_three_phase and
-# has_extended_slots true simultaneously — the relative order matters and must
-# stay exactly as it was (#293 Slice C1).
+# ALL_IN_ONE_HYBRID can have both is_three_phase and has_extended_slots true
+# simultaneously — the relative order matters and must stay exactly as it was
+# (#293 Slice C1). HYBRID_HV_GEN3 also held both until hass#295 reclassified it
+# single-phase, leaving ALL_IN_ONE_HYBRID as the sole model exercising the ordering.
 LOAD_CONFIG_THREE_PHASE_RANGES: list[RegisterRange] = [
     RegisterRange("HR", 1000, 60),
     RegisterRange("HR", 1060, 60),

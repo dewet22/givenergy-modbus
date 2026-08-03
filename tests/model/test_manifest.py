@@ -121,9 +121,12 @@ def test_has_capability_is_three_phase():
 
     These were independently-maintained duplicates (#293 Slice B).
     """
-    for m in (Model.HYBRID_3PH, Model.AC_3PH, Model.AIO_COMMERCIAL, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3):
+    for m in (Model.HYBRID_3PH, Model.AC_3PH, Model.AIO_COMMERCIAL, Model.ALL_IN_ONE_HYBRID):
         assert has_capability("is_three_phase", m) is True
-    assert has_capability("is_three_phase", Model.ALL_IN_ONE) is False  # HV but single-phase (#105)
+    # Both residential HV families are single-phase: ALL_IN_ONE (#105) and, since the
+    # first 81xx field capture, HYBRID_HV_GEN3 (hass#295).
+    assert has_capability("is_three_phase", Model.ALL_IN_ONE) is False
+    assert has_capability("is_three_phase", Model.HYBRID_HV_GEN3) is False
 
 
 def test_has_capability_is_ac_coupled():
