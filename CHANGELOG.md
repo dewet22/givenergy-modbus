@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-08-03
+
+### 🐛 Fixed
+
+- HYBRID_HV_GEN3 (DTC 81) is single-phase, not three-phase (hass#295) (#412) ([406639e](https://github.com/dewet22/givenergy-modbus/commit/406639e897aa01ca96aaa7cc6ee6627b8de573f3))
+- suppress v_pv*/i_pv* where PV is metered AC-side (hass#281) (#414) ([8aba35a](https://github.com/dewet22/givenergy-modbus/commit/8aba35aa0817d1ddc780deffbc2a1476bf1d13bf))
+
+### 🔧 Maintenance
+
+- let codespell ignore verbatim doc register-name typos (#407) ([cc31e78](https://github.com/dewet22/givenergy-modbus/commit/cc31e7812fc74a5e47b10c06058b466ca299b9dd))
+- add first HYBRID_GEN2 golden-master fixture (hass#293) (#408) ([e9def9e](https://github.com/dewet22/givenergy-modbus/commit/e9def9e5fb74501f54d66c79d17876c34c960141))
+- correct Gen2 fixture attribution to the actual reporter (#411) ([d742896](https://github.com/dewet22/givenergy-modbus/commit/d742896f818e354e656b45f4355d50cb952fd7af))
+- record the Gen2 ARM-920 counter-sample against the Smart Load gate ([fddfcf5](https://github.com/dewet22/givenergy-modbus/commit/fddfcf5495ea47c00b08a3ad9fce42f1f4cbc217))
+- assert the HV Gen3 fixture's decoded-frame count and CRC cleanliness (#415) ([dbb558f](https://github.com/dewet22/givenergy-modbus/commit/dbb558f54238bda914a1f295bd6e51259a2ff89d))
+
 ## [2.12.2] - 2026-07-14
 
 ### 🐛 Fixed
