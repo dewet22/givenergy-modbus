@@ -196,15 +196,19 @@ async def test_load_config_residential_aio_no_1000_range():
     assert all(base < 1000 for _, _, base, _ in reqs), "AIO must not poll the 1000-range bank"
 
 
-async def test_load_config_hybrid_hv_gen3_three_phase_before_extended_slots():
-    """HYBRID_HV_GEN3 has BOTH is_three_phase and has_extended_slots true (#293 Slice C1).
+async def test_load_config_all_in_one_hybrid_three_phase_before_extended_slots():
+    """ALL_IN_ONE_HYBRID has BOTH is_three_phase and has_extended_slots true (#293 Slice C1).
 
     The HR(1000+) three-phase block must appear BEFORE HR(240) — the relative order
     between these two facts is a real behaviour contract, preserved by keeping both
     as literal inline checks in load_config() rather than folding either into the
     generic capability-gated table (which would iterate in a different order).
+
+    HYBRID_HV_GEN3 used to be the example here; it left `is_three_phase` on the first
+    81xx field capture (hass#295), so ALL_IN_ONE_HYBRID is now the only model holding
+    both facts and therefore the only one that can guard the ordering.
     """
-    client = _client_with_caps(Model.HYBRID_HV_GEN3)
+    client = _client_with_caps(Model.ALL_IN_ONE_HYBRID)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _reqs(mock_exec) == [
@@ -215,6 +219,25 @@ async def test_load_config_hybrid_hv_gen3_three_phase_before_extended_slots():
         _hr(1000, 60),
         _hr(1060, 60),
         _hr(1120, 5),
+        _hr(240, 60),
+    ]
+
+
+async def test_load_config_hybrid_hv_gen3_skips_three_phase_block():
+    """HYBRID_HV_GEN3 keeps its 10-slot map but no longer polls the per-phase bank.
+
+    The reclassification's polling consequence (hass#295): a residential HV hybrid gets
+    the single-phase config banks plus HR(240) extended slots, and the HR(1000+) block
+    — which answers with zeros on this hardware rather than error-responding — is gone.
+    """
+    client = _client_with_caps(Model.HYBRID_HV_GEN3)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    assert _reqs(mock_exec) == [
+        _hr(0, 60),
+        _hr(60, 60),
+        _hr(120, 60),
+        _ir(120, 60),
         _hr(240, 60),
     ]
 

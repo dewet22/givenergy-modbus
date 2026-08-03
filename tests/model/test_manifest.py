@@ -121,9 +121,12 @@ def test_has_capability_is_three_phase():
 
     These were independently-maintained duplicates (#293 Slice B).
     """
-    for m in (Model.HYBRID_3PH, Model.AC_3PH, Model.AIO_COMMERCIAL, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3):
+    for m in (Model.HYBRID_3PH, Model.AC_3PH, Model.AIO_COMMERCIAL, Model.ALL_IN_ONE_HYBRID):
         assert has_capability("is_three_phase", m) is True
-    assert has_capability("is_three_phase", Model.ALL_IN_ONE) is False  # HV but single-phase (#105)
+    # Both residential HV families are single-phase: ALL_IN_ONE (#105) and, since the
+    # first 81xx field capture, HYBRID_HV_GEN3 (hass#295).
+    assert has_capability("is_three_phase", Model.ALL_IN_ONE) is False
+    assert has_capability("is_three_phase", Model.HYBRID_HV_GEN3) is False
 
 
 def test_has_capability_is_ac_coupled():
@@ -343,6 +346,77 @@ def test_write_safe_registers_ac_3ph_no_ac_config_union():
     assert result == WRITE_SAFE_THREE_PHASE
     for reg in (311, 313, 314, 317):
         assert reg not in result
+
+
+def test_write_safe_registers_hybrid_hv_gen3_re_addresses_the_same_slot_controls():
+    """Family 81's write surface follows its reclassification — a 1:1 re-addressing (hass#295).
+
+    Reclassifying HYBRID_HV_GEN3 as single-phase moves it off WRITE_SAFE_THREE_PHASE, and
+    that is deliberate rather than incidental. The three-phase set is *derived* from the
+    single-phase one by swapping seven controls (four slot pairs plus three scalars) for
+    their 1000-range equivalents, so the switch authorises the same controls at the
+    addresses this model now decodes through — it does not add new ones.
+
+    Pinned per review on #412: an unnoticed change here silently redirects writes on real
+    hardware, which is the one failure mode in this file worth a dedicated fence.
+    """
+    result = write_safe_registers(Model.HYBRID_HV_GEN3)
+    assert result == WRITE_SAFE_SINGLE_PHASE
+
+    # Not in has_ac_config_block, so no HR(300-359) union — it is a DC-coupled hybrid.
+    assert not (result & WRITE_SAFE_AC_CONFIG)
+
+    # The swap, both directions. Left column is what the single-phase layout addresses;
+    # right column is the 1000-range twin the three-phase layout used for the same control.
+    for single_phase_reg, three_phase_twin in (
+        (94, 1113),  # charge slot 1 start
+        (95, 1114),  # charge slot 1 end
+        (31, 1115),  # charge slot 2 start
+        (32, 1116),  # charge slot 2 end
+        (56, 1118),  # discharge slot 1 start
+        (57, 1119),  # discharge slot 1 end
+        (44, 1120),  # discharge slot 2 start
+        (45, 1121),  # discharge slot 2 end
+        (96, 1112),  # enable_charge / AC_CHARGE_ENABLE
+        (110, 1109),  # battery_soc_reserve
+        (116, 1111),  # charge_target_soc
+    ):
+        assert single_phase_reg in result
+        assert three_phase_twin not in result
+        assert single_phase_reg not in WRITE_SAFE_THREE_PHASE
+        assert three_phase_twin in WRITE_SAFE_THREE_PHASE
+
+
+def test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe():
+    """The coherence invariant: a model must be able to WRITE the slots it addresses.
+
+    `slot_map` and `write_safe_registers()` are selected by different predicates
+    (`has_extended_slots` and `is_three_phase` respectively), so they can in principle
+    disagree. If they do, the command layer computes a slot address the allowlist then
+    refuses, and the model silently loses slot control altogether.
+
+    This is why leaving family 81 on the three-phase allowlist would not have been the
+    conservative choice it looks like: post-reclassification its slot_map is
+    EXTENDED_SLOTS (HR94/95, 31/32, 56/57, 44/45), none of which the three-phase
+    allowlist contains — so every set_charge_slot() call would have been rejected.
+    """
+    from givenergy_modbus.model.inverter_threephase import select_inverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    cache = RegisterCache()
+    cache.update({HR(0): 0x8102, HR(21): 500})
+    inverter = select_inverter(Model.HYBRID_HV_GEN3, cache)
+
+    slot_registers = {
+        reg for pair in (*inverter.slot_map.charge_slots, *inverter.slot_map.discharge_slots) for reg in pair
+    }
+    allowed = write_safe_registers(Model.HYBRID_HV_GEN3)
+    assert slot_registers <= allowed, f"unwritable slot addresses: {sorted(slot_registers - allowed)}"
+
+    # The counterfactual, asserted rather than described: the three-phase allowlist
+    # cannot address this model's slots at all.
+    assert sorted(slot_registers - WRITE_SAFE_THREE_PHASE) == [31, 32, 44, 45, 56, 57, 94, 95]
 
 
 def test_write_safe_registers_undetected_falls_back_to_single_phase():

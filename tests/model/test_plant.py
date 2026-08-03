@@ -2170,7 +2170,6 @@ class TestPlantCapabilitiesProperties:
             Model.AC_3PH,
             Model.AIO_COMMERCIAL,
             Model.ALL_IN_ONE_HYBRID,
-            Model.HYBRID_HV_GEN3,
         )
         for m in three_phase:
             assert self._caps(m).is_three_phase, f"{m} should be three-phase"
@@ -2182,8 +2181,19 @@ class TestPlantCapabilitiesProperties:
         has no 1000-range per-phase bank (it error-responds to those reads) and so must NOT
         be polled there. Confirmed against real AIO hardware + owner confirmation (#105).
         """
-        for m in (Model.HYBRID, Model.AC, Model.EMS, Model.GATEWAY, Model.ALL_IN_ONE):
+        for m in (Model.HYBRID, Model.AC, Model.EMS, Model.GATEWAY, Model.ALL_IN_ONE, Model.HYBRID_HV_GEN3):
             assert not self._caps(m).is_three_phase, f"{m} should not be three-phase"
+
+    def test_hybrid_hv_gen3_is_hv_and_extended_but_not_three_phase(self):
+        """DTC family 81 mirrors the AIO split: HV battery + 10-slot map, single-phase AC.
+
+        Unlike the AIO it does not error-respond to the 1000-range — the block answers
+        with zeros — so the misclassification read as an idle plant (hass#295).
+        """
+        caps = self._caps(Model.HYBRID_HV_GEN3)
+        assert caps.is_hv is True
+        assert caps.has_extended_slots is True
+        assert caps.is_three_phase is False
 
     def test_all_in_one_is_hv_and_extended_but_not_three_phase(self):
         """The AIO keeps its HV + extended-slot capabilities while not being three-phase.
