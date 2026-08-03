@@ -189,7 +189,12 @@ def verdict(baseline: str, single: str, mapped: str, unmapped: str) -> str:
 
 
 async def sweep(
-    client: Client, watcher: _ErrorResponseWatcher, addr: int, limit: int = 0x900, step: int = 0x20
+    client: Client,
+    watcher: _ErrorResponseWatcher,
+    addr: int,
+    limit: int = 0x900,
+    step: int = 0x20,
+    input_regs: bool = False,
 ) -> None:
     """Map which single registers answer at ``addr``, to locate the served extent.
 
@@ -203,13 +208,14 @@ async def sweep(
     # The second re-probes only the addresses either side of a transition, at full
     # patience, so a stray timeout under contention cannot invent a false edge.
     bases = list(range(0, limit + 1, step))
+    kind = "IR" if input_regs else "HR"
     print(
-        f"\nsweep 0x{addr:02x}: HR(n,1) for n in 0..0x{limit:X} step 0x{step:X} "
+        f"\nsweep 0x{addr:02x}: {kind}(n,1) for n in 0..0x{limit:X} step 0x{step:X} "
         f"({len(bases)} probes, ~{len(bases) * 2}s)"
     )
     results: dict[int, str] = {}
     for base in bases:
-        results[base] = await probe(client, watcher, addr, base, 1, attempts=1, timeout=1.5)
+        results[base] = await probe(client, watcher, addr, base, 1, attempts=1, timeout=1.5, input_regs=input_regs)
         await asyncio.sleep(0.1)
 
     edges = [i for i in range(1, len(bases)) if results[bases[i]] != results[bases[i - 1]]]
@@ -217,7 +223,7 @@ async def sweep(
         print(f"  confirming {len(edges) * 2} addresses either side of {len(edges)} transition(s)...")
     for i in edges:
         for b in (bases[i - 1], bases[i]):
-            results[b] = await probe(client, watcher, addr, b, 1, attempts=3, timeout=3.0)
+            results[b] = await probe(client, watcher, addr, b, 1, attempts=3, timeout=3.0, input_regs=input_regs)
     # Recompute: a confirmation can dissolve an edge (or expose a new one), and
     # bisecting a boundary that no longer exists would print a meaningless result.
     edges = [i for i in range(1, len(bases)) if results[bases[i]] != results[bases[i - 1]]]
@@ -241,7 +247,7 @@ async def sweep(
         lo_state, hi_state = results[lo], results[hi]
         while hi - lo > 1:
             mid = (lo + hi) // 2
-            if await probe(client, watcher, addr, mid, 1, attempts=2, timeout=3.0) == lo_state:
+            if await probe(client, watcher, addr, mid, 1, attempts=2, timeout=3.0, input_regs=input_regs) == lo_state:
                 lo = mid
             else:
                 hi = mid
@@ -309,8 +315,12 @@ async def selftest(client: Client, watcher: _ErrorResponseWatcher, addr: int) ->
 
 
 async def main(host: str, addrs: list[int], do_sweep: bool = False, do_selftest: bool = False) -> None:
-    # Expected error responses would otherwise print over the results table.
-    logging.getLogger("givenergy_modbus").propagate = False
+    # Expected error responses would otherwise print over the results table. A
+    # NullHandler is needed as well as propagate=False: with neither, logging falls
+    # back to lastResort and writes to stderr anyway.
+    client_log = logging.getLogger("givenergy_modbus")
+    client_log.propagate = False
+    client_log.addHandler(logging.NullHandler())
 
     client = Client(host, 8899)
     await client.connect()
@@ -348,7 +358,7 @@ async def main(host: str, addrs: list[int], do_sweep: bool = False, do_selftest:
             await selftest(client, watcher, sweepable[0] if sweepable else addrs[0])
         if do_sweep:
             if sweepable:
-                await sweep(client, watcher, sweepable[0])
+                await sweep(client, watcher, sweepable[0], input_regs=use_ir)
             else:
                 print("\nnothing to sweep: no address accepted a single-register read.")
     finally:
@@ -360,7 +370,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__.rstrip().rsplit("\n\n", 1)[-1], file=sys.stderr)
         raise SystemExit(2)
-    flags = {"--sweep", "--selftest"}
+    flags = {"--sweep", "--selftest", "--ir"}
     args = [a for a in sys.argv[2:] if a not in flags]
     given = [int(a, 16) for a in args] or DEFAULT_ADDRS
     asyncio.run(
@@ -369,5 +379,6 @@ if __name__ == "__main__":
             given,
             do_sweep="--sweep" in sys.argv,
             do_selftest="--selftest" in sys.argv,
+            use_ir="--ir" in sys.argv,
         )
     )
