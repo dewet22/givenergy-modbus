@@ -314,7 +314,13 @@ async def selftest(client: Client, watcher: _ErrorResponseWatcher, addr: int) ->
         )
 
 
-async def main(host: str, addrs: list[int], do_sweep: bool = False, do_selftest: bool = False) -> None:
+async def main(
+    host: str,
+    addrs: list[int],
+    do_sweep: bool = False,
+    do_selftest: bool = False,
+    use_ir: bool = False,
+) -> None:
     # Expected error responses would otherwise print over the results table. A
     # NullHandler is needed as well as propagate=False: with neither, logging falls
     # back to lastResort and writes to stderr anyway.
