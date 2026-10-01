@@ -534,7 +534,13 @@ def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
 
 def set_battery_pause_mode(val: BatteryPauseMode) -> list[TransparentRequest]:
     """Set the battery pause mode."""
-    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, val)]
+    # Membership check, not BatteryPauseMode(val): the enum's _missing_ maps any unknown
+    # value to DISABLED for decoding, which here would silently turn a bad argument into
+    # "stop pausing". _as_int() also rejects bool and non-integral floats.
+    mode = _as_int(val, "val")
+    if mode not in BatteryPauseMode._value2member_map_:
+        raise ValueError(f"Invalid battery pause mode: {mode}")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode(mode))]
 
 
 def set_pause_slot_start(t: dt_time | None) -> list[TransparentRequest]:

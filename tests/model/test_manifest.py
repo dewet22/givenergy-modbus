@@ -5,10 +5,13 @@ import pytest
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.manifest import (
     WRITE_SAFE_AC_CONFIG,
+    WRITE_SAFE_BATTERY_PAUSE_MODE,
+    WRITE_SAFE_BATTERY_PAUSE_SLOT,
     WRITE_SAFE_EMS,
     WRITE_SAFE_SINGLE_PHASE,
     WRITE_SAFE_THREE_PHASE,
     battery_energy_source,
+    battery_pause_write_registers,
     has_capability,
     has_extended_slots,
     ir44_is_inverter_output,
@@ -424,7 +427,9 @@ def test_write_safe_registers_model_matrix():
     assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE
     assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
     assert write_safe_registers(Model.AC) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
-    assert write_safe_registers(Model.ALL_IN_ONE) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
+    assert write_safe_registers(Model.ALL_IN_ONE) == (
+        WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG | WRITE_SAFE_BATTERY_PAUSE_MODE | WRITE_SAFE_BATTERY_PAUSE_SLOT
+    )
 
 
 def test_write_safe_registers_ac_3ph_no_ac_config_union():
@@ -518,9 +523,61 @@ def test_write_safe_registers_undetected_falls_back_to_single_phase():
     assert write_safe_registers(None) == WRITE_SAFE_SINGLE_PHASE
 
 
-def test_write_safe_registers_accepts_fw_param():
-    """arm_fw column exists in the signature from day one.
+def test_write_safe_registers_firmware_gates_pause_mode():
+    """arm_fw adds the battery pause registers on gated models, and only there."""
+    assert write_safe_registers(Model.HYBRID_GEN1, arm_fw=449) == WRITE_SAFE_SINGLE_PHASE | {318}
+    assert write_safe_registers(Model.HYBRID_GEN1, arm_fw=186) == WRITE_SAFE_SINGLE_PHASE
+    assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
+    assert write_safe_registers(Model.AC, arm_fw=200) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG | {318}
 
-    Unused — no write capability is firmware-gated today.
-    """
-    assert write_safe_registers(Model.HYBRID_GEN1, arm_fw=449) == WRITE_SAFE_SINGLE_PHASE
+
+def test_battery_pause_registers_are_in_no_base_set():
+    """Pause registers only ever arrive via the gate, never via a base or block set."""
+    pause = WRITE_SAFE_BATTERY_PAUSE_MODE | WRITE_SAFE_BATTERY_PAUSE_SLOT
+    assert pause == frozenset({318, 319, 320})
+    for base in (WRITE_SAFE_SINGLE_PHASE, WRITE_SAFE_THREE_PHASE, WRITE_SAFE_EMS, WRITE_SAFE_AC_CONFIG):
+        assert pause.isdisjoint(base)
+
+
+@pytest.mark.parametrize(
+    ("model", "arm_fw", "expected"),
+    [
+        # All-in-One: mode + slot, not firmware-gated.
+        (Model.ALL_IN_ONE, None, {318, 319, 320}),
+        (Model.ALL_IN_ONE, 1, {318, 319, 320}),
+        # AC: mode only, from ARM fw 200. No pause slot on this model.
+        (Model.AC, 199, set()),
+        (Model.AC, 200, {318}),
+        (Model.AC, 999, {318}),
+        # Gen 1 hybrid: mode only, from ARM fw 187 (giv_tcp#441). Slot unconfirmed.
+        (Model.HYBRID_GEN1, 186, set()),
+        (Model.HYBRID_GEN1, 187, {318}),
+        (Model.HYBRID_GEN1, 449, {318}),
+        (Model.HYBRID_GEN1, 499, {318}),
+        # Capped: resolve_model() files unknown "20" lineages under GEN1, so fail closed.
+        (Model.HYBRID_GEN1, 500, set()),
+        (Model.HYBRID_GEN1, 1050, set()),
+        # Firmware unknown on a gated model fails closed.
+        (Model.AC, None, set()),
+        (Model.HYBRID_GEN1, None, set()),
+        # No evidence yet, or no pause function at all.
+        (Model.HYBRID_GEN2, 999, set()),
+        (Model.HYBRID_GEN3, 999, set()),
+        (Model.HYBRID_HV_GEN3, 999, set()),
+        (Model.GATEWAY, 999, set()),
+        (Model.AC_3PH, 999, set()),
+        (Model.HYBRID_3PH, 999, set()),
+        (Model.ALL_IN_ONE_HYBRID, 999, set()),
+        (Model.EMS, 999, set()),
+        (Model.EMS_COMMERCIAL, 999, set()),
+        (Model.HYBRID, 999, set()),  # generic family, e.g. from an old persisted payload
+        (Model.HYBRID_GEN4, 999, set()),
+        (Model.POLAR, 999, set()),
+        (Model.AIO_COMMERCIAL, 999, set()),
+        (None, 999, set()),
+    ],
+)
+def test_battery_pause_write_registers(model, arm_fw, expected):
+    assert battery_pause_write_registers(model, arm_fw) == frozenset(expected)
+    # And the gate result is exactly what write_safe_registers() adds for pause.
+    assert write_safe_registers(model, arm_fw) & {318, 319, 320} == frozenset(expected)

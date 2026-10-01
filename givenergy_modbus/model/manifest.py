@@ -329,8 +329,9 @@ def gated_ranges(
 
 # Universally-applicable single-phase subset — registers every single-phase inverter
 # accepts. Excludes 311/313/314/317 (HR300-359 AC-config block, absent on DC hybrids —
-# gated via WRITE_SAFE_AC_CONFIG below, #295/#296/#297), 318-320 (pause mode,
-# firmware-gated), the 1000-range (three-phase) and 2040+ (EMS) registers.
+# gated via WRITE_SAFE_AC_CONFIG below, #295/#296/#297), 318-320 (pause mode/slot,
+# model- and firmware-gated via battery_pause_write_registers() below), the 1000-range
+# (three-phase) and 2040+ (EMS) registers.
 WRITE_SAFE_SINGLE_PHASE: frozenset[int] = frozenset(
     {
         20,  # ENABLE_CHARGE_TARGET
@@ -413,6 +414,46 @@ WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
 )
 
 
+# Battery pause writes — the first firmware-gated write capability. Kept out of
+# WRITE_SAFE_AC_CONFIG on purpose: the AC accepts pause mode but has no pause slot, and
+# the Gen 1 hybrid accepts pause mode without having the HR(300-359) block at all, so
+# block membership doesn't describe who can write these.
+WRITE_SAFE_BATTERY_PAUSE_MODE: frozenset[int] = frozenset({318})  # BATTERY_PAUSE_MODE
+WRITE_SAFE_BATTERY_PAUSE_SLOT: frozenset[int] = frozenset({319, 320})  # BATTERY_PAUSE_SLOT_START/_END
+
+# model → (ARM firmware range, or None if not firmware-gated; registers granted). Only
+# evidence-backed rows: a model or register missing here stays rejected until a capture
+# or user log confirms it. Three-phase and EMS have no pause functions.
+#   ALL_IN_ONE  — pause mode + slot sit in its HR(300-359) block (read on a live AIO,
+#                 #105); write evidence is GivTCP field use, not a library capture.
+#   AC          — pause mode from ARM fw 200 (user-confirmed via GivTCP); no pause slot.
+#   HYBRID_GEN1 — pause mode from ARM fw 187, the real-time-control release (two units
+#                 writing it successfully, britkat1980/giv_tcp#441). Slot unconfirmed.
+#                 Capped below 500: resolve_model() files every "20" hybrid whose fw
+#                 century isn't 3/8/9 under GEN1, so an open-ended floor would also grant
+#                 318 to unknown or future lineages. Known Gen 1 lines are 1xx/2xx/4xx.
+_BATTERY_PAUSE_WRITE_GATES: dict[Model, tuple[range | None, frozenset[int]]] = {
+    Model.ALL_IN_ONE: (None, WRITE_SAFE_BATTERY_PAUSE_MODE | WRITE_SAFE_BATTERY_PAUSE_SLOT),
+    Model.AC: (range(200, 1 << 16), WRITE_SAFE_BATTERY_PAUSE_MODE),
+    Model.HYBRID_GEN1: (range(187, 500), WRITE_SAFE_BATTERY_PAUSE_MODE),
+}
+
+
+def battery_pause_write_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
+    """The battery pause registers (HR 318-320) this model/firmware may write.
+
+    Fails closed: an unknown model, or a firmware-gated model whose ARM firmware is
+    unknown (``None``, e.g. capabilities restored from a payload that predates the
+    field) or outside the gated range, gets the empty set.
+    """
+    if model is None or model not in _BATTERY_PAUSE_WRITE_GATES:
+        return frozenset()
+    fw_range, registers = _BATTERY_PAUSE_WRITE_GATES[model]
+    if fw_range is not None and (arm_fw is None or arm_fw not in fw_range):
+        return frozenset()
+    return registers
+
+
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
 
@@ -423,8 +464,9 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     conservative fallback (has_capability returns False for None, so an undetected
     client falls through every branch — no special case needed). Does NOT include
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
-    unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
-    for signature consistency; no write capability is firmware-gated today.
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` gates the
+    battery pause registers (see :func:`battery_pause_write_registers`); nothing else
+    is firmware-gated.
 
     Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
     keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
@@ -440,4 +482,4 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
         safe = WRITE_SAFE_SINGLE_PHASE
     if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
         safe = safe | WRITE_SAFE_AC_CONFIG
-    return safe
+    return safe | battery_pause_write_registers(model, arm_fw)

@@ -212,7 +212,9 @@ if isinstance(inverter, ThreePhaseInverter):
     await client.one_shot_command(inverter.set_force_charge(True))
 ```
 
-AC-limit commands (`set_battery_*_limit_ac`) and pause-mode commands (`set_battery_pause_mode`, `set_pause_slot_*`) remain on `commands.*` only — their model-vs-firmware applicability hasn't yet been confirmed against wire data (see [#75](https://github.com/dewet22/givenergy-modbus/issues/75)).
+AC-limit commands (`set_battery_*_limit_ac`) and pause-mode commands (`set_battery_pause_mode`, `set_pause_slot_*`) remain on `commands.*` only rather than mixin methods, because which models accept them depends on model and firmware rather than inverter class (see [#75](https://github.com/dewet22/givenergy-modbus/issues/75)).
+
+`one_shot_command()` gates the pause registers by model **and ARM firmware** — the first firmware-gated write. Pause mode (HR 318) is accepted on the All-in-One, on AC from ARM firmware 200, and on the Gen 1 hybrid on ARM firmware 187–499; the pause slot (HR 319/320) only on the All-in-One. A gated model whose firmware is unknown (`PlantCapabilities.arm_firmware_version` is `None`, e.g. capabilities restored from an older persisted payload) is rejected — re-run `detect()` to populate it. Other models reject these writes until there is evidence they accept them.
 
 ## EMS command API
 
@@ -296,10 +298,10 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` | ▣ ems |
 | `set_export_priority(priority)` | Set surplus-power dispatch priority (`ExportPriority`: BATTERY_FIRST, GRID_FIRST, LOAD_FIRST) — AC-coupled only | |
 | `set_enable_eps(enabled)` | Enable or disable Emergency Power Supply (EPS) mode — AC-coupled only | |
-| `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) | ⛔ commands-only |
-| `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) | ⛔ commands-only |
-| `set_pause_slot_start(t)` | Set just the start of the battery pause slot | ⛔ commands-only |
-| `set_pause_slot_end(t)` | Set just the end of the battery pause slot | ⛔ commands-only |
+| `set_battery_pause_mode(val)` | Set pause mode (`BatteryPauseMode`: DISABLED, PAUSE_CHARGE, PAUSE_DISCHARGE, PAUSE_BOTH) — All-in-One; AC from ARM fw 200; Gen 1 hybrid on ARM fw 187–499 | ⛔ commands-only |
+| `set_pause_slot(slot)` | Set battery pause time slot (or `None` to clear) — All-in-One only | ⛔ commands-only |
+| `set_pause_slot_start(t)` | Set just the start of the battery pause slot — All-in-One only | ⛔ commands-only |
+| `set_pause_slot_end(t)` | Set just the end of the battery pause slot — All-in-One only | ⛔ commands-only |
 | `set_ems_plant(enabled)` | Enable/disable EMS plant control | ▣ ems |
 | `set_ems_charge_slot(idx, timeslot)` | Set EMS plant charge slot `idx` (1–3), or clear if `None` | ▣ ems |
 | `set_ems_charge_slot_start(idx, t)` | Set just the start of EMS charge slot `idx` | ▣ ems |

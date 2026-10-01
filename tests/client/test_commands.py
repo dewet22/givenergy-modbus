@@ -553,6 +553,16 @@ async def test_set_battery_pause_mode():
     assert commands.set_battery_pause_mode(BatteryPauseMode.PAUSE_BOTH) == [
         WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.PAUSE_BOTH)
     ]
+    assert commands.set_battery_pause_mode(2) == [  # a plain int in range is accepted
+        WriteHoldingRegisterRequest(RegisterMap.BATTERY_PAUSE_MODE, BatteryPauseMode.PAUSE_DISCHARGE)
+    ]
+
+
+@pytest.mark.parametrize("bad", [-1, 4, 65535, True, 2.5, "2"])
+def test_set_battery_pause_mode_rejects_out_of_range(bad):
+    """An unknown value must raise, not fall through _missing_ to DISABLED or reach HR318 raw."""
+    with pytest.raises(ValueError):
+        commands.set_battery_pause_mode(bad)
 
 
 async def test_set_pause_slot():
