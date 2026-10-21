@@ -47,14 +47,34 @@ VALUE_SOURCES: dict[str, dict[Model, str]] = {
     },
 }
 
+# Firmware-gated overrides of VALUE_SOURCES: (metric, model) -> (min_arm_fw, source).
+# A unit at or above min_arm_fw routes to `source` instead; a None source is an honest
+# None. Evidence: the GEN1 fixtures are ARM 449 (alt2 daily, alt1 total, as above). GEN1
+# ARM 451 (hass#321, two units) populates the alt1 daily registers instead (IR36 = 8.5 kWh
+# charge, corroborated by e_ac_charge_today = 9.1) and reads 0 across IR180-183, so both
+# the alt2 daily and alt1 total rows report 0 there. Total stays None until a capture
+# confirms a lifetime source (the battery's own IR105/106 counters wrap at 6553.5 kWh).
+VALUE_SOURCE_FW_OVERRIDES: dict[str, dict[Model, tuple[int, str | None]]] = {
+    "battery_energy_today": {
+        Model.HYBRID_GEN1: (451, "alt1"),
+    },
+    "battery_energy_total": {
+        Model.HYBRID_GEN1: (451, None),
+    },
+}
+
 
 def battery_energy_source(model: Model, metric: str, arm_fw: int | None = None) -> str | None:
     """Return the authoritative altN source tag for a battery-energy metric, or None.
 
-    ``arm_fw`` is accepted for forward-compatibility with firmware-gated rows (none
-    exist in Slice A).
+    A ``VALUE_SOURCE_FW_OVERRIDES`` row applies when ``arm_fw`` is known and at or above
+    its minimum firmware; otherwise the model's ``VALUE_SOURCES`` row is used.
     """
-    return VALUE_SOURCES.get(f"battery_energy_{metric}", {}).get(model)
+    key = f"battery_energy_{metric}"
+    override = VALUE_SOURCE_FW_OVERRIDES.get(key, {}).get(model)
+    if override is not None and arm_fw is not None and arm_fw >= override[0]:
+        return override[1]
+    return VALUE_SOURCES.get(key, {}).get(model)
 
 
 # IR(44)/IR(45-46) identity overrides (#293): on these models the registers carry the

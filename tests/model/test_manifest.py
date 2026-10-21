@@ -46,6 +46,18 @@ def test_battery_energy_source_accepts_fw_param():
     assert battery_energy_source(Model.HYBRID_GEN1, "today", arm_fw=449) == "alt2"
 
 
+def test_battery_energy_source_hybrid_gen1_arm451_override():
+    """GEN1 ARM >= 451 reports daily energy at alt1 and has no confirmed total (hass#321).
+
+    ARM 449 (the fixtures) and an unknown firmware keep the existing GEN1 rows.
+    """
+    assert battery_energy_source(Model.HYBRID_GEN1, "today", arm_fw=451) == "alt1"
+    assert battery_energy_source(Model.HYBRID_GEN1, "total", arm_fw=451) is None
+    assert battery_energy_source(Model.HYBRID_GEN1, "today", arm_fw=449) == "alt2"
+    assert battery_energy_source(Model.HYBRID_GEN1, "total", arm_fw=449) == "alt1"
+    assert battery_energy_source(Model.HYBRID_GEN1, "today") == "alt2"
+
+
 def test_ir44_identity_overrides():
     """IR44 = inverter output on exactly the evidence-backed models (#293)."""
     assert ir44_is_inverter_output(Model.AC) is True
