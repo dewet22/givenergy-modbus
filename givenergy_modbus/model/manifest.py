@@ -303,7 +303,10 @@ LOAD_CONFIG_RANGES: dict[str, list[RegisterRange]] = {
 # (#293 Slice C1).
 REFRESH_IR_RANGES: dict[str, list[RegisterRange]] = {
     "is_three_phase": [RegisterRange("IR", b, min(60, 1414 - b)) for b in range(1000, 1414, 60)],
-    "is_ems": [RegisterRange("IR", 2040, 55)],
+    # IR(0,60): the EMS's plant energy counters (britkat1980/giv_tcp#637) — the cloud reads this
+    # bank from the EMS, so it answers; previously only seen as relayed replies. IR(2040,55):
+    # the EMS page.
+    "is_ems": [RegisterRange("IR", 0, 60), RegisterRange("IR", 2040, 55)],
     "is_gateway": [RegisterRange("IR", b, min(60, 1860 - b)) for b in range(1600, 1860, 60)],
 }
 

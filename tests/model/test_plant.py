@@ -8,6 +8,7 @@ import pytest
 from givenergy_modbus.exceptions import ExceptionBase
 from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.battery import Battery
+from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.inverter import (
     BatteryCalibrationStage,
     BatteryPowerMode,
@@ -108,6 +109,83 @@ def test_plant(
 
     # assert Plant(**plant.dict()) == plant
     # assert Plant.from_registers(plant) == plant
+
+
+def _ems_plant() -> Plant:
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(device_type=Model.EMS)
+    return plant
+
+
+def _ems_ir0_bank(overrides: dict[int, int] | None = None) -> dict[int, int]:
+    """IR(0-59) as in the ems_arm1036_60s capture (one reply), plus raw register overrides."""
+    values = dict.fromkeys(range(60), 0)
+    totals = {6: 241381, 11: 68231, 21: 120901, 27: 132174, 32: 285872}  # tenths of kWh, uint32 hi/lo
+    for reg, tenths in totals.items():
+        values[reg], values[reg + 1] = divmod(tenths, 0x10000)
+    values.update({17: 328, 25: 310, 26: 327, 35: 3, 37: 75, 52: 2507})
+    values.update(overrides or {})
+    return values
+
+
+def test_ems_ir0_energy_fields_decode():
+    plant = _ems_plant()
+    _feed_bank(plant, _ems_ir0_bank(), device_address=0x11, base=0, received_at=_T0)
+    ems = plant.ems
+    assert ems.e_inverter_out_total == 24138.1
+    assert ems.e_generation_total == 6823.1
+    assert ems.e_grid_out_total == 12090.1
+    assert ems.e_inverter_in_total == 13217.4
+    assert ems.e_grid_in_total == 28587.2
+    assert ems.e_generation_day == 32.8
+    assert ems.p_inverter_active == 2507
+
+
+def test_ems_ir0_negative_inverter_power():
+    plant = _ems_plant()
+    _feed_bank(plant, _ems_ir0_bank({52: 0xFFF7}), device_address=0x11, base=0, received_at=_T0)
+    assert plant.ems.p_inverter_active == -9
+
+
+def test_ems_generation_day_sums_both_channels():
+    plant = _ems_plant()
+    _feed_bank(plant, _ems_ir0_bank({17: 50, 19: 12}), device_address=0x11, base=0, received_at=_T0)
+    assert plant.ems.e_generation_day == 6.2
+    assert Ems.from_register_cache(RegisterCache()).e_generation_day is None
+
+
+def test_ems_all_zero_ir0_reply_refused_on_first_read():
+    """A relayed all-zero reply (giv_tcp#637) must not seed the cache with lifetime totals of 0."""
+    plant = _ems_plant()
+    _feed_bank(plant, dict.fromkeys(range(60), 0), device_address=0x11, base=0, received_at=_T0)
+    assert plant.ems.e_grid_in_total is None
+
+
+def test_ems_zero_totals_reply_refused_after_good_one():
+    """Keeps last-good, both for an all-zero reply and one where only the totals read 0."""
+    plant = _ems_plant()
+    _feed_bank(plant, _ems_ir0_bank(), device_address=0x11, base=0, received_at=_T0)
+    _feed_bank(plant, dict.fromkeys(range(60), 0), device_address=0x11, base=0, received_at=_T0 + timedelta(seconds=30))
+    zero_totals = _ems_ir0_bank({r: 0 for r in (6, 7, 11, 12, 21, 22, 27, 28, 32, 33)})
+    _feed_bank(plant, zero_totals, device_address=0x11, base=0, received_at=_T0 + timedelta(seconds=60))
+    assert plant.ems.e_grid_in_total == 28587.2
+    assert plant.ems.e_generation_total == 6823.1
+
+
+def test_ems_reply_with_some_totals_zero_is_committed():
+    """Only an all-totals-zero reply is refused; a genuine zero in one total is data."""
+    plant = _ems_plant()
+    _feed_bank(plant, _ems_ir0_bank({11: 0, 12: 0}), device_address=0x11, base=0, received_at=_T0)
+    assert plant.ems.e_generation_total == 0.0
+    assert plant.ems.e_grid_in_total == 28587.2
+
+
+def test_non_ems_ir0_zero_guard_not_applied():
+    """The EMS guard is EMS-only: an inverter's first all-zero IR(0,60) keeps its existing handling."""
+    plant = Plant()
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_GEN1)
+    _feed_bank(plant, dict.fromkeys(range(60), 0), device_address=0x11, base=0, received_at=_T0)
+    assert plant.register_caches[0x11].get(IR(6)) == 0
 
 
 def test_number_batteries_handles_decode_value_error(

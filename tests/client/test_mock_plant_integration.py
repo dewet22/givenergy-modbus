@@ -170,6 +170,17 @@ def _assert_ems_rollup(plant):
     # Pins that the table-driven load_config routing ran end-to-end (#293).
     assert ems.export_power_limit == 9500
     assert ems.plant_enabled is True
+    # refresh's IR(0,60) plant energy bank (giv_tcp#637), decoded end to end.
+    assert ems.e_inverter_out_total == 24138.1
+    assert ems.e_inverter_in_total == 13217.4
+    assert ems.e_grid_out_total == 12090.1  # export
+    assert ems.e_grid_in_total == 28587.2  # import
+    assert ems.e_generation_total == 6823.1
+    assert (ems.e_grid_out_day, ems.e_grid_in_day) == (31.0, 32.7)
+    assert (ems.e_inverter_in_day, ems.e_inverter_out_day) == (0.3, 7.5)
+    assert ems.e_generation_day == 32.8
+    assert ems.p_generation == 0  # 22:04 — no generation
+    assert 2500 <= ems.p_inverter_active <= 2520
 
 
 def _assert_ems_meters(plant):

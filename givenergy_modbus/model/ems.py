@@ -148,7 +148,32 @@ class EmsRegisterGetter(RegisterGetter):
         "inverter_2_serial_number": Def(C.serial, None, IR(2071), IR(2072), IR(2073), IR(2074), IR(2075)),
         "inverter_3_serial_number": Def(C.serial, None, IR(2076), IR(2077), IR(2078), IR(2079), IR(2080)),
         "inverter_4_serial_number": Def(C.serial, None, IR(2081), IR(2082), IR(2083), IR(2084), IR(2085)),
+        # Misnamed: IR(18) is generation power in W, not an energy total (it tracks the rate of
+        # e_generation_total and reads ~0 at night; the inverter layout calls it p_pv1). Kept for
+        # backward compatibility — use p_generation.
         "e_active_generation_total": Def(C.uint16, None, IR(18)),
+        #
+        # Input Registers 0–59 — plant energy counters. Same layout as the inverter's IR(0-59)
+        # bank, with the generation meters in the PV slots. Not a bank the EMS polls for itself:
+        # the cloud reads it at 0x11, and the dongle relays those replies, some all zeros
+        # (britkat1980/giv_tcp#637; Plant refuses a reply whose lifetime totals all read 0).
+        # Verified against the ems_arm1036 captures: totals monotonic, IR(44)/IR(45-46) duplicate
+        # inverter out (IR(37)/IR(6-7)) so are deliberately not decoded as "generation".
+        # Energies in kWh (0.1 kWh resolution), totals as uint32 high word first.
+        #
+        "e_inverter_out_total": Def(C.uint32, C.deci, IR(6), IR(7)),
+        "e_generation_total": Def(C.uint32, C.deci, IR(11), IR(12)),
+        "e_generation_1_day": Def(C.deci, None, IR(17)),
+        "p_generation": Def(C.uint16, None, IR(18)),
+        "e_generation_2_day": Def(C.deci, None, IR(19)),
+        "e_grid_out_total": Def(C.uint32, C.deci, IR(21), IR(22)),
+        "e_grid_out_day": Def(C.deci, None, IR(25)),
+        "e_grid_in_day": Def(C.deci, None, IR(26)),
+        "e_inverter_in_total": Def(C.uint32, C.deci, IR(27), IR(28)),
+        "e_grid_in_total": Def(C.uint32, C.deci, IR(32), IR(33)),
+        "e_inverter_in_day": Def(C.deci, None, IR(35)),
+        "e_inverter_out_day": Def(C.deci, None, IR(37)),
+        "p_inverter_active": Def(C.int16, None, IR(52)),
         "calc_load_power": Def(C.uint16, None, IR(2086)),
         "measured_load_power": Def(C.uint16, None, IR(2087)),
         "total_generation_load_power": Def(C.uint16, None, IR(2088)),
@@ -157,6 +182,21 @@ class EmsRegisterGetter(RegisterGetter):
         "remaining_battery_wh": Def(C.uint16, None, IR(2091)),
         "other_battery_power": Def(C.int16, None, IR(2094)),
     }
+
+
+#: Registers holding the EMS's lifetime energy totals in IR(0-59). An EMS in service never
+#: reports all of these as 0, so Plant refuses an IR(0-59) reply where they are (#637).
+EMS_LIFETIME_TOTAL_REGISTERS: frozenset = frozenset(
+    reg
+    for name in (
+        "e_inverter_out_total",
+        "e_generation_total",
+        "e_grid_out_total",
+        "e_inverter_in_total",
+        "e_grid_in_total",
+    )
+    for reg in EmsRegisterGetter.REGISTER_LUT[name].registers
+)
 
 
 _EmsBase = create_model(  # type: ignore[call-overload]
@@ -200,6 +240,20 @@ class Ems(_EmsBase, _EmsCommands, RegisterMetadataMixin):  # type: ignore[misc,v
         """
         raw = self.plant_status  # type: ignore[attr-defined]
         return None if raw is None else bool(raw)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def e_generation_day(self) -> float | None:
+        """Generation today in kWh: both generation channels, IR(17) + IR(19).
+
+        Only the first channel is populated on the EMS captures seen so far; the second is
+        summed as GivTCP does. ``None`` until IR(0-59) has been read.
+        """
+        one = self.e_generation_1_day  # type: ignore[attr-defined]
+        two = self.e_generation_2_day  # type: ignore[attr-defined]
+        if one is None and two is None:
+            return None
+        return round((one or 0.0) + (two or 0.0), 1)
 
     @property
     def managed_inverters(self) -> list[InverterSummary]:

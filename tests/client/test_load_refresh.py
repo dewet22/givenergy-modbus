@@ -346,17 +346,20 @@ async def test_refresh_residential_aio_no_1000_range():
 
 
 async def test_refresh_ems():
-    """EMS skips the inverter-style IR(0,60)/IR(180,60) reads — only IR 2040–2094 is requested.
+    """EMS reads its plant energy bank IR(0,60) and its page IR 2040–2094, never IR(180,60).
 
-    Regression: #86. The IR(2040,55) append matches what the library models for EMS today;
-    the wire capture in dewet22/givenergy-hass#52 ran without populated capabilities so it
-    can't independently confirm whether the EMS responds to that bank — revisit if a
-    caps-populated capture shows otherwise.
+    Regression: #86 (the inverter-style IR(180,60) read timed out on EMS). IR(0,60) holds the
+    EMS's energy counters (britkat1980/giv_tcp#637); the cloud reads it from the EMS at 0x11,
+    and every ems_arm1036 capture carries its replies, so the EMS answers it. The IR(2040,55)
+    append matches what the library models for EMS today; the wire capture in
+    dewet22/givenergy-hass#52 ran without populated capabilities so it can't independently
+    confirm whether the EMS responds to that bank — revisit if a caps-populated capture shows
+    otherwise.
     """
     client = _client_with_caps(Model.EMS)
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.refresh()
-    assert _reqs(mock_exec) == [_ir(2040, 55)]
+    assert _reqs(mock_exec) == [_ir(0, 60), _ir(2040, 55)]
 
 
 async def test_refresh_gateway():
