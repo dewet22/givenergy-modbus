@@ -80,6 +80,10 @@ _FRAME_SENT_MIN_TIMEOUT = 5.0
 # connection loss rather than left to wedge the producer until close() (hass#233).
 _DRAIN_TIMEOUT = 10.0
 
+# How long close() waits for the cancelled network tasks to finish so their outcome is
+# retrieved (#613). Cancelled tasks normally finish on the next loop iteration.
+_CLOSE_REAP_TIMEOUT = 1.0
+
 # Re-warn cadence for the coalesced reader-EOF reconnect churn. A marginal dongle that
 # idle-reaps the TCP connection every ~10s (hass#95) would otherwise emit thousands of
 # 'connection lost (reader at EOF)' WARNING lines/day on a setup that is working fine —
@@ -553,32 +557,64 @@ class Client:
         _logger.info(f"Connection established to {self.host}:{self.port}")
 
     async def close(self):
-        """Disconnect from the remote host and clean up tasks and queues."""
+        """Disconnect from the remote host and clean up tasks and queues.
+
+        Cleanup always completes: the consumer task, the reader and the expected-response
+        map are torn down in a ``finally``, even if closing the writer raises. Both network
+        tasks are then awaited briefly, so an exception one of them died with is retrieved
+        here rather than logged by asyncio as "Task exception was never retrieved" when the
+        task is garbage collected (britkat1980/giv_tcp#613).
+        """
         self.connected = False
         self._shutting_down = True
-        if self.tx_queue:
-            while not self.tx_queue.empty():
-                _, frame_sent, _ = self.tx_queue.get_nowait()
-                if frame_sent:
-                    frame_sent.cancel()
-        if self.network_producer_task:
-            self.network_producer_task.cancel()
-        if hasattr(self, "writer") and self.writer:
-            self.writer.close()
-            try:
-                await self.writer.wait_closed()
-            except ConnectionResetError:
-                pass
-            del self.writer
+        try:
+            if self.tx_queue:
+                while not self.tx_queue.empty():
+                    _, frame_sent, _ = self.tx_queue.get_nowait()
+                    if frame_sent:
+                        frame_sent.cancel()
+            if self.network_producer_task:
+                self.network_producer_task.cancel()
+            if hasattr(self, "writer") and self.writer:
+                try:
+                    self.writer.close()
+                    await self.writer.wait_closed()
+                except OSError as e:
+                    # A socket that already died (e.g. after a stalled drain) can raise
+                    # TimeoutError / ETIMEDOUT here, not just ConnectionResetError (#613).
+                    _logger.debug("close: writer did not close cleanly: %r", e)
+                finally:
+                    del self.writer
+        finally:
+            if self.network_consumer_task:
+                self.network_consumer_task.cancel()
+            if hasattr(self, "reader") and self.reader:
+                self.reader.feed_eof()
+                self.reader.set_exception(RuntimeError("cancelling"))
+                del self.reader
+            self.expected_responses = {}
+            await self._reap_network_tasks()
 
-        if self.network_consumer_task:
-            self.network_consumer_task.cancel()
-        if hasattr(self, "reader") and self.reader:
-            self.reader.feed_eof()
-            self.reader.set_exception(RuntimeError("cancelling"))
-            del self.reader
+    async def _reap_network_tasks(self) -> None:
+        """Wait briefly for the cancelled network tasks to finish and retrieve their outcome.
 
-        self.expected_responses = {}
+        Skips the calling task (close() may run inside one) and anything that isn't a real
+        asyncio task. A task still running after the grace period is left to finish on its own.
+        """
+        current = asyncio.current_task()
+        tasks = [
+            t
+            for t in (self.network_consumer_task, self.network_producer_task)
+            if isinstance(t, asyncio.Task) and t is not current
+        ]
+        if not tasks:
+            return
+        done, pending = await asyncio.wait(tasks, timeout=_CLOSE_REAP_TIMEOUT)
+        for task in done:
+            if not task.cancelled() and (exc := task.exception()) is not None:
+                _logger.debug("close: %s had exited with %r", task.get_name(), exc)
+        if pending:
+            _logger.debug("close: %d network task(s) still finishing after cancel", len(pending))
         # self.debug_frames = {
         #     'all': Queue(maxsize=1000),
         #     'error': Queue(maxsize=1000),
