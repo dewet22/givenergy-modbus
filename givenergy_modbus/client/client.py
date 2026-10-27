@@ -69,6 +69,29 @@ Direction = Literal["rx", "tx"]
 # MBAP start marker used by the framer to locate frames within a byte stream.
 _FRAME_MARKER = bytes.fromhex("59590001")
 
+# Fail-closed scrub for capture bytes the FrameRedactor can't decode (undecodable frames,
+# inter-frame garbage, a partial frame at stream end). Those bytes have no type to redact
+# by, so anything shaped like a GE serial keeps its prefix + date with the unit digits
+# zeroed (as Converter.redact_serial does for decoded fields), and anything shaped like an
+# IPv4 address has every digit zeroed. Both keep the byte length, so frames stay well formed.
+# An undecodable LAN-config broadcast leaked a dongle serial and its IPs this way
+# (britkat1980/giv_tcp#668). Over-matching in binary data only zeroes a few extra bytes.
+_SCRUB_SERIAL_RE = re.compile(rb"([A-Z]{2}\d{4}[A-Z])\d{3}")
+_SCRUB_EMS_SERIAL_RE = re.compile(rb"([A-Z]{3}\d{4})\d{3}")
+_SCRUB_IPV4_RE = re.compile(rb"(?<![\d.])\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?![\d.])")
+_SCRUB_DIGIT_RE = re.compile(rb"\d")
+# Longest token the scrub matches (a dotted quad, 15 bytes). Undecoded bytes held back at a
+# chunk boundary must cover it, so a token split across two reads is still scrubbed whole.
+_SCRUB_HOLDBACK = 15
+
+
+def _scrub_undecoded(data: bytes) -> bytes:
+    """Zero serial unit digits and IPv4 digits in bytes the redactor couldn't decode."""
+    data = _SCRUB_SERIAL_RE.sub(lambda m: m.group(1) + b"000", data)
+    data = _SCRUB_EMS_SERIAL_RE.sub(lambda m: m.group(1) + b"000", data)
+    return _SCRUB_IPV4_RE.sub(lambda m: _SCRUB_DIGIT_RE.sub(b"0", m.group(0)), data)
+
+
 # Floor for the "producer hasn't sent our frame yet" safety-net timeout. The actual wait
 # also scales with the queue backlog (see send_request_and_await_response); this floor keeps
 # it sane when the queue is idle. Module-level so tests can shrink it.
@@ -98,8 +121,10 @@ class FrameRedactor:
     and re-encodes with a freshly-computed CRC.
 
     Any bytes that cannot be decoded — ``InvalidFrame`` results, inter-frame garbage,
-    or a partial frame held at stream end — are emitted **intact** (not mangled) with
-    a log message.  Nothing on the wire is ever dropped: the capture is always complete.
+    or a partial frame held at stream end — fail closed: they are emitted with anything
+    shaped like a serial number or an IPv4 address scrubbed (``_scrub_undecoded``), which
+    keeps their length, and a log message. Nothing on the wire is ever dropped: the
+    capture is always complete.
 
     Not thread-safe; use one instance per capture direction.
 
@@ -117,11 +142,11 @@ class FrameRedactor:
         return self._process()
 
     def flush(self) -> bytes:
-        """Emit any remaining buffered bytes intact and reset. Call at stream end."""
-        tail = self._buf
+        """Emit any remaining buffered bytes (scrubbed) and reset. Call at stream end."""
+        tail = _scrub_undecoded(self._buf)
         self._buf = b""
         if tail:
-            _logger.debug("FrameRedactor flushing %db of incomplete/trailing bytes intact", len(tail))
+            _logger.debug("FrameRedactor flushing %db of incomplete/trailing bytes scrubbed", len(tail))
         return tail
 
     def _process(self) -> bytes:
@@ -129,18 +154,21 @@ class FrameRedactor:
         while self._buf:
             marker_pos = self._buf.find(_FRAME_MARKER)
             if marker_pos < 0:
-                # No frame marker in buffer — keep the last 3 bytes (a split marker
-                # could arrive next chunk) and emit the rest intact.
-                keep = len(_FRAME_MARKER) - 1
+                # No frame marker in buffer — hold back the tail (a split marker, or a
+                # serial/IP split across reads, could complete with the next chunk) and
+                # emit the rest scrubbed. Scrub the whole buffer before cutting, so a
+                # token straddling the cut is matched whole.
+                keep = max(len(_FRAME_MARKER) - 1, _SCRUB_HOLDBACK)
                 if len(self._buf) > keep:
-                    garbage, self._buf = self._buf[:-keep], self._buf[-keep:]
-                    _logger.debug("FrameRedactor: %db pre-marker garbage emitted intact", len(garbage))
+                    scrubbed = _scrub_undecoded(self._buf)
+                    garbage, self._buf = scrubbed[:-keep], scrubbed[-keep:]
+                    _logger.debug("FrameRedactor: %db pre-marker garbage emitted scrubbed", len(garbage))
                     out += garbage
                 break
             if marker_pos > 0:
-                # Garbage before the marker — emit intact.
-                garbage, self._buf = self._buf[:marker_pos], self._buf[marker_pos:]
-                _logger.debug("FrameRedactor: %db inter-frame garbage emitted intact", len(garbage))
+                # Garbage before the marker — emit scrubbed.
+                garbage, self._buf = _scrub_undecoded(self._buf[:marker_pos]), self._buf[marker_pos:]
+                _logger.debug("FrameRedactor: %db inter-frame garbage emitted scrubbed", len(garbage))
                 out += garbage
                 continue
             # Marker is at position 0. Read the length field to know frame size.
@@ -150,11 +178,11 @@ class FrameRedactor:
             if hdr_len > 300:
                 # A real frame's MBAP length never exceeds ~300 (60-register cap). A larger
                 # value means this marker is a false positive (random bytes that happen to
-                # match) — emit it intact as garbage and resume scanning, rather than buffering
+                # match) — emit it as garbage and resume scanning, rather than buffering
                 # up to ~64 KB for a frame that will never complete. Mirrors framer.py's guard.
                 skip = len(_FRAME_MARKER)
                 garbage, self._buf = self._buf[:skip], self._buf[skip:]
-                _logger.debug("FrameRedactor: false marker (len=0x%04x), %db emitted intact", hdr_len, len(garbage))
+                _logger.debug("FrameRedactor: false marker (len=0x%04x), %db emitted", hdr_len, len(garbage))
                 out += garbage
                 continue
             frame_len = 6 + hdr_len
@@ -173,14 +201,14 @@ class FrameRedactor:
 
         # TX frames are ClientOutgoingMessage (requests); RX frames are
         # ClientIncomingMessage (responses/heartbeats).  Using the wrong decoder
-        # silently falls through to intact-passthrough, leaking the adapter serial
-        # in every captured request.  Pass the right decoder by direction.
+        # silently falls through to the undecodable path, which only pattern-scrubs
+        # rather than redacting by type.  Pass the right decoder by direction.
         decoder_class = ClientOutgoingMessage if self._direction == "tx" else ClientIncomingMessage
         try:
             pdu = decoder_class.decode_bytes(frame)
         except Exception:
-            _logger.warning("FrameRedactor: undecodable frame (%db) emitted intact", len(frame))
-            return frame
+            _logger.warning("FrameRedactor: undecodable frame (%db) emitted scrubbed", len(frame))
+            return _scrub_undecoded(frame)
 
         # LanConfigBroadcast: delegate to its own redact() — handles serial + IPs
         if isinstance(pdu, LanConfigBroadcast):
@@ -1520,8 +1548,9 @@ class Client:
         serial-bearing fields (envelope serials, C.serial-tagged register values,
         LAN-config IPs) are zeroed by type, and the frame is re-encoded with a
         freshly-computed CRC. Frames that cannot be decoded (unknown function codes,
-        malformed/truncated frames) are emitted intact with a log message — they are
-        never dropped or mangled. The sink sees complete frames (one call per
+        malformed/truncated frames) fail closed: anything in them shaped like a serial
+        number or an IPv4 address is zeroed, keeping the frame's length, and a message
+        is logged — they are never dropped. The sink sees complete frames (one call per
         complete frame) rather than raw socket chunks.
 
         Runs alongside the normal refresh loop — does not suspend reads or writes,

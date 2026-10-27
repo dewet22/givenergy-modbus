@@ -109,9 +109,9 @@ class TransparentMessage(BasePDU, ABC):
         attrs["data_adapter_serial_number"] = decoder.decode_string(10)
 
         # LAN-config broadcast discriminator: some WO-prefix dongles emit a function-0x02
-        # frame whose body is adapter_serial + 7-byte pad + ",ip,netmask,gateway\r\n\r\n" + check.
-        # The 7th pad byte is 0x00 (not a valid transparent_function_code) and the next
-        # byte is ',' — nothing in the normal transparent protocol can produce that sequence.
+        # frame whose body is adapter_serial + short pad + "ip,netmask,gateway\r\n\r\n" + check.
+        # Recognised by content (the whole remainder must be that ASCII config), not by fixed
+        # pad offsets — nothing in the normal transparent protocol can produce it.
         if LanConfigBroadcast.is_lan_config(decoder.remaining_payload):
             return LanConfigBroadcast.decode_main_function(decoder, **attrs)
 

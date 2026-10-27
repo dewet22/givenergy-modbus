@@ -430,17 +430,25 @@ def test_decode_bytes_rejects_bad_protocol_and_unit_id():
         ClientIncomingMessage.decode_bytes(b"\x59\x59\x00\x01\x00\x02\xff\x02")
 
 
-def test_is_lan_config_rejects_nonzero_padding():
-    """The LAN-config discriminator requires the 6 preceding pad bytes to be zero (audit L6).
+def test_is_lan_config_matches_content_not_offsets():
+    r"""The LAN-config discriminator matches the broadcast's content, not fixed pad offsets (giv_tcp#668).
 
-    Otherwise a crafted padding field can false-positive and drop a valid response.
+    The whole remainder after the serial must be pad + "ip,netmask,gateway\r\n\r\n" + 2-byte
+    check, so a crafted pad still can't false-positive and drop a valid response (audit L6).
     """
     from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
 
-    # Real shape: 6 zero bytes + 0x00 + ',' → recognised.
-    assert LanConfigBroadcast.is_lan_config(b"\x00\x00\x00\x00\x00\x00\x00,rest")
-    # A non-zero byte in the 6-byte pad prefix → not a LAN-config frame.
+    csv = b"192.168.1.50,255.255.255.0,192.168.1.1\r\n\r\n"
+    # Known shape (7 zeros + comma) and the #668 shape (no comma), each followed by the check.
+    assert LanConfigBroadcast.is_lan_config(b"\x00" * 7 + b"," + csv + b"\xb4\xf2")
+    assert LanConfigBroadcast.is_lan_config(b"\x00" * 8 + csv + b"\xb4\xf2")
+    # The old discriminator's positive case: right pad, but no config after it.
+    assert not LanConfigBroadcast.is_lan_config(b"\x00\x00\x00\x00\x00\x00\x00,rest")
     assert not LanConfigBroadcast.is_lan_config(b"\x00\x00\x2c\x00\x00\x00\x00,rest")
+    # Config present but with trailing bytes beyond the check → not a broadcast.
+    assert not LanConfigBroadcast.is_lan_config(b"\x00" * 8 + csv + b"\xb4\xf2\x00")
+    # A transparent response body (padding, address, function code, registers).
+    assert not LanConfigBroadcast.is_lan_config(b"\x00" * 7 + b"\x8a\x32\x03" + b"\x00\x00\x00\x3c" + b"\x00" * 120)
 
 
 def test_strict_crc_mode_raises_on_mismatch(monkeypatch):
