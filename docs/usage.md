@@ -228,6 +228,24 @@ if ems is not None:  # None on non-EMS plants
 
 EMS slots use a fixed three-slot layout at HR(2044–2071) — there's no `slot_map` parameter. EMS commands are tagged ▣ ems in the tables below.
 
+## Gateway writes
+
+A Gateway controls the All-in-Ones behind it through an inverter-shaped holding-register
+bank at device 0x11, so it has no command methods of its own: `plant.gateway` is the
+read-only Gateway page (IR 1600+), and writes go through `plant.inverter`, which is a
+`SinglePhaseInverter` on a Gateway plant.
+
+```python
+await client.one_shot_command(plant.inverter.set_enable_discharge(True))
+await client.one_shot_command(commands.set_battery_charge_limit_ac(60))  # HR 313: the Gateway's charge rate
+```
+
+`one_shot_command` admits the single-phase controls on a Gateway (as it always has) plus
+its charge/discharge rate, HR 313/314 (`plant.inverter.battery_charge_limit_ac` /
+`battery_discharge_limit_ac`, read by `load_config()`). HR 111/112 read 0 on a Gateway, so
+use the HR 313/314 pair for its rate. The other HR(300-359) controls (export priority,
+EPS) are refused: there's no Gateway evidence for them yet.
+
 ## Available commands
 
 All commands live in `givenergy_modbus.client.commands` and return

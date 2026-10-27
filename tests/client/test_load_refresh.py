@@ -65,6 +65,14 @@ async def test_load_config_ac_polls_hr300():
     ]
 
 
+async def test_load_config_gateway_polls_hr300():
+    """Gateway reads HR(300-359) for its charge/discharge rate HR313/314 (#373/#427)."""
+    client = _client_with_caps(Model.GATEWAY)
+    with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
+        await client.load_config()
+    assert _hr(300, 60) in _reqs(mock_exec)
+
+
 async def test_load_config_hybrid_gen1_at_0x11_no_hr300():
     """HYBRID_GEN1 reads at the unified 0x11 address (#189) and is DC-coupled — no HR(300-359) (#162)."""
     client = _client_with_caps(Model.HYBRID_GEN1)

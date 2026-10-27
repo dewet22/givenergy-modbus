@@ -296,6 +296,11 @@ LOAD_CONFIG_RANGES: dict[str, list[RegisterRange]] = {
     # the AIO (live poll populated these fields, #105).
     "has_ac_config_block": [RegisterRange("HR", 300, 60)],
     "is_ems": [RegisterRange("HR", 2040, 36)],
+    # The Gateway answers HR(300,60) too (every read in the gateway_gaaa0014 captures and
+    # GivTCP's shared Gateway capture succeeds; HR313/314 = 50/100), and HR313/314 are its
+    # charge/discharge rate (givenergy-modbus#373/#427). Read-gated on is_gateway rather than
+    # adding the Gateway to has_ac_config_block, which would also make HR311/317 writable.
+    "is_gateway": [RegisterRange("HR", 300, 60)],
 }
 
 # _refresh_banks()'s three capability-gated IR ranges — no interleaving among
@@ -427,6 +432,15 @@ _LEGACY_CHARGE_SLOT_2: frozenset[int] = frozenset({31, 32})
 WRITE_SAFE_SLOT_TARGETS: frozenset[int] = frozenset({*range(242, 270, 3), *range(272, 300, 3)})
 _SLOT_TARGET_THREE_PHASE_MODELS: frozenset[Model] = frozenset({Model.HYBRID_3PH, Model.AC_3PH})
 
+# Gateway allowlist. The Gateway controls the All-in-Ones behind it through an inverter-shaped
+# HR bank at 0x11, and consumers write it through plant.inverter (a SinglePhaseInverter for
+# Model.GATEWAY) — GivTCP and the async fork have always sent Gateway writes as plain
+# single-phase HR writes. This set used to be that single-phase set by fallthrough; it is now
+# explicit, unchanged, plus the charge/discharge rate pair HR313/314 (#373: a capture showed
+# GivTCP writing them at 0x11; HR111/112 read 0 on a Gateway). Not the rest of the HR(300-359)
+# AC-config writes (311 export priority, 317 EPS): no Gateway evidence for those.
+WRITE_SAFE_GATEWAY: frozenset[int] = WRITE_SAFE_SINGLE_PHASE | frozenset({313, 314})
+
 
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
@@ -451,6 +465,8 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     """
     if has_capability("is_ems", model):
         safe = WRITE_SAFE_EMS
+    elif has_capability("is_gateway", model):
+        safe = WRITE_SAFE_GATEWAY
     elif has_capability("is_three_phase", model):
         safe = WRITE_SAFE_THREE_PHASE
     else:
