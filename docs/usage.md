@@ -152,6 +152,28 @@ loses the race and produces spurious "register read failed" timeouts even though
 device is responsive (#132). If you own the bus exclusively and want genuine failures
 surfaced faster, pass a tighter `timeout`/`retries`.
 
+`one_shot_command` defaults to `timeout=1.5, retries=0` for a different reason: **a retried
+write can reach the inverter twice**. A timeout doesn't mean the write failed — on a busy
+bus the inverter often applies it and replies late. A reply that arrives after its attempt
+timed out is dropped, so the retry goes on the wire anyway; the client only skips the
+resend if the reply lands while the retry is still queued.
+
+- Writes that **set a value** — modes, slots, targets, limits, enables, the system time —
+  are safe to retry: a second delivery writes the same value. On a contended bus, a budget
+  such as `timeout=3.0, retries=2` avoids spurious write failures straight after a
+  `load_config()`.
+- **Action commands** — `set_inverter_reboot()`, `set_calibrate_battery_soc()`, and the
+  installer-tier resets — should keep `retries=0`, because a second delivery repeats the
+  action. Send them in their own `one_shot_command` call so a retry budget meant for value
+  writes doesn't apply to them.
+
+```python
+# Value writes on a shared bus: retry generously.
+await client.one_shot_command(commands.set_charge_target_soc(80), timeout=3.0, retries=2)
+# An action: one attempt only.
+await client.one_shot_command(commands.set_inverter_reboot())
+```
+
 The retry delay exists because some inverters exhibit multi-second silent windows where
 they stop responding to anything; firing the retry immediately tends to land it inside
 the same window, accomplishing nothing. The 0.5s default matches what GivTCP independently
