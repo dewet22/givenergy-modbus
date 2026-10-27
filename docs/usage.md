@@ -246,6 +246,10 @@ its charge/discharge rate, HR 313/314 (`plant.inverter.battery_charge_limit_ac` 
 use the HR 313/314 pair for its rate. The other HR(300-359) controls (export priority,
 EPS) are refused: there's no Gateway evidence for them yet.
 
+The Gateway uses the 10-slot map (`plant.inverter.slot_map` is `EXTENDED_SLOTS`), so it has
+charge/discharge slots 1–10, charge slot 2 at HR 243/244, and per-slot target SOCs
+(`set_charge_slot_target_soc` / `set_discharge_slot_target_soc`).
+
 ## Available commands
 
 All commands live in `givenergy_modbus.client.commands` and return

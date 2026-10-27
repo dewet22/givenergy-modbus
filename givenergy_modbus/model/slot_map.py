@@ -42,7 +42,7 @@ SINGLE_PHASE_SLOTS = SlotMap(
     discharge_slots=((56, 57), (44, 45)),
 )
 
-# Extended 10-slot map for ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3,
+# Extended 10-slot map for ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3, GATEWAY,
 # and HYBRID_GEN3 units with ARM firmware > 302.
 #
 # Charge slot 2 is HR(243/244) here, next to its target SOC at HR(245), not the legacy

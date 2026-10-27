@@ -577,7 +577,7 @@ def test_write_safe_matches_slot_map_charge_slot_2():
         (Model.AC, 282, False),
         (Model.ALL_IN_ONE_HYBRID, 999, False),  # layout in question (giv_tcp#621)
         (Model.AIO_COMMERCIAL, 999, False),
-        (Model.GATEWAY, 14, False),
+        (Model.GATEWAY, 14, True),  # 10-slot (register map v4.1.6; HR(240,60) answers)
         (Model.EMS, 1036, False),
         (None, None, False),
     ],
@@ -598,7 +598,11 @@ def test_write_safe_gateway_is_single_phase_plus_rate_pair():
     not in has_ac_config_block.
     """
     assert WRITE_SAFE_GATEWAY == WRITE_SAFE_SINGLE_PHASE | {313, 314}
-    assert write_safe_registers(Model.GATEWAY) == WRITE_SAFE_GATEWAY
+    # On top of that the Gateway is 10-slot: charge slot 2 at HR(243/244) and per-slot targets.
+    assert write_safe_registers(Model.GATEWAY) == (
+        (WRITE_SAFE_GATEWAY - {31, 32}) | {243, 244} | WRITE_SAFE_SLOT_TARGETS
+    )
+    assert has_extended_slots(Model.GATEWAY)
     assert {311, 317}.isdisjoint(write_safe_registers(Model.GATEWAY))
     assert not has_capability("has_ac_config_block", Model.GATEWAY)
 

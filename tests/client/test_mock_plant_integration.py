@@ -354,6 +354,13 @@ def _assert_gateway(plant):
     # through plant.inverter, the Gateway's write path.
     assert plant.inverter.battery_charge_limit_ac == 50
     assert plant.inverter.battery_discharge_limit_ac == 100
+    # 10-slot (giv_tcp request 12): the write path uses EXTENDED_SLOTS, and load_config's
+    # HR(240,60) decodes in the documented layout — charge targets 100, discharge targets 4.
+    from givenergy_modbus.model.slot_map import EXTENDED_SLOTS
+
+    assert plant.inverter.slot_map is EXTENDED_SLOTS
+    assert [getattr(plant.inverter, f"charge_target_soc_{n}") for n in range(1, 11)] == [100] * 10
+    assert [getattr(plant.inverter, f"discharge_target_soc_{n}") for n in range(1, 11)] == [4] * 10
 
 
 @pytest.mark.timeout(30)

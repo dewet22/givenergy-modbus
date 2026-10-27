@@ -283,6 +283,28 @@ async def test_gateway_rejects_other_ac_config_writes(reg):
 
 
 @pytest.mark.asyncio
+async def test_gateway_ten_slot_writes():
+    """Slots 3-10, slot 2 at HR(243/244) and per-slot targets, through plant.inverter's slot map."""
+    from datetime import time as dt_time
+
+    from givenergy_modbus.model import TimeSlot
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    gw = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x7001, HR(21): 14}))
+    reqs = gw.set_charge_slot(2, TimeSlot(dt_time(1, 0), dt_time(4, 0))) + gw.set_discharge_slot(5, None)
+    reqs += gw.set_charge_slot_target_soc(2, 80)
+    assert [r.register for r in reqs] == [243, 244, 282, 283, 245]
+    client = _client(PlantCapabilities(device_type=Model.GATEWAY, arm_firmware_version=14))
+    await client.one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()
+    with pytest.raises(InvalidPduState, match=r"HR\(31\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(31, 100)], dry_run=True)
+
+
+@pytest.mark.asyncio
 async def test_gateway_keeps_single_phase_controls():
     """Unchanged from the old fallthrough: e.g. enable discharge (HR59), charge slot 1 (HR94/95)."""
     reqs = [WriteHoldingRegisterRequest(59, 1), WriteHoldingRegisterRequest(94, 130)]

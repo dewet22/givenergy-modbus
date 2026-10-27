@@ -71,6 +71,7 @@ async def test_load_config_gateway_polls_hr300():
     with patch.object(client, "_execute_reads", new_callable=AsyncMock) as mock_exec:
         await client.load_config()
     assert _hr(300, 60) in _reqs(mock_exec)
+    assert _hr(240, 60) in _reqs(mock_exec)  # 10-slot block (giv_tcp request 12)
 
 
 async def test_load_config_hybrid_gen1_at_0x11_no_hr300():

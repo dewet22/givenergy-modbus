@@ -231,8 +231,13 @@ def has_capability(name: str, model: Model | None, arm_fw: int | None = None) ->
 # is three-phase-decoded and always uses THREE_PHASE_SLOTS (never the literal
 # EXTENDED_SLOTS object) — but THREE_PHASE_SLOTS genuinely has 10 slot pairs too, so
 # it belongs in this CAPABILITY set regardless of which SlotMap object serves it.
+# GATEWAY: GivEnergy's register map (v4.1.6, "Ten stage charge and discharge time control",
+# HR 240-479) lists the 10-slot block on every model except AC 3.0 and Gen 1/2, and the
+# Gateway answers HR(240,60) in every gateway_gaaa0014 capture and GivTCP's shared Gateway
+# capture, in the documented layout (charge targets 100, discharge targets 4). GivTCP runs
+# Gateways on this map (#577). No Gateway slot write has been captured yet.
 _EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
-    {Model.HYBRID_GEN4, Model.ALL_IN_ONE, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3}
+    {Model.HYBRID_GEN4, Model.ALL_IN_ONE, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3, Model.GATEWAY}
 )
 _EXTENDED_SLOT_FIRMWARE_GATE: dict[Model, int] = {Model.HYBRID_GEN3: 302}
 
