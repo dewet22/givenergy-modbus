@@ -10,7 +10,7 @@ Use `select_gateway(register_cache)` to get the right class from a live cache.
 from pydantic import ConfigDict, create_model
 
 from givenergy_modbus.model.battery import State
-from givenergy_modbus.model.inverter import WorkMode
+from givenergy_modbus.model.inverter import HR_IDENTITY_LUT, WorkMode
 from givenergy_modbus.model.register import IR, RegisterGetter
 from givenergy_modbus.model.register import Converter as C
 from givenergy_modbus.model.register import RegisterDefinition as Def
@@ -184,13 +184,13 @@ _GATEWAY_V2_SERIALS = {
 class GatewayV1RegisterGetter(RegisterGetter):
     """Register getter for Gateway firmware GA000009 and earlier."""
 
-    REGISTER_LUT = dict(_GATEWAY_COMMON_LUT, **_GATEWAY_V1_ENERGY_TOTALS, **_GATEWAY_V1_SERIALS)
+    REGISTER_LUT = dict(HR_IDENTITY_LUT, **_GATEWAY_COMMON_LUT, **_GATEWAY_V1_ENERGY_TOTALS, **_GATEWAY_V1_SERIALS)
 
 
 class GatewayV2RegisterGetter(RegisterGetter):
     """Register getter for Gateway firmware GA000010 and later (swapped uint32 byte order)."""
 
-    REGISTER_LUT = dict(_GATEWAY_COMMON_LUT, **_GATEWAY_V2_ENERGY_TOTALS, **_GATEWAY_V2_SERIALS)
+    REGISTER_LUT = dict(HR_IDENTITY_LUT, **_GATEWAY_COMMON_LUT, **_GATEWAY_V2_ENERGY_TOTALS, **_GATEWAY_V2_SERIALS)
 
 
 _GatewayV1Base = create_model(  # type: ignore[call-overload]
