@@ -137,7 +137,8 @@ Use `set_system_date_time(dt)` rather than writing these individually.
 
 ### AC-coupled config (AC / All-in-One models)
 
-Gated on `PlantCapabilities.has_ac_config_block` inside `one_shot_command()`.
+Gated on `PlantCapabilities.has_ac_config_block` inside `one_shot_command()`. The Gateway
+also admits HR 313 / 314 (its charge/discharge rate, as GivTCP writes it, #373/#427), but not 311 / 317.
 
 | HR | Field name | Description | Range |
 |---|---|---|---|

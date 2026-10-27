@@ -345,6 +345,10 @@ def _assert_gateway(plant):
     assert gw.e_battery_charge_total == 8855.9
     assert gw.aio1_serial_number == "CH2414G000"
     assert gw.aio2_serial_number == "CH2542G000"
+    # load_config's HR(300,60) on the Gateway (#427): its charge/discharge rate pair, decoded
+    # through plant.inverter, the Gateway's write path.
+    assert plant.inverter.battery_charge_limit_ac == 50
+    assert plant.inverter.battery_discharge_limit_ac == 100
 
 
 @pytest.mark.timeout(30)

@@ -6,6 +6,7 @@ from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.manifest import (
     WRITE_SAFE_AC_CONFIG,
     WRITE_SAFE_EMS,
+    WRITE_SAFE_GATEWAY,
     WRITE_SAFE_SINGLE_PHASE,
     WRITE_SAFE_THREE_PHASE,
     battery_energy_source,
@@ -306,6 +307,7 @@ def test_load_config_ranges_exact_values():
         "has_peak_shaving_block": [RegisterRange("HR", 20000, 52)],
         "has_ac_config_block": [RegisterRange("HR", 300, 60)],
         "is_ems": [RegisterRange("HR", 2040, 36)],
+        "is_gateway": [RegisterRange("HR", 300, 60)],
     }
 
 
@@ -508,6 +510,18 @@ def test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe():
     # The counterfactual, asserted rather than described: the three-phase allowlist
     # cannot address this model's slots at all.
     assert sorted(slot_registers - WRITE_SAFE_THREE_PHASE) == [31, 32, 44, 45, 56, 57, 94, 95]
+
+
+def test_write_safe_gateway_is_single_phase_plus_rate_pair():
+    """Gateway: the single-phase set it always had by fallthrough, plus HR313/314 (#373/#427).
+
+    Not HR311/317 (export priority, EPS): no Gateway evidence, so the Gateway is deliberately
+    not in has_ac_config_block.
+    """
+    assert WRITE_SAFE_GATEWAY == WRITE_SAFE_SINGLE_PHASE | {313, 314}
+    assert write_safe_registers(Model.GATEWAY) == WRITE_SAFE_GATEWAY
+    assert {311, 317}.isdisjoint(write_safe_registers(Model.GATEWAY))
+    assert not has_capability("has_ac_config_block", Model.GATEWAY)
 
 
 def test_write_safe_registers_undetected_falls_back_to_single_phase():
