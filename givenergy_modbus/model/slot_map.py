@@ -28,10 +28,16 @@ SINGLE_PHASE_SLOTS = SlotMap(
 
 # Extended 10-slot map for ALL_IN_ONE, HYBRID_GEN4, HYBRID_HV_GEN3,
 # and HYBRID_GEN3 units with ARM firmware > 302.
+#
+# Charge slot 2 is HR(243/244) here, next to its target SOC at HR(245), not the legacy
+# HR(31/32): a Gen 3 on 10-slot firmware answers writes to HR(31/32) with an error response
+# (britkat1980/giv_tcp#619), the async fork wrote slot 2 at 243/244, and on the All-in-One
+# captures HR(31/32) reads 1/0 (not a slot) while HR(243/244) holds the real slot. Discharge
+# slot 2 stays at HR(44/45): the fork wrote it there and nothing contradicts it.
 EXTENDED_SLOTS = SlotMap(
     charge_slots=(
         (94, 95),
-        (31, 32),
+        (243, 244),
         (246, 247),
         (249, 250),
         (252, 253),

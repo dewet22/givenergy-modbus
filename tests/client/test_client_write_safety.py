@@ -154,6 +154,44 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# Charge slot 2 on 10-slot models: HR(243/244), not HR(31/32) (giv_tcp#619)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ten_slot_charge_slot_2_write_goes_to_243_244():
+    from datetime import time as dt_time
+
+    from givenergy_modbus.model import TimeSlot
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    inverter = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x8001, HR(21): 620}))
+    reqs = inverter.set_charge_slot(2, TimeSlot(dt_time(1, 30), dt_time(4, 30)))
+    assert [(r.register, r.value) for r in reqs] == [(243, 130), (244, 430)]
+    client = _client(PlantCapabilities(device_type=Model.ALL_IN_ONE, arm_firmware_version=620))
+    await client.one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()  # Gate 2 admits 243/244
+
+
+@pytest.mark.asyncio
+async def test_ten_slot_rejects_legacy_charge_slot_2_registers():
+    """HR(31/32) isn't slot 2 on 10-slot firmware; a hand-built write there is refused."""
+    client = _client(PlantCapabilities(device_type=Model.HYBRID_GEN3, arm_firmware_version=303))
+    with pytest.raises(InvalidPduState, match=r"HR\(31\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(31, 130)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_two_slot_rejects_243_244():
+    client = _client(PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=449))
+    with pytest.raises(InvalidPduState, match=r"HR\(243\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(243, 130)], dry_run=True)
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 

@@ -807,13 +807,21 @@ def reset_charge_slot_1(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[Transpar
 
 @deprecated("use set_charge_slot(2, timeslot, slot_map) instead")
 def set_charge_slot_2(timeslot: TimeSlot, slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Deprecated: use set_charge_slot(2, timeslot, slot_map)."""
+    """Deprecated: use set_charge_slot(2, timeslot, slot_map).
+
+    Without a ``slot_map`` this writes the 2-slot address HR(31/32), which 10-slot models
+    refuse (their slot 2 is HR(243/244)); pass ``inverter.slot_map``.
+    """
     return set_charge_slot(2, timeslot, slot_map)
 
 
 @deprecated("use reset_charge_slot(2, slot_map) instead")
 def reset_charge_slot_2(slot_map: SlotMap = SINGLE_PHASE_SLOTS) -> list[TransparentRequest]:
-    """Deprecated: use reset_charge_slot(2, slot_map)."""
+    """Deprecated: use reset_charge_slot(2, slot_map).
+
+    Without a ``slot_map`` this writes the 2-slot address HR(31/32), which 10-slot models
+    refuse (their slot 2 is HR(243/244)); pass ``inverter.slot_map``.
+    """
     return reset_charge_slot(2, slot_map)
 
 

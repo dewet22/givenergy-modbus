@@ -21,8 +21,10 @@ WRITE_SAFE_REGISTERS = {
     # --- Charge slots 1–10 ---
     94,  # charge slot 1 start
     95,  # charge slot 1 end
-    31,  # charge slot 2 start
-    32,  # charge slot 2 end
+    31,  # charge slot 2 start (2-slot models)
+    32,  # charge slot 2 end (2-slot models)
+    243,  # charge slot 2 start (10-slot models; giv_tcp#619)
+    244,  # charge slot 2 end (10-slot models)
     246,  # charge slot 3 start
     247,  # charge slot 3 end
     249,  # charge slot 4 start
