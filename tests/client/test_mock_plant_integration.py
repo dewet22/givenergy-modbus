@@ -9,12 +9,14 @@ can't cover.
 
 import re
 from collections.abc import AsyncIterator
+from datetime import time as dt_time
 from pathlib import Path
 
 import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.exceptions import RefreshPartiallySucceeded
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.devices import DeviceType
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.register import HR
@@ -201,6 +203,9 @@ def _assert_aio(plant):
     # load_config leg of the cycle actually ran and routed the HR banks (#293).
     assert inv.charge_target_soc == 100
     assert inv.enable_charge is False
+    # 10-slot: charge slot 2 is HR(243/244) = 00:00-22:40, not HR(31/32) = 1/0 (giv_tcp#619).
+    assert inv.charge_slot_2 == TimeSlot(dt_time(0, 0), dt_time(22, 40))
+    assert inv.slot_map.charge_slots[1] == (243, 244)
 
 
 def _assert_aio_redetect(plant):

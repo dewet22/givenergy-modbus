@@ -79,7 +79,8 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | HR (start / end) | Field names | Notes |
 |---|---|---|
 | 94 / 95 | `charge_slot_1_start` / `_end` | HHMM format |
-| 31 / 32 | `charge_slot_2_start` / `_end` | |
+| 31 / 32 | `charge_slot_2_start` / `_end` | 2-slot models only |
+| 243 / 244 | `charge_slot_2_start` / `_end` | 10-slot models (`has_extended_slots`); HR 31/32 is refused there |
 | 246 / 247 | `charge_slot_3_start` / `_end` | |
 | 249 / 250 | `charge_slot_4_start` / `_end` | |
 | 252 / 253 | `charge_slot_5_start` / `_end` | |
