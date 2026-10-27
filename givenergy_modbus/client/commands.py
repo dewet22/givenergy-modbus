@@ -745,6 +745,40 @@ def _resolve_slot_registers(discharge: bool, idx: int, slot_map: SlotMap) -> tup
     return slots[idx - 1]
 
 
+def _slot_target_soc(discharge: bool, idx: int, target_soc: int, slot_map: SlotMap) -> list[TransparentRequest]:
+    idx = _as_int(idx, "idx")
+    target_soc = _as_int(target_soc, "target_soc")
+    label = "Discharge" if discharge else "Charge"
+    targets = slot_map.discharge_targets if discharge else slot_map.charge_targets
+    if not targets:
+        raise ValueError(f"{label} slot target SOCs aren't available on this slot map (2-slot models use HR 116)")
+    if not 1 <= idx <= len(targets):
+        raise ValueError(f"{label} slot index ({idx}) must be in [1-{len(targets)}] for the given slot map")
+    if not 4 <= target_soc <= 100:
+        raise ValueError(f"{label} slot {idx} target SOC ({target_soc}) must be in [4-100]%")
+    return [WriteHoldingRegisterRequest(targets[idx - 1], target_soc)]
+
+
+def set_charge_slot_target_soc(idx: int, target_soc: int, slot_map: SlotMap) -> list[TransparentRequest]:
+    """Set the target SOC (4-100) of charge slot ``idx`` (1-based) on a 10-slot model.
+
+    HR 242 + 3(idx-1), resolved from ``slot_map``; read back as ``charge_target_soc_{idx}``
+    on single-phase 10-slot models (three-phase doesn't poll HR(240,60) yet, so there's no
+    read-back there). Raises ValueError on a slot map without per-slot targets (2-slot
+    models: use :func:`set_charge_target_soc`).
+    """
+    return _slot_target_soc(False, idx, target_soc, slot_map)
+
+
+def set_discharge_slot_target_soc(idx: int, target_soc: int, slot_map: SlotMap) -> list[TransparentRequest]:
+    """Set the target SOC (4-100) of discharge slot ``idx`` (1-based) on a 10-slot model.
+
+    HR 272 + 3(idx-1), resolved from ``slot_map``; read back as ``discharge_target_soc_{idx}``.
+    Raises ValueError on a slot map without per-slot targets.
+    """
+    return _slot_target_soc(True, idx, target_soc, slot_map)
+
+
 def set_charge_slot_start(idx: int, t: dt_time | None, slot_map: SlotMap) -> list[TransparentRequest]:
     """Set just the start of a charge slot by index (1-based), or clear it if t is None."""
     hr_start, _ = _resolve_slot_registers(False, idx, slot_map)
@@ -1535,6 +1569,14 @@ class _InverterCommands:
     def set_charge_slot(self, idx: int, timeslot: TimeSlot) -> list[TransparentRequest]:
         """Set charge slot start & end times by index (1-based)."""
         return set_charge_slot(idx, timeslot, self.slot_map)
+
+    def set_charge_slot_target_soc(self, idx: int, target_soc: int) -> list[TransparentRequest]:
+        """Set the target SOC (4-100) of charge slot ``idx`` (1-based); 10-slot models only."""
+        return set_charge_slot_target_soc(idx, target_soc, self.slot_map)
+
+    def set_discharge_slot_target_soc(self, idx: int, target_soc: int) -> list[TransparentRequest]:
+        """Set the target SOC (4-100) of discharge slot ``idx`` (1-based); 10-slot models only."""
+        return set_discharge_slot_target_soc(idx, target_soc, self.slot_map)
 
     def reset_charge_slot(self, idx: int) -> list[TransparentRequest]:
         """Reset charge slot to zero/disabled by index (1-based)."""

@@ -15,10 +15,26 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SlotMap:
-    """Register address pairs for charge and discharge time slots."""
+    """Register address pairs for charge and discharge time slots.
+
+    ``charge_targets`` / ``discharge_targets`` are the per-slot target SOC registers, index-
+    aligned with the slots; empty on maps whose models have no per-slot targets (2-slot models
+    use the single charge target, HR 116).
+    """
 
     charge_slots: tuple[tuple[int, int], ...]
     discharge_slots: tuple[tuple[int, int], ...]
+    charge_targets: tuple[int, ...] = ()
+    discharge_targets: tuple[int, ...] = ()
+
+
+# Per-slot target SOC registers of the 10-slot block: each slot is a (start, end, target)
+# triple from HR 240 (charge) / HR 270 (discharge), so slot n's target is HR 242 + 3(n-1) /
+# HR 272 + 3(n-1). The GivEnergy app names them "AC Charge n Upper SOC % Limit" / "DC Discharge
+# n Lower SOC % Limit"; the async fork wrote them as CHARGE_/DISCHARGE_TARGET_SOC_n (and the
+# same addresses as TPH_* on three-phase).
+_TEN_SLOT_CHARGE_TARGETS: tuple[int, ...] = tuple(242 + 3 * k for k in range(10))
+_TEN_SLOT_DISCHARGE_TARGETS: tuple[int, ...] = tuple(272 + 3 * k for k in range(10))
 
 
 SINGLE_PHASE_SLOTS = SlotMap(
@@ -59,6 +75,8 @@ EXTENDED_SLOTS = SlotMap(
         (294, 295),
         (297, 298),
     ),
+    charge_targets=_TEN_SLOT_CHARGE_TARGETS,
+    discharge_targets=_TEN_SLOT_DISCHARGE_TARGETS,
 )
 
 # Three-phase inverters have their first two charge/discharge slot pairs at
@@ -89,6 +107,8 @@ THREE_PHASE_SLOTS = SlotMap(
         (294, 295),
         (297, 298),
     ),
+    charge_targets=_TEN_SLOT_CHARGE_TARGETS,
+    discharge_targets=_TEN_SLOT_DISCHARGE_TARGETS,
 )
 
 # EMS plant controllers expose three charge and three discharge time slots in

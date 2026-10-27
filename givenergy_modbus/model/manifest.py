@@ -420,6 +420,13 @@ WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
 WRITE_SAFE_EXTENDED_CHARGE_SLOT_2: frozenset[int] = frozenset({243, 244})
 _LEGACY_CHARGE_SLOT_2: frozenset[int] = frozenset({31, 32})
 
+# Per-slot target SOCs of the 10-slot block (HR 242 + 3k charge, HR 272 + 3k discharge; see
+# model/slot_map.py). Admitted where that block is the slot layout: single-phase
+# has_extended_slots models, and the "3ph" three-phase models the async fork wrote them on.
+# Not ALL_IN_ONE_HYBRID / AIO_COMMERCIAL, whose layout is in question (giv_tcp#621).
+WRITE_SAFE_SLOT_TARGETS: frozenset[int] = frozenset({*range(242, 270, 3), *range(272, 300, 3)})
+_SLOT_TARGET_THREE_PHASE_MODELS: frozenset[Model] = frozenset({Model.HYBRID_3PH, Model.AC_3PH})
+
 
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
@@ -431,9 +438,10 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     conservative fallback (has_capability returns False for None, so an undetected
     client falls through every branch — no special case needed). Does NOT include
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
-    unioned at the client boundary, not a per-model capability. ``arm_fw`` matters only
-    through has_extended_slots (HYBRID_GEN3 above fw 302), which moves charge slot 2 from
-    HR(31/32) to HR(243/244) on single-phase 10-slot models.
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` matters through
+    has_extended_slots (HYBRID_GEN3 above fw 302): on single-phase 10-slot models charge
+    slot 2 moves from HR(31/32) to HR(243/244) and the per-slot target SOCs are admitted,
+    so callers must pass it.
 
     Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
     keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
@@ -449,6 +457,11 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
         safe = WRITE_SAFE_SINGLE_PHASE
     if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
         safe = safe | WRITE_SAFE_AC_CONFIG
-    if model is not None and has_extended_slots(model, arm_fw) and not has_capability("is_three_phase", model):
+    ten_slot_single_phase = (
+        model is not None and has_extended_slots(model, arm_fw) and not has_capability("is_three_phase", model)
+    )
+    if ten_slot_single_phase:
         safe = (safe - _LEGACY_CHARGE_SLOT_2) | WRITE_SAFE_EXTENDED_CHARGE_SLOT_2
+    if ten_slot_single_phase or model in _SLOT_TARGET_THREE_PHASE_MODELS:
+        safe = safe | WRITE_SAFE_SLOT_TARGETS
     return safe

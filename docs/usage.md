@@ -291,6 +291,8 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `set_discharge_slot_start(idx, t, slot_map)` | Set just the start of discharge slot `idx` (or `None` to clear that end) | |
 | `set_discharge_slot_end(idx, t, slot_map)` | Set just the end of discharge slot `idx` (or `None` to clear that end) | |
 | `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` | |
+| `set_charge_slot_target_soc(idx, soc, slot_map)` | Target SOC (4–100%) of charge slot `idx` — 10-slot models and `HYBRID_3PH`/`AC_3PH` (HR 242 + 3(idx−1)); 2-slot models use `set_charge_target_soc` | |
+| `set_discharge_slot_target_soc(idx, soc, slot_map)` | Target SOC (4–100%) of discharge slot `idx` — 10-slot models and `HYBRID_3PH`/`AC_3PH` (HR 272 + 3(idx−1)) | |
 | `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` | ▣ ems |
 | `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` | ▣ ems |
 | `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` | ▣ ems |

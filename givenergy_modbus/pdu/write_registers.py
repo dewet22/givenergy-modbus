@@ -41,6 +41,8 @@ WRITE_SAFE_REGISTERS = {
     265,  # charge slot 9 end
     267,  # charge slot 10 start
     268,  # charge slot 10 end
+    # --- Charge slot 1–10 target SOCs (10-slot block, HR 242 + 3k) ---
+    *range(242, 270, 3),
     # --- Discharge slots 1–10 ---
     56,  # discharge slot 1 start
     57,  # discharge slot 1 end
@@ -62,6 +64,8 @@ WRITE_SAFE_REGISTERS = {
     295,  # discharge slot 9 end
     297,  # discharge slot 10 start
     298,  # discharge slot 10 end
+    # --- Discharge slot 1–10 target SOCs (10-slot block, HR 272 + 3k) ---
+    *range(272, 300, 3),
     # --- Battery mode and scheduling ---
     27,  # enable eco mode (app: "Enable Eco Mode")
     29,  # SOC force-adjust
