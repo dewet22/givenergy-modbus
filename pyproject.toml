@@ -67,9 +67,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["givenergy_modbus"]
+# twine (<7) rejects the Metadata-Version 2.5 newer hatchling writes by default, failing
+# `twine check` in the tox build env. Pin the emitted core metadata to 2.4 until it accepts 2.5.
+core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.sdist]
 include = ["/givenergy_modbus", "/tests"]
+core-metadata-version = "2.4"
 
 [tool.ruff]
 line-length = 120
