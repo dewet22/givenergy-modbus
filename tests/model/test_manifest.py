@@ -7,6 +7,7 @@ from givenergy_modbus.model.manifest import (
     WRITE_SAFE_AC_CONFIG,
     WRITE_SAFE_EMS,
     WRITE_SAFE_SINGLE_PHASE,
+    WRITE_SAFE_SLOT_TARGETS,
     WRITE_SAFE_THREE_PHASE,
     battery_energy_source,
     has_capability,
@@ -421,10 +422,13 @@ def test_write_safe_registers_model_matrix():
     """
     assert write_safe_registers(Model.EMS) == WRITE_SAFE_EMS
     assert write_safe_registers(Model.EMS_COMMERCIAL) == WRITE_SAFE_EMS
-    assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE
+    assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE | WRITE_SAFE_SLOT_TARGETS
     assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
     assert write_safe_registers(Model.AC) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
-    assert write_safe_registers(Model.ALL_IN_ONE) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
+    # ALL_IN_ONE is 10-slot, so it also gets the per-slot target SOCs.
+    assert write_safe_registers(Model.ALL_IN_ONE) == (
+        WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG | WRITE_SAFE_SLOT_TARGETS
+    )
 
 
 def test_write_safe_registers_ac_3ph_no_ac_config_union():
@@ -434,7 +438,7 @@ def test_write_safe_registers_ac_3ph_no_ac_config_union():
     union (#295/#296; pinned behaviourally in test_client_write_safety.py too).
     """
     result = write_safe_registers(Model.AC_3PH)
-    assert result == WRITE_SAFE_THREE_PHASE
+    assert result == WRITE_SAFE_THREE_PHASE | WRITE_SAFE_SLOT_TARGETS
     for reg in (311, 313, 314, 317):
         assert reg not in result
 
@@ -452,7 +456,7 @@ def test_write_safe_registers_hybrid_hv_gen3_re_addresses_the_same_slot_controls
     hardware, which is the one failure mode in this file worth a dedicated fence.
     """
     result = write_safe_registers(Model.HYBRID_HV_GEN3)
-    assert result == WRITE_SAFE_SINGLE_PHASE
+    assert result == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_SLOT_TARGETS  # 10-slot: per-slot targets too
 
     # Not in has_ac_config_block, so no HR(300-359) union — it is a DC-coupled hybrid.
     assert not (result & WRITE_SAFE_AC_CONFIG)
@@ -508,6 +512,35 @@ def test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe():
     # The counterfactual, asserted rather than described: the three-phase allowlist
     # cannot address this model's slots at all.
     assert sorted(slot_registers - WRITE_SAFE_THREE_PHASE) == [31, 32, 44, 45, 56, 57, 94, 95]
+
+
+@pytest.mark.parametrize(
+    ("model", "arm_fw", "admitted"),
+    [
+        (Model.ALL_IN_ONE, 620, True),
+        (Model.HYBRID_GEN4, None, True),
+        (Model.HYBRID_HV_GEN3, 500, True),
+        (Model.HYBRID_GEN3, 303, True),
+        (Model.HYBRID_3PH, None, True),
+        (Model.AC_3PH, None, True),
+        (Model.HYBRID_GEN3, 302, False),  # 2-slot firmware: single HR 116 target only
+        (Model.HYBRID_GEN1, 449, False),
+        (Model.HYBRID_GEN2, 920, False),
+        (Model.AC, 282, False),
+        (Model.ALL_IN_ONE_HYBRID, 999, False),  # layout in question (giv_tcp#621)
+        (Model.AIO_COMMERCIAL, 999, False),
+        (Model.GATEWAY, 14, False),
+        (Model.EMS, 1036, False),
+        (None, None, False),
+    ],
+)
+def test_slot_target_socs_follow_the_ten_slot_layout(model, arm_fw, admitted):
+    assert WRITE_SAFE_SLOT_TARGETS == frozenset({*range(242, 270, 3), *range(272, 300, 3)})
+    allowed = write_safe_registers(model, arm_fw)
+    if admitted:
+        assert WRITE_SAFE_SLOT_TARGETS <= allowed
+    else:
+        assert WRITE_SAFE_SLOT_TARGETS.isdisjoint(allowed)
 
 
 def test_write_safe_registers_undetected_falls_back_to_single_phase():

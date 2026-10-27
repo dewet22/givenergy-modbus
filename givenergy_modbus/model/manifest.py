@@ -413,6 +413,14 @@ WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
 )
 
 
+# Per-slot target SOCs of the 10-slot block (HR 242 + 3k charge, HR 272 + 3k discharge; see
+# model/slot_map.py). Admitted where that block is the slot layout: single-phase
+# has_extended_slots models, and the "3ph" three-phase models the async fork wrote them on.
+# Not ALL_IN_ONE_HYBRID / AIO_COMMERCIAL, whose layout is in question (giv_tcp#621).
+WRITE_SAFE_SLOT_TARGETS: frozenset[int] = frozenset({*range(242, 270, 3), *range(272, 300, 3)})
+_SLOT_TARGET_THREE_PHASE_MODELS: frozenset[Model] = frozenset({Model.HYBRID_3PH, Model.AC_3PH})
+
+
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
 
@@ -423,8 +431,9 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     conservative fallback (has_capability returns False for None, so an undetected
     client falls through every branch — no special case needed). Does NOT include
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
-    unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
-    for signature consistency; no write capability is firmware-gated today.
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` matters through
+    has_extended_slots: HYBRID_GEN3 gets the per-slot target SOCs only above fw 302, so
+    callers must pass it.
 
     Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
     keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
@@ -440,4 +449,9 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
         safe = WRITE_SAFE_SINGLE_PHASE
     if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
         safe = safe | WRITE_SAFE_AC_CONFIG
+    ten_slot_single_phase = (
+        model is not None and has_extended_slots(model, arm_fw) and not has_capability("is_three_phase", model)
+    )
+    if ten_slot_single_phase or model in _SLOT_TARGET_THREE_PHASE_MODELS:
+        safe = safe | WRITE_SAFE_SLOT_TARGETS
     return safe
