@@ -421,7 +421,7 @@ def test_write_safe_registers_model_matrix():
     """
     assert write_safe_registers(Model.EMS) == WRITE_SAFE_EMS
     assert write_safe_registers(Model.EMS_COMMERCIAL) == WRITE_SAFE_EMS
-    assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE
+    assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE | {1108, 1110}
     assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
     assert write_safe_registers(Model.AC) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
     assert write_safe_registers(Model.ALL_IN_ONE) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
@@ -434,9 +434,22 @@ def test_write_safe_registers_ac_3ph_no_ac_config_union():
     union (#295/#296; pinned behaviourally in test_client_write_safety.py too).
     """
     result = write_safe_registers(Model.AC_3PH)
-    assert result == WRITE_SAFE_THREE_PHASE
+    assert result == WRITE_SAFE_THREE_PHASE | {1108, 1110}  # its rate controls, at their 3ph homes
     for reg in (311, 313, 314, 317):
         assert reg not in result
+
+
+def test_three_phase_ac_limits_only_on_3ph_models():
+    """HR 1110/1108 go to HYBRID_3PH and AC_3PH only, not every three-phase-decoded model.
+
+    GivTCP writes the All in One-HY's rate at HR 313/314 (giv_tcp#630/#645) and refuses
+    AIO_COMMERCIAL, so neither gets the three-phase pair.
+    """
+    assert {1108, 1110}.isdisjoint(WRITE_SAFE_THREE_PHASE)
+    for model in (Model.HYBRID_3PH, Model.AC_3PH):
+        assert {1108, 1110} <= write_safe_registers(model)
+    for model in (Model.ALL_IN_ONE_HYBRID, Model.AIO_COMMERCIAL, Model.HYBRID_HV_GEN3, Model.GATEWAY, None):
+        assert {1108, 1110}.isdisjoint(write_safe_registers(model)), model
 
 
 def test_write_safe_registers_hybrid_hv_gen3_re_addresses_the_same_slot_controls():

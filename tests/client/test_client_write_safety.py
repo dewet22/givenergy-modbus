@@ -154,6 +154,64 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# Three-phase AC charge/discharge power rate (HR 1110 / 1108)
+# ---------------------------------------------------------------------------
+
+_TPH_AC_LIMIT_REGS = (1110, 1108)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.HYBRID_3PH, Model.AC_3PH])
+async def test_three_phase_accepts_ac_limit_writes(model):
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    inverter = ThreePhaseInverter.from_register_cache(RegisterCache())
+    reqs = inverter.set_battery_charge_limit_ac(40) + inverter.set_battery_discharge_limit_ac(60)
+    assert [(r.register, r.value) for r in reqs] == [(1110, 40), (1108, 60)]
+    await _client(_caps(model)).one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()  # Gate 2 already admitted 1108/1110
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "model",
+    [
+        Model.HYBRID_GEN1,
+        Model.AC,
+        Model.ALL_IN_ONE,
+        Model.HYBRID_HV_GEN3,
+        Model.EMS,
+        # Three-phase-decoded but without evidence for HR 1110/1108: GivTCP writes the
+        # All in One-HY's rate at HR 313/314 (giv_tcp#630/#645) and refuses AIO_COMMERCIAL.
+        Model.ALL_IN_ONE_HYBRID,
+        Model.AIO_COMMERCIAL,
+    ],
+)
+async def test_non_three_phase_rejects_three_phase_ac_limit_writes(model):
+    for reg in _TPH_AC_LIMIT_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await _client(_caps(model)).one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_undetected_rejects_three_phase_ac_limit_writes():
+    for reg in _TPH_AC_LIMIT_REGS:
+        with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+            await _client(None).one_shot_command([WriteHoldingRegisterRequest(reg, 50)], dry_run=True)
+
+
+@pytest.mark.parametrize("bad", [0, 101, -1, True, 2.5])
+def test_three_phase_ac_limit_bounds(bad):
+    from givenergy_modbus.client.commands import set_battery_charge_limit_ac_3ph, set_battery_discharge_limit_ac_3ph
+
+    for fn in (set_battery_charge_limit_ac_3ph, set_battery_discharge_limit_ac_3ph):
+        with pytest.raises(ValueError):
+            fn(bad)
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 

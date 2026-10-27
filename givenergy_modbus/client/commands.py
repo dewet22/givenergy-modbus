@@ -87,7 +87,9 @@ class RegisterMap:
     BATTERY_PAUSE_SLOT_END = 320
     SMART_LOAD_SLOT_1_START = 554  # HR 554-573: 10 start/end pairs (slot N start = 554 + (N-1)*2)
     BATTERY_RESERVE_SOC = 1078  # three-phase only; no single-phase equivalent
+    BATTERY_DISCHARGE_LIMIT_AC_3PH = 1108  # three-phase shadow of BATTERY_DISCHARGE_LIMIT_AC (314)
     BATTERY_SOC_RESERVE_3PH = 1109  # three-phase shadow of BATTERY_SOC_RESERVE (110)
+    BATTERY_CHARGE_LIMIT_AC_3PH = 1110  # three-phase shadow of BATTERY_CHARGE_LIMIT_AC (313)
     CHARGE_TARGET_SOC_3PH = 1111  # three-phase shadow of CHARGE_TARGET_SOC (116)
     AC_CHARGE_ENABLE = 1112
     FORCE_DISCHARGE_ENABLE = 1122
@@ -530,6 +532,38 @@ def set_battery_discharge_limit_ac(val: int) -> list[TransparentRequest]:
     if not 1 <= val <= 100:
         raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
     return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC, val)]
+
+
+def set_battery_charge_limit_ac_3ph(val: int) -> list[TransparentRequest]:
+    """Set the charge power rate on three-phase inverters as a percentage (1-100), HR 1110.
+
+    Three-phase inverters keep this control at HR 1110 rather than the single-phase HR 313
+    (the async fork's TPH_BATTERY_CHARGE_LIMIT_AC; the GivEnergy app's "Charge Power Rate",
+    1-100 %). Same 1-100 bounds as :func:`set_battery_charge_limit_ac`.
+
+    Accepted by ``one_shot_command`` on HYBRID_3PH and AC_3PH only; the All in One-HY keeps
+    this control at HR 313 and AIO_COMMERCIAL is unverified, so both refuse it.
+    """
+    val = _as_int(val, "val")
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Charge Limit ({val}%) is not in [1-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_CHARGE_LIMIT_AC_3PH, val)]
+
+
+def set_battery_discharge_limit_ac_3ph(val: int) -> list[TransparentRequest]:
+    """Set the discharge power rate on three-phase inverters as a percentage (1-100), HR 1108.
+
+    Three-phase inverters keep this control at HR 1108 rather than the single-phase HR 314
+    (the async fork's TPH_BATTERY_DISCHARGE_LIMIT_AC; the GivEnergy app's "Discharge Power
+    Rate", 1-100 %). Same 1-100 bounds as :func:`set_battery_discharge_limit_ac`.
+
+    Accepted by ``one_shot_command`` on HYBRID_3PH and AC_3PH only; the All in One-HY keeps
+    this control at HR 314 and AIO_COMMERCIAL is unverified, so both refuse it.
+    """
+    val = _as_int(val, "val")
+    if not 1 <= val <= 100:
+        raise ValueError(f"Specified AC Discharge Limit ({val}%) is not in [1-100]%")
+    return [WriteHoldingRegisterRequest(RegisterMap.BATTERY_DISCHARGE_LIMIT_AC_3PH, val)]
 
 
 def set_battery_pause_mode(val: BatteryPauseMode) -> list[TransparentRequest]:
@@ -1565,6 +1599,8 @@ class _ThreePhaseCommands:
     - `set_mode_dynamic()` → HR(1109) for the SOC reserve step instead of HR(110)
     - `set_charge_target_enabled()` → HR(1112)+HR(1111) instead of HR(96)+HR(116)
     - `set_battery_reserve_soc()` relocated here (three-phase only, HR 1078)
+    - `set_battery_charge_limit_ac()` / `set_battery_discharge_limit_ac()` → HR(1110) / HR(1108),
+      the three-phase homes of the single-phase AC-config pair HR(313) / HR(314)
 
     MRO puts `_ThreePhaseCommands` before `_InverterCommands` on `ThreePhaseInverter`,
     so these overrides take precedence.
@@ -1574,6 +1610,16 @@ class _ThreePhaseCommands:
     (94/95, 31/32, 56/57, 44/45) and the single-phase-only scalars (96, 110, 116) are
     replaced there by their three-phase counterparts (1113-1116, 1118-1121, 1112, 1109, 1111).
     """
+
+    # --- three-phase charge/discharge power rate --------------------------------
+
+    def set_battery_charge_limit_ac(self, val: int) -> list[TransparentRequest]:
+        """Set the charge power rate as a percentage (1-100): HR 1110, shadows single-phase HR 313."""
+        return set_battery_charge_limit_ac_3ph(val)
+
+    def set_battery_discharge_limit_ac(self, val: int) -> list[TransparentRequest]:
+        """Set the discharge power rate as a percentage (1-100): HR 1108, shadows single-phase HR 314."""
+        return set_battery_discharge_limit_ac_3ph(val)
 
     # --- three-phase-only enables --------------------------------------------
 
