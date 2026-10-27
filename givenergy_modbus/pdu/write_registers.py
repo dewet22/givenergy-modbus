@@ -117,6 +117,7 @@ WRITE_SAFE_REGISTERS = {
     2069,  # EMS export slot 3 end
     2070,  # EMS export SOC % limit 3
     2071,  # EMS export power limit (installer/DNO — not user-writable via app)
+    2073,  # EMS car charge boost (app: "EV Charger Fast Charge Amount"; 0-22000 W per the async fork)
     # ------------------------------------------------------------------------
     # App-confirmed writable registers. Source: GivEnergy Android app "Direct
     # Control" → Control tab (2026-06-02), the writable-register surface GE

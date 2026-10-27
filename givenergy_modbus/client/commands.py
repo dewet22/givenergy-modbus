@@ -112,6 +112,7 @@ class RegisterMap:
     EXPORT_SLOT_3_END = 2069
     EMS_EXPORT_TARGET_SOC_3 = 2070
     EMS_EXPORT_POWER_LIMIT = 2071
+    EMS_CAR_CHARGE_BOOST = 2073
     # --- Installer-tier registers (accessible only via Client.installer_command()) ---
     # Grid protection — all require confirm=True (G98/G99/G100 compliance impact)
     V_AC_LOW_LIMIT_TRIP = 63
@@ -728,6 +729,19 @@ def set_ems_export_power_limit(watts: int) -> list[TransparentRequest]:
     if not 0 <= watts <= 0xFFFF:
         raise ValueError(f"EMS export power limit ({watts}) must be in [0-65535] watts")
     return [WriteHoldingRegisterRequest(RegisterMap.EMS_EXPORT_POWER_LIMIT, watts)]
+
+
+def set_car_charge_boost(watts: int) -> list[TransparentRequest]:
+    """Set the EMS car charge boost ("EV Charger Fast Charge Amount" in the GivEnergy app), HR 2073.
+
+    Bounded 0-22000 W, the range the async fork's ``set_car_charge_boost`` enforced and GivTCP
+    exposes; the app lists the register as a plain number without a unit or range, so the
+    bound is the fork's, not GivEnergy's. Read back as ``Ems.car_charge_boost``.
+    """
+    watts = _as_int(watts, "watts")
+    if not 0 <= watts <= 22000:
+        raise ValueError(f"Car charge boost ({watts}) must be in [0-22000] watts")
+    return [WriteHoldingRegisterRequest(RegisterMap.EMS_CAR_CHARGE_BOOST, watts)]
 
 
 def _set_slot_endpoint(hr: int, t: dt_time | None) -> list[TransparentRequest]:
@@ -1723,3 +1737,9 @@ class _EmsCommands:
     def set_ems_export_power_limit(self, watts: int) -> list[TransparentRequest]:
         """Set the EMS plant export power limit in watts."""
         return set_ems_export_power_limit(watts)
+
+    # --- car charging ---------------------------------------------------------
+
+    def set_car_charge_boost(self, watts: int) -> list[TransparentRequest]:
+        """Set the car charge boost (HR 2073), 0-22000 W."""
+        return set_car_charge_boost(watts)

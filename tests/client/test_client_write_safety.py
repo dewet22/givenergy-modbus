@@ -154,6 +154,53 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# EMS car charge boost (HR 2073)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.EMS, Model.EMS_COMMERCIAL])
+async def test_ems_accepts_car_charge_boost(model):
+    from givenergy_modbus.model.ems import Ems
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    reqs = Ems.from_register_cache(RegisterCache()).set_car_charge_boost(7400)
+    assert [(r.register, r.value) for r in reqs] == [(2073, 7400)]
+    await _client(_caps(model)).one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()  # Gate 2 admits 2073
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.HYBRID_GEN1, Model.AC, Model.HYBRID_3PH, Model.GATEWAY, None])
+async def test_non_ems_rejects_car_charge_boost(model):
+    client = _client(_caps(model) if model is not None else None)
+    with pytest.raises(InvalidPduState, match=r"HR\(2073\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(2073, 7400)], dry_run=True)
+
+
+@pytest.mark.parametrize("bad", [-1, 22001, True, 2.5, "7400"])
+def test_car_charge_boost_bounds(bad):
+    from givenergy_modbus.client.commands import set_car_charge_boost
+
+    with pytest.raises(ValueError):
+        set_car_charge_boost(bad)
+
+
+def test_car_charge_mode_not_writable():
+    """HR 2072 (car charge mode) is deliberately left out of both gates; only 2073 was added."""
+    assert 2072 not in manifest.WRITE_SAFE_EMS
+    assert 2072 not in PDU_WRITE_SAFE_REGISTERS
+
+
+def test_car_charge_boost_accepts_range_ends():
+    from givenergy_modbus.client.commands import set_car_charge_boost
+
+    assert set_car_charge_boost(0)[0].value == 0
+    assert set_car_charge_boost(22000)[0].value == 22000
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 
@@ -289,7 +336,7 @@ def test_ems_reg_not_in_base_set():
 
 
 def test_ems_set_covers_full_range():
-    assert manifest.WRITE_SAFE_EMS == frozenset({2040, *range(2044, 2072)})
+    assert manifest.WRITE_SAFE_EMS == frozenset({2040, *range(2044, 2072), 2073})  # 2072 (car charge mode) excluded
 
 
 # ---------------------------------------------------------------------------
