@@ -91,7 +91,7 @@ than directly on `Plant`:
 | `plant.device_type` | `plant.capabilities.device_type` |
 | `plant.isHV` | `plant.capabilities.is_hv` |
 | `plant.meter_list` | `plant.capabilities.meter_addresses` |
-| `plant.number_batteries` | unchanged on LV plants (also `plant.capabilities.lv_battery_addresses`). **HV plants: semantics changed** — the fork summed BCU module counts here, but this property now counts LV batteries only, so it is 0 on HV. For the fork's total-module count use `sum(n for _, n in plant.capabilities.bcu_stacks)`, or work with `plant.hv_stacks` directly |
+| `plant.number_batteries` | unchanged on LV plants (also `plant.capabilities.lv_battery_addresses`). **HV plants: semantics changed** — the fork summed BCU module counts here, but this property now counts LV batteries only, so it is 0 on HV. For the fork's total-module count use `plant.number_battery_modules`, which counts modules on LV, HV and All-in-One systems alike, or work with `plant.hv_stacks` directly |
 | `plant.HVStack` | `plant.hv_stacks` |
 | `plant.inverter_serial_number` | `plant.inverter_serial` |
 | `plant.additional_input_registers` / `..._holding_registers` | gone — handled internally by capability-aware polling |

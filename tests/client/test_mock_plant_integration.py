@@ -215,6 +215,9 @@ def _assert_aio_redetect(plant):
     assert caps.is_hv and not caps.is_ems
     assert caps.bcu_stacks == [(0, 4)]  # one integrated stack, 4 modules
     assert caps.arm_firmware_version == 620
+    # No LV packs; the stack's 4 modules count once, not once per listing.
+    assert plant.number_batteries == 0
+    assert plant.number_battery_modules == 4
     inv = plant.inverter
     assert inv.serial_number == "CH2414G000"
     # IR44 is inverter output on ALL_IN_ONE, not PV (#293 Slice A, live).
@@ -256,6 +259,7 @@ def _assert_hybrid_0x11(plant):
     assert caps.inverter_address == 0x11
     assert not caps.is_hv and not caps.is_ems
     assert plant.number_batteries == 2  # LV packs at 0x32/0x33
+    assert plant.number_battery_modules == 2
     inv = plant.inverter
     # IR44 stays PV on HYBRID_GEN1 — the #293 override doesn't fire.
     assert inv.e_pv_generation_today == 15.8
@@ -294,6 +298,9 @@ def _assert_three_phase_hv(plant):
     assert caps.is_three_phase and caps.is_hv and not caps.is_ems
     assert caps.bcu_stacks == [(0, 6)]  # one BCU, six HV modules
     assert list(caps.hv_bmu_addresses) == [0x50, 0x51, 0x52, 0x53, 0x54, 0x55]
+    # number_batteries is LV-only (0 here); the module total counts the stack's six once.
+    assert plant.number_batteries == 0
+    assert plant.number_battery_modules == 6
     inv = plant.inverter
     assert isinstance(inv, ThreePhaseInverter)
     assert inv.serial_number == "TC2337G000"
