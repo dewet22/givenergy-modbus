@@ -476,6 +476,9 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
         # Holding Registers, block 0-59
         #
         "device_type_code": Def(C.hex, None, HR(0)),
+        # Coarse family only (first DTC digit, e.g. HYBRID / ALL_IN_ONE), kept for backward
+        # compatibility. For the specific model detect() resolves, use resolved_model /
+        # Plant.identity.model (e.g. DTC 0x8102 is HYBRID_HV_GEN3, coarse ALL_IN_ONE).
         "model": Def(C.hex, Model, HR(0)),
         "module": Def(C.uint32, (C.hex, 8), HR(1), HR(2)),
         "num_mppt": Def((C.duint8, 0), None, HR(3)),
@@ -1009,6 +1012,21 @@ class SinglePhaseInverterRegisterGetter(RegisterGetter):
     }
 
 
+#: The identity fields of the HR(0-59) bank, which every GivEnergy device answers — inverters,
+#: Gateways and EMS controllers alike. Shared with the Gateway and EMS models so identity is
+#: decoded one way everywhere; picked from the inverter table, not re-typed.
+HR_IDENTITY_FIELDS: tuple[str, ...] = (
+    "device_type_code",
+    "model",
+    "serial_number",
+    "dsp_firmware_version",
+    "arm_firmware_version",
+    "firmware_version",
+    "system_time",
+)
+HR_IDENTITY_LUT = {name: SinglePhaseInverterRegisterGetter.REGISTER_LUT[name] for name in HR_IDENTITY_FIELDS}
+
+
 _SinglePhaseInverterBase = create_model(  # type: ignore[call-overload]
     "SinglePhaseInverter",
     __config__=ConfigDict(frozen=True),
@@ -1174,6 +1192,25 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         if self.p_battery is None:  # type: ignore[attr-defined]
             return None
         return max(0, self.p_battery)  # type: ignore[attr-defined]
+
+    @property
+    def resolved_model(self) -> Model | None:
+        """The specific model, as ``detect()`` resolves it from the DTC and ARM firmware.
+
+        ``model`` is only the coarse family from the first DTC digit (kept for backward
+        compatibility), so it can disagree with ``detect()``: DTC 0x8102 is coarse
+        ``ALL_IN_ONE`` but resolves to ``HYBRID_HV_GEN3``, and every "20" hybrid is coarse
+        ``HYBRID`` but resolves to ``HYBRID_GEN1``/``GEN2``/``GEN3``. None until HR(0) and
+        HR(21) have been read.
+        """
+        dtc = self.device_type_code  # type: ignore[attr-defined]
+        arm_fw = self.arm_firmware_version  # type: ignore[attr-defined]
+        if dtc is None or arm_fw is None:
+            return None
+        try:
+            return resolve_model(int(dtc, 16), int(arm_fw))
+        except ValueError:
+            return None
 
     @property
     def slot_map(self) -> SlotMap:

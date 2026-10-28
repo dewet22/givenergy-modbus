@@ -292,6 +292,9 @@ def _assert_three_phase_hv(plant):
     caps = plant.capabilities
     assert caps.device_type is Model.HYBRID_3PH
     assert caps.is_three_phase and caps.is_hv and not caps.is_ems
+    # Three-phase leaves HR(19)/HR(21) at 0; identity reads firmware from IR(1325)/IR(1327)
+    # like the inverter object does, rather than reporting "D0.0-A0.0".
+    assert plant.identity.firmware_version == plant.inverter.firmware_version == "D0.11043-A0.11121"
     assert caps.bcu_stacks == [(0, 6)]  # one BCU, six HV modules
     assert list(caps.hv_bmu_addresses) == [0x50, 0x51, 0x52, 0x53, 0x54, 0x55]
     inv = plant.inverter
@@ -383,6 +386,30 @@ async def test_full_cycle_instantiates_plant(relpath, assert_topology, strict):
     async for client in _client_for(relpath):
         plant = await _full_cycle(client, strict=strict)
         assert_topology(plant)
+        _assert_identity(plant)
+
+
+def _assert_identity(plant):
+    """Plant.identity works the same on every device type, and matches detect() (giv_tcp requests 4/5)."""
+    from givenergy_modbus.model.register import is_valid_serial
+
+    caps = plant.capabilities
+    ident = plant.identity
+    assert ident is not None
+    assert ident.model is caps.device_type  # the resolved model, not the coarse family
+    assert ident.serial_number == plant.inverter_serial and is_valid_serial(ident.serial_number)
+    assert ident.device_type_code is not None
+    if caps.arm_firmware_version is not None:
+        assert ident.arm_firmware_version == caps.arm_firmware_version
+    assert ident.firmware_version
+    # The controller models carry the same HR(0-59) identity directly.
+    for controller in (plant.ems, plant.gateway):
+        if controller is not None:
+            assert controller.serial_number == ident.serial_number
+            assert controller.device_type_code == ident.device_type_code
+            assert controller.arm_firmware_version == ident.arm_firmware_version
+            assert controller.firmware_version == ident.firmware_version
+            assert controller.system_time == ident.system_time
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ from pydantic import ConfigDict, computed_field, create_model
 
 from givenergy_modbus.client.commands import _EmsCommands
 from givenergy_modbus.model.devices import InverterSummary
-from givenergy_modbus.model.inverter import Status
+from givenergy_modbus.model.inverter import HR_IDENTITY_LUT, Status
 from givenergy_modbus.model.meter import MeterStatus
 from givenergy_modbus.model.register import HR, IR, RegisterGetter, RegisterMetadataMixin
 from givenergy_modbus.model.register import Converter as C
@@ -54,6 +54,9 @@ class EmsRegisterGetter(RegisterGetter):
     """Structured format for EMS plant-level attributes (device address 0x11)."""
 
     REGISTER_LUT = {
+        # HR(0-59) identity (serial, DTC, firmware, system time) — the bank every device answers,
+        # decoded exactly as on the inverter (see inverter.HR_IDENTITY_LUT).
+        **HR_IDENTITY_LUT,
         #
         # Holding Registers 2040–2075 — Plant configuration
         #

@@ -110,6 +110,73 @@ def test_plant(
     # assert Plant.from_registers(plant) == plant
 
 
+@pytest.mark.parametrize(
+    ("dtc", "arm_fw", "coarse", "resolved"),
+    [
+        (0x8102, 500, Model.ALL_IN_ONE, Model.HYBRID_HV_GEN3),  # the giv_tcp#565 mislabel
+        (0x2001, 449, Model.HYBRID, Model.HYBRID_GEN1),
+        (0x2001, 950, Model.HYBRID, Model.HYBRID_GEN2),
+        (0x3001, 282, Model.AC, Model.AC),
+    ],
+)
+def test_resolved_model_vs_coarse_model(dtc, arm_fw, coarse, resolved):
+    """``model`` stays the coarse family; ``resolved_model`` and ``identity.model`` are specific.
+
+    ``model`` is kept coarse for backward compatibility; ``resolved_model`` and
+    ``Plant.identity.model`` give the specific model detect() resolves.
+    """
+    cache = RegisterCache({HR(0): dtc, HR(21): arm_fw})
+    inv = SinglePhaseInverter.from_register_cache(cache)
+    assert inv.model == coarse
+    assert inv.resolved_model is resolved
+
+    plant = Plant()
+    plant.register_caches[0x11] = cache  # before detect(): no capabilities
+    assert plant.identity is not None
+    assert plant.identity.model is resolved
+
+
+def test_unknown_dtc_resolves_to_no_model():
+    """A DTC resolve_model() can't map (first digit 9) gives None, not an exception."""
+    cache = RegisterCache({HR(0): 0x9001, HR(21): 1})
+    assert SinglePhaseInverter.from_register_cache(cache).resolved_model is None
+
+    plant = Plant()
+    plant.register_caches[0x11] = cache  # no capabilities, so identity resolves from the DTC
+    assert plant.identity is not None
+    assert plant.identity.model is None
+    assert plant.identity.device_type_code == "9001"
+
+
+def test_resolved_model_none_until_identity_read():
+    assert SinglePhaseInverter.from_register_cache(RegisterCache()).resolved_model is None
+
+
+def test_identity_none_before_hr0_read():
+    assert Plant().identity is None
+
+
+def test_identity_prefers_detected_model():
+    """Once detected, identity.model is capabilities.device_type."""
+    plant = Plant()
+    plant.register_caches[0x11] = RegisterCache({HR(0): 0x2001, HR(21): 449})
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=449)
+    assert plant.identity.model is Model.HYBRID_GEN1
+    assert plant.identity.arm_firmware_version == 449
+
+
+def test_identity_three_phase_firmware_none_until_ir_bank_read():
+    """On three-phase, firmware comes from IR(1325)/IR(1327): None before refresh, not "D0.0-A0.0"."""
+    plant = Plant()
+    plant.register_caches[0x11] = RegisterCache({HR(0): 0x4004, HR(19): 0, HR(21): 0})
+    plant.capabilities = PlantCapabilities(device_type=Model.HYBRID_3PH)
+    ident = plant.identity
+    assert ident.firmware_version is None and ident.arm_firmware_version is None
+    plant.register_caches[0x11].update({IR(1325): 11043, IR(1327): 11121})
+    assert plant.identity.firmware_version == "D0.11043-A0.11121"
+    assert plant.identity.arm_firmware_version == 11121
+
+
 def test_number_batteries_handles_decode_value_error(
     plant: Plant,
     register_cache_battery_daytime_discharging,

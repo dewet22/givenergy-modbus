@@ -1,6 +1,7 @@
 import logging
 import warnings
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, ClassVar, cast
 
@@ -30,13 +31,18 @@ from givenergy_modbus.model.ems import Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, BmuRegisterGetter, HvStack
 from givenergy_modbus.model.inverter import (
+    HR_IDENTITY_LUT,
     Model,
     SinglePhaseInverter,
     SinglePhaseInverterRegisterGetter,
     inverter_address_for,
     resolve_model,
 )
-from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter, select_inverter
+from givenergy_modbus.model.inverter_threephase import (
+    ThreePhaseInverter,
+    ThreePhaseInverterRegisterGetter,
+    select_inverter,
+)
 from givenergy_modbus.model.lv_bcu import LV_BCU_ADDRESS, LvBcu, LvBcuRegisterGetter
 from givenergy_modbus.model.meter import Meter, MeterRegisterGetter
 from givenergy_modbus.model.register import HR, IR, Converter, Register, RegisterGetter, is_valid_serial
@@ -115,6 +121,34 @@ def _derive_inverter_address(mapping: dict[str, Any]) -> None:
     model = _coerce_model(mapping.get("device_type"))
     if model is not None:
         mapping["inverter_address"] = inverter_address_for(model)
+
+
+class _IdentityRegisterGetter(RegisterGetter):
+    """Decodes only the HR(0-59) identity fields, for any device type."""
+
+    REGISTER_LUT = HR_IDENTITY_LUT
+
+
+@dataclass(frozen=True)
+class DeviceIdentity:
+    """Who the plant's root device is, from the HR(0-59) bank every GivEnergy device answers.
+
+    The same for an inverter, a Gateway or an EMS controller, and available after a single
+    HR(0, 60) read (``detect()`` makes one). Returned by :attr:`Plant.identity`.
+
+    ``model`` is the specific model ``detect()`` resolves (``PlantCapabilities.device_type``
+    once detected), not the coarse first-digit family that the device classes' ``model``
+    field carries — e.g. DTC 0x8102 is ``HYBRID_HV_GEN3`` here but coarse ``ALL_IN_ONE``
+    there.
+    """
+
+    serial_number: str | None
+    device_type_code: str | None  # HR(0) as hex, e.g. "8102"
+    model: Model | None
+    arm_firmware_version: int | None
+    dsp_firmware_version: int | None
+    firmware_version: str | None  # e.g. "D0.449-A0.449"
+    system_time: datetime | None
 
 
 class PlantCapabilities(BaseModel):
@@ -1860,6 +1894,52 @@ class Plant(GivEnergyBaseModel):
             cache = self.register_caches.get(self.capabilities.inverter_address, RegisterCache())
             return select_inverter(self.capabilities.device_type, cache)
         return SinglePhaseInverter.from_register_cache(self.register_caches.get(0x11, RegisterCache()))
+
+    @property
+    def identity(self) -> DeviceIdentity | None:
+        """Identity of the plant's root device — inverter, Gateway or EMS — from HR(0-59).
+
+        A documented, device-type-independent alternative to reading identity off
+        ``plant.inverter`` (which on a Gateway or EMS plant happens to decode the
+        controller's HR(0-59)). Reads the capability-selected device's cache (0x11 before
+        detect), without mutating the caches. ``serial_number`` is :attr:`inverter_serial`,
+        so it falls back the same way; ``model`` is ``capabilities.device_type`` once
+        detected, else resolved from the DTC and ARM firmware. None until HR(0) has been read.
+
+        Three-phase units leave the HR(19)/HR(21) firmware words at 0 and report firmware at
+        IR(1325) (DSP) / IR(1327) (ARM) instead, as ``ThreePhaseInverter.firmware_version``
+        does; on those the firmware fields come from there, and are None until the first
+        ``refresh()`` has read that bank.
+        """
+        address = self.capabilities.inverter_address if self.capabilities else 0x11
+        cache = self.register_caches.get(address)
+        if cache is None or cache.get(HR(0)) is None:
+            return None
+        fields = _IdentityRegisterGetter(cache).build()
+        dtc = fields.get("device_type_code")
+        arm_fw = fields.get("arm_firmware_version")
+        model: Model | None = self.capabilities.device_type if self.capabilities else None
+        if model is None and dtc is not None and arm_fw is not None:
+            try:
+                model = resolve_model(int(dtc, 16), int(arm_fw))
+            except ValueError:
+                model = None
+        dsp_fw = fields.get("dsp_firmware_version")
+        firmware = fields.get("firmware_version")
+        if self.capabilities is not None and self.capabilities.is_three_phase:
+            tph = ThreePhaseInverterRegisterGetter(cache)
+            arm_fw = tph.get("tph_arm_firmware_version")
+            dsp_fw = tph.get("ac_dsp_firmware_version")
+            firmware = tph.get("firmware_version")
+        return DeviceIdentity(
+            serial_number=self.inverter_serial or None,
+            device_type_code=dtc,
+            model=model,
+            arm_firmware_version=arm_fw,
+            dsp_firmware_version=dsp_fw,
+            firmware_version=firmware,
+            system_time=fields.get("system_time"),
+        )
 
     @property
     def inverter_serial(self) -> str:

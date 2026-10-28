@@ -37,7 +37,7 @@ async def main():
     await client.one_shot_command(commands.set_mode_dynamic())
 
     print(plant.inverter_serial_number)
-    print(plant.inverter.model)                 # e.g. Model.HYBRID
+    print(plant.inverter.model)                 # coarse family, e.g. Model.HYBRID
     print(plant.inverter.enable_charge_target)
     print(plant.inverter.charge_slot_1)         # TimeSlot instance
     print(plant.inverter.slot_map)              # SlotMap for this model
@@ -50,6 +50,29 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Device identity
+
+`plant.identity` describes the plant's root device — inverter, Gateway or EMS — from the
+HR(0-59) bank every GivEnergy device answers, so it works the same whatever is at the
+dongle:
+
+```python
+ident = plant.identity                      # None until HR(0) has been read
+print(ident.serial_number, ident.model)     # e.g. "SA2114G000", Model.HYBRID_GEN1
+print(ident.device_type_code)               # HR(0) as hex, e.g. "2001"
+print(ident.firmware_version)               # e.g. "D0.449-A0.449"
+print(ident.system_time)
+```
+
+`ident.model` is the specific model `detect()` resolves. `plant.inverter.model` is only
+the coarse family from the first DTC digit (e.g. `Model.HYBRID`, or `Model.ALL_IN_ONE`
+for an HV Gen 3 with DTC 0x8102), kept for backward compatibility; use
+`plant.inverter.resolved_model` for the specific model there. `plant.ems` and
+`plant.gateway` also carry `serial_number`, `device_type_code`, `model` (coarse),
+`arm_firmware_version`, `dsp_firmware_version`, `firmware_version` and `system_time`.
+On three-phase units the firmware fields come from IR(1325)/IR(1327), so they are `None`
+until the first `refresh()`.
 
 ## Polling the plant
 
