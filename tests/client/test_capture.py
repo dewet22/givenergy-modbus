@@ -237,8 +237,8 @@ def test_frame_redactor_redacts_bcu_unit_serial():
     assert b"HB2336G174" not in out
 
 
-def test_frame_redactor_invalid_frame_emitted_intact():
-    """An undecodable frame (bad MBAP / unknown function) is emitted intact, not dropped."""
+def test_frame_redactor_invalid_frame_without_identifiers_unchanged():
+    """An undecodable frame with nothing serial- or IP-shaped in it comes through unchanged, not dropped."""
     # Build a syntactically valid GivEnergy MBAP wrapping an unknown function code
     import struct
 
@@ -248,7 +248,7 @@ def test_frame_redactor_invalid_frame_emitted_intact():
 
     r = FrameRedactor()
     out = r.feed(bad_frame) + r.flush()
-    # Intact — exact same bytes
+    # Nothing to scrub — exact same bytes
     assert out == bad_frame
 
 
@@ -264,7 +264,7 @@ def test_frame_redactor_invalid_frame_logs_warning(caplog):
     with caplog.at_level(logging.WARNING, logger="givenergy_modbus.client.client"):
         r.feed(bad_frame)
         r.flush()
-    assert any("undecodable" in rec.message.lower() or "intact" in rec.message.lower() for rec in caplog.records)
+    assert any("undecodable" in rec.message.lower() for rec in caplog.records)
 
 
 def test_frame_redactor_partial_frame_held_then_emitted():
@@ -285,8 +285,8 @@ def test_frame_redactor_partial_frame_held_then_emitted():
     assert len(out) == len(frame)
 
 
-def test_frame_redactor_garbage_before_marker_emitted_intact():
-    """Garbage bytes before a valid frame marker are emitted intact."""
+def test_frame_redactor_garbage_before_marker_without_identifiers_unchanged():
+    """Garbage bytes before a valid frame marker, with nothing to scrub, come through unchanged."""
     garbage = b"\x00\x01\x02\x03garbage"
     frame = _make_holding_response("WF1234G567")
     r = FrameRedactor()
@@ -324,6 +324,97 @@ def test_frame_redactor_lan_config_broadcast_redacted():
     # inconsistent with the rewritten CSV, but this is unavoidable without
     # understanding the dongle-firmware-private derivation.
     assert out[-2:] == full_frame[-2:]  # check bytes pass through unchanged
+
+
+def _lan_config_frame(serial: bytes, pad: bytes, csv: bytes, check: bytes = b"\x12\x34") -> bytes:
+    """Build a LAN-config broadcast frame (function 2) from its raw parts."""
+    import struct
+
+    inner = serial + pad + csv + check
+    return struct.pack(">HHHBB", 0x5959, 0x1, len(inner) + 2, 0x1, 0x02) + inner
+
+
+_LIVE_CSV_192 = b"192.168.1.50,255.255.255.0,192.168.1.254\r\n\r\n"  # 44 bytes
+
+
+@pytest.mark.parametrize(
+    ("pad", "csv"),
+    [
+        # The #668 shape: 72 bytes on the wire, no comma after the pad. The transparent
+        # decoder read the '9' of "192" as the function code and gave up, so the frame
+        # used to go into the capture verbatim.
+        (b"\x00" * 8, _LIVE_CSV_192),
+        # The #100 shape (7 zeros + comma), on both address families.
+        (b"\x00" * 7 + b",", _LIVE_CSV_192),
+        (b"\x00" * 7 + b",", b"10.0.0.17,255.0.0.0,10.0.0.1\r\n\r\n"),
+    ],
+)
+def test_frame_redactor_lan_config_broadcast_redacted_whatever_the_layout(pad, csv):
+    """A live broadcast is decoded and redacted whatever its pad and address (giv_tcp#668)."""
+    from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
+
+    frame = _lan_config_frame(b"WO2315G123", pad, csv)
+    if pad == b"\x00" * 8:
+        assert len(frame) == 72  # the length reported in #668
+
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    assert len(out) == len(frame)
+    assert b"WO2315G123" not in out
+    assert b"WO2315G000" in out
+    for octet_text in (b"192.168", b"255.255", b"10.0.0"):
+        assert octet_text not in out
+    pdu = ClientIncomingMessage.decode_bytes(out)
+    assert isinstance(pdu, LanConfigBroadcast)
+    assert set(pdu.ip.replace(".", "")) == {"0"}
+    assert out[8 + 10 : 8 + 10 + len(pad)] == pad  # pad carried through verbatim
+    assert out[-2:] == frame[-2:]  # opaque check carried through
+
+
+def test_frame_redactor_scrubs_undecodable_frame():
+    """An undecodable frame fails closed: serial- and IP-shaped text is zeroed, length kept (giv_tcp#668)."""
+    import struct
+
+    inner = b"\x00\x01" + b"WO2315G123" + b"\x00" + b"EMS2522018" + b"\x00ip=192.168.1.50;\x00\x00"
+    frame = struct.pack(">HHHBB", 0x5959, 0x1, len(inner) + 2, 0x1, 0x7F) + inner
+
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    assert len(out) == len(frame)
+    assert b"WO2315G000" in out and b"WO2315G123" not in out
+    assert b"EMS2522000" in out and b"EMS2522018" not in out
+    assert b"ip=000.000.0.00;" in out
+
+
+def test_frame_redactor_scrubs_garbage_split_across_reads():
+    """Serial/IP text in garbage is scrubbed even when a read boundary splits it."""
+    r = FrameRedactor()
+    out = r.feed(b"\x00" * 20 + b"WO2315G1") + r.feed(b"23 at 192.16") + r.feed(b"8.1.50 \x00") + r.flush()
+
+    assert b"WO2315G000" in out and b"WO2315G123" not in out
+    assert b"000.000.0.00" in out and b"192" not in out
+
+
+def test_frame_redactor_scrubs_flushed_tail():
+    """A partial frame left at stream end is scrubbed on flush, not emitted verbatim."""
+    frame = _lan_config_frame(b"WO2315G123", b"\x00" * 8, _LIVE_CSV_192)
+    r = FrameRedactor()
+    out = r.feed(frame[:-5]) + r.flush()  # truncated: the frame never completes
+
+    assert len(out) == len(frame) - 5
+    assert b"WO2315G123" not in out and b"192.168" not in out
+
+
+def test_lan_config_redact_blanks_unrecognised_serial():
+    """The broadcast's dongle serial is redacted fail-closed, like envelope serials."""
+    frame = _lan_config_frame(b"XX-ODD-123", b"\x00" * 7 + b",", _LIVE_CSV_192)
+    r = FrameRedactor()
+    out = r.feed(frame) + r.flush()
+
+    assert len(out) == len(frame)
+    assert b"XX-ODD-123" not in out
 
 
 # ---------------------------------------------------------------------------

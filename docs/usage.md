@@ -398,7 +398,7 @@ share-safe export.
 
 ## Capturing frames for bug reports
 
-`Client.capture_frames(sink, duration=60.0)` tees raw TX/RX bytes to a caller-supplied sink callable while the normal refresh loop continues — useful when a bug report needs to include the actual wire bytes. Inverter and dongle serial numbers are redacted by the library before the sink is invoked: only the digits are zeroed; the prefix and model letter survive because they carry diagnostic signal.
+`Client.capture_frames(sink, duration=60.0)` tees raw TX/RX bytes to a caller-supplied sink callable while the normal refresh loop continues — useful when a bug report needs to include the actual wire bytes. Inverter and dongle serial numbers are redacted by the library before the sink is invoked: only the digits are zeroed; the prefix and model letter survive because they carry diagnostic signal. The dongle's LAN-config broadcast has its IP address, netmask and gateway zeroed too. Bytes the library can't decode fail closed: anything in them shaped like a serial number or an IPv4 address is zeroed the same way, keeping the byte length, rather than passed through.
 
 The library does the redaction; persistence and format are the caller's choice. A minimal file-based capture looks like:
 
