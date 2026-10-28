@@ -88,6 +88,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 261 / 262 | `charge_slot_8_start` / `_end` | |
 | 264 / 265 | `charge_slot_9_start` / `_end` | |
 | 267 / 268 | `charge_slot_10_start` / `_end` | |
+| 242, 245, … 269 | `charge_target_soc_1` … `_10` | Per-slot target SOC (HR 242 + 3k), 4–100 %. 10-slot single-phase models and `HYBRID_3PH` / `AC_3PH` only |
 
 ### Discharge slots 1–10
 
@@ -103,6 +104,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 291 / 292 | `discharge_slot_8_start` / `_end` | |
 | 294 / 295 | `discharge_slot_9_start` / `_end` | |
 | 297 / 298 | `discharge_slot_10_start` / `_end` | |
+| 272, 275, … 299 | `discharge_target_soc_1` … `_10` | Per-slot target SOC (HR 272 + 3k), 4–100 %. 10-slot single-phase models and `HYBRID_3PH` / `AC_3PH` only |
 
 ### Battery mode and scheduling
 
