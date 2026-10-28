@@ -154,6 +154,35 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# Gateway: single-phase set plus the rate pair HR313/314, written via plant.inverter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_gateway_accepts_rate_pair_via_inverter_commands():
+    from givenergy_modbus.client.commands import set_battery_charge_limit_ac, set_battery_discharge_limit_ac
+
+    reqs = set_battery_charge_limit_ac(60) + set_battery_discharge_limit_ac(80)
+    await _client(_caps(Model.GATEWAY)).one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reg", [311, 317])
+async def test_gateway_rejects_other_ac_config_writes(reg):
+    with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+        await _client(_caps(Model.GATEWAY)).one_shot_command([WriteHoldingRegisterRequest(reg, 0)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_gateway_keeps_single_phase_controls():
+    """Unchanged from the old fallthrough: e.g. enable discharge (HR59), charge slot 1 (HR94/95)."""
+    reqs = [WriteHoldingRegisterRequest(59, 1), WriteHoldingRegisterRequest(94, 130)]
+    await _client(_caps(Model.GATEWAY)).one_shot_command(reqs, dry_run=True)  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 
