@@ -145,14 +145,23 @@ Gated on `PlantCapabilities.has_ac_config_block` inside `one_shot_command()`.
 | 313 | `inverter_charge_power_pct` | Inverter charge power % | 1–100 % |
 | 314 | `inverter_discharge_power_pct` | Inverter discharge power % | 1–100 % |
 | 317 | `enable_eps` | Enable EPS | bool |
-| 318 | `battery_pause_mode` | Pause battery | `BatteryPauseMode` enum |
-| 319 | `battery_pause_slot_start` | Pause slot start | HHMM |
-| 320 | `battery_pause_slot_end` | Pause slot end | HHMM |
 
 !!! note "HR313 / HR314 floor at 1, not 0"
     Writing 0 to HR313 or HR314 returns an error on AC hardware (confirmed via
     wire capture).  The range floor is 1 for AC inverters.  DC-coupled models keep
     a 0-floor for HR111 / HR112.
+
+### Battery pause (model- and firmware-gated)
+
+Not part of the AC-config gate: `one_shot_command()` admits these per model and ARM
+firmware (`manifest.battery_pause_write_registers()`). Unknown firmware on a gated model
+is rejected.
+
+| HR | Field name | Description | Range | Accepted on |
+|---|---|---|---|---|
+| 318 | `battery_pause_mode` | Pause battery | `BatteryPauseMode` enum | All-in-One; AC (ARM fw ≥ 200); Gen 1 hybrid (ARM fw 187–499) |
+| 319 | `battery_pause_slot_start` | Pause slot start | HHMM | All-in-One |
+| 320 | `battery_pause_slot_end` | Pause slot end | HHMM | All-in-One |
 
 ### Three-phase
 

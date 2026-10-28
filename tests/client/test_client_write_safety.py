@@ -154,6 +154,96 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# Battery pause mode / slot (HR 318-320) — model- and firmware-gated
+# ---------------------------------------------------------------------------
+
+
+def _pause_mode_requests():
+    from givenergy_modbus.client.commands import set_battery_pause_mode
+    from givenergy_modbus.model.battery import BatteryPauseMode
+
+    return set_battery_pause_mode(BatteryPauseMode.PAUSE_DISCHARGE)
+
+
+def _pause_slot_requests():
+    from datetime import time as dt_time
+
+    from givenergy_modbus.client.commands import set_pause_slot
+    from givenergy_modbus.model import TimeSlot
+
+    return set_pause_slot(TimeSlot(dt_time(16, 0), dt_time(19, 0)))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model", "arm_fw"),
+    [(Model.ALL_IN_ONE, None), (Model.AC, 200), (Model.HYBRID_GEN1, 187)],
+)
+async def test_pause_mode_accepted_on_gated_models(model, arm_fw):
+    """The pause-mode command clears the client gate where the manifest allows HR318."""
+    client = _client(PlantCapabilities(device_type=model, arm_firmware_version=arm_fw))
+    await client.one_shot_command(_pause_mode_requests(), dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model", "arm_fw"),
+    [
+        (Model.AC, 199),  # below the AC gate
+        (Model.AC, None),  # firmware unknown → fail closed
+        (Model.HYBRID_GEN1, 186),  # below the Gen 1 real-time-control release
+        (Model.HYBRID_GEN1, None),
+        (Model.HYBRID_GEN2, 999),  # no evidence yet
+        (Model.HYBRID_HV_GEN3, 999),
+        (Model.GATEWAY, 999),
+        (Model.HYBRID_3PH, 999),  # three-phase has no pause function
+        (Model.EMS, 999),
+    ],
+)
+async def test_pause_mode_rejected_off_gate(model, arm_fw):
+    client = _client(PlantCapabilities(device_type=model, arm_firmware_version=arm_fw))
+    with pytest.raises(InvalidPduState, match=r"HR\(318\)"):
+        await client.one_shot_command(_pause_mode_requests(), dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_undetected_rejects_pause_mode():
+    with pytest.raises(InvalidPduState, match=r"HR\(318\)"):
+        await _client(None).one_shot_command(_pause_mode_requests(), dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_pause_slot_accepted_on_all_in_one():
+    client = _client(PlantCapabilities(device_type=Model.ALL_IN_ONE))
+    await client.one_shot_command(_pause_slot_requests(), dry_run=True)  # must not raise
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("model", "arm_fw"), [(Model.AC, 200), (Model.HYBRID_GEN1, 449)])
+async def test_pause_slot_rejected_where_only_mode_is_confirmed(model, arm_fw):
+    """AC has no pause slot; the Gen 1 slot is unconfirmed — mode is allowed, slot is not."""
+    client = _client(PlantCapabilities(device_type=model, arm_firmware_version=arm_fw))
+    with pytest.raises(InvalidPduState, match=r"HR\(319\)"):
+        await client.one_shot_command(_pause_slot_requests(), dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_installer_command_applies_the_same_pause_gate():
+    """installer_command() shares _resolve_write_safe(), so the firmware gate holds there too."""
+    ok = _client(PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=187))
+    await ok.installer_command(_pause_mode_requests(), dry_run=True)  # must not raise
+    below = _client(PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=186))
+    with pytest.raises(InvalidPduState, match=r"HR\(318\)"):
+        await below.installer_command(_pause_mode_requests(), dry_run=True)
+
+
+def test_pause_commands_encode():
+    """Gate 2 (the PDU allowlist) admits the pause registers — encode, not just construct."""
+    for req in _pause_mode_requests() + _pause_slot_requests():
+        req.encode()
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 
