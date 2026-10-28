@@ -148,6 +148,146 @@ async def test_close_handles_connection_reset_on_wait_closed():
     writer.wait_closed.assert_called_once()
 
 
+async def test_close_finishes_cleanup_when_wait_closed_times_out():
+    """A dead socket's wait_closed() can raise TimeoutError; close() must still cancel both tasks (giv_tcp#613)."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock(side_effect=TimeoutError(110, "Operation timed out"))
+    client.writer = writer
+    reader = MagicMock()
+    client.reader = reader
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+    client.expected_responses[1] = "sentinel"
+
+    await client.close()  # must not raise
+
+    client.network_producer_task.cancel.assert_called_once()
+    client.network_consumer_task.cancel.assert_called_once()
+    reader.feed_eof.assert_called_once()
+    assert not hasattr(client, "writer") and not hasattr(client, "reader")
+    assert client.expected_responses == {}
+
+
+async def test_close_cleans_up_then_propagates_unexpected_error():
+    """A non-OSError from wait_closed() propagates, but only after the teardown in the finally ran."""
+    client = Client(host="foo", port=4321)
+    writer = MagicMock()
+    writer.wait_closed = AsyncMock(side_effect=RuntimeError("boom"))
+    client.writer = writer
+    client.reader = MagicMock()
+    client.network_producer_task = MagicMock()
+    client.network_consumer_task = MagicMock()
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await client.close()
+
+    client.network_consumer_task.cancel.assert_called_once()
+    assert not hasattr(client, "reader")
+
+
+async def test_close_retrieves_a_dead_network_task_exception(caplog):
+    """A network task that already died with an error has its exception retrieved by close() (giv_tcp#613).
+
+    Otherwise asyncio logs "Task exception was never retrieved" when the task is collected,
+    long after the reconnect.
+    """
+
+    async def die():
+        raise TimeoutError(110, "Operation timed out")
+
+    client = Client(host="foo", port=4321)
+    dead = asyncio.create_task(die(), name="network_consumer")
+    await asyncio.sleep(0)  # let it fail before close()
+    assert dead.done()
+    client.network_consumer_task = dead
+    client.network_producer_task = None
+
+    loop = asyncio.get_running_loop()
+    unretrieved: list[dict] = []
+    loop.set_exception_handler(lambda _loop, ctx: unretrieved.append(ctx))
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client.close()
+    client.network_consumer_task = None
+    del dead
+    import gc
+
+    gc.collect()
+
+    assert not unretrieved, unretrieved
+    assert any("had exited with" in r.message for r in caplog.records)
+
+
+async def test_close_cancels_queued_frames():
+    """Frames still queued for the producer have their frame_sent futures cancelled on close."""
+    client = Client(host="foo", port=4321)
+    frame_sent = asyncio.get_running_loop().create_future()
+    client.tx_queue.put_nowait((b"frame", frame_sent, None))
+    client.tx_queue.put_nowait((b"no-future", None, None))  # an entry without a frame_sent future
+
+    await client.close()
+
+    assert frame_sent.cancelled()
+    assert client.tx_queue.empty()
+
+
+async def test_close_without_tx_queue():
+    """close() tolerates a client whose tx_queue has been cleared."""
+    client = Client(host="foo", port=4321)
+    client.tx_queue = None
+
+    await client.close()  # must not raise
+
+    assert client.connected is False
+
+
+async def test_close_leaves_a_slow_task_running_after_the_reap_timeout(monkeypatch, caplog):
+    """A network task that takes longer than the reap timeout to finish is left to finish on its own."""
+    import givenergy_modbus.client.client as client_module
+
+    monkeypatch.setattr(client_module, "_CLOSE_REAP_TIMEOUT", 0.01)
+    release = asyncio.Event()
+
+    async def stubborn():
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            await release.wait()  # ignore the cancel until released
+
+    client = Client(host="foo", port=4321)
+    task = asyncio.create_task(stubborn())
+    await asyncio.sleep(0)
+    client.network_consumer_task = task
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client.close()
+
+    assert any("still finishing after cancel" in r.message for r in caplog.records)
+    assert not task.done()
+    release.set()
+    await task
+
+
+async def test_close_does_not_await_the_task_it_runs_in():
+    """close() called from inside a network task must not wait on itself.
+
+    close() cancels that task (as before #613), so it ends cancelled — but straight away,
+    not after the reap timeout it would hit if it waited on its own completion.
+    """
+    client = Client(host="foo", port=4321)
+
+    async def body():
+        await client.close()
+
+    task = asyncio.create_task(body())
+    client.network_consumer_task = task
+    loop = asyncio.get_running_loop()
+    start = loop.time()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, timeout=2)
+    assert loop.time() - start < 0.5
+
+
 def test_client_expected_responses_isolated_between_instances():
     """expected_responses must be per-instance, not shared at the class level."""
     client1 = Client(host="a", port=1)
