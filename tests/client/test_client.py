@@ -223,11 +223,22 @@ async def test_close_cancels_queued_frames():
     client = Client(host="foo", port=4321)
     frame_sent = asyncio.get_running_loop().create_future()
     client.tx_queue.put_nowait((b"frame", frame_sent, None))
+    client.tx_queue.put_nowait((b"no-future", None, None))  # an entry without a frame_sent future
 
     await client.close()
 
     assert frame_sent.cancelled()
     assert client.tx_queue.empty()
+
+
+async def test_close_without_tx_queue():
+    """close() tolerates a client whose tx_queue has been cleared."""
+    client = Client(host="foo", port=4321)
+    client.tx_queue = None
+
+    await client.close()  # must not raise
+
+    assert client.connected is False
 
 
 async def test_close_leaves_a_slow_task_running_after_the_reap_timeout(monkeypatch, caplog):
