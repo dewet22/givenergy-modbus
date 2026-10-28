@@ -451,6 +451,15 @@ def test_is_lan_config_matches_content_not_offsets():
     assert not LanConfigBroadcast.is_lan_config(b"\x00" * 7 + b"\x8a\x32\x03" + b"\x00\x00\x00\x3c" + b"\x00" * 120)
 
 
+def test_lan_config_decode_refuses_non_broadcast_body():
+    """decode_main_function's own guard: called on a body that isn't a broadcast, it raises."""
+    from givenergy_modbus.codec import PayloadDecoder
+    from givenergy_modbus.pdu.lan_config import LanConfigBroadcast
+
+    with pytest.raises(ValueError, match="not a LAN-config broadcast body"):
+        LanConfigBroadcast.decode_main_function(PayloadDecoder(b"\x00" * 7 + b",rest"))
+
+
 def test_strict_crc_mode_raises_on_mismatch(monkeypatch):
     """Opt-in strict CRC mode raises InvalidPduState on a mismatch (audit H1-better).
 
