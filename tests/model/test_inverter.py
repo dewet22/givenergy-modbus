@@ -39,6 +39,35 @@ def test_hybrid_gen2_daily_battery_energy_routes_to_alt1():
     assert inv.e_battery_discharge_total is None
 
 
+def test_hybrid_gen1_arm451_daily_battery_energy_routes_to_alt1():
+    """GEN1 ARM 451 reports daily battery energy at alt1 (IR36/37), not alt2 (IR182/183).
+
+    Regression for hass#321: on a Gen1 hybrid (dtc 0x2001, arm 451) the canonical daily and
+    lifetime battery energy sensors read 0.0 because GEN1 routed to alt2 daily / alt1 total,
+    which that firmware leaves at 0. Field capture: IR(36)=85 -> 8.5 kWh charge, corroborated
+    by e_ac_charge_today = 9.1. Totals have no confirmed source on this firmware -> None.
+    """
+    inv = SinglePhaseInverter.from_register_cache(
+        RegisterCache(
+            {
+                HR(0): 0x2001,
+                HR(21): 451,
+                IR(36): 85,
+                IR(37): 1,
+                IR(180): 0,
+                IR(181): 0,
+                IR(182): 0,
+                IR(183): 0,
+            }
+        )
+    )
+    assert resolve_model(0x2001, 451) is Model.HYBRID_GEN1
+    assert inv.e_battery_charge_today == 8.5
+    assert inv.e_battery_discharge_today == 0.1
+    assert inv.e_battery_charge_total is None
+    assert inv.e_battery_discharge_total is None
+
+
 def test_first_battery_serial_number_removed():
     """first_battery_serial_number is gone from the model (#191).
 
