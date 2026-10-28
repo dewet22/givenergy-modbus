@@ -38,6 +38,16 @@ async def test_configure_charge_target():
     ]
 
 
+def test_set_enable_charge_target_writes_only_the_enable_flag():
+    """HR 20 alone — no target SOC, no charge enable — in both directions."""
+    flag = RegisterMap.ENABLE_CHARGE_TARGET
+    assert commands.set_enable_charge_target(True) == [WriteHoldingRegisterRequest(flag, 1)]
+    assert commands.set_enable_charge_target(False) == [WriteHoldingRegisterRequest(flag, 0)]
+    assert commands.enable_charge_target() == commands.set_enable_charge_target(True)
+    for req in commands.enable_charge_target() + commands.set_enable_charge_target(False):
+        req.encode()
+
+
 async def test_set_charge_target_is_deprecated_alias():
     """set_charge_target is retained as a deprecated alias for set_charge_target_enabled (1ph + 3ph)."""
     with pytest.warns(DeprecationWarning):

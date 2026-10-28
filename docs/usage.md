@@ -264,6 +264,8 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `set_charge_target_enabled(soc)` | Enable charging and stop when SOC reaches `soc`% (4–100). (`set_charge_target` is a deprecated alias) | |
 | `set_charge_target_soc(soc)` | Set just the charge-target SOC (4–100), leaving the enable bits untouched | |
 | `disable_charge_target()` | Remove SOC limit, target 100% | |
+| `set_enable_charge_target(enabled)` | Turn the charge target on or off (HR 20) without writing the target SOC or the charge enable | |
+| `enable_charge_target()` | Shorthand for `set_enable_charge_target(True)`, the counterpart of `disable_charge_target()`. On an inverter object `enable_charge_target` is the decoded HR 20 value, so use `set_enable_charge_target(True)` there | ⛔ commands-only |
 | `set_enable_charge(enabled)` | Enable or disable charging | |
 | `set_battery_charge_limit(val)` | Charge power limit (0–100%; firmware expected to clamp per-model) | |
 | `set_battery_charge_limit_ac(val)` | AC charge power limit (1–100%; 0 errors on hardware) | ⛔ commands-only |

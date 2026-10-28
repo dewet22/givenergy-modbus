@@ -229,6 +229,29 @@ def disable_charge_target() -> list[TransparentRequest]:
     ]
 
 
+def set_enable_charge_target(enabled: bool) -> list[TransparentRequest]:
+    """Turn the charge target on or off (HR 20) without writing the target SOC or the charge enable.
+
+    Unlike :func:`set_charge_target_enabled` it doesn't take a target, so a caller that only
+    wants to flip the flag can't overwrite a newer target with a stale one. When on, the
+    inverter charges to whatever target is already set (HR 116, or HR 1111 on three-phase);
+    set that with :func:`set_charge_target_soc` if needed. Three-phase inverters use the same
+    enable register. To turn the target off *and* reset it to 100%, use
+    :func:`disable_charge_target`.
+    """
+    return [WriteHoldingRegisterRequest(RegisterMap.ENABLE_CHARGE_TARGET, 1 if enabled else 0)]
+
+
+def enable_charge_target() -> list[TransparentRequest]:
+    """Turn the charge target on (HR 20 = 1) — the counterpart of :func:`disable_charge_target`.
+
+    Shorthand for ``set_enable_charge_target(True)``. Module-level only: on an inverter
+    object, ``enable_charge_target`` is the decoded HR 20 field, so use
+    ``inverter.set_enable_charge_target(True)`` there.
+    """
+    return set_enable_charge_target(True)
+
+
 def set_charge_target_enabled(target_soc: int) -> list[TransparentRequest]:
     """Enable charging and stop once SOC reaches target_soc. Also referred to as "winter mode"."""
     target_soc = _as_int(target_soc, "target_soc")
@@ -1424,6 +1447,11 @@ class _InverterCommands:
     def disable_charge_target(self) -> list[TransparentRequest]:
         """Disable use of a charge target so the battery charges to 100%."""
         return disable_charge_target()
+
+    # Not named enable_charge_target(): that name is the decoded HR 20 field on the model.
+    def set_enable_charge_target(self, enabled: bool) -> list[TransparentRequest]:
+        """Turn the charge target on or off (HR 20) without writing the target SOC or the charge enable."""
+        return set_enable_charge_target(enabled)
 
     def set_charge_target_enabled(self, target_soc: int) -> list[TransparentRequest]:
         """Enable charging and stop once SOC reaches target_soc (4-100)."""

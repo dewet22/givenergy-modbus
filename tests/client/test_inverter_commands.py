@@ -326,6 +326,22 @@ def test_three_phase_write_safe_registers_contains_three_phase_entries():
     assert RegisterMap.FORCE_CHARGE_ENABLE in wsr  # 1123
 
 
+def test_three_phase_set_enable_charge_target_uses_the_shared_enable_register():
+    """Three-phase has no shadow for HR 20: disable_charge_target_3ph() clears the same flag."""
+    requests = _three_phase().set_enable_charge_target(True)
+    assert [(r.register, r.value) for r in requests] == [(20, 1)]
+    assert 20 in manifest.WRITE_SAFE_THREE_PHASE
+
+
+def test_enable_charge_target_field_is_not_shadowed():
+    """The mixin must not hide the decoded HR 20 field, which consumers read (docs/usage.md)."""
+    from givenergy_modbus.model.register import HR
+
+    for inv_cls in (SinglePhaseInverter, ThreePhaseInverter):
+        inv = inv_cls.from_register_cache(RegisterCache({HR(20): 1}))
+        assert inv.enable_charge_target is True
+
+
 def test_three_phase_disable_charge_target_uses_correct_register():
     """disable_charge_target on three-phase must write HR(1111), not single-phase HR(116)."""
     requests = _three_phase().disable_charge_target()
@@ -548,6 +564,7 @@ def test_mixin_write_safe_registers_is_subset_of_pdu_set():
 # (method_name, args) for wrappers that take no slot_map.
 _PLAIN_WRAPPERS = [
     ("disable_charge_target", ()),
+    ("set_enable_charge_target", (True,)),
     ("set_inverter_reboot", ()),
     ("set_calibrate_battery_soc", ()),
     ("set_discharge_mode_max_power", ()),
