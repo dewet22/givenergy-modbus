@@ -41,6 +41,26 @@ when a unit supports them.
 
 **References.** v4.1.6 §4.1.2; `model/manifest.py` `VALUE_SOURCES`.
 
+## Charge slot 2 moves on 10-slot firmware (HR31/32 → HR243/244)
+
+**Symptom.** On 10-slot models, writing charge slot 2 to the legacy HR31/32 pair fails,
+and reading it back shows a value that isn't a time slot.
+
+**Evidence.** A HYBRID_GEN3 on 10-slot firmware answers a write to HR31/32 with an error
+response (britkat1980/giv_tcp#619). On both All-in-One captures (ARM 612 and 620), HR31/32
+read `1` / `0` while HR243/244 held a real slot (`0` / `2240`, 00:00–22:40 on ARM 612). The
+async fork wrote charge slot 2 at HR243/244, next to its target SOC at HR245, and HR243/244
+is writable in the GivEnergy app's register surface. Discharge slot 2 has no equivalent
+evidence: the fork kept writing HR44/45 and nothing contradicts it.
+
+**Implication.** `EXTENDED_SLOTS` addresses charge slot 2 at HR243/244; on single-phase
+`has_extended_slots` models the write gate admits 243/244 and refuses 31/32, and
+`charge_slot_2` decodes HR243/244. Two-slot models and three-phase (HR1115/1116) are
+unchanged.
+
+**References.** `model/slot_map.py` `EXTENDED_SLOTS`; `model/manifest.py`
+`write_safe_registers`.
+
 ## Firmware-gated registers — specified but absent on old builds (IR194-199, HR84-89)
 
 **Symptom.** Registers present in the protocol doc read a hard zero (or are absent) on

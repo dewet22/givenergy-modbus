@@ -9,12 +9,14 @@ can't cover.
 
 import re
 from collections.abc import AsyncIterator
+from datetime import time as dt_time
 from pathlib import Path
 
 import pytest
 
 from givenergy_modbus.client.client import Client
 from givenergy_modbus.exceptions import RefreshPartiallySucceeded
+from givenergy_modbus.model import TimeSlot
 from givenergy_modbus.model.devices import DeviceType
 from givenergy_modbus.model.inverter import Model
 from givenergy_modbus.model.register import HR
@@ -201,6 +203,9 @@ def _assert_aio(plant):
     # load_config leg of the cycle actually ran and routed the HR banks (#293).
     assert inv.charge_target_soc == 100
     assert inv.enable_charge is False
+    # 10-slot: charge slot 2 is HR(243/244) = 00:00-22:40, not HR(31/32) = 1/0 (giv_tcp#619).
+    assert inv.charge_slot_2 == TimeSlot(dt_time(0, 0), dt_time(22, 40))
+    assert inv.slot_map.charge_slots[1] == (243, 244)
 
 
 def _assert_aio_redetect(plant):
@@ -345,6 +350,17 @@ def _assert_gateway(plant):
     assert gw.e_battery_charge_total == 8855.9
     assert gw.aio1_serial_number == "CH2414G000"
     assert gw.aio2_serial_number == "CH2542G000"
+    # load_config's HR(300,60) on the Gateway (#427): its charge/discharge rate pair, decoded
+    # through plant.inverter, the Gateway's write path.
+    assert plant.inverter.battery_charge_limit_ac == 50
+    assert plant.inverter.battery_discharge_limit_ac == 100
+    # 10-slot (giv_tcp request 12): the write path uses EXTENDED_SLOTS, and load_config's
+    # HR(240,60) decodes in the documented layout — charge targets 100, discharge targets 4.
+    from givenergy_modbus.model.slot_map import EXTENDED_SLOTS
+
+    assert plant.inverter.slot_map is EXTENDED_SLOTS
+    assert [getattr(plant.inverter, f"charge_target_soc_{n}") for n in range(1, 11)] == [100] * 10
+    assert [getattr(plant.inverter, f"discharge_target_soc_{n}") for n in range(1, 11)] == [4] * 10
 
 
 @pytest.mark.timeout(30)

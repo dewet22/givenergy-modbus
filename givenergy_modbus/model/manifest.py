@@ -231,8 +231,13 @@ def has_capability(name: str, model: Model | None, arm_fw: int | None = None) ->
 # is three-phase-decoded and always uses THREE_PHASE_SLOTS (never the literal
 # EXTENDED_SLOTS object) — but THREE_PHASE_SLOTS genuinely has 10 slot pairs too, so
 # it belongs in this CAPABILITY set regardless of which SlotMap object serves it.
+# GATEWAY: GivEnergy's register map (v4.1.6, "Ten stage charge and discharge time control",
+# HR 240-479) lists the 10-slot block on every model except AC 3.0 and Gen 1/2, and the
+# Gateway answers HR(240,60) in every gateway_gaaa0014 capture and GivTCP's shared Gateway
+# capture, in the documented layout (charge targets 100, discharge targets 4). GivTCP runs
+# Gateways on this map (#577). No Gateway slot write has been captured yet.
 _EXTENDED_SLOT_MODELS: frozenset[Model] = frozenset(
-    {Model.HYBRID_GEN4, Model.ALL_IN_ONE, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3}
+    {Model.HYBRID_GEN4, Model.ALL_IN_ONE, Model.ALL_IN_ONE_HYBRID, Model.HYBRID_HV_GEN3, Model.GATEWAY}
 )
 _EXTENDED_SLOT_FIRMWARE_GATE: dict[Model, int] = {Model.HYBRID_GEN3: 302}
 
@@ -296,6 +301,11 @@ LOAD_CONFIG_RANGES: dict[str, list[RegisterRange]] = {
     # the AIO (live poll populated these fields, #105).
     "has_ac_config_block": [RegisterRange("HR", 300, 60)],
     "is_ems": [RegisterRange("HR", 2040, 36)],
+    # The Gateway answers HR(300,60) too (every read in the gateway_gaaa0014 captures and
+    # GivTCP's shared Gateway capture succeeds; HR313/314 = 50/100), and HR313/314 are its
+    # charge/discharge rate (givenergy-modbus#373/#427). Read-gated on is_gateway rather than
+    # adding the Gateway to has_ac_config_block, which would also make HR311/317 writable.
+    "is_gateway": [RegisterRange("HR", 300, 60)],
 }
 
 # _refresh_banks()'s three capability-gated IR ranges — no interleaving among
@@ -413,6 +423,30 @@ WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
 )
 
 
+# Charge slot 2 on the 10-slot map (EXTENDED_SLOTS, model/slot_map.py) is HR(243/244), and the
+# legacy HR(31/32) pair isn't slot 2 there (it errors on write, giv_tcp#619, and reads 1/0 on the
+# All-in-One captures). On single-phase has_extended_slots models the pair is swapped; three-phase
+# models address slot 2 at HR(1115/1116) and are unaffected.
+WRITE_SAFE_EXTENDED_CHARGE_SLOT_2: frozenset[int] = frozenset({243, 244})
+_LEGACY_CHARGE_SLOT_2: frozenset[int] = frozenset({31, 32})
+
+# Per-slot target SOCs of the 10-slot block (HR 242 + 3k charge, HR 272 + 3k discharge; see
+# model/slot_map.py). Admitted where that block is the slot layout: single-phase
+# has_extended_slots models, and the "3ph" three-phase models the async fork wrote them on.
+# Not ALL_IN_ONE_HYBRID / AIO_COMMERCIAL, whose layout is in question (giv_tcp#621).
+WRITE_SAFE_SLOT_TARGETS: frozenset[int] = frozenset({*range(242, 270, 3), *range(272, 300, 3)})
+_SLOT_TARGET_THREE_PHASE_MODELS: frozenset[Model] = frozenset({Model.HYBRID_3PH, Model.AC_3PH})
+
+# Gateway allowlist. The Gateway controls the All-in-Ones behind it through an inverter-shaped
+# HR bank at 0x11, and consumers write it through plant.inverter (a SinglePhaseInverter for
+# Model.GATEWAY) — GivTCP and the async fork have always sent Gateway writes as plain
+# single-phase HR writes. This set used to be that single-phase set by fallthrough; it is now
+# explicit, unchanged, plus the charge/discharge rate pair HR313/314 (#373: a capture showed
+# GivTCP writing them at 0x11; HR111/112 read 0 on a Gateway). Not the rest of the HR(300-359)
+# AC-config writes (311 export priority, 317 EPS): no Gateway evidence for those.
+WRITE_SAFE_GATEWAY: frozenset[int] = WRITE_SAFE_SINGLE_PHASE | frozenset({313, 314})
+
+
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
 
@@ -423,8 +457,10 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     conservative fallback (has_capability returns False for None, so an undetected
     client falls through every branch — no special case needed). Does NOT include
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
-    unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
-    for signature consistency; no write capability is firmware-gated today.
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` matters through
+    has_extended_slots (HYBRID_GEN3 above fw 302): on single-phase 10-slot models charge
+    slot 2 moves from HR(31/32) to HR(243/244) and the per-slot target SOCs are admitted,
+    so callers must pass it.
 
     Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
     keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
@@ -434,10 +470,19 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     """
     if has_capability("is_ems", model):
         safe = WRITE_SAFE_EMS
+    elif has_capability("is_gateway", model):
+        safe = WRITE_SAFE_GATEWAY
     elif has_capability("is_three_phase", model):
         safe = WRITE_SAFE_THREE_PHASE
     else:
         safe = WRITE_SAFE_SINGLE_PHASE
     if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
         safe = safe | WRITE_SAFE_AC_CONFIG
+    ten_slot_single_phase = (
+        model is not None and has_extended_slots(model, arm_fw) and not has_capability("is_three_phase", model)
+    )
+    if ten_slot_single_phase:
+        safe = (safe - _LEGACY_CHARGE_SLOT_2) | WRITE_SAFE_EXTENDED_CHARGE_SLOT_2
+    if ten_slot_single_phase or model in _SLOT_TARGET_THREE_PHASE_MODELS:
+        safe = safe | WRITE_SAFE_SLOT_TARGETS
     return safe

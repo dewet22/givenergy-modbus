@@ -2706,3 +2706,30 @@ def test_inverter_module_unknown_attribute_still_raises():
 
     with pytest.raises(AttributeError):
         _ = inverter_module.NOT_A_REAL_ATTRIBUTE
+
+
+def test_charge_slot_2_reads_243_244_on_ten_slot_models():
+    """On 10-slot firmware charge_slot_2 decodes HR(243/244), where it's written (giv_tcp#619).
+
+    Values from the aio_arm612 capture: HR(31/32) = 1/0 (not a slot), HR(243/244) = 0/2240.
+    """
+    from datetime import time as dt_time
+
+    from givenergy_modbus.model import TimeSlot
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    regs = {HR(0): 0x8001, HR(21): 612, HR(31): 1, HR(32): 0, HR(243): 0, HR(244): 2240}
+    aio = SinglePhaseInverter.from_register_cache(RegisterCache(regs))
+    assert aio.charge_slot_2 == TimeSlot(dt_time(0, 0), dt_time(22, 40))
+    assert aio.charge_slot_2 == aio.charge_slot_2_x
+
+    # Before HR(240,60) is read, slot 2 is unknown rather than the legacy pair's junk.
+    no_ext = {k: v for k, v in regs.items() if k not in (HR(243), HR(244))}
+    assert SinglePhaseInverter.from_register_cache(RegisterCache(no_ext)).charge_slot_2 is None
+
+    # 2-slot models still read HR(31/32).
+    gen1 = {HR(0): 0x2001, HR(21): 449, HR(31): 100, HR(32): 400}
+    assert SinglePhaseInverter.from_register_cache(RegisterCache(gen1)).charge_slot_2 == TimeSlot(
+        dt_time(1, 0), dt_time(4, 0)
+    )

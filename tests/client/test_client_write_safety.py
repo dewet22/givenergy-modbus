@@ -154,6 +154,164 @@ async def test_undetected_rejects_export_priority_eps_writes():
 
 
 # ---------------------------------------------------------------------------
+# Charge slot 2 on 10-slot models: HR(243/244), not HR(31/32) (giv_tcp#619)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ten_slot_charge_slot_2_write_goes_to_243_244():
+    from datetime import time as dt_time
+
+    from givenergy_modbus.model import TimeSlot
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    inverter = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x8001, HR(21): 620}))
+    reqs = inverter.set_charge_slot(2, TimeSlot(dt_time(1, 30), dt_time(4, 30)))
+    assert [(r.register, r.value) for r in reqs] == [(243, 130), (244, 430)]
+    client = _client(PlantCapabilities(device_type=Model.ALL_IN_ONE, arm_firmware_version=620))
+    await client.one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()  # Gate 2 admits 243/244
+
+
+@pytest.mark.asyncio
+async def test_ten_slot_rejects_legacy_charge_slot_2_registers():
+    """HR(31/32) isn't slot 2 on 10-slot firmware; a hand-built write there is refused."""
+    client = _client(PlantCapabilities(device_type=Model.HYBRID_GEN3, arm_firmware_version=303))
+    with pytest.raises(InvalidPduState, match=r"HR\(31\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(31, 130)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_two_slot_rejects_243_244():
+    client = _client(PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=449))
+    with pytest.raises(InvalidPduState, match=r"HR\(243\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(243, 130)], dry_run=True)
+
+
+# ---------------------------------------------------------------------------
+# Per-slot target SOCs (HR 242 + 3k / 272 + 3k)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_ten_slot_slot_target_writes():
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    aio = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x8001, HR(21): 620}))
+    reqs = aio.set_charge_slot_target_soc(1, 80) + aio.set_charge_slot_target_soc(10, 90)
+    reqs += aio.set_discharge_slot_target_soc(2, 20)
+    assert [(r.register, r.value) for r in reqs] == [(242, 80), (269, 90), (275, 20)]
+    client = _client(PlantCapabilities(device_type=Model.ALL_IN_ONE, arm_firmware_version=620))
+    await client.one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()  # Gate 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", [Model.HYBRID_3PH, Model.AC_3PH])
+async def test_three_phase_slot_target_writes(model):
+    from givenergy_modbus.model.inverter_threephase import ThreePhaseInverter
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    reqs = ThreePhaseInverter.from_register_cache(RegisterCache()).set_discharge_slot_target_soc(3, 10)
+    assert [(r.register, r.value) for r in reqs] == [(278, 10)]
+    await _client(_caps(model)).one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()
+
+
+@pytest.mark.asyncio
+async def test_aio_hybrid_slot_target_built_but_refused():
+    """AIO-HY decodes three-phase, so the command builds; the gate refuses it (layout in question, giv_tcp#621)."""
+    reqs = [WriteHoldingRegisterRequest(242, 80)]
+    with pytest.raises(InvalidPduState, match=r"HR\(242\)"):
+        await _client(_caps(Model.ALL_IN_ONE_HYBRID)).one_shot_command(reqs, dry_run=True)
+
+
+def test_two_slot_map_has_no_slot_targets():
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    gen1 = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x2001, HR(21): 449}))
+    with pytest.raises(ValueError, match="2-slot models use HR 116"):
+        gen1.set_charge_slot_target_soc(1, 80)
+
+
+@pytest.mark.asyncio
+async def test_two_slot_model_rejects_slot_target_registers():
+    client = _client(PlantCapabilities(device_type=Model.HYBRID_GEN1, arm_firmware_version=449))
+    with pytest.raises(InvalidPduState, match=r"HR\(242\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(242, 80)], dry_run=True)
+
+
+@pytest.mark.parametrize(("idx", "soc"), [(0, 50), (11, 50), (1, 3), (1, 101), (True, 50), (1, 50.5)])
+def test_slot_target_soc_bounds(idx, soc):
+    from givenergy_modbus.client.commands import set_charge_slot_target_soc, set_discharge_slot_target_soc
+    from givenergy_modbus.model.slot_map import EXTENDED_SLOTS
+
+    for fn in (set_charge_slot_target_soc, set_discharge_slot_target_soc):
+        with pytest.raises(ValueError):
+            fn(idx, soc, EXTENDED_SLOTS)
+
+
+# ---------------------------------------------------------------------------
+# Gateway: single-phase set plus the rate pair HR313/314, written via plant.inverter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_gateway_accepts_rate_pair_via_inverter_commands():
+    from givenergy_modbus.client.commands import set_battery_charge_limit_ac, set_battery_discharge_limit_ac
+
+    reqs = set_battery_charge_limit_ac(60) + set_battery_discharge_limit_ac(80)
+    await _client(_caps(Model.GATEWAY)).one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reg", [311, 317])
+async def test_gateway_rejects_other_ac_config_writes(reg):
+    with pytest.raises(InvalidPduState, match=rf"HR\({reg}\)"):
+        await _client(_caps(Model.GATEWAY)).one_shot_command([WriteHoldingRegisterRequest(reg, 0)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_gateway_ten_slot_writes():
+    """Slots 3-10, slot 2 at HR(243/244) and per-slot targets, through plant.inverter's slot map."""
+    from datetime import time as dt_time
+
+    from givenergy_modbus.model import TimeSlot
+    from givenergy_modbus.model.inverter import SinglePhaseInverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    gw = SinglePhaseInverter.from_register_cache(RegisterCache({HR(0): 0x7001, HR(21): 14}))
+    reqs = gw.set_charge_slot(2, TimeSlot(dt_time(1, 0), dt_time(4, 0))) + gw.set_discharge_slot(5, None)
+    reqs += gw.set_charge_slot_target_soc(2, 80)
+    assert [r.register for r in reqs] == [243, 244, 282, 283, 245]
+    client = _client(PlantCapabilities(device_type=Model.GATEWAY, arm_firmware_version=14))
+    await client.one_shot_command(reqs, dry_run=True)  # must not raise
+    for req in reqs:
+        req.encode()
+    with pytest.raises(InvalidPduState, match=r"HR\(31\)"):
+        await client.one_shot_command([WriteHoldingRegisterRequest(31, 100)], dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_gateway_keeps_single_phase_controls():
+    """Unchanged from the old fallthrough: e.g. enable discharge (HR59), charge slot 1 (HR94/95)."""
+    reqs = [WriteHoldingRegisterRequest(59, 1), WriteHoldingRegisterRequest(94, 130)]
+    await _client(_caps(Model.GATEWAY)).one_shot_command(reqs, dry_run=True)  # must not raise
+
+
+# ---------------------------------------------------------------------------
 # Three-phase model
 # ---------------------------------------------------------------------------
 

@@ -228,6 +228,28 @@ if ems is not None:  # None on non-EMS plants
 
 EMS slots use a fixed three-slot layout at HR(2044–2071) — there's no `slot_map` parameter. EMS commands are tagged ▣ ems in the tables below.
 
+## Gateway writes
+
+A Gateway controls the All-in-Ones behind it through an inverter-shaped holding-register
+bank at device 0x11, so it has no command methods of its own: `plant.gateway` is the
+read-only Gateway page (IR 1600+), and writes go through `plant.inverter`, which is a
+`SinglePhaseInverter` on a Gateway plant.
+
+```python
+await client.one_shot_command(plant.inverter.set_enable_discharge(True))
+await client.one_shot_command(commands.set_battery_charge_limit_ac(60))  # HR 313: the Gateway's charge rate
+```
+
+`one_shot_command` admits the single-phase controls on a Gateway (as it always has) plus
+its charge/discharge rate, HR 313/314 (`plant.inverter.battery_charge_limit_ac` /
+`battery_discharge_limit_ac`, read by `load_config()`). HR 111/112 read 0 on a Gateway, so
+use the HR 313/314 pair for its rate. The other HR(300-359) controls (export priority,
+EPS) are refused: there's no Gateway evidence for them yet.
+
+The Gateway uses the 10-slot map (`plant.inverter.slot_map` is `EXTENDED_SLOTS`), so it has
+charge/discharge slots 1–10, charge slot 2 at HR 243/244, and per-slot target SOCs
+(`set_charge_slot_target_soc` / `set_discharge_slot_target_soc`).
+
 ## Available commands
 
 All commands live in `givenergy_modbus.client.commands` and return
@@ -291,6 +313,8 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `set_discharge_slot_start(idx, t, slot_map)` | Set just the start of discharge slot `idx` (or `None` to clear that end) | |
 | `set_discharge_slot_end(idx, t, slot_map)` | Set just the end of discharge slot `idx` (or `None` to clear that end) | |
 | `reset_discharge_slot(idx, slot_map)` | Clear discharge slot `idx` | |
+| `set_charge_slot_target_soc(idx, soc, slot_map)` | Target SOC (4–100%) of charge slot `idx` — 10-slot models and `HYBRID_3PH`/`AC_3PH` (HR 242 + 3(idx−1)); 2-slot models use `set_charge_target_soc` | |
+| `set_discharge_slot_target_soc(idx, soc, slot_map)` | Target SOC (4–100%) of discharge slot `idx` — 10-slot models and `HYBRID_3PH`/`AC_3PH` (HR 272 + 3(idx−1)) | |
 | `set_export_slot(idx, slot)` | Set export slot `idx` (1–3), or clear if `None` | ▣ ems |
 | `set_export_slot_start(idx, t)` | Set just the start of export slot `idx` | ▣ ems |
 | `set_export_slot_end(idx, t)` | Set just the end of export slot `idx` | ▣ ems |

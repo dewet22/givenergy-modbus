@@ -79,7 +79,8 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | HR (start / end) | Field names | Notes |
 |---|---|---|
 | 94 / 95 | `charge_slot_1_start` / `_end` | HHMM format |
-| 31 / 32 | `charge_slot_2_start` / `_end` | |
+| 31 / 32 | `charge_slot_2_start` / `_end` | 2-slot models only |
+| 243 / 244 | `charge_slot_2_start` / `_end` | 10-slot models (`has_extended_slots`); HR 31/32 is refused there |
 | 246 / 247 | `charge_slot_3_start` / `_end` | |
 | 249 / 250 | `charge_slot_4_start` / `_end` | |
 | 252 / 253 | `charge_slot_5_start` / `_end` | |
@@ -88,6 +89,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 261 / 262 | `charge_slot_8_start` / `_end` | |
 | 264 / 265 | `charge_slot_9_start` / `_end` | |
 | 267 / 268 | `charge_slot_10_start` / `_end` | |
+| 242, 245, … 269 | `charge_target_soc_1` … `_10` | Per-slot target SOC (HR 242 + 3k), 4–100 %. 10-slot single-phase models and `HYBRID_3PH` / `AC_3PH` only |
 
 ### Discharge slots 1–10
 
@@ -103,6 +105,7 @@ Accessed via `Client.one_shot_command()`.  All registers below are in
 | 291 / 292 | `discharge_slot_8_start` / `_end` | |
 | 294 / 295 | `discharge_slot_9_start` / `_end` | |
 | 297 / 298 | `discharge_slot_10_start` / `_end` | |
+| 272, 275, … 299 | `discharge_target_soc_1` … `_10` | Per-slot target SOC (HR 272 + 3k), 4–100 %. 10-slot single-phase models and `HYBRID_3PH` / `AC_3PH` only |
 
 ### Battery mode and scheduling
 
@@ -137,7 +140,8 @@ Use `set_system_date_time(dt)` rather than writing these individually.
 
 ### AC-coupled config (AC / All-in-One models)
 
-Gated on `PlantCapabilities.has_ac_config_block` inside `one_shot_command()`.
+Gated on `PlantCapabilities.has_ac_config_block` inside `one_shot_command()`. The Gateway
+also admits HR 313 / 314 (its charge/discharge rate, as GivTCP writes it, #373/#427), but not 311 / 317.
 
 | HR | Field name | Description | Range |
 |---|---|---|---|
