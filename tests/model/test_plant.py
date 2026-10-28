@@ -3556,6 +3556,51 @@ def test_cold_start_stale_pending_reset(plant: Plant):
     assert plant.register_caches[_BATT][IR(60)] == 3300
 
 
+def test_battery_pending_lifecycle(plant: Plant):
+    """battery_pending() is the public view of the cold-start hold (#289): held → pending, corroborated → clear."""
+    bank = _coherent_battery_bank()
+    assert not plant.battery_pending(_BATT, now=_T0)
+    assert plant.pending_battery_addresses(now=_T0) == []
+
+    _feed_bank(plant, bank, device_address=_BATT, received_at=_T0)  # held
+    assert plant.battery_pending(_BATT, now=_T0 + timedelta(seconds=1))
+    assert plant.pending_battery_addresses(now=_T0 + timedelta(seconds=1)) == [_BATT]
+    assert not plant.battery_pending(0x32, now=_T0 + timedelta(seconds=1))  # a different pack
+
+    _feed_bank(plant, bank, device_address=_BATT, received_at=_T0 + timedelta(seconds=30))  # corroborated
+    assert not plant.battery_pending(_BATT, now=_T0 + timedelta(seconds=31))
+    assert plant.pending_battery_addresses(now=_T0 + timedelta(seconds=31)) == []
+
+
+def test_battery_pending_tells_held_apart_from_missing(plant: Plant):
+    """Both decode as an invalid battery; only the held one reports pending."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)  # held
+    now = _T0 + timedelta(seconds=5)
+    held = Battery.from_register_cache(plant.register_caches[_BATT])
+    assert not held.is_valid()  # serves "unknown" while held — indistinguishable without the accessor
+    assert plant.battery_pending(_BATT, now=now)
+    assert not plant.battery_pending(0x34, now=now)  # never answered: missing, not pending
+
+
+def test_battery_pending_lapses_after_stale_window(plant: Plant):
+    """A held frame that can no longer be corroborated (polling stopped) stops counting as pending."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    assert plant.battery_pending(_BATT, now=_T0 + timedelta(seconds=300))  # at the window edge
+    assert not plant.battery_pending(_BATT, now=_T0 + timedelta(seconds=301))
+
+
+def test_battery_pending_cleared_by_invalidation(plant: Plant):
+    """Invalidating the battery bank drops the held frame, so it no longer reports pending."""
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    plant.invalidate_presence(_BATT, "IR", 60, 60)
+    assert not plant.battery_pending(_BATT, now=_T0 + timedelta(seconds=1))
+
+
+def test_battery_pending_naive_now_treated_as_utc(plant: Plant):
+    _feed_bank(plant, _coherent_battery_bank(), device_address=_BATT, received_at=_T0)
+    assert plant.battery_pending(_BATT, now=(_T0 + timedelta(seconds=10)).replace(tzinfo=None))
+
+
 def test_cold_start_persistent_value_corroborates(plant: Plant):
     """A persistently-identical value corroborates and is adopted — #289 targets transient splices, not it.
 

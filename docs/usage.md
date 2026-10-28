@@ -92,6 +92,13 @@ async def main():
         await asyncio.sleep(15)
 ```
 
+On the first poll after connecting, each LV battery pack can read as unknown
+(`Battery.is_valid()` is False): its first bank is held until the next poll confirms
+it, so a corrupted read can't become the baseline. Use `plant.battery_pending(address)`
+(or `plant.pending_battery_addresses()`) to tell that apart from a missing or failed
+pack — show "waiting for confirmation" rather than an error. It normally clears on the
+next poll.
+
 > `Client.watch_plant()` and `Client.refresh_plant()` are deprecated and will be
 > removed in 3.0 — own the loop as above. They now also propagate
 > `RefreshPartiallySucceeded` / `RefreshFailed`.

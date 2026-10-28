@@ -1779,6 +1779,36 @@ class Plant(GivEnergyBaseModel):
             return None
         return (effective_now - best).total_seconds()
 
+    def battery_pending(self, device_address: int, *, now: datetime | None = None) -> bool:
+        """True while an LV battery's first bank after a fresh connect is held awaiting confirmation (#289).
+
+        Applies to LV battery packs (0x32-0x37, ``Plant.batteries``), the only devices with
+        this hold; HV BMUs and All-in-One modules always return False.
+
+        After a fresh connect (or an invalidated cache) the first full IR(60,60) battery bank
+        isn't adopted until the next poll reads it the same, so a transient sub-bus splice
+        can't poison the baseline. Meanwhile the battery decodes as unknown and
+        ``Battery.is_valid()`` is False — this tells that state apart from a missing or failed
+        battery, so a consumer can show "waiting for confirmation" rather than an error.
+        Normally clears on the next poll.
+
+        A held frame older than ``STALE_BYPASS_SECONDS`` no longer counts: it can't be
+        confirmed across that gap (the next read starts over), so the battery has simply
+        stopped answering. ``now`` defaults to the current UTC time; a naive value is treated
+        as UTC.
+        """
+        held = self._splice_pending_baseline.get(device_address)
+        if held is None:
+            return False
+        effective_now = now or datetime.now(UTC)
+        if effective_now.tzinfo is None:
+            effective_now = effective_now.replace(tzinfo=UTC)
+        return (effective_now - held[1]).total_seconds() <= STALE_BYPASS_SECONDS
+
+    def pending_battery_addresses(self, *, now: datetime | None = None) -> list[int]:
+        """Device addresses of batteries currently held awaiting confirmation; see :meth:`battery_pending`."""
+        return sorted(addr for addr in self._splice_pending_baseline if self.battery_pending(addr, now=now))
+
     def _track_content_change(
         self,
         device_address: int,
