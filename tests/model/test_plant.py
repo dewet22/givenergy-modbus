@@ -136,6 +136,18 @@ def test_resolved_model_vs_coarse_model(dtc, arm_fw, coarse, resolved):
     assert plant.identity.model is resolved
 
 
+def test_unknown_dtc_resolves_to_no_model():
+    """A DTC resolve_model() can't map (first digit 9) gives None, not an exception."""
+    cache = RegisterCache({HR(0): 0x9001, HR(21): 1})
+    assert SinglePhaseInverter.from_register_cache(cache).resolved_model is None
+
+    plant = Plant()
+    plant.register_caches[0x11] = cache  # no capabilities, so identity resolves from the DTC
+    assert plant.identity is not None
+    assert plant.identity.model is None
+    assert plant.identity.device_type_code == "9001"
+
+
 def test_resolved_model_none_until_identity_read():
     assert SinglePhaseInverter.from_register_cache(RegisterCache()).resolved_model is None
 
