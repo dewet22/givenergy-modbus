@@ -1437,6 +1437,16 @@ class Client:
         If dry_run is True, validates but does not transmit — running the same PDU
         validation (``ensure_valid_state``) the live encode path runs, so a dry run
         never passes for a request real execution would reject.
+
+        The ``timeout=1.5, retries=0`` defaults are deliberately tighter than ``refresh()``'s:
+        a retried write can reach the inverter twice. A timeout doesn't mean the write
+        failed — the reply may just be late — and a reply that arrives after the attempt
+        timed out is dropped, so the retry is sent anyway (only a reply that lands while
+        the retry is still queued stops it). Writes that set a value (modes, slots,
+        targets, limits) are safe to retry, and on a contended bus a budget such as
+        ``timeout=3.0, retries=2`` avoids spurious failures. Don't retry action commands
+        — ``set_inverter_reboot()``, ``set_calibrate_battery_soc()`` — where a second
+        delivery repeats the action. See "Tuning timeouts and retries" in ``docs/usage.md``.
         """
         caps = self.plant.capabilities
         safe = self._resolve_write_safe()

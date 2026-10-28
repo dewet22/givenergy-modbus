@@ -799,6 +799,47 @@ async def test_producer_sends_normally_when_response_future_pending():
     assert frame_sent.result() is True
 
 
+async def test_write_retry_resends_when_the_late_reply_lands_during_retry_delay():
+    """A retried write can reach the wire twice: pins what docs/usage.md tells consumers.
+
+    The first attempt times out, but the inverter did apply it — its reply just arrives
+    late, during retry_delay. That attempt's future was cancelled before the sleep, so the
+    reply is dropped and the retry is sent anyway. Only a reply landing while the retry
+    is still queued is caught by the producer's skip-if-resolved check (tested above).
+    Harmless for writes that set a value; not for action commands such as a reboot.
+    """
+    client = Client(host="foo", port=4321)
+    req = WriteHoldingRegisterRequest(register=35, value=20)
+    expected_hash = req.expected_response().shape_hash()
+    sends = 0
+
+    def deliver_reply():
+        future = client.expected_responses.get(expected_hash)
+        if future and not future.done():  # as the consumer does: a cancelled future drops it
+            future.set_result(WriteHoldingRegisterResponse(inverter_serial_number="", register=35, value=20))
+
+    async def wire():
+        nonlocal sends
+        loop = asyncio.get_running_loop()
+        while True:
+            _, frame_sent, _ = await client.tx_queue.get()
+            client.tx_queue.task_done()
+            sends += 1
+            if frame_sent and not frame_sent.done():
+                frame_sent.set_result(True)
+            # Attempt 1: the reply comes after the 20 ms timeout, inside the 80 ms retry delay.
+            # Attempt 2: the reply is prompt.
+            loop.call_later(0.05 if sends == 1 else 0, deliver_reply)
+
+    drainer = asyncio.create_task(wire())
+    try:
+        result = await client.send_request_and_await_response(req, timeout=0.02, retries=1, retry_delay=0.08)
+    finally:
+        drainer.cancel()
+    assert result.register == 35
+    assert sends == 2, "the write was applied once already, and went on the wire again"
+
+
 def test_client_tx_pacing_defaults_and_overrides():
     """tx_message_wait and tx_jitter expose the producer's pacing knobs (issue #71)."""
     default = Client(host="foo", port=4321)
