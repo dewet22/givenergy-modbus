@@ -218,6 +218,45 @@ async def test_close_retrieves_a_dead_network_task_exception(caplog):
     assert any("had exited with" in r.message for r in caplog.records)
 
 
+async def test_close_cancels_queued_frames():
+    """Frames still queued for the producer have their frame_sent futures cancelled on close."""
+    client = Client(host="foo", port=4321)
+    frame_sent = asyncio.get_running_loop().create_future()
+    client.tx_queue.put_nowait((b"frame", frame_sent, None))
+
+    await client.close()
+
+    assert frame_sent.cancelled()
+    assert client.tx_queue.empty()
+
+
+async def test_close_leaves_a_slow_task_running_after_the_reap_timeout(monkeypatch, caplog):
+    """A network task that takes longer than the reap timeout to finish is left to finish on its own."""
+    import givenergy_modbus.client.client as client_module
+
+    monkeypatch.setattr(client_module, "_CLOSE_REAP_TIMEOUT", 0.01)
+    release = asyncio.Event()
+
+    async def stubborn():
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            await release.wait()  # ignore the cancel until released
+
+    client = Client(host="foo", port=4321)
+    task = asyncio.create_task(stubborn())
+    await asyncio.sleep(0)
+    client.network_consumer_task = task
+
+    with caplog.at_level(logging.DEBUG, logger="givenergy_modbus.client.client"):
+        await client.close()
+
+    assert any("still finishing after cancel" in r.message for r in caplog.records)
+    assert not task.done()
+    release.set()
+    await task
+
+
 async def test_close_does_not_await_the_task_it_runs_in():
     """close() called from inside a network task must not wait on itself.
 
