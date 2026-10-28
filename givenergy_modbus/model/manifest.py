@@ -395,6 +395,7 @@ WRITE_SAFE_EMS: frozenset[int] = frozenset(
         #   2062-2070 — export slots 1-3, each a (EXPORT_SLOT_n_START, _END, EMS_EXPORT_TARGET_SOC_n) triple
         #   2071 — EMS_EXPORT_POWER_LIMIT
         *range(2044, 2072),
+        2073,  # EMS_CAR_CHARGE_BOOST (app "EV Charger Fast Charge Amount"; async fork + GivTCP write it)
     }
 )
 

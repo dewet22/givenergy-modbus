@@ -314,6 +314,7 @@ An unmarked row means the method is available on both inverter types. On `ThreeP
 | `set_ems_export_slot_end(idx, t)` | Set just the end of EMS export slot `idx` | ▣ ems |
 | `set_ems_export_target_soc(idx, soc)` | EMS export slot `idx` target SOC (0–100%) | ▣ ems |
 | `set_ems_export_power_limit(watts)` | EMS plant export power limit (watts) | ▣ ems |
+| `set_car_charge_boost(watts)` | EMS car charge boost, HR 2073 (0–22000 W; read back as `car_charge_boost`) | ▣ ems |
 
 EMS plant scheduling commands (`set_ems_*`) target the EMS controller's own
 plant-config registers (HR 2040-2071) and use a fixed three-slot layout, so —
