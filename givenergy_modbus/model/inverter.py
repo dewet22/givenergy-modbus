@@ -1065,7 +1065,12 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
         source field actually carries one, and re-validating a dumped model (where
         e_pv_generation_* is already None) passes the moved values through untouched.
         """
-        from givenergy_modbus.model.manifest import ir44_is_inverter_output, pv_string_vi_is_ac_derived
+        from givenergy_modbus.model.manifest import (
+            has_capability,
+            has_extended_slots,
+            ir44_is_inverter_output,
+            pv_string_vi_is_ac_derived,
+        )
 
         if not isinstance(values, dict):
             return values
@@ -1092,6 +1097,11 @@ class SinglePhaseInverter(  # type: ignore[valid-type,misc]
             # generation figure an AC-metered install has (hass#281).
             for field in ("v_pv1", "v_pv2", "i_pv1", "i_pv2"):
                 values[field] = None
+        if has_extended_slots(model, int(arm_fw)) and not has_capability("is_three_phase", model):
+            # 10-slot firmware keeps charge slot 2 at HR(243/244) — where EXTENDED_SLOTS writes it —
+            # and HR(31/32) isn't slot 2 there (reads 1/0 on the All-in-One captures). Read it from
+            # the same place it's written; None until HR(240,60) has been read.
+            values["charge_slot_2"] = values.get("charge_slot_2_x")
         return values
 
     def _battery_energy(self, direction: str, metric: str) -> float | None:

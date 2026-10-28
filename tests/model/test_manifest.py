@@ -424,7 +424,10 @@ def test_write_safe_registers_model_matrix():
     assert write_safe_registers(Model.HYBRID_3PH) == WRITE_SAFE_THREE_PHASE
     assert write_safe_registers(Model.HYBRID_GEN1) == WRITE_SAFE_SINGLE_PHASE
     assert write_safe_registers(Model.AC) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
-    assert write_safe_registers(Model.ALL_IN_ONE) == WRITE_SAFE_SINGLE_PHASE | WRITE_SAFE_AC_CONFIG
+    # ALL_IN_ONE is 10-slot: charge slot 2 is HR(243/244), not HR(31/32) (giv_tcp#619).
+    assert write_safe_registers(Model.ALL_IN_ONE) == (
+        (WRITE_SAFE_SINGLE_PHASE - {31, 32}) | {243, 244} | WRITE_SAFE_AC_CONFIG
+    )
 
 
 def test_write_safe_registers_ac_3ph_no_ac_config_union():
@@ -452,7 +455,8 @@ def test_write_safe_registers_hybrid_hv_gen3_re_addresses_the_same_slot_controls
     hardware, which is the one failure mode in this file worth a dedicated fence.
     """
     result = write_safe_registers(Model.HYBRID_HV_GEN3)
-    assert result == WRITE_SAFE_SINGLE_PHASE
+    # 10-slot: charge slot 2 moves from HR(31/32) to HR(243/244) (giv_tcp#619).
+    assert result == (WRITE_SAFE_SINGLE_PHASE - {31, 32}) | {243, 244}
 
     # Not in has_ac_config_block, so no HR(300-359) union — it is a DC-coupled hybrid.
     assert not (result & WRITE_SAFE_AC_CONFIG)
@@ -462,8 +466,8 @@ def test_write_safe_registers_hybrid_hv_gen3_re_addresses_the_same_slot_controls
     for single_phase_reg, three_phase_twin in (
         (94, 1113),  # charge slot 1 start
         (95, 1114),  # charge slot 1 end
-        (31, 1115),  # charge slot 2 start
-        (32, 1116),  # charge slot 2 end
+        (243, 1115),  # charge slot 2 start (10-slot address; HR(31) on 2-slot models)
+        (244, 1116),  # charge slot 2 end (10-slot address; HR(32) on 2-slot models)
         (56, 1118),  # discharge slot 1 start
         (57, 1119),  # discharge slot 1 end
         (44, 1120),  # discharge slot 2 start
@@ -488,7 +492,7 @@ def test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe():
 
     This is why leaving family 81 on the three-phase allowlist would not have been the
     conservative choice it looks like: post-reclassification its slot_map is
-    EXTENDED_SLOTS (HR94/95, 31/32, 56/57, 44/45), none of which the three-phase
+    EXTENDED_SLOTS (HR94/95, 243/244, 56/57, 44/45), none of which the three-phase
     allowlist contains — so every set_charge_slot() call would have been rejected.
     """
     from givenergy_modbus.model.inverter_threephase import select_inverter
@@ -507,7 +511,51 @@ def test_hybrid_hv_gen3_slot_map_addresses_are_all_write_safe():
 
     # The counterfactual, asserted rather than described: the three-phase allowlist
     # cannot address this model's slots at all.
-    assert sorted(slot_registers - WRITE_SAFE_THREE_PHASE) == [31, 32, 44, 45, 56, 57, 94, 95]
+    assert sorted(slot_registers - WRITE_SAFE_THREE_PHASE) == [44, 45, 56, 57, 94, 95, 243, 244]
+
+
+@pytest.mark.parametrize(
+    ("model", "arm_fw", "slot_2"),
+    [
+        # 2-slot models keep the legacy pair.
+        (Model.HYBRID_GEN1, 449, {31, 32}),
+        (Model.HYBRID_GEN2, 920, {31, 32}),
+        (Model.AC, 282, {31, 32}),
+        (Model.HYBRID_GEN3, 302, {31, 32}),  # Gen 3 at or below the 10-slot firmware gate
+        (None, None, {31, 32}),  # undetected: conservative single-phase fallback, unchanged
+        # 10-slot single-phase models: slot 2 at HR(243/244), legacy pair blocked (giv_tcp#619).
+        (Model.HYBRID_GEN3, 303, {243, 244}),
+        (Model.HYBRID_GEN4, None, {243, 244}),
+        (Model.ALL_IN_ONE, 620, {243, 244}),
+        (Model.HYBRID_HV_GEN3, 500, {243, 244}),
+        # Three-phase addresses slot 2 at HR(1115/1116): neither pair.
+        (Model.ALL_IN_ONE_HYBRID, 999, set()),
+        (Model.HYBRID_3PH, 999, set()),
+    ],
+)
+def test_charge_slot_2_pair_follows_the_slot_map(model, arm_fw, slot_2):
+    assert write_safe_registers(model, arm_fw) & {31, 32, 243, 244} == frozenset(slot_2)
+
+
+def test_write_safe_matches_slot_map_charge_slot_2():
+    """Coherence: the write gate admits exactly the slot-2 pair the model's slot map writes to."""
+    from givenergy_modbus.model.inverter_threephase import select_inverter
+    from givenergy_modbus.model.register import HR
+    from givenergy_modbus.model.register_cache import RegisterCache
+
+    for model, dtc, arm_fw in (
+        (Model.HYBRID_GEN1, 0x2001, 449),
+        (Model.HYBRID_GEN3, 0x2001, 302),
+        (Model.HYBRID_GEN3, 0x2001, 303),
+        (Model.ALL_IN_ONE, 0x8001, 620),
+        (Model.HYBRID_HV_GEN3, 0x8102, 500),
+        (Model.HYBRID_GEN4, 0x8301, 1),
+    ):
+        inverter = select_inverter(model, RegisterCache({HR(0): dtc, HR(21): arm_fw}))
+        pair = set(inverter.slot_map.charge_slots[1])
+        allowed = write_safe_registers(model, arm_fw)
+        assert pair <= allowed, (model, arm_fw, pair)
+        assert not ({31, 32, 243, 244} - pair) & allowed, (model, arm_fw)
 
 
 def test_write_safe_registers_undetected_falls_back_to_single_phase():

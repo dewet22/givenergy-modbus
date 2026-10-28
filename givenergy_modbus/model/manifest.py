@@ -413,6 +413,14 @@ WRITE_SAFE_AC_CONFIG: frozenset[int] = frozenset(
 )
 
 
+# Charge slot 2 on the 10-slot map (EXTENDED_SLOTS, model/slot_map.py) is HR(243/244), and the
+# legacy HR(31/32) pair isn't slot 2 there (it errors on write, giv_tcp#619, and reads 1/0 on the
+# All-in-One captures). On single-phase has_extended_slots models the pair is swapped; three-phase
+# models address slot 2 at HR(1115/1116) and are unaffected.
+WRITE_SAFE_EXTENDED_CHARGE_SLOT_2: frozenset[int] = frozenset({243, 244})
+_LEGACY_CHARGE_SLOT_2: frozenset[int] = frozenset({31, 32})
+
+
 def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> frozenset[int]:
     """Registers this model/firmware permits at the normal (non-installer) write tier.
 
@@ -423,8 +431,9 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
     conservative fallback (has_capability returns False for None, so an undetected
     client falls through every branch — no special case needed). Does NOT include
     INSTALLER_WRITE_REGISTERS: the installer tier is a universal danger classification,
-    unioned at the client boundary, not a per-model capability. ``arm_fw`` is accepted
-    for signature consistency; no write capability is firmware-gated today.
+    unioned at the client boundary, not a per-model capability. ``arm_fw`` matters only
+    through has_extended_slots (HYBRID_GEN3 above fw 302), which moves charge slot 2 from
+    HR(31/32) to HR(243/244) on single-phase 10-slot models.
 
     Callers pass the resolved ``caps.device_type`` (not the ``caps`` object) — this gate
     keys off the model directly, unlike the polling path's ``getattr(caps, name)`` in
@@ -440,4 +449,6 @@ def write_safe_registers(model: Model | None, arm_fw: int | None = None) -> froz
         safe = WRITE_SAFE_SINGLE_PHASE
     if has_capability("has_ac_config_block", model) and not has_capability("is_three_phase", model):
         safe = safe | WRITE_SAFE_AC_CONFIG
+    if model is not None and has_extended_slots(model, arm_fw) and not has_capability("is_three_phase", model):
+        safe = (safe - _LEGACY_CHARGE_SLOT_2) | WRITE_SAFE_EXTENDED_CHARGE_SLOT_2
     return safe
