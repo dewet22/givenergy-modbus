@@ -295,6 +295,28 @@ class PlantCapabilities(BaseModel):
         """Return True if this system uses HV battery stacks (BCU/BMU) rather than LV packs."""
         return manifest.has_capability("is_hv", self.device_type)
 
+    @property
+    def number_battery_modules(self) -> int:
+        """Total installed battery modules, whatever the battery architecture.
+
+        The largest of: LV packs (``lv_battery_addresses``), modules across all HV stacks
+        (``bcu_stacks`` module counts), All-in-One modules (``aio_battery_module_addresses``)
+        and HV BMUs (``hv_bmu_addresses``). The largest, not the sum, because the same
+        modules are listed more than once: an HV stack's modules appear both as its BCU's
+        module count and as BMU addresses, and an All-in-One's as both a stack and module
+        addresses. Taking the stack count also covers a module that didn't answer at
+        detect().
+
+        Unlike ``Plant.number_batteries`` (LV packs only, matching ``Plant.batteries``),
+        this is non-zero on HV, three-phase and All-in-One systems.
+        """
+        return max(
+            len(self.lv_battery_addresses),
+            sum(max(num_modules, 0) for _offset, num_modules in self.bcu_stacks),
+            len(self.aio_battery_module_addresses),
+            len(self.hv_bmu_addresses),
+        )
+
     SCHEMA_VERSION: ClassVar[int] = 1
 
     def to_dict(self) -> dict[str, Any]:
@@ -1908,8 +1930,24 @@ class Plant(GivEnergyBaseModel):
         return self.inverter_serial_number
 
     @property
+    def number_battery_modules(self) -> int:
+        """Total installed battery modules across LV, HV and All-in-One architectures.
+
+        See ``PlantCapabilities.number_battery_modules``. Before ``detect()`` has run (no
+        capabilities), falls back to ``number_batteries``, which probes LV packs only.
+        """
+        if self.capabilities:
+            return self.capabilities.number_battery_modules
+        return self.number_batteries
+
+    @property
     def number_batteries(self) -> int:
-        """Determine the number of batteries connected to the system based on whether the register data is valid."""
+        """Number of LV battery packs: the length of ``Plant.batteries``.
+
+        Counts LV packs only, so it is 0 on HV, three-phase and All-in-One systems — use
+        ``number_battery_modules`` for the total installed modules on any architecture.
+        Without capabilities, probes the LV addresses for valid register data.
+        """
         if self.capabilities:
             return len(self.capabilities.lv_battery_addresses)
         count = 0

@@ -110,6 +110,37 @@ def test_plant(
     # assert Plant.from_registers(plant) == plant
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, 0),
+        ({"lv_battery_addresses": [0x32, 0x33, 0x34]}, 3),
+        # HV: two stacks of 5, with every BMU answering → 10, not 20.
+        ({"bcu_stacks": [(0, 5), (1, 5)], "hv_bmu_addresses": list(range(0x50, 0x5A))}, 10),
+        # HV: a module that didn't answer at detect is still counted from the BCU.
+        ({"bcu_stacks": [(0, 6)], "hv_bmu_addresses": list(range(0x50, 0x55))}, 6),
+        # HV: BCU counts only (BMUs not probed).
+        ({"bcu_stacks": [(0, 4), (1, 3)]}, 7),
+        # All-in-One: the integrated stack and the module addresses are the same 4 modules.
+        ({"bcu_stacks": [(0, 4)], "aio_battery_module_addresses": [0x50, 0x51, 0x52, 0x53]}, 4),
+        # A nonsensical negative stack count doesn't subtract.
+        ({"bcu_stacks": [(0, -1)], "lv_battery_addresses": [0x32]}, 1),
+    ],
+)
+def test_number_battery_modules_across_architectures(kwargs, expected):
+    caps = PlantCapabilities(device_type=Model.HYBRID_GEN1, **kwargs)
+    assert caps.number_battery_modules == expected
+    plant = Plant()
+    plant.capabilities = caps
+    assert plant.number_battery_modules == expected
+
+
+def test_number_battery_modules_without_capabilities_falls_back_to_lv_probe(plant: Plant, monkeypatch):
+    """Before detect(), there's no topology to count from, so it matches number_batteries."""
+    plant.capabilities = None
+    assert plant.number_battery_modules == plant.number_batteries
+
+
 def test_number_batteries_handles_decode_value_error(
     plant: Plant,
     register_cache_battery_daytime_discharging,
