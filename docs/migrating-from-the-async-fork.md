@@ -96,6 +96,7 @@ than directly on `Plant`:
 | `plant.inverter_serial_number` | `plant.inverter_serial` |
 | `plant.additional_input_registers` / `..._holding_registers` | gone — handled internally by capability-aware polling |
 | `plant.inverter`, `plant.gateway`, `plant.ems`, `plant.batteries`, `plant.meters`, `plant.register_caches` | unchanged |
+| `plant.ems` IR(0-59) energy fields | same names for `e_inverter_out_total`, `e_inverter_in_total`, `e_grid_out_total` (export), `e_grid_in_total` (import), `e_grid_out_day`, `e_grid_in_day`, `e_inverter_in_day` and `p_inverter_active`; `e_inverter_out_today` → `e_inverter_out_day`. **Generation changed:** the fork's `e_generation_day` / `e_generation_total` read IR(44) / IR(45-46), which duplicate inverter out; they now read the generation meters (IR(17)+IR(19), IR(11-12)). `e_active_generation_total` is generation power in W, not an energy — use `p_generation` |
 
 `plant.capabilities` also exposes convenience predicates the fork lacked
 (`is_three_phase`, `is_ac_coupled`, `is_gateway`, `is_ems`,

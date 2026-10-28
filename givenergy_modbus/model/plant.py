@@ -26,7 +26,7 @@ from givenergy_modbus.model.battery_splice import (
 )
 from givenergy_modbus.model.devices import DeviceType, PlantDevice
 from givenergy_modbus.model.devices import Inverter as UnifiedInverter
-from givenergy_modbus.model.ems import Ems
+from givenergy_modbus.model.ems import EMS_LIFETIME_TOTAL_REGISTERS, Ems
 from givenergy_modbus.model.gateway import GatewayV1, GatewayV2, select_gateway
 from givenergy_modbus.model.hv_bcu import Bcu, BcuRegisterGetter, Bmu, BmuRegisterGetter, HvStack
 from givenergy_modbus.model.inverter import (
@@ -1067,6 +1067,24 @@ class Plant(GivEnergyBaseModel):
         can measure baseline staleness consistently with the rest of the stamping logic.
         """
         cache = self.register_caches[device_address]
+        # EMS plant energy bank (britkat1980/giv_tcp#637): the dongle relays the cloud's polls of
+        # the EMS's IR(0-59), and some replies read all zeros. An EMS in service never reports every
+        # lifetime total as 0, so refuse such a reply and keep last-good. Runs before Pattern B,
+        # which only catches it once a good bank is cached (and at WARNING — this is known).
+        caps = self.capabilities
+        if (
+            register_count >= 60
+            and caps is not None
+            and caps.is_ems
+            and device_address == caps.inverter_address
+            and EMS_LIFETIME_TOTAL_REGISTERS <= incoming.keys()
+            and not any(incoming[r] for r in EMS_LIFETIME_TOTAL_REGISTERS)
+        ):
+            _logger.debug(
+                "Refused EMS IR(0-59) reply with every lifetime total at 0 (relayed cloud poll, #637); "
+                "keeping last-good."
+            )
+            return False
         # Pattern B (#78/#147/#199, tracked in #206): a bank that previously held non-zero data and
         # now reads entirely zero is a block-level dropout (an empty page served during a
         # transition), not real data — reject it and keep last-good. Contextual, to resolve the

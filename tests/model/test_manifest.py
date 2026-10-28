@@ -315,7 +315,7 @@ def test_refresh_ir_ranges_exact_values():
         RegisterRange,
     )
 
-    assert REFRESH_IR_RANGES["is_ems"] == [RegisterRange("IR", 2040, 55)]
+    assert REFRESH_IR_RANGES["is_ems"] == [RegisterRange("IR", 0, 60), RegisterRange("IR", 2040, 55)]
     assert REFRESH_IR_RANGES["is_three_phase"] == [
         RegisterRange("IR", 1000, 60),
         RegisterRange("IR", 1060, 60),
